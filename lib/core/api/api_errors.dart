@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 enum ApiErrorCode {
   unauthorized,
+  emailNotVerified,
   featureDisabled,
   deviceLimit,
   mobilePlanDesktopBlocked,
@@ -44,7 +45,9 @@ class ApiException implements Exception {
       );
     }
 
-    final serverCode = body is Map ? body['code'] as String? : null;
+    final serverCode = body is Map
+        ? (body['code'] as String? ?? body['error'] as String?)
+        : null;
 
     switch (status) {
       case 401:
@@ -54,6 +57,11 @@ class ApiException implements Exception {
         );
       case 403:
         switch (serverCode) {
+          case 'email_not_verified':
+            return ApiException(
+              code: ApiErrorCode.emailNotVerified,
+              message: body?['message'] as String? ?? 'Email chưa xác nhận',
+            );
           case 'feature_disabled':
             return const ApiException(
               code: ApiErrorCode.featureDisabled,

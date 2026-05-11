@@ -1,14 +1,16 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uni_links/uni_links.dart';
 
 import '../auth/auth_provider.dart';
 import '../../features/auth/screens/auth_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
+import '../../features/onboarding/screens/keyboard_setup_screen.dart';
+import '../../features/translate/screens/home_screen.dart';
+import '../../features/upgrade/screens/upgrade_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -28,7 +30,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => const _HomePlaceholder(),
+        builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
         path: '/onboarding',
@@ -38,38 +40,40 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/auth/login',
         builder: (context, state) => const AuthScreen(),
       ),
+      GoRoute(
+        path: '/upgrade',
+        builder: (context, state) => const UpgradeScreen(),
+      ),
+      GoRoute(
+        path: '/keyboard-setup',
+        builder: (context, state) => KeyboardSetupScreen(
+          showSkip: state.uri.queryParameters['skip'] != 'false',
+        ),
+      ),
     ],
   );
 
-  // Listen for deep links
   _initDeepLinkListener(ref, router);
-
   return router;
 });
 
-StreamSubscription<Uri?>? _deepLinkSub;
+StreamSubscription<Uri>? _deepLinkSub;
 
 void _initDeepLinkListener(Ref ref, GoRouter router) {
-  // Clean up previous subscription
   _deepLinkSub?.cancel();
-
   if (kIsWeb) return;
 
   try {
-    _deepLinkSub = uriLinkStream.listen(
-      (Uri? uri) {
-        if (uri != null) {
-          debugPrint('[DeepLink] Received: $uri');
-          ref.read(authStateProvider.notifier).handleDeepLink(uri);
-        }
+    final appLinks = AppLinks();
+    _deepLinkSub = appLinks.uriLinkStream.listen(
+      (Uri uri) {
+        debugPrint('[DeepLink] Received: $uri');
+        ref.read(authStateProvider.notifier).handleDeepLink(uri);
       },
-      onError: (err) {
-        debugPrint('[DeepLink] Error: $err');
-      },
+      onError: (err) => debugPrint('[DeepLink] Error: $err'),
     );
 
-    // Also check initial link (app opened via deep link while cold-starting)
-    getInitialUri().then((Uri? uri) {
+    appLinks.getInitialLink().then((Uri? uri) {
       if (uri != null) {
         debugPrint('[DeepLink] Initial: $uri');
         ref.read(authStateProvider.notifier).handleDeepLink(uri);
@@ -77,18 +81,5 @@ void _initDeepLinkListener(Ref ref, GoRouter router) {
     }).catchError((_) {});
   } catch (e) {
     debugPrint('[DeepLink] Init failed: $e');
-  }
-}
-
-// Placeholder — will be replaced by HomeScreen in translate feature
-class _HomePlaceholder extends StatelessWidget {
-  const _HomePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('TransKey')),
-      body: const Center(child: Text('Home — coming soon')),
-    );
   }
 }

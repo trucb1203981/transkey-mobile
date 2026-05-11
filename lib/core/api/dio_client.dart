@@ -1,6 +1,7 @@
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -8,7 +9,8 @@ import '../auth/auth_provider.dart';
 import '../auth/session_store.dart';
 import '../device/device_id.dart';
 
-const kBaseUrl = 'https://api.transkey.app';
+String get kBaseUrl =>
+    dotenv.env['TRANSKEY_API_URL'] ?? 'https://api.transkey.app';
 
 class ApiClient {
   ApiClient({

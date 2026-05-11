@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/dio_client.dart';
+import 'app_group_bridge.dart';
 import 'session_store.dart';
 
 class AuthState {
@@ -59,7 +61,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final user = data['user'] as Map<String, dynamic>;
       final session = AuthSession(
         accessToken: data['accessToken'] as String,
-        userId: user['id'] as String,
+        userId: user['id'].toString(),
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
@@ -67,6 +69,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(session);
+      await _syncToAppGroup(session);
 
       return AuthState(isLoggedIn: true, session: session);
     });
@@ -90,7 +93,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final user = data['user'] as Map<String, dynamic>;
       final session = AuthSession(
         accessToken: data['accessToken'] as String,
-        userId: user['id'] as String,
+        userId: user['id'].toString(),
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
@@ -98,6 +101,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(session);
+      await _syncToAppGroup(session);
 
       return AuthState(isLoggedIn: true, session: session);
     });
@@ -106,6 +110,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> logout() async {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.clear();
+    await AppGroupBridge.clearAuth();
     state = const AsyncData(AuthState());
   }
 
@@ -150,6 +155,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> updateSession(AuthSession session) async {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.save(session);
+    await _syncToAppGroup(session);
     state = AsyncData(AuthState(isLoggedIn: true, session: session));
   }
 
@@ -171,7 +177,24 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.save(session);
+    await _syncToAppGroup(session);
     state = AsyncData(AuthState(isLoggedIn: true, session: session));
+  }
+
+  Future<void> _syncToAppGroup(AuthSession session) async {
+    try {
+      final deviceIdService = ref.read(deviceIdProvider);
+      final deviceId = await deviceIdService.getFingerprint();
+      final baseUrl = dotenv.env['TRANSKEY_API_URL'] ?? 'https://api.transkey.app';
+      await AppGroupBridge.saveAuth(
+        token: session.accessToken,
+        deviceId: deviceId,
+        plan: session.plan,
+        baseURL: baseUrl,
+      );
+    } catch (e) {
+      debugPrint('[Auth] AppGroup sync failed: $e');
+    }
   }
 }
 

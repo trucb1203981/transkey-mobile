@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -75,6 +76,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             );
       }
 
+      // Check if auth succeeded or failed (AsyncValue.guard stores error in state)
+      final authState = ref.read(authStateProvider);
+      if (authState.hasError) {
+        final err = authState.error;
+        if (err is DioException) {
+          final apiErr = ApiException.fromDio(err);
+          setState(() => _errorMessage = apiErr.message);
+        } else {
+          setState(() => _errorMessage = err.toString());
+        }
+        return;
+      }
+
       if (mounted) context.go('/');
     } on DioException catch (e) {
       final apiErr = ApiException.fromDio(e);
@@ -85,7 +99,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   Future<void> _googleOAuth() async {
-    final uri = Uri.parse('https://api.transkey.app/auth/google');
+    final baseUrl = dotenv.env['TRANSKEY_API_URL'] ?? 'https://api.transkey.app';
+    final uri = Uri.parse('$baseUrl/auth/google');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -96,7 +111,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final authState = ref.watch(authStateProvider);
-    final isLoading = authState.isLoading;
+    final isLoading = authState.isLoading || authState.isRefreshing;
 
     return Scaffold(
       body: SafeArea(

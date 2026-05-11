@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _kSessionKey = 'tk_auth_session';
 
@@ -68,14 +70,17 @@ class SessionStore {
   final FlutterSecureStorage _storage;
 
   Future<void> save(AuthSession session) async {
-    await _storage.write(
-      key: _kSessionKey,
-      value: jsonEncode(session.toMap()),
-    );
+    final value = jsonEncode(session.toMap());
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kSessionKey, value);
+    } else {
+      await _storage.write(key: _kSessionKey, value: value);
+    }
   }
 
   Future<AuthSession?> load() async {
-    final raw = await _storage.read(key: _kSessionKey);
+    final raw = await _readRaw();
     if (raw == null) return null;
     try {
       return AuthSession.fromMap(
@@ -87,10 +92,22 @@ class SessionStore {
   }
 
   Future<void> clear() async {
-    await _storage.delete(key: _kSessionKey);
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kSessionKey);
+    } else {
+      await _storage.delete(key: _kSessionKey);
+    }
   }
 
-  /// Returns true if token expires within 7 days from now.
+  Future<String?> _readRaw() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_kSessionKey);
+    }
+    return _storage.read(key: _kSessionKey);
+  }
+
   bool isExpiringSoon(AuthSession session) {
     if (session.expiresAt == null) return false;
     try {
