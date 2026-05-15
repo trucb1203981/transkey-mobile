@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,6 +45,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   String? _clipboardSuggestion;
   String? _dismissedClipboard;
+  // True while we're populating _textController from saved storage — the
+  // controller listener would otherwise schedule a redundant write of the
+  // value we just read.
+  bool _isRestoring = false;
 
   static const _maxChars = 5000;
   static const _kSourceTextKey = 'tk_last_source_text';
@@ -90,7 +95,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ref.read(languageSettingsProvider.notifier).reload();
       ref.read(usageProvider.notifier).refreshIfStale();
       ref.read(authStateProvider.notifier).refreshUser();
-      _peekClipboard();
+      // Skip the clipboard peek on iOS resume — every Clipboard.getData call
+      // raises a "TransKey pasted from..." privacy banner on iOS 14+. We pay
+      // that cost once at cold start; on resume the user can long-press the
+      // input to paste manually. Android has no such banner, so peek freely.
+      if (!Platform.isIOS) {
+        _peekClipboard();
+      }
     }
   }
 
@@ -99,11 +110,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final saved = prefs.getString(_kSourceTextKey);
     if (saved == null || saved.isEmpty) return;
     if (!mounted || _textController.text.isNotEmpty) return;
+    _isRestoring = true;
     _textController.text = saved;
+    _isRestoring = false;
   }
 
   Timer? _persistDebounce;
   void _persistSourceText() {
+    if (_isRestoring) return;
     _persistDebounce?.cancel();
     _persistDebounce = Timer(const Duration(milliseconds: 500), () async {
       final prefs = await SharedPreferences.getInstance();
@@ -776,16 +790,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final historyId = ref.watch(
       translateProvider.select((s) => s.valueOrNull?.lastHistoryId),
     );
-    final entries = ref.watch(historyProvider).entries;
-    var isFavorite = false;
-    if (historyId != null) {
-      for (final e in entries) {
-        if (e.id == historyId) {
-          isFavorite = e.isFavorite;
-          break;
+    // Subscribe only to *this* entry's favorite flag. Without select, every
+    // new translation / search query / filter change rebuilds the icon even
+    // though the displayed state hasn't changed. With select Riverpod
+    // short-circuits when the resolved bool is identical to the previous one.
+    final isFavorite = ref.watch(
+      historyProvider.select((s) {
+        if (historyId == null) return false;
+        for (final e in s.entries) {
+          if (e.id == historyId) return e.isFavorite;
         }
-      }
-    }
+        return false;
+      }),
+    );
     return _actionIcon(
       isFavorite ? Icons.star : Icons.star_outline,
       l.save,

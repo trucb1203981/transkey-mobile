@@ -64,8 +64,23 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
   // fast-then-slow translate sequence can't overwrite the newer result.
   int _requestSeq = 0;
 
-  String _cacheKey(String text, String targetLang, TranslateMode mode) =>
-      '$text|$targetLang|${mode.value}';
+  // Cache key must include every input that changes the server response —
+  // otherwise toggling tone / romanization and re-translating returns the
+  // previous result. The body Map is passed in (already built per-mode) so
+  // we don't have to keep this in sync with prompt-building logic.
+  String _cacheKey(
+    String text,
+    String targetLang,
+    TranslateMode mode,
+    Map<String, dynamic> body,
+  ) {
+    final tone = body['toneOverride'] ?? '';
+    final roman = body['withRomanization'] == true ? '1' : '0';
+    final isReply = body['isReply'] == true ? '1' : '0';
+    final suggestions = body['withSuggestions'] == true ? '1' : '0';
+    final source = body['sourceLang'] ?? 'auto';
+    return '$text|$source|$targetLang|${mode.value}|$tone|$roman|$isReply|$suggestions';
+  }
 
   Future<AppSettings> _settings() async {
     return ref.read(appSettingsProvider.future);
@@ -184,7 +199,7 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
 
     // Check cache — still save to history so duplicate translations don't
     // silently disappear from the list.
-    final key = _cacheKey(trimmed, targetLang, mode);
+    final key = _cacheKey(trimmed, targetLang, mode, body);
     if (_cache.containsKey(key)) {
       if (reqId != _requestSeq) return;
       final cached = _cache[key]!;
