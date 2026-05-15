@@ -32,14 +32,19 @@ class ApiClient {
       ),
     );
 
+    _headers = _HeadersInterceptor(
+      deviceId: _deviceId,
+      sessionStore: _sessionStore,
+    );
     _dio.interceptors.addAll([
-      _HeadersInterceptor(deviceId: _deviceId, sessionStore: _sessionStore),
+      _headers,
       _AuthRefreshInterceptor(
         dio: _dio,
         sessionStore: _sessionStore,
         onAuthFailed: _onAuthFailed,
+        onSessionChanged: () => _headers.invalidateSessionCache(),
       ),
-      _RetryInterceptor(),
+      _RetryInterceptor(dio: _dio),
     ]);
   }
 
@@ -47,8 +52,13 @@ class ApiClient {
   final SessionStore _sessionStore;
   final void Function() _onAuthFailed;
   late final Dio _dio;
+  late final _HeadersInterceptor _headers;
 
   Dio get dio => _dio;
+
+  /// Drop the in-memory session cache. Call after manual session writes
+  /// (e.g. handleDeepLink) so the next request uses the fresh token.
+  void invalidateSessionCache() => _headers.invalidateSessionCache();
 }
 
 // ────────────────────────────────────────────────
@@ -64,14 +74,30 @@ class _HeadersInterceptor extends Interceptor {
   final DeviceIdService deviceId;
   final SessionStore sessionStore;
 
+  AuthSession? _cachedSession;
+  bool _sessionLoaded = false;
+
+  void invalidateSessionCache() {
+    _cachedSession = null;
+    _sessionLoaded = false;
+  }
+
   @override
   Future<void> onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final session = await sessionStore.load();
-    if (session?.accessToken != null) {
-      options.headers['Authorization'] = 'Bearer ${session!.accessToken}';
+    if (!_sessionLoaded) {
+      _cachedSession = await sessionStore.load();
+      _sessionLoaded = true;
+    }
+    final token = _cachedSession?.accessToken;
+    // Respect any Authorization already set on the request (e.g. refresh
+    // interceptor passing a known-good token explicitly).
+    if (token != null &&
+        token.isNotEmpty &&
+        !options.headers.containsKey('Authorization')) {
+      options.headers['Authorization'] = 'Bearer $token';
     }
 
     final fingerprint = await deviceId.getFingerprint();
@@ -91,11 +117,13 @@ class _AuthRefreshInterceptor extends Interceptor {
     required this.dio,
     required this.sessionStore,
     required this.onAuthFailed,
+    required this.onSessionChanged,
   });
 
   final Dio dio;
   final SessionStore sessionStore;
   final void Function() onAuthFailed;
+  final void Function() onSessionChanged;
 
   @override
   Future<void> onError(
@@ -136,6 +164,7 @@ class _AuthRefreshInterceptor extends Interceptor {
       await sessionStore.save(
         session.copyWith(accessToken: newToken, expiresAt: expiresAt),
       );
+      onSessionChanged();
 
       // Retry the original request with new token
       final retryOptions = err.requestOptions.copyWith(
@@ -160,7 +189,11 @@ class _AuthRefreshInterceptor extends Interceptor {
 // ────────────────────────────────────────────────
 
 class _RetryInterceptor extends Interceptor {
+  _RetryInterceptor({required this.dio});
+
   static const _maxRetries = 2;
+
+  final Dio dio;
 
   @override
   Future<void> onError(
@@ -192,7 +225,9 @@ class _RetryInterceptor extends Interceptor {
     );
 
     try {
-      final response = await Dio().fetch(retryOptions);
+      // Reuse the configured Dio so Headers/Auth interceptors re-apply.
+      // Using a fresh Dio() would drop Authorization/X-Device-ID/X-Platform.
+      final response = await dio.fetch(retryOptions);
       handler.resolve(response);
     } on DioException catch (e) {
       handler.next(e);
@@ -215,7 +250,10 @@ final sessionStoreProvider = Provider<SessionStore>((ref) {
 
 final deviceIdProvider = Provider<DeviceIdService>((ref) {
   return DeviceIdService(
-    secureStorage: const FlutterSecureStorage(),
+    // Match the secure-storage config used by SessionStore — see notes there.
+    secureStorage: const FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    ),
     deviceInfo: DeviceInfoPlugin(),
   );
 });

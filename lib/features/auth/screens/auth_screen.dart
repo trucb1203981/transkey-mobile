@@ -44,6 +44,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Show OAuth error from deep link (e.g. pro_device_limit)
+    final authError = ref.read(authStateProvider).valueOrNull?.error;
+    if (authError != null && _errorMessage == null) {
+      final msg = authError == 'pro_device_limit'
+          ? 'Pro account already registered on max devices'
+          : authError == 'device_limit'
+              ? 'Too many accounts on this device'
+              : 'Google sign-in failed: $authError';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _errorMessage = msg);
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
     _emailController.dispose();
@@ -100,9 +117,24 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
   Future<void> _googleOAuth() async {
     final baseUrl = dotenv.env['TRANSKEY_API_URL'] ?? 'https://api.transkey.app';
-    final uri = Uri.parse('$baseUrl/auth/google');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // Server reads "state" param: portPart|deviceId|deviceName|platform
+    // "mobile" tells the callback to redirect to transkey:// deep link
+    final uri = Uri.parse('$baseUrl/auth/google').replace(queryParameters: {
+      'state': 'mobile',
+    });
+    try {
+      // Use the system browser (Chrome) instead of an in-app Custom Tab —
+      // Chrome Custom Tab silently blocks auto-navigation to intent:// without
+      // a user gesture, which leaves the user stuck on the redirect page after
+      // Google sign-in. Regular Chrome handles intent:// → app launch reliably.
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Failed to open Google sign-in: $e');
+      }
     }
   }
 

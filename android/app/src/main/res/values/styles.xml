@@ -15,4 +15,13 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- ShareActivity needs a real (non-translucent) window so it can gain input
+         focus and read the clipboard on Android 10+. Background is transparent
+         so the user only sees a brief flicker before the activity finishes. -->
+    <style name="ShareActivityTheme" parent="@android:style/Theme.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
 </resources>

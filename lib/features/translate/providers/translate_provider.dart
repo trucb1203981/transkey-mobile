@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_errors.dart';
 import '../../../core/api/dio_client.dart';
 import '../../history/providers/history_provider.dart';
+import '../../settings/providers/app_settings_provider.dart';
+import '../../upgrade/providers/usage_provider.dart';
 import '../models/translate_models.dart';
 
 class TranslateState {
@@ -13,6 +17,7 @@ class TranslateState {
     this.error,
     this.mode = TranslateMode.translate,
     this.sourceText = '',
+    this.lastHistoryId,
   });
 
   final bool isLoading;
@@ -20,6 +25,9 @@ class TranslateState {
   final String? error;
   final TranslateMode mode;
   final String sourceText;
+  // ID of the history entry that mirrors `result`. Lets HomeScreen wire the
+  // ★ button to toggleFavorite without re-deriving identity from text.
+  final String? lastHistoryId;
 
   TranslateState copyWith({
     bool? isLoading,
@@ -27,8 +35,10 @@ class TranslateState {
     String? error,
     TranslateMode? mode,
     String? sourceText,
+    String? lastHistoryId,
     bool clearResult = false,
     bool clearError = false,
+    bool clearHistoryId = false,
   }) =>
       TranslateState(
         isLoading: isLoading ?? this.isLoading,
@@ -36,6 +46,9 @@ class TranslateState {
         error: clearError ? null : (error ?? this.error),
         mode: mode ?? this.mode,
         sourceText: sourceText ?? this.sourceText,
+        lastHistoryId: clearHistoryId
+            ? null
+            : (lastHistoryId ?? this.lastHistoryId),
       );
 }
 
@@ -46,24 +59,45 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
   static const _maxCacheSize = 50;
   final _cache = <String, TranslateResult>{};
 
+  // Monotonic request token: only the latest in-flight request is allowed to
+  // write to state. Drop responses from earlier (now-stale) requests so a
+  // fast-then-slow translate sequence can't overwrite the newer result.
+  int _requestSeq = 0;
+
   String _cacheKey(String text, String targetLang, TranslateMode mode) =>
       '$text|$targetLang|${mode.value}';
+
+  Future<AppSettings> _settings() async {
+    return ref.read(appSettingsProvider.future);
+  }
 
   Future<void> translate({
     required String text,
     required String targetLang,
     String? sourceLang,
+    bool isReply = false,
   }) async {
+    final s = await _settings();
+    final src = sourceLang ?? 'auto';
+    final tone = isReply
+        ? (s.replyToneOverride.isNotEmpty ? s.replyToneOverride : s.toneOverride)
+        : s.toneOverride;
+    final effectiveTarget =
+        isReply && s.replyLang.isNotEmpty ? s.replyLang : targetLang;
+
     await _execute(
       text: text,
-      targetLang: targetLang,
-      sourceLang: sourceLang ?? 'auto',
-      mode: TranslateMode.translate,
+      targetLang: effectiveTarget,
+      sourceLang: src,
+      mode: isReply ? TranslateMode.reply : TranslateMode.translate,
       body: {
         'text': text,
-        'targetLang': targetLang,
-        if (sourceLang != null && sourceLang != 'auto')
-          'sourceLang': sourceLang,
+        'targetLang': effectiveTarget,
+        if (isReply) 'isReply': true,
+        if (src != 'auto') 'sourceLang': src,
+        if (s.romanization) 'withRomanization': true,
+        if (tone.isNotEmpty) 'toneOverride': tone,
+        if (isReply && s.replySuggestions) 'withSuggestions': true,
       },
     );
   }
@@ -71,12 +105,22 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
   Future<void> summarize({
     required String text,
     required String targetLang,
+    String? sourceLang,
   }) async {
+    final s = await _settings();
+    final src = sourceLang ?? 'auto';
     await _execute(
       text: text,
       targetLang: targetLang,
+      sourceLang: src,
       mode: TranslateMode.summarize,
-      body: {'text': text, 'targetLang': targetLang},
+      body: {
+        'text': text,
+        'targetLang': targetLang,
+        if (src != 'auto') 'sourceLang': src,
+        if (s.romanization) 'withRomanization': true,
+        if (s.toneOverride.isNotEmpty) 'toneOverride': s.toneOverride,
+      },
       endpoint: '/summarize',
     );
   }
@@ -84,22 +128,35 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
   Future<void> explain({
     required String text,
     required String targetLang,
+    String? sourceLang,
   }) async {
+    final s = await _settings();
+    final src = sourceLang ?? 'auto';
     await _execute(
       text: text,
       targetLang: targetLang,
+      sourceLang: src,
       mode: TranslateMode.explain,
-      body: {'text': text, 'targetLang': targetLang},
+      body: {
+        'text': text,
+        'targetLang': targetLang,
+        if (src != 'auto') 'sourceLang': src,
+        if (s.romanization) 'withRomanization': true,
+      },
       endpoint: '/explain',
     );
   }
 
   Future<void> refine({required String text}) async {
+    final s = await _settings();
     await _execute(
       text: text,
       targetLang: '',
       mode: TranslateMode.refine,
-      body: {'text': text},
+      body: {
+        'text': text,
+        if (s.toneOverride.isNotEmpty) 'toneOverride': s.toneOverride,
+      },
       endpoint: '/refine',
     );
   }
@@ -115,21 +172,41 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
+    final reqId = ++_requestSeq;
     final currentState = state.valueOrNull ?? const TranslateState();
     state = AsyncData(currentState.copyWith(
       isLoading: true,
       clearError: true,
       mode: mode,
       sourceText: trimmed,
+      clearHistoryId: true,
     ));
 
-    // Check cache
+    // Check cache — still save to history so duplicate translations don't
+    // silently disappear from the list.
     final key = _cacheKey(trimmed, targetLang, mode);
     if (_cache.containsKey(key)) {
-      state = AsyncData(currentState.copyWith(
-        result: _cache[key],
+      if (reqId != _requestSeq) return;
+      final cached = _cache[key]!;
+      // Guard history write with stale check too — otherwise rapid
+      // translate-clear-translate sequences create phantom history entries
+      // for results the user never actually saw.
+      final historyId = reqId == _requestSeq
+          ? await _maybeSaveHistory(
+              trimmed: trimmed,
+              result: cached,
+              sourceLang: sourceLang,
+              targetLang: targetLang,
+              mode: mode,
+            )
+          : null;
+      if (reqId != _requestSeq) return;
+      state = AsyncData((state.valueOrNull ?? currentState).copyWith(
+        isLoading: false,
+        result: cached,
         mode: mode,
         sourceText: trimmed,
+        lastHistoryId: historyId,
       ));
       return;
     }
@@ -137,6 +214,7 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
     try {
       final api = ref.read(apiClientProvider);
       final response = await api.dio.post(endpoint, data: body);
+      if (reqId != _requestSeq) return;
       final result = TranslateResult.fromMap(
         response.data as Map<String, dynamic>,
       );
@@ -147,23 +225,31 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         _cache.remove(_cache.keys.first);
       }
 
+      // Re-check before crossing another await — translate-then-clear
+      // shouldn't leave a history entry behind.
+      if (reqId != _requestSeq) return;
+      final historyId = await _maybeSaveHistory(
+        trimmed: trimmed,
+        result: result,
+        sourceLang: sourceLang,
+        targetLang: targetLang,
+        mode: mode,
+      );
+      if (reqId != _requestSeq) return;
+
       state = AsyncData((state.valueOrNull ?? currentState).copyWith(
         isLoading: false,
         result: result,
         mode: mode,
         sourceText: trimmed,
+        lastHistoryId: historyId,
       ));
 
-      // Auto-save to history
-      ref.read(historyProvider.notifier).addFromTranslate(
-            sourceText: trimmed,
-            translation: result.translation,
-            sourceLang: sourceLang,
-            targetLang: targetLang,
-            romanization: result.romanization,
-            mode: mode,
-          );
+      // Refresh usage in the background so the quota bar reflects the
+      // request that just consumed quota.
+      unawaited(ref.read(usageProvider.notifier).refresh());
     } catch (e) {
+      if (reqId != _requestSeq) return;
       String message;
       if (e is ApiException) {
         message = e.message;
@@ -180,22 +266,48 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
     }
   }
 
+  Future<String?> _maybeSaveHistory({
+    required String trimmed,
+    required TranslateResult result,
+    required String sourceLang,
+    required String targetLang,
+    required TranslateMode mode,
+  }) async {
+    final settings = ref.read(appSettingsProvider).valueOrNull;
+    if (!(settings?.historySave ?? true)) return null;
+    return ref.read(historyProvider.notifier).addFromTranslate(
+          sourceText: trimmed,
+          translation: result.translation,
+          sourceLang: sourceLang,
+          targetLang: targetLang,
+          romanization: result.romanization,
+          mode: mode,
+        );
+  }
+
   void clearResult() {
+    // Bump the request token so any in-flight response is ignored on arrival.
+    _requestSeq++;
     final current = state.valueOrNull;
     if (current == null) return;
     state = AsyncData(current.copyWith(
       clearResult: true,
       clearError: true,
+      clearHistoryId: true,
+      isLoading: false,
     ));
   }
 
   void setMode(TranslateMode mode) {
+    _requestSeq++;
     final current = state.valueOrNull;
     if (current == null) return;
     state = AsyncData(current.copyWith(
       mode: mode,
       clearResult: true,
       clearError: true,
+      clearHistoryId: true,
+      isLoading: false,
     ));
   }
 }

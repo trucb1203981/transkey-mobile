@@ -1,9 +1,11 @@
 package com.example.transkey_mobile
 
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.text.TextUtils
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -77,6 +79,24 @@ class MainActivity : FlutterActivity() {
                         startService(i)
                         result.success(null)
                     }
+                    "isRunning" -> {
+                        val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+                        result.success(prefs.getBoolean("flutter.tk_bubble_active", false))
+                    }
+                    "checkAccessibility" -> {
+                        result.success(isAccessibilityEnabled())
+                    }
+                    "requestAccessibility" -> {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                        result.success(null)
+                    }
+                    "replaceFocusedText" -> {
+                        val text = call.argument<String>("text") ?: ""
+                        val svc = TransKeyAccessibilityService.instance
+                        result.success(svc?.replaceFocusedText(text) ?: false)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -90,6 +110,8 @@ class MainActivity : FlutterActivity() {
         setIntent(intent)
         handleIncomingIntent(intent)
     }
+
+    private var pendingSharedText: String? = null
 
     private fun handleIncomingIntent(intent: Intent?) {
         val sharedText = when (intent?.action) {
@@ -105,10 +127,43 @@ class MainActivity : FlutterActivity() {
         }
 
         if (!sharedText.isNullOrBlank()) {
-            TransKeyApp.engine?.let { engine ->
-                MethodChannel(engine.dartExecutor.binaryMessenger, shareChannel)
+            // Try sending via current activity's engine first
+            val messenger = flutterEngine?.dartExecutor?.binaryMessenger
+            if (messenger != null) {
+                MethodChannel(messenger, shareChannel)
                     .invokeMethod("onSharedText", sharedText)
+            } else {
+                pendingSharedText = sharedText
             }
         }
+    }
+
+    // Flush any pending text once the engine is ready
+    fun flushPendingText() {
+        val text = pendingSharedText ?: return
+        val messenger = flutterEngine?.dartExecutor?.binaryMessenger ?: return
+        MethodChannel(messenger, shareChannel).invokeMethod("onSharedText", text)
+        pendingSharedText = null
+    }
+
+    /**
+     * True when our AccessibilityService is enabled in system settings AND
+     * the service instance is connected. Both checks are needed: the system
+     * setting can lag the actual binding state on cold start.
+     */
+    private fun isAccessibilityEnabled(): Boolean {
+        val expected = ComponentName(this, TransKeyAccessibilityService::class.java)
+            .flattenToString()
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ) ?: return false
+        val splitter = TextUtils.SimpleStringSplitter(':')
+        splitter.setString(enabledServices)
+        while (splitter.hasNext()) {
+            val component = ComponentName.unflattenFromString(splitter.next())
+            if (component == ComponentName.unflattenFromString(expected)) return true
+        }
+        return false
     }
 }

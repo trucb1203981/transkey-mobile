@@ -5,6 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _kDeviceFingerprintKey = 'tk_device_fingerprint';
+const _kStorageTimeout = Duration(seconds: 4);
+const _kDeviceInfoTimeout = Duration(seconds: 3);
 
 class DeviceIdService {
   DeviceIdService({
@@ -41,7 +43,16 @@ class DeviceIdService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_kDeviceFingerprintKey);
     }
-    return _secureStorage.read(key: _kDeviceFingerprintKey);
+    try {
+      final v = await _secureStorage
+          .read(key: _kDeviceFingerprintKey)
+          .timeout(_kStorageTimeout);
+      if (v != null) return v;
+    } catch (e) {
+      debugPrint('[DeviceId] secure read failed, falling back: $e');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kDeviceFingerprintKey);
   }
 
   Future<void> _write(String value) async {
@@ -50,7 +61,17 @@ class DeviceIdService {
       await prefs.setString(_kDeviceFingerprintKey, value);
       return;
     }
-    await _secureStorage.write(key: _kDeviceFingerprintKey, value: value);
+    // Always mirror to SharedPreferences so a future secure-storage failure
+    // can still recover the same fingerprint (keeps device identity stable).
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kDeviceFingerprintKey, value);
+    try {
+      await _secureStorage
+          .write(key: _kDeviceFingerprintKey, value: value)
+          .timeout(_kStorageTimeout);
+    } catch (e) {
+      debugPrint('[DeviceId] secure write failed: $e');
+    }
   }
 
   Future<String> _buildRawId() async {
@@ -64,7 +85,7 @@ class DeviceIdService {
       return newId;
     }
     try {
-      final info = await _deviceInfo.deviceInfo;
+      final info = await _deviceInfo.deviceInfo.timeout(_kDeviceInfoTimeout);
       final data = info.data;
       if (info.data.containsKey('identifierForVendor')) {
         return '${data['identifierForVendor']}_${data['utsname']?['machine'] ?? 'ios'}';
@@ -72,7 +93,19 @@ class DeviceIdService {
       return '${data['id'] ?? 'unknown'}_${data['manufacturer'] ?? 'unknown'}_${data['model'] ?? 'unknown'}';
     } catch (e) {
       debugPrint('[DeviceId] Failed to get device info: $e');
-      return 'fallback_${DateTime.now().millisecondsSinceEpoch}';
+      // Persist the fallback raw id so a second cold-start failure reuses the
+      // same value instead of minting a new "device" each launch (which would
+      // trip the Pro plan device limit).
+      return _persistentFallbackId();
     }
+  }
+
+  Future<String> _persistentFallbackId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString('tk_fallback_raw_id');
+    if (existing != null) return existing;
+    final newId = 'fallback_${DateTime.now().millisecondsSinceEpoch}';
+    await prefs.setString('tk_fallback_raw_id', newId);
+    return newId;
   }
 }

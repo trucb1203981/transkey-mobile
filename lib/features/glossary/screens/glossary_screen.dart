@@ -7,11 +7,39 @@ import '../models/glossary_entry.dart';
 import '../providers/glossary_provider.dart';
 import '../widgets/add_glossary_sheet.dart';
 
-class GlossaryScreen extends ConsumerWidget {
+class GlossaryScreen extends ConsumerStatefulWidget {
   const GlossaryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GlossaryScreen> createState() => _GlossaryScreenState();
+}
+
+class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Make sure any pending debounced push goes out before the user leaves.
+    ref.read(glossaryProvider.notifier).flushPendingPush();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      ref.read(glossaryProvider.notifier).flushPendingPush();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final glossary = ref.watch(glossaryProvider);
 
     return Scaffold(
@@ -151,7 +179,7 @@ class _GlossaryTile extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Dismissible(
-      key: ValueKey('${entry.source}_${entry.target}'),
+      key: ValueKey(entry.id),
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) async {
         onDelete();

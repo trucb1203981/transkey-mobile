@@ -15,10 +15,7 @@ class KeyboardSetupScreen extends StatefulWidget {
 
   static Future<bool> hasCompleted() async {
     final prefs = await SharedPreferences.getInstance();
-    if (Platform.isIOS) {
-      return prefs.getBool(_setupDoneKey) ?? false;
-    }
-    return true; // Android doesn't need keyboard setup
+    return prefs.getBool(_setupDoneKey) ?? false;
   }
 
   static Future<void> markDone() async {
@@ -30,11 +27,11 @@ class KeyboardSetupScreen extends StatefulWidget {
     if (Platform.isIOS) {
       const url = 'App-prefs:root=General&path=Keyboard/KEYBOARDS';
       try {
-        await MethodChannel('transkey/appgroup')
+        await const MethodChannel('transkey/appgroup')
             .invokeMethod('openKeyboardSettings');
       } catch (_) {
         try {
-          await MethodChannel('transkey/deeplink')
+          await const MethodChannel('transkey/deeplink')
               .invokeMethod('open', {'url': url});
         } catch (_) {}
       }
@@ -46,22 +43,63 @@ class KeyboardSetupScreen extends StatefulWidget {
     }
   }
 
+  static Future<bool> hasBubblePermission() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      return await const MethodChannel('transkey/bubble')
+          .invokeMethod<bool>('checkPermission') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   State<KeyboardSetupScreen> createState() => _KeyboardSetupScreenState();
 }
 
-class _KeyboardSetupScreenState extends State<KeyboardSetupScreen> {
+class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
+    with WidgetsBindingObserver {
   int _currentStep = 0;
+  bool _waitingForPermission = false;
   final _pageController = PageController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
   }
 
+  // Called when app returns from Android overlay permission screen
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _waitingForPermission && Platform.isAndroid) {
+      _waitingForPermission = false;
+      _checkAndStartBubble();
+    }
+  }
+
+  Future<void> _checkAndStartBubble() async {
+    try {
+      final hasPermission = await const MethodChannel('transkey/bubble')
+          .invokeMethod<bool>('checkPermission') ?? false;
+      if (hasPermission && mounted) {
+        // Start the bubble service so it's visible immediately
+        await const MethodChannel('transkey/bubble').invokeMethod('startBubble');
+        // Auto-advance to next step
+        if (_currentStep < 2) _nextStep();
+      }
+    } catch (_) {}
+  }
+
   void _nextStep() {
-    if (_currentStep < 2) {
+    if (_currentStep < 4) {
       setState(() => _currentStep++);
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -127,6 +165,22 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen> {
                       : 'Select text in any app and share it to TransKey, or use the floating bubble for quick translations.',
                   illustration: _buildIllustration(3, isDark),
                 ),
+                _StepPage(
+                  step: 4,
+                  icon: Icons.translate_outlined,
+                  title: 'Translate from Any App',
+                  description: Platform.isIOS
+                      ? 'Select any text → tap "Share" → choose TransKey. Or copy text and open TransKey — it reads your clipboard automatically.'
+                      : 'Select text in any app → tap "Share" → choose TransKey. Or use the floating bubble after copying text.',
+                  illustration: _buildIllustration(4, isDark),
+                ),
+                _StepPage(
+                  step: 5,
+                  icon: Icons.auto_awesome_outlined,
+                  title: 'Smart Features',
+                  description: 'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.',
+                  illustration: _buildIllustration(5, isDark),
+                ),
               ],
             ),
           ),
@@ -136,7 +190,7 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen> {
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (i) {
+              children: List.generate(5, (i) {
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -165,8 +219,13 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        KeyboardSetupScreen.openKeyboardSettings();
+                      onPressed: () async {
+                        if (Platform.isAndroid) {
+                          setState(() => _waitingForPermission = true);
+                        }
+                        await KeyboardSetupScreen.openKeyboardSettings();
+                        // iOS: advance directly after opening settings
+                        if (Platform.isIOS && mounted) _nextStep();
                       },
                       icon: const Icon(Icons.settings_outlined),
                       label: Text(
@@ -189,7 +248,7 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen> {
                           )
                         : null,
                     child: Text(
-                      _currentStep < 2 ? 'Next' : 'Done',
+                      _currentStep < 4 ? 'Next' : 'Done',
                     ),
                   ),
                 ),
@@ -231,10 +290,10 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.primary, width: 2),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  const Icon(Icons.add_circle, color: AppColors.primary, size: 20),
-                  const SizedBox(width: 8),
+                  Icon(Icons.add_circle, color: AppColors.primary, size: 20),
+                  SizedBox(width: 8),
                   Text(
                     'Add TransKey',
                     style: TextStyle(
@@ -323,6 +382,167 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen> {
               ),
             ),
           ],
+        ),
+      );
+    }
+
+    if (step == 4) {
+      // Share/Process text from any app
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Mock text with selection highlight
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Konnichiwa, how are you?',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: const Text(
+                      'Konnichiwa',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Context menu mockup
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.translate, color: Colors.white, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    'TransKey',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Arrow pointing to result
+            const Icon(Icons.arrow_downward, size: 16, color: Colors.grey),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary, width: 1.5),
+              ),
+              child: const Text(
+                'こんにちは',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (step == 5) {
+      // Smart features grid
+      final features = [
+        (Icons.translate, 'Translate', false),
+        (Icons.reply, 'Reply', false),
+        (Icons.summarize_outlined, 'Summarize', true),
+        (Icons.lightbulb_outline, 'Explain', true),
+        (Icons.auto_fix_high, 'Refine', true),
+      ];
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: features.map((f) {
+            final (icon, label, locked) = f;
+            return Container(
+              width: 88,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: locked ? 0.2 : 0.5),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 24,
+                        color: locked
+                            ? AppColors.textSecondary
+                            : AppColors.primary,
+                      ),
+                      if (locked)
+                        const Icon(Icons.lock, size: 10, color: AppColors.textSecondary),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: locked ? AppColors.textSecondary : AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
         ),
       );
     }

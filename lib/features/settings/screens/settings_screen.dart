@@ -4,24 +4,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/session_store.dart';
+import '../../../core/bubble/bubble_manager.dart';
+import '../../../core/locale/locale_provider.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/quota_bar.dart';
+import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../translate/models/language.dart';
+import '../../translate/providers/language_settings_provider.dart';
+import '../../translate/widgets/language_picker_sheet.dart';
+import '../../upgrade/providers/usage_provider.dart';
+import '../providers/app_settings_provider.dart';
 import '../widgets/plan_badge.dart';
 
-const _kTargetLangKey = 'tk_target_lang';
-const _kSourceLangKey = 'tk_source_lang';
-const _kHistorySaveKey = 'tk_history_save';
-const _kRomanizationKey = 'tk_romanization';
-const _kReplySuggestionsKey = 'tk_reply_suggestions';
-const _kToneOverrideKey = 'tk_tone_override';
-const _kAutoCloseKey = 'tk_auto_close_result';
+const _appLangOptions = [
+  ('en', 'English'),
+  ('vi', 'Tiếng Việt'),
+];
+
+const _replyLangOptions = [
+  '', // From conversation
+  'en',
+  'vi',
+  'ja',
+  'zh',
+  'ko',
+  'fr',
+  'de',
+  'es',
+];
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -30,95 +46,255 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen>
+    with WidgetsBindingObserver {
   String _version = '';
+  bool _bubbleRunning = false;
+  bool _accessibilityEnabled = false;
 
   @override
   void initState() {
     super.initState();
-    _loadVersion();
+    WidgetsBinding.instance.addObserver(this);
+    _init();
   }
 
-  Future<void> _loadVersion() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-poll accessibility/bubble state when user returns from system settings.
+    if (state == AppLifecycleState.resumed && Platform.isAndroid) {
+      _refreshAndroidPermissions();
+    }
+  }
+
+  Future<void> _refreshAndroidPermissions() async {
+    final notifier = ref.read(bubbleManagerProvider.notifier);
+    final running = await notifier.isRunning();
+    final accessibility = await notifier.checkAccessibility();
+    if (!mounted) return;
+    setState(() {
+      _bubbleRunning = running;
+      _accessibilityEnabled = accessibility;
+    });
+  }
+
+  Future<void> _init() async {
     final info = await PackageInfo.fromPlatform();
-    if (mounted) setState(() => _version = '${info.version} (${info.buildNumber})');
+    if (Platform.isAndroid) {
+      final notifier = ref.read(bubbleManagerProvider.notifier);
+      _bubbleRunning = await notifier.isRunning();
+      _accessibilityEnabled = await notifier.checkAccessibility();
+    }
+    if (mounted) {
+      setState(() {
+        _version = '${info.version} (${info.buildNumber})';
+      });
+    }
+  }
+
+  String _toneLabel(String value, AppLocalizations t) {
+    return switch (value) {
+      'business' => t.toneBusiness,
+      'casual' => t.toneCasual,
+      'formal' => t.toneFormal,
+      'polite' => t.tonePolite,
+      'technical' => t.toneTechnical,
+      'neutral' => t.toneNeutral,
+      _ => t.toneAuto,
+    };
+  }
+
+  String _replyToneLabel(String value, AppLocalizations t) {
+    if (value.isEmpty) return t.toneReplySameAsTranslate;
+    return _toneLabel(value, t);
+  }
+
+  String _replyLangLabel(String code, AppLocalizations t) {
+    if (code.isEmpty) return t.replyLanguageFromConversation;
+    return languageByCode(code).nativeName;
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final authState = ref.watch(authStateProvider);
     final session = authState.valueOrNull?.session;
     final plan = session?.plan ?? 'free';
+    final appLang = ref.watch(localeProvider).valueOrNull?.languageCode ?? 'en';
+    final settingsAsync = ref.watch(appSettingsProvider);
+    final settings = settingsAsync.valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          // ── Account section ──
-          if (session != null) _buildAccountSection(theme, isDark, session, plan),
+      appBar: AppBar(title: Text(t.settingsTitle)),
+      body: settings == null
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              children: [
+                if (session != null) ...[
+                  _buildAccountSection(theme, isDark, session, plan, t),
+                  ListTile(
+                    leading: const Icon(Icons.lock_outline),
+                    title: Text(t.changePassword),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () =>
+                        context.push('/settings/change-password'),
+                  ),
+                  if (plan == 'pro')
+                    ListTile(
+                      leading: const Icon(Icons.devices_outlined),
+                      title: Text(t.manageDevices),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () => context.push('/settings/devices'),
+                    ),
+                  if (plan == 'pro' || plan == 'mobile')
+                    ListTile(
+                      leading: const Icon(Icons.workspace_premium_outlined),
+                      title: Text(t.manageSubscription),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () =>
+                          context.push('/settings/subscription'),
+                    ),
+                ],
 
-          const SizedBox(height: AppSpacing.md),
-          _sectionHeader('Language'),
-          _langPickerTile('Target language', _kTargetLangKey, 'en', showAuto: false),
-          _langPickerTile('Source language', _kSourceLangKey, 'auto', showAuto: true),
-          // UI language (placeholder — i18n not yet implemented)
-          ListTile(
-            title: const Text('App language'),
-            subtitle: const Text('English'),
-            trailing: const Icon(Icons.chevron_right, size: 20),
-            onTap: () {
-              // TODO: UI language picker
-            },
-          ),
+                const SizedBox(height: AppSpacing.md),
+                _sectionHeader(t.sectionLanguage),
+                _langTile(t.targetLanguage, isTarget: true, showAuto: false),
+                _langTile(t.sourceLanguage, isTarget: false, showAuto: true),
+                _appLangTile(appLang, t),
 
-          const SizedBox(height: AppSpacing.md),
-          _sectionHeader('Translation'),
-          _switchTile('Save history', _kHistorySaveKey, true),
-          _switchTile('Romanization', _kRomanizationKey, false, locked: plan == 'free'),
-          _switchTile('Reply suggestions', _kReplySuggestionsKey, false, locked: plan == 'free'),
-          _switchTile('Tone override', _kToneOverrideKey, false, locked: plan == 'free'),
-          _switchTile('Auto-close result', _kAutoCloseKey, false),
+                const SizedBox(height: AppSpacing.md),
+                _sectionHeader(t.sectionTranslation),
+                _switchTile(
+                  t.saveHistory,
+                  settings.historySave,
+                  locked: false,
+                  onChanged: (v) =>
+                      ref.read(appSettingsProvider.notifier).setHistorySave(v),
+                ),
+                _switchTile(
+                  t.romanization,
+                  settings.romanization,
+                  locked: plan == 'free',
+                  onChanged: (v) => ref
+                      .read(appSettingsProvider.notifier)
+                      .setRomanization(v),
+                ),
+                _toneTile(plan, t, settings.toneOverride),
+                _autoCloseTile(t, settings.autoCloseSeconds),
 
-          const SizedBox(height: AppSpacing.md),
-          _sectionHeader('Other'),
-          if (Platform.isIOS)
-            ListTile(
-              leading: const Icon(Icons.keyboard_outlined),
-              title: const Text('Keyboard Setup'),
-              subtitle: const Text('Configure TransKey keyboard'),
-              trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () => context.push('/keyboard-setup?skip=false'),
+                const SizedBox(height: AppSpacing.md),
+                _sectionHeader(t.sectionAdvanced),
+                _replyLangTile(t, plan, settings.replyLang),
+                _replyToneTile(t, plan, settings.replyToneOverride),
+                _switchTile(
+                  t.replySuggestions,
+                  settings.replySuggestions,
+                  locked: plan == 'free',
+                  onChanged: (v) => ref
+                      .read(appSettingsProvider.notifier)
+                      .setReplySuggestions(v),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+                _sectionHeader(t.sectionOther),
+                if (Platform.isAndroid) ...[
+                  SwitchListTile(
+                    secondary: const Icon(Icons.bubble_chart_outlined),
+                    title: Text(t.floatingBubble),
+                    subtitle: Text(
+                      _bubbleRunning ? t.bubbleActive : t.bubbleInactive,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _bubbleRunning
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                    value: _bubbleRunning,
+                    onChanged: (_) async => _toggleBubble(),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.bubble_chart_outlined),
+                    title: Text(t.bubbleSetup),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () async {
+                      await context.push('/keyboard-setup?skip=false');
+                      if (mounted) {
+                        final running = await ref
+                            .read(bubbleManagerProvider.notifier)
+                            .isRunning();
+                        setState(() => _bubbleRunning = running);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.accessibility_new,
+                      color: _accessibilityEnabled
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                    ),
+                    title: Text(t.accessibilityPasteBack),
+                    subtitle: Text(
+                      _accessibilityEnabled
+                          ? t.accessibilityEnabled
+                          : t.accessibilityDisabled,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _accessibilityEnabled
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => ref
+                        .read(bubbleManagerProvider.notifier)
+                        .requestAccessibility(),
+                  ),
+                ] else ...[
+                  ListTile(
+                    leading: const Icon(Icons.keyboard_outlined),
+                    title: Text(t.keyboardSetup),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/keyboard-setup?skip=false'),
+                  ),
+                ],
+                ListTile(
+                  leading: const Icon(Icons.feedback_outlined),
+                  title: Text(t.sendFeedback),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => _showFeedbackSheet(context, t),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(t.termsOfService),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => launchUrl(Uri.parse('https://transkey.app/terms')),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: Text(t.privacyPolicy),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => launchUrl(Uri.parse('https://transkey.app/privacy')),
+                ),
+                if (_version.isNotEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: Text(t.version),
+                    subtitle: Text(_version),
+                  ),
+
+                const SizedBox(height: AppSpacing.xl),
+              ],
             ),
-          ListTile(
-            leading: const Icon(Icons.feedback_outlined),
-            title: const Text('Send feedback'),
-            trailing: const Icon(Icons.chevron_right, size: 20),
-            onTap: () => _showFeedbackSheet(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: const Text('Terms of Service'),
-            trailing: const Icon(Icons.chevron_right, size: 20),
-            onTap: () => launchUrl(Uri.parse('https://transkey.app/terms')),
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('Privacy Policy'),
-            trailing: const Icon(Icons.chevron_right, size: 20),
-            onTap: () => launchUrl(Uri.parse('https://transkey.app/privacy')),
-          ),
-          if (_version.isNotEmpty)
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Version'),
-              subtitle: Text(_version),
-            ),
-
-          const SizedBox(height: AppSpacing.xl),
-        ],
-      ),
     );
   }
 
@@ -129,14 +305,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     bool isDark,
     AuthSession session,
     String plan,
+    AppLocalizations t,
   ) {
+    final usage = ref.watch(usageProvider).valueOrNull;
     return Container(
       margin: const EdgeInsets.all(AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: isDark ? AppColors.border : AppColors.borderLight),
+        border:
+            Border.all(color: isDark ? AppColors.border : AppColors.borderLight),
       ),
       child: Column(
         children: [
@@ -146,7 +325,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 radius: 28,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                 child: Text(
-                  (session.name ?? session.email).substring(0, 1).toUpperCase(),
+                  _avatarInitial(session),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -179,9 +358,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ),
-          if (plan == 'free') ...[
+          if (plan == 'free' && usage != null) ...[
             const SizedBox(height: AppSpacing.md),
-            const QuotaBar(used: 5, limit: 20, charsUsed: 400, charsLimit: 2000),
+            QuotaBar(
+              used: usage.requestsUsed,
+              limit: usage.requestsLimit,
+              charsUsed: usage.charsUsed,
+              charsLimit: usage.charsLimit,
+            ),
           ],
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -189,18 +373,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               if (plan == 'free' || plan == 'trial')
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/upgrade'),
-                    child: const Text('Upgrade'),
+                    onPressed: () => context.push('/upgrade'),
+                    child: Text(t.upgrade),
                   ),
                 ),
-              if (plan == 'mobile') ...[
+              if (plan == 'mobile')
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/upgrade'),
-                    child: const Text('Upgrade to Pro'),
+                    onPressed: () => context.push('/upgrade'),
+                    child: Text(t.upgradeToPro),
                   ),
                 ),
-              ],
               if (plan == 'free' || plan == 'trial') ...[
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -210,7 +393,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       foregroundColor: AppColors.red,
                       side: const BorderSide(color: AppColors.red),
                     ),
-                    child: const Text('Log out'),
+                    child: Text(t.logOut),
                   ),
                 ),
               ],
@@ -222,7 +405,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       foregroundColor: AppColors.red,
                       side: const BorderSide(color: AppColors.red),
                     ),
-                    child: const Text('Log out'),
+                    child: Text(t.logOut),
                   ),
                 ),
             ],
@@ -236,7 +419,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.read(authStateProvider.notifier).logout();
   }
 
-  // ── Helpers ──
+  String _avatarInitial(AuthSession session) {
+    final source = (session.name?.trim().isNotEmpty ?? false)
+        ? session.name!.trim()
+        : session.email.trim();
+    if (source.isEmpty) return '?';
+    return source.characters.first.toUpperCase();
+  }
+
+  Future<void> _toggleBubble() async {
+    final bm = ref.read(bubbleManagerProvider.notifier);
+    if (_bubbleRunning) {
+      await bm.stopBubble();
+      if (mounted) setState(() => _bubbleRunning = false);
+    } else {
+      final hasPermission = await bm.checkPermission();
+      if (!hasPermission) {
+        if (mounted) {
+          context.push('/keyboard-setup?skip=false');
+        }
+        return;
+      }
+      final ok = await bm.startBubble();
+      if (mounted) setState(() => _bubbleRunning = ok);
+    }
+  }
+
+  // ── Tiles ──
 
   Widget _sectionHeader(String title) {
     return Padding(
@@ -245,115 +454,330 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         vertical: AppSpacing.sm,
       ),
       child: Text(
-        title,
+        title.toUpperCase(),
         style: const TextStyle(
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.textSecondary,
-          letterSpacing: 0.5,
+          letterSpacing: 0.8,
         ),
       ),
     );
   }
 
-  Widget _langPickerTile(
-    String title,
-    String prefsKey,
-    String defaultValue, {
-    bool showAuto = false,
+  Widget _langTile(
+    String title, {
+    required bool isTarget,
+    required bool showAuto,
   }) {
-    return FutureBuilder<String>(
-      future: _getPref(prefsKey, defaultValue),
-      builder: (context, snapshot) {
-        final current = snapshot.data ?? defaultValue;
-        final lang = languageByCode(current);
-        return ListTile(
-          title: Text(title),
-          subtitle: Text(lang.nativeName),
-          trailing: const Icon(Icons.chevron_right, size: 20),
-          onTap: () async {
-            // Simple dialog for now — reuse LanguagePickerSheet if available
-            final picked = await _showLangDialog(context, current, showAuto);
-            if (picked != null) {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString(prefsKey, picked);
-              setState(() {});
-            }
-          },
+    final langs = ref.watch(languageSettingsProvider).valueOrNull;
+    final current = isTarget
+        ? (langs?.targetLang ?? 'en')
+        : (langs?.sourceLang ?? 'auto');
+    final lang = languageByCode(current);
+    return ListTile(
+      title: Text(title),
+      subtitle: Text(lang.nativeName),
+      trailing: const Icon(Icons.chevron_right, size: 20),
+      onTap: () async {
+        final picked = await LanguagePickerSheet.show(
+          context,
+          selectedCode: current,
+          showAuto: showAuto,
         );
+        if (picked != null) {
+          final notifier = ref.read(languageSettingsProvider.notifier);
+          if (isTarget) {
+            await notifier.setTargetLang(picked);
+          } else {
+            await notifier.setSourceLang(picked);
+          }
+        }
       },
     );
   }
 
-  Future<String?> _showLangDialog(BuildContext context, String current, bool showAuto) async {
-    return showDialog<String>(
+  Widget _appLangTile(String currentCode, AppLocalizations t) {
+    final label = _appLangOptions
+        .firstWhere((e) => e.$1 == currentCode,
+            orElse: () => ('en', 'English'))
+        .$2;
+    return ListTile(
+      title: Text(t.appLanguage),
+      subtitle: Text(label),
+      trailing: const Icon(Icons.chevron_right, size: 20),
+      onTap: () => _showAppLangPicker(currentCode, t),
+    );
+  }
+
+  void _showAppLangPicker(String current, AppLocalizations t) {
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Select language'),
-        children: kSupportedLanguages
-            .where((l) => showAuto || l.code != 'auto')
-            .map((l) => SimpleDialogOption(
-                  onPressed: () => Navigator.pop(ctx, l.code),
-                  child: Row(
-                    children: [
-                      if (l.code == current)
-                        const Icon(Icons.check, size: 18, color: AppColors.primary)
-                      else
-                        const SizedBox(width: 18),
-                      const SizedBox(width: 8),
-                      Text(l.nativeName),
-                    ],
-                  ),
-                ))
-            .toList(),
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSpacing.sheetRadius)),
+      ),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const DragHandle(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+            child: Text(t.appLanguage,
+                style: Theme.of(ctx).textTheme.titleLarge),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ..._appLangOptions.map((opt) => ListTile(
+                title: Text(opt.$2),
+                trailing: opt.$1 == current
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ref.read(localeProvider.notifier).setLocale(opt.$1);
+                },
+              )),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + AppSpacing.sm),
+        ],
       ),
     );
   }
 
-  Widget _switchTile(String title, String prefsKey, bool defaultValue, {bool locked = false}) {
-    return FutureBuilder<bool>(
-      future: _getBoolPref(prefsKey, defaultValue),
-      builder: (context, snapshot) {
-        final value = snapshot.data ?? defaultValue;
-        return Opacity(
-          opacity: locked ? 0.5 : 1.0,
-          child: ListTile(
-            title: Row(
-              children: [
-                Text(title),
-                if (locked) ...[
-                  const SizedBox(width: 4),
-                  const Icon(Icons.lock_outline, size: 14, color: AppColors.textSecondary),
-                ],
-              ],
+  Widget _switchTile(
+    String title,
+    bool value, {
+    required bool locked,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Opacity(
+      opacity: locked ? 0.5 : 1.0,
+      child: ListTile(
+        title: Row(
+          children: [
+            Flexible(child: Text(title)),
+            if (locked) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.lock_outline,
+                  size: 14, color: AppColors.textSecondary),
+            ],
+          ],
+        ),
+        trailing: Switch(
+          value: locked ? false : value,
+          onChanged: locked ? null : onChanged,
+        ),
+      ),
+    );
+  }
+
+  Widget _toneTile(String plan, AppLocalizations t, String current) {
+    final isLocked = plan == 'free';
+    return Opacity(
+      opacity: isLocked ? 0.5 : 1.0,
+      child: ListTile(
+        title: Row(
+          children: [
+            Flexible(child: Text(t.toneOverride)),
+            if (isLocked) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.lock_outline,
+                  size: 14, color: AppColors.textSecondary),
+            ],
+          ],
+        ),
+        subtitle: Text(_toneLabel(current, t)),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        onTap: isLocked
+            ? null
+            : () => _showTonePicker(current, t, isReply: false),
+      ),
+    );
+  }
+
+  Widget _replyToneTile(AppLocalizations t, String plan, String current) {
+    final isLocked = plan == 'free';
+    return Opacity(
+      opacity: isLocked ? 0.5 : 1.0,
+      child: ListTile(
+        title: Row(
+          children: [
+            Flexible(child: Text(t.replyToneOverride)),
+            if (isLocked) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.lock_outline,
+                  size: 14, color: AppColors.textSecondary),
+            ],
+          ],
+        ),
+        subtitle: Text(_replyToneLabel(current, t)),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        onTap: isLocked
+            ? null
+            : () => _showTonePicker(current, t, isReply: true),
+      ),
+    );
+  }
+
+  Widget _replyLangTile(AppLocalizations t, String plan, String current) {
+    final isLocked = plan == 'free';
+    return Opacity(
+      opacity: isLocked ? 0.5 : 1.0,
+      child: ListTile(
+        title: Row(
+          children: [
+            Flexible(child: Text(t.replyLanguage)),
+            if (isLocked) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.lock_outline,
+                  size: 14, color: AppColors.textSecondary),
+            ],
+          ],
+        ),
+        subtitle: Text(_replyLangLabel(current, t)),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        onTap: isLocked ? null : () => _showReplyLangPicker(current, t),
+      ),
+    );
+  }
+
+  Widget _autoCloseTile(AppLocalizations t, int seconds) {
+    return ListTile(
+      title: Text(t.autoCloseSeconds),
+      subtitle: Text(seconds <= 0 ? t.autoCloseDisabled : '$seconds ${t.autoCloseUnit}'),
+      trailing: const Icon(Icons.chevron_right, size: 20),
+      onTap: () => _showAutoClosePicker(seconds, t),
+    );
+  }
+
+  void _showTonePicker(String current, AppLocalizations t,
+      {required bool isReply}) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSpacing.sheetRadius)),
+      ),
+      builder: (ctx) {
+        final title = isReply ? t.replyToneOverride : t.toneOverride;
+        // Reply tone has an extra "Same as translate" option (value = '').
+        // Translate tone uses '' for Auto.
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const DragHandle(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+              child: Text(title,
+                  style: Theme.of(ctx).textTheme.titleLarge),
             ),
-            trailing: Switch(
-              value: locked ? false : value,
-              onChanged: locked
-                  ? null
-                  : (v) async {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool(prefsKey, v);
-                      setState(() {});
-                    },
-            ),
-          ),
+            const SizedBox(height: AppSpacing.sm),
+            ...toneOptions.map((opt) {
+              final code = opt.$1;
+              final label = isReply && code.isEmpty
+                  ? t.toneReplySameAsTranslate
+                  : _toneLabel(code, t);
+              return ListTile(
+                title: Text(label),
+                trailing: code == current
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final notifier = ref.read(appSettingsProvider.notifier);
+                  if (isReply) {
+                    await notifier.setReplyToneOverride(code);
+                  } else {
+                    await notifier.setToneOverride(code);
+                  }
+                },
+              );
+            }),
+            SizedBox(
+                height: MediaQuery.of(context).padding.bottom + AppSpacing.sm),
+          ],
         );
       },
     );
   }
 
-  Future<String> _getPref(String key, String defaultValue) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(key) ?? defaultValue;
+  void _showReplyLangPicker(String current, AppLocalizations t) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSpacing.sheetRadius)),
+      ),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const DragHandle(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+            child: Text(t.replyLanguage,
+                style: Theme.of(ctx).textTheme.titleLarge),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ..._replyLangOptions.map((code) => ListTile(
+                title: Text(_replyLangLabel(code, t)),
+                trailing: code == current
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ref
+                      .read(appSettingsProvider.notifier)
+                      .setReplyLang(code);
+                },
+              )),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + AppSpacing.sm),
+        ],
+      ),
+    );
   }
 
-  Future<bool> _getBoolPref(String key, bool defaultValue) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(key) ?? defaultValue;
+  void _showAutoClosePicker(int current, AppLocalizations t) {
+    const options = [0, 5, 10, 15, 30, 60];
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSpacing.sheetRadius)),
+      ),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const DragHandle(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+            child: Text(t.autoCloseSeconds,
+                style: Theme.of(ctx).textTheme.titleLarge),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ...options.map((secs) => ListTile(
+                title: Text(secs == 0
+                    ? t.autoCloseDisabled
+                    : '$secs ${t.autoCloseUnit}'),
+                trailing: secs == current
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ref
+                      .read(appSettingsProvider.notifier)
+                      .setAutoCloseSeconds(secs);
+                },
+              )),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + AppSpacing.sm),
+        ],
+      ),
+    );
   }
 
-  void _showFeedbackSheet(BuildContext context) {
+  void _showFeedbackSheet(BuildContext context, AppLocalizations t) {
     final controller = TextEditingController();
     showModalBottomSheet(
       context: context,
@@ -366,14 +790,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Send feedback', style: Theme.of(ctx).textTheme.titleLarge),
+              Text(t.feedbackTitle, style: Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: controller,
                 maxLines: 5,
-                decoration: const InputDecoration(
-                  hintText: 'Tell us what you think...',
-                ),
+                decoration: InputDecoration(hintText: t.feedbackHint),
               ),
               const SizedBox(height: AppSpacing.md),
               ElevatedButton(
@@ -390,21 +812,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Thank you for your feedback!')),
+                        SnackBar(content: Text(t.feedbackThanks)),
                       );
                     }
                   } catch (_) {
                     if (ctx.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Failed to send feedback'),
+                        SnackBar(
+                          content: Text(t.feedbackFailed),
                           backgroundColor: AppColors.red,
                         ),
                       );
                     }
                   }
                 },
-                child: const Text('Send'),
+                child: Text(t.feedbackSend),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
@@ -414,3 +836,4 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 }
+

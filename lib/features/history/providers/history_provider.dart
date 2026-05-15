@@ -63,7 +63,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
     state = state.copyWith(entries: entries);
   }
 
-  Future<void> addFromTranslate({
+  Future<String> addFromTranslate({
     required String sourceText,
     required String translation,
     String sourceLang = '',
@@ -83,6 +83,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
     final store = HistoryStore();
     await store.add(entry);
     state = state.copyWith(entries: [entry, ...state.entries]);
+    return entry.id;
   }
 
   Future<void> delete(String id) async {

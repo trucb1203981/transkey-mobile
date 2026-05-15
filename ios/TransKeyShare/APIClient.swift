@@ -51,9 +51,15 @@ class APIClient {
         return request
     }
 
-    func translate(text: String, targetLang: String, sourceLang: String? = nil) async throws -> [String: Any] {
+    func translate(
+        text: String,
+        targetLang: String,
+        sourceLang: String? = nil,
+        isReply: Bool = false
+    ) async throws -> [String: Any] {
         var body: [String: Any] = ["text": text, "targetLang": targetLang]
         if let src = sourceLang, src != "auto" { body["sourceLang"] = src }
+        if isReply { body["isReply"] = true }
         return try await performRequest(endpoint: "/translate", body: body)
     }
 

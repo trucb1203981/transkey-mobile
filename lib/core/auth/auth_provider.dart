@@ -18,7 +18,7 @@ class AuthState {
   final bool isLoggedIn;
   final AuthSession? session;
   final bool isLoading;
-  final String? error;
+  final String? error; // OAuth error code (e.g. 'pro_device_limit')
 
   AuthState copyWith({
     bool? isLoggedIn,
@@ -45,6 +45,14 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     return AuthState(isLoggedIn: true, session: session);
   }
 
+  /// Drop the in-memory token cache held by the API client so the next
+  /// request reads the fresh value we just wrote to storage. Must be called
+  /// after any sessionStore.save() / clear() that wasn't triggered by the
+  /// auth-refresh interceptor (which invalidates internally).
+  void _invalidateApiSessionCache() {
+    ref.read(apiClientProvider).invalidateSessionCache();
+  }
+
   Future<void> login({
     required String email,
     required String password,
@@ -52,10 +60,13 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final api = ref.read(apiClientProvider);
+      // Hard 20s ceiling on the whole flow — protects against the spinner
+      // hanging forever if a native-side step (secure storage, device info)
+      // freezes the request pipeline.
       final response = await api.dio.post('/auth/login', data: {
         'email': email,
         'password': password,
-      });
+      }).timeout(const Duration(seconds: 20));
 
       final data = response.data;
       final user = data['user'] as Map<String, dynamic>;
@@ -65,10 +76,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
+        expiresAt: data['expiresAt'] as String?,
       );
 
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(session);
+      _invalidateApiSessionCache();
       await _syncToAppGroup(session);
 
       return AuthState(isLoggedIn: true, session: session);
@@ -97,10 +110,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
+        expiresAt: data['expiresAt'] as String?,
       );
 
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(session);
+      _invalidateApiSessionCache();
       await _syncToAppGroup(session);
 
       return AuthState(isLoggedIn: true, session: session);
@@ -110,8 +125,35 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> logout() async {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.clear();
+    _invalidateApiSessionCache();
     await AppGroupBridge.clearAuth();
     state = const AsyncData(AuthState());
+  }
+
+  /// Pull fresh user info from /auth/me — picks up plan changes that
+  /// happened outside this device (e.g. checkout completed on web).
+  Future<void> refreshUser() async {
+    final current = state.valueOrNull?.session;
+    if (current == null) return;
+    try {
+      final api = ref.read(apiClientProvider);
+      final response = await api.dio.get('/auth/me');
+      final data = response.data;
+      final user = (data['user'] as Map?)?.cast<String, dynamic>() ?? data as Map<String, dynamic>;
+      final updated = current.copyWith(
+        userId: user['id']?.toString() ?? current.userId,
+        email: user['email'] as String? ?? current.email,
+        name: (user['name'] as String?) ?? current.name,
+        plan: user['plan'] as String? ?? current.plan,
+      );
+      final sessionStore = ref.read(sessionStoreProvider);
+      await sessionStore.save(updated);
+      _invalidateApiSessionCache();
+      await _syncToAppGroup(updated);
+      state = AsyncData(AuthState(isLoggedIn: true, session: updated));
+    } catch (e) {
+      debugPrint('[Auth] refreshUser failed: $e');
+    }
   }
 
   /// Proactively refresh token if it's about to expire.
@@ -139,6 +181,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       );
 
       await sessionStore.save(updated);
+      _invalidateApiSessionCache();
       state = AsyncData(AuthState(isLoggedIn: true, session: updated));
     } catch (e) {
       debugPrint('[Auth] Proactive refresh failed: $e');
@@ -155,13 +198,21 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> updateSession(AuthSession session) async {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.save(session);
+    _invalidateApiSessionCache();
     await _syncToAppGroup(session);
     state = AsyncData(AuthState(isLoggedIn: true, session: session));
   }
 
-  /// Handle deep link: transkey://auth?token=...&email=...&name=...&plan=...
+  /// Handle deep link: transkey://auth?token=... or transkey://auth?error=...
   Future<void> handleDeepLink(Uri uri) async {
     if (uri.host != 'auth') return;
+
+    // OAuth error (e.g. device limit, cancelled)
+    final error = uri.queryParameters['error'];
+    if (error != null && error.isNotEmpty) {
+      state = AsyncData(AuthState(error: error));
+      return;
+    }
 
     final token = uri.queryParameters['token'];
     if (token == null || token.isEmpty) return;
@@ -177,6 +228,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.save(session);
+    _invalidateApiSessionCache();
     await _syncToAppGroup(session);
     state = AsyncData(AuthState(isLoggedIn: true, session: session));
   }

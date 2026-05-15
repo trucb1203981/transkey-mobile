@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey can paste a reply directly into the focused text field of any app when you tap "Paste reply" on the floating bubble. Text content is only read or written when you trigger an action — no background tracking.</string>
+</resources>

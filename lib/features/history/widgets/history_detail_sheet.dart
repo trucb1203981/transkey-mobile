@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/selectable_with_actions.dart';
 import '../../translate/widgets/tts_button.dart';
 import '../models/history_entry.dart';
 import '../providers/history_provider.dart';
@@ -88,9 +89,10 @@ class HistoryDetailSheet extends StatelessWidget {
                         borderRadius:
                             BorderRadius.circular(AppSpacing.buttonRadius),
                       ),
-                      child: SelectableText(
+                      child: SelectableWithActions(
                         entry.sourceText,
                         style: theme.textTheme.bodyLarge,
+                        targetLang: entry.targetLang.isNotEmpty ? entry.targetLang : 'en',
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -109,12 +111,13 @@ class HistoryDetailSheet extends StatelessWidget {
                         borderRadius:
                             BorderRadius.circular(AppSpacing.buttonRadius),
                       ),
-                      child: SelectableText(
+                      child: SelectableWithActions(
                         entry.translation,
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
                         ),
+                        targetLang: entry.targetLang.isNotEmpty ? entry.targetLang : 'en',
                       ),
                     ),
 

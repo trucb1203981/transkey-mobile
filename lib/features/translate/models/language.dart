@@ -31,9 +31,13 @@ const kSupportedLanguages = <Language>[
   Language(code: 'hi', nativeName: 'हिन्दी', name: 'Hindi'),
 ];
 
-Language languageByCode(String code) {
-  return kSupportedLanguages.firstWhere(
-    (l) => l.code == code,
-    orElse: () => const Language(code: 'en', nativeName: 'English', name: 'English'),
-  );
-}
+// O(1) lookup — kSupportedLanguages is iterated on many widget builds
+// (chip labels, history cards, language picker, settings list).
+final Map<String, Language> _languageIndex = {
+  for (final l in kSupportedLanguages) l.code: l,
+};
+
+const _fallbackLanguage =
+    Language(code: 'en', nativeName: 'English', name: 'English');
+
+Language languageByCode(String code) => _languageIndex[code] ?? _fallbackLanguage;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -42,10 +43,20 @@ class GlossaryState {
 }
 
 class GlossaryNotifier extends Notifier<GlossaryState> {
+  Timer? _pushDebounce;
+
   @override
   GlossaryState build() {
     _loadLocal();
+    ref.onDispose(() => _pushDebounce?.cancel());
     return const GlossaryState();
+  }
+
+  /// Coalesce rapid add/update/delete sequences into a single PUT. Users
+  /// editing multiple entries shouldn't trigger N round-trips.
+  void _schedulePush() {
+    _pushDebounce?.cancel();
+    _pushDebounce = Timer(const Duration(milliseconds: 1500), push);
   }
 
   Future<void> _loadLocal() async {
@@ -127,7 +138,7 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
     await _saveLocal(updated);
     state = state.copyWith(entries: updated, clearError: true);
 
-    await push();
+    _schedulePush();
     return true;
   }
 
@@ -144,7 +155,7 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
     await _saveLocal(updated);
     state = state.copyWith(entries: updated, clearError: true);
 
-    await push();
+    _schedulePush();
     return true;
   }
 
@@ -156,7 +167,16 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
     await _saveLocal(updated);
     state = state.copyWith(entries: updated, clearError: true);
 
-    await push();
+    _schedulePush();
+  }
+
+  /// Flush any pending debounced push immediately. Call before navigating
+  /// away from the glossary screen so changes don't sit local-only.
+  Future<void> flushPendingPush() async {
+    if (_pushDebounce?.isActive ?? false) {
+      _pushDebounce!.cancel();
+      await push();
+    }
   }
 }
 

@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
@@ -34,19 +36,112 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="transkey" android:host="auth"/>
             </intent-filter>
+        </activity>
+
+        <!-- Transparent receiver: PROCESS_TEXT/SEND from other apps.
+             Translates text and shows result as a floating overlay,
+             without opening the full app UI. -->
+        <activity
+            android:name=".ShareActivity"
+            android:exported="true"
+            android:label="Translate"
+            android:icon="@mipmap/ic_launcher"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/ShareActivityTheme">
+            <meta-data android:name="transkey.mode" android:value="translate"/>
             <!-- Share intent: receive text from other apps -->
-            <intent-filter>
+            <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.SEND"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
             </intent-filter>
+            <!-- Process text: show in text selection menu.
+                 Higher priority hints the system that this action is preferred. -->
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.PROCESS_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
         </activity>
+
+        <!-- Additional PROCESS_TEXT modes: each alias is a separate menu entry -->
+        <activity-alias
+            android:name=".ReplyAlias"
+            android:targetActivity=".ShareActivity"
+            android:exported="true"
+            android:label="Reply"
+            android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="transkey.mode" android:value="reply"/>
+            <intent-filter android:priority="950">
+                <action android:name="android.intent.action.PROCESS_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".SummarizeAlias"
+            android:targetActivity=".ShareActivity"
+            android:exported="true"
+            android:label="Summarize"
+            android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="transkey.mode" android:value="summarize"/>
+            <intent-filter android:priority="900">
+                <action android:name="android.intent.action.PROCESS_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ExplainAlias"
+            android:targetActivity=".ShareActivity"
+            android:exported="true"
+            android:label="Explain"
+            android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="transkey.mode" android:value="explain"/>
+            <intent-filter android:priority="800">
+                <action android:name="android.intent.action.PROCESS_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".RefineAlias"
+            android:targetActivity=".ShareActivity"
+            android:exported="true"
+            android:label="Refine"
+            android:icon="@mipmap/ic_launcher">
+            <meta-data android:name="transkey.mode" android:value="refine"/>
+            <intent-filter android:priority="700">
+                <action android:name="android.intent.action.PROCESS_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity-alias>
 
         <!-- Floating Bubble Service -->
         <service
             android:name=".BubbleService"
             android:exported="false"
             android:foregroundServiceType="specialUse" />
+
+        <!-- Accessibility Service: pastes reply into focused EditText of other apps -->
+        <service
+            android:name=".TransKeyAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
 
         <meta-data
             android:name="flutterEmbedding"
@@ -57,6 +152,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- url_launcher needs this on Android 11+ to launch http/https URLs -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
         </intent>
     </queries>
 </manifest>

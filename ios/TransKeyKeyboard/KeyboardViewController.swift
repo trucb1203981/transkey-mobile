@@ -9,6 +9,10 @@ class KeyboardViewController: UIInputViewController {
     private var lastResult = ""
     private var lastSource = ""
     private var selectedLang = "en"
+    // Snapshot of full input text taken right before an auto-insert, so the
+    // Undo banner can restore it.
+    private var undoSnapshot: String?
+    private var undoTimer: Timer?
 
     private let api = APIClient()
 
@@ -21,6 +25,8 @@ class KeyboardViewController: UIInputViewController {
     private var resultLabel: UILabel!
     private var resultErrorLabel: UILabel!
     private var activityIndicator: UIActivityIndicatorView!
+    private var insertBtn: UIButton!
+    private var undoBtn: UIButton!
     private var keyboardRows: [UIStackView] = []
 
     private let primaryColor = UIColor(red: 0.42, green: 0.39, blue: 1.0, alpha: 1.0)
@@ -219,11 +225,14 @@ class KeyboardViewController: UIInputViewController {
         actionStack.axis = .horizontal
         actionStack.spacing = 12
 
-        let insertBtn = smallButton(title: "Insert", action: #selector(insertTapped))
+        insertBtn = smallButton(title: "Insert", action: #selector(insertTapped))
+        undoBtn = smallButton(title: "↶ Undo", action: #selector(undoTapped))
+        undoBtn.isHidden = true
         let copyBtn = smallButton(title: "Copy", action: #selector(copyResultTapped))
         let closeBtn = smallButton(title: "✕", action: #selector(closeResultTapped))
 
         actionStack.addArrangedSubview(insertBtn)
+        actionStack.addArrangedSubview(undoBtn)
         actionStack.addArrangedSubview(copyBtn)
         actionStack.addArrangedSubview(closeBtn)
         actionStack.addArrangedSubview(UIView()) // spacer
@@ -352,31 +361,65 @@ class KeyboardViewController: UIInputViewController {
     }
 
     @objc private func replyTapped() {
-        guard let context = textDocumentProxy.documentContextBeforeInput,
-              !context.isEmpty else {
+        let fullText = (textDocumentProxy.documentContextBeforeInput ?? "")
+            + (textDocumentProxy.documentContextAfterInput ?? "")
+        guard !fullText.isEmpty else {
             showResultError("No text in input field.")
             return
         }
 
-        showResultPanel(source: context)
+        showResultPanel(source: fullText)
         setLoading(true)
 
         Task { @MainActor in
             do {
                 let json = try await api.translate(
-                    text: context,
+                    text: fullText,
                     targetLang: selectedLang,
-                    sourceLang: nil
+                    sourceLang: nil,
+                    isReply: true
                 )
                 let translation = extractTranslation(json)
                 lastResult = translation
-                lastSource = context
-                showResult(source: context, result: translation)
+                lastSource = fullText
+                showResult(source: fullText, result: translation)
+                autoInsertReply(originalText: fullText, replyText: translation)
             } catch {
                 showResultError(error.localizedDescription)
             }
             setLoading(false)
         }
+    }
+
+    /// Replace the entire input with the reply, then offer a 5s Undo.
+    private func autoInsertReply(originalText: String, replyText: String) {
+        guard !replyText.isEmpty else { return }
+        undoSnapshot = originalText
+        textDocumentProxy.selectAll(nil)
+        textDocumentProxy.insertText(replyText)
+        resultSourceLabel.text = "✓ Replied — input replaced"
+        insertBtn.isHidden = true
+        undoBtn.isHidden = false
+        undoTimer?.invalidate()
+        undoTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+            self?.clearUndoState()
+        }
+    }
+
+    private func clearUndoState() {
+        undoSnapshot = nil
+        undoTimer?.invalidate()
+        undoTimer = nil
+        undoBtn.isHidden = true
+        insertBtn.isHidden = false
+    }
+
+    @objc private func undoTapped() {
+        guard let snapshot = undoSnapshot else { return }
+        textDocumentProxy.selectAll(nil)
+        textDocumentProxy.insertText(snapshot)
+        clearUndoState()
+        closeResultTapped()
     }
 
     @objc private func refineTapped() {
@@ -425,6 +468,11 @@ class KeyboardViewController: UIInputViewController {
     @objc private func closeResultTapped() {
         resultPanel.isHidden = true
         resultPanelVisible = false
+        undoTimer?.invalidate()
+        undoTimer = nil
+        undoBtn?.isHidden = true
+        insertBtn?.isHidden = false
+        undoSnapshot = nil
     }
 
     // MARK: - Result Helpers

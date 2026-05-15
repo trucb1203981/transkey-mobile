@@ -10,6 +10,22 @@ import UIKit
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
+  // Handle deep link when app is already running (iOS 13+ Scene-based)
+  override func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    return handleDeepLink(url) || super.application(app, open: url, options: options)
+  }
+
+  private func handleDeepLink(_ url: URL) -> Bool {
+    guard url.scheme == "transkey" else { return false }
+    // Forward to Flutter via the app_links plugin
+    // The plugin listens for URL events automatically
+    return true
+  }
+
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 

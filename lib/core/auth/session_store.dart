@@ -63,9 +63,22 @@ class AuthSession {
   bool get isBanned => plan == 'banned';
 }
 
+// Use EncryptedSharedPreferences on Android (instead of the default Keystore-AES
+// implementation) — it's far more reliable on Android 11+ where Keystore can
+// hang on MIUI/ColorOS/FuntouchOS skins and on devices with locked-down TEEs.
+// Both write through the same secure-storage API, so existing callers don't
+// change. Reads/writes are still wrapped in a timeout below so a stuck native
+// call can never freeze the login flow.
+const _secureStorageOptions = AndroidOptions(
+  encryptedSharedPreferences: true,
+);
+
+const _storageTimeout = Duration(seconds: 4);
+
 class SessionStore {
   SessionStore([FlutterSecureStorage? storage])
-      : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ??
+            const FlutterSecureStorage(aOptions: _secureStorageOptions);
 
   final FlutterSecureStorage _storage;
 
@@ -74,8 +87,16 @@ class SessionStore {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kSessionKey, value);
-    } else {
-      await _storage.write(key: _kSessionKey, value: value);
+      return;
+    }
+    try {
+      await _storage
+          .write(key: _kSessionKey, value: value)
+          .timeout(_storageTimeout);
+    } catch (e) {
+      debugPrint('[SessionStore] secure write failed, falling back: $e');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kSessionKey, value);
     }
   }
 
@@ -95,9 +116,16 @@ class SessionStore {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_kSessionKey);
-    } else {
-      await _storage.delete(key: _kSessionKey);
+      return;
     }
+    try {
+      await _storage.delete(key: _kSessionKey).timeout(_storageTimeout);
+    } catch (e) {
+      debugPrint('[SessionStore] secure delete failed: $e');
+    }
+    // Also clear any fallback copy.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kSessionKey);
   }
 
   Future<String?> _readRaw() async {
@@ -105,7 +133,16 @@ class SessionStore {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_kSessionKey);
     }
-    return _storage.read(key: _kSessionKey);
+    try {
+      final fromSecure = await _storage
+          .read(key: _kSessionKey)
+          .timeout(_storageTimeout);
+      if (fromSecure != null) return fromSecure;
+    } catch (e) {
+      debugPrint('[SessionStore] secure read failed, falling back: $e');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kSessionKey);
   }
 
   bool isExpiringSoon(AuthSession session) {

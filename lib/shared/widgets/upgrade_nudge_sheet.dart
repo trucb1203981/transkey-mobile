@@ -267,12 +267,13 @@ class DragHandle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 40,
       height: 4,
       margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: AppColors.border,
+        color: isDark ? AppColors.border : AppColors.borderLight,
         borderRadius: BorderRadius.circular(2),
       ),
     );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,11 +17,22 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String q) {
+    // Avoid re-filtering 500+ entries on every keystroke; wait for a pause.
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      ref.read(historyProvider.notifier).setSearchQuery(q);
+    });
   }
 
   @override
@@ -64,8 +77,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             ),
             child: TextField(
               controller: _searchController,
-              onChanged: (q) =>
-                  ref.read(historyProvider.notifier).setSearchQuery(q),
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search history...',
                 prefixIcon: const Icon(Icons.search, size: 20),
@@ -74,6 +86,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         icon: const Icon(Icons.clear, size: 18),
                         onPressed: () {
                           _searchController.clear();
+                          _searchDebounce?.cancel();
                           ref
                               .read(historyProvider.notifier)
                               .setSearchQuery('');

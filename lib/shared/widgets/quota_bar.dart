@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 
 class QuotaBar extends StatelessWidget {
@@ -65,7 +66,7 @@ class QuotaBar extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                '$used/$limit requests',
+                AppLocalizations.of(context)!.usageRequests(used, limit),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: _isWarning ? _barColor : (isDark ? AppColors.textSecondary : AppColors.textSecondaryLight),
                   fontSize: 11,
@@ -75,7 +76,7 @@ class QuotaBar extends StatelessWidget {
               if (charsUsed != null && charsLimit != null) ...[
                 const SizedBox(width: AppSpacing.sm),
                 Text(
-                  '${charsUsed!}/${charsLimit!} chars',
+                  AppLocalizations.of(context)!.usageCharacters(charsUsed!, charsLimit!),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: _isWarning ? _barColor : (isDark ? AppColors.textSecondary : AppColors.textSecondaryLight),
                     fontSize: 11,

@@ -1,23 +1,29 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../core/auth/auth_provider.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
+import '../../history/providers/history_provider.dart';
 import '../../history/screens/history_screen.dart';
 import '../../glossary/screens/glossary_screen.dart';
 import '../../onboarding/screens/keyboard_setup_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../upgrade/providers/usage_provider.dart';
 import '../models/language.dart';
 import '../models/translate_models.dart';
+import '../providers/language_settings_provider.dart';
 import '../providers/translate_provider.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/tts_button.dart';
+import '../../../shared/widgets/selectable_with_actions.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -26,33 +32,128 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   int _currentTab = 0;
+  // Track which tabs have been opened so IndexedStack can keep them in the
+  // tree (preserving state), but the heavy History / Glossary / Settings
+  // pages don't build at first frame.
+  final Set<int> _visitedTabs = {0};
   final _textController = TextEditingController();
-  String _sourceLang = 'auto';
-  String _targetLang = 'en';
+  final _inputFocus = FocusNode();
+
+  String? _clipboardSuggestion;
+  String? _dismissedClipboard;
 
   static const _maxChars = 5000;
+  static const _kSourceTextKey = 'tk_last_source_text';
 
   @override
   void initState() {
     super.initState();
-    _checkKeyboardSetup();
+    WidgetsBinding.instance.addObserver(this);
+    _bootstrap();
+    _textController.addListener(_persistSourceText);
   }
 
-  Future<void> _checkKeyboardSetup() async {
-    if (!Platform.isIOS) return;
-    final done = await KeyboardSetupScreen.hasCompleted();
-    if (!done && mounted) {
+  Future<void> _bootstrap() async {
+    // Sequence cold-start side effects so we don't pop the keyboard up
+    // *behind* the keyboard-setup screen. Order matters:
+    // 1. Decide whether to push keyboard-setup; if pushed, don't focus.
+    // 2. Restore last source text (skips focus when text is restored).
+    // 3. Peek clipboard for the suggestion chip.
+    // 4. If safe, focus the input so the user can start typing immediately.
+    final keyboardDone = await KeyboardSetupScreen.hasCompleted();
+    if (!mounted) return;
+    if (!keyboardDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.push('/keyboard-setup');
+        if (mounted) context.push('/keyboard-setup');
       });
+      // Don't focus — the keyboard-setup screen will be on top.
+      await _restoreSourceText();
+      await _peekClipboard();
+      return;
+    }
+    await _restoreSourceText();
+    await _peekClipboard();
+    if (!mounted) return;
+    if (_textController.text.isEmpty && _currentTab == 0) {
+      _inputFocus.requestFocus();
     }
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reload language settings when app comes to foreground — user may have
+    // changed source/target lang via the floating popup while in another app.
+    if (state == AppLifecycleState.resumed) {
+      ref.read(languageSettingsProvider.notifier).reload();
+      ref.read(usageProvider.notifier).refreshIfStale();
+      ref.read(authStateProvider.notifier).refreshUser();
+      _peekClipboard();
+    }
+  }
+
+  Future<void> _restoreSourceText() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kSourceTextKey);
+    if (saved == null || saved.isEmpty) return;
+    if (!mounted || _textController.text.isNotEmpty) return;
+    _textController.text = saved;
+  }
+
+  Timer? _persistDebounce;
+  void _persistSourceText() {
+    _persistDebounce?.cancel();
+    _persistDebounce = Timer(const Duration(milliseconds: 500), () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kSourceTextKey, _textController.text);
+    });
+  }
+
+  Future<void> _peekClipboard() async {
+    // Read clipboard *without* requesting focus (no popup spam). On iOS,
+    // accessing pasteboard surfaces a system banner — that's the OS, not us.
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim();
+      if (text == null || text.isEmpty || text.length > _maxChars) {
+        return;
+      }
+      // Don't suggest if it's already in the input or the user dismissed it.
+      if (text == _textController.text.trim() || text == _dismissedClipboard) {
+        return;
+      }
+      if (mounted) setState(() => _clipboardSuggestion = text);
+    } catch (_) {
+      // Clipboard permission denied or empty — silently skip.
+    }
+  }
+
+  void _useClipboardSuggestion() {
+    final text = _clipboardSuggestion;
+    if (text == null) return;
+    _textController.text = text;
+    setState(() {
+      _clipboardSuggestion = null;
+    });
+    _handleAction(TranslateMode.translate);
+  }
+
+  void _dismissClipboardSuggestion() {
+    setState(() {
+      _dismissedClipboard = _clipboardSuggestion;
+      _clipboardSuggestion = null;
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _persistDebounce?.cancel();
+    _textController.removeListener(_persistSourceText);
     _textController.dispose();
+    _inputFocus.dispose();
     super.dispose();
   }
 
@@ -62,30 +163,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _swapLanguages() {
-    if (_sourceLang == 'auto') return;
-    setState(() {
-      final tmp = _sourceLang;
-      _sourceLang = _targetLang;
-      _targetLang = tmp;
-    });
+    ref.read(languageSettingsProvider.notifier).swap();
   }
 
-  Future<void> _pickSourceLang() async {
+  Future<void> _pickSourceLang(String currentSource) async {
     final code = await LanguagePickerSheet.show(
       context,
-      selectedCode: _sourceLang,
+      selectedCode: currentSource,
       showAuto: true,
     );
-    if (code != null) setState(() => _sourceLang = code);
+    if (code != null) {
+      await ref.read(languageSettingsProvider.notifier).setSourceLang(code);
+      // Clear detected lang when manually changing source
+      ref.read(translateProvider.notifier).clearResult();
+    }
   }
 
-  Future<void> _pickTargetLang() async {
+  Future<void> _pickTargetLang(String currentTarget) async {
     final code = await LanguagePickerSheet.show(
       context,
-      selectedCode: _targetLang,
+      selectedCode: currentTarget,
       showAuto: false,
     );
-    if (code != null) setState(() => _targetLang = code);
+    if (code == null || code == currentTarget) return;
+    await ref.read(languageSettingsProvider.notifier).setTargetLang(code);
+    // If there's already a result, the user clearly wants the *same* text
+    // re-translated to the new language — skip the extra tap on "Translate".
+    final translateState = ref.read(translateProvider).valueOrNull;
+    if (translateState?.result != null &&
+        _textController.text.trim().isNotEmpty) {
+      _handleAction(translateState?.mode ?? TranslateMode.translate);
+    }
   }
 
   void _handleAction(TranslateMode mode) {
@@ -97,18 +205,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return;
     }
 
+    final langs = ref.read(languageSettingsProvider).valueOrNull;
+    final sourceLang = langs?.sourceLang ?? 'auto';
+    final targetLang = langs?.targetLang ?? 'en';
+
     final notifier = ref.read(translateProvider.notifier);
     switch (mode) {
       case TranslateMode.translate:
         notifier.translate(
           text: text,
-          targetLang: _targetLang,
-          sourceLang: _sourceLang,
+          targetLang: targetLang,
+          sourceLang: sourceLang,
+        );
+      case TranslateMode.reply:
+        notifier.translate(
+          text: text,
+          targetLang: targetLang,
+          sourceLang: sourceLang,
+          isReply: true,
         );
       case TranslateMode.summarize:
-        notifier.summarize(text: text, targetLang: _targetLang);
+        notifier.summarize(text: text, targetLang: targetLang);
       case TranslateMode.explain:
-        notifier.explain(text: text, targetLang: _targetLang);
+        notifier.explain(text: text, targetLang: targetLang);
       case TranslateMode.refine:
         notifier.refine(text: text);
     }
@@ -116,61 +235,116 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
+    final l = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Copied'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text(l.copied),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  /// Reply just finished — copy to clipboard and surface a "Use as input"
+  /// shortcut so the user can swap the reply back into the source field
+  /// (mirrors desktop Cmd+Shift+R, where the reply replaces the input).
+  void _onReplyReady(String reply, AppLocalizations l) {
+    if (reply.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: reply));
+    final originalSource = _textController.text;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l.copied),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: l.tabReply,
+          onPressed: () {
+            _textController.text = reply;
+            messenger.hideCurrentSnackBar();
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(l.copied),
+                duration: const Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: 'Undo',
+                  onPressed: () => _textController.text = originalSource,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: IndexedStack(
+          index: _currentTab,
           children: [
-            Expanded(
-              child: IndexedStack(
-                index: _currentTab,
-                children: [
-                  _buildTranslateTabWithQuota(),
-                  const HistoryScreen(),
-                  const GlossaryScreen(),
-                  const SettingsScreen(),
-                ],
-              ),
+            // The translate tab is always built — it's the cold-start surface.
+            _buildTranslateTabWithQuota(),
+            // History / Glossary / Settings are lazily built on first visit so
+            // cold-start doesn't pay for SharedPreferences reads + provider
+            // builds + ListView layout of pages the user may never open.
+            _LazyTab(
+              isVisited: _visitedTabs.contains(1),
+              builder: () => const HistoryScreen(),
+            ),
+            _LazyTab(
+              isVisited: _visitedTabs.contains(2),
+              builder: () => const GlossaryScreen(),
+            ),
+            _LazyTab(
+              isVisited: _visitedTabs.contains(3),
+              builder: () => const SettingsScreen(),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentTab,
+        onDestinationSelected: (i) => setState(() {
+          _currentTab = i;
+          _visitedTabs.add(i);
+        }),
+        destinations: [
+          NavigationDestination(
+              icon: const Icon(Icons.translate), label: l.translate),
+          NavigationDestination(
+              icon: const Icon(Icons.history), label: l.history),
+          NavigationDestination(
+              icon: const Icon(Icons.menu_book), label: l.glossary),
+          NavigationDestination(
+              icon: const Icon(Icons.settings), label: l.settings),
+        ],
+      ),
     );
   }
 
   Widget _buildTranslateTabWithQuota() {
+    final usage = ref.watch(usageProvider).valueOrNull;
+    final plan = ref.watch(authStateProvider).valueOrNull?.session?.plan ?? 'free';
     return Column(
       children: [
         Expanded(child: _buildTranslateTab()),
-        const QuotaBar(used: 5, limit: 20, charsUsed: 400, charsLimit: 2000),
-      ],
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return NavigationBar(
-      selectedIndex: _currentTab,
-      onDestinationSelected: (i) => setState(() => _currentTab = i),
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.translate), label: 'Translate'),
-        NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-        NavigationDestination(icon: Icon(Icons.menu_book), label: 'Glossary'),
-        NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
+        if (plan == 'free' && usage != null)
+          QuotaBar(
+            used: usage.requestsUsed,
+            limit: usage.requestsLimit,
+            charsUsed: usage.charsUsed,
+            charsLimit: usage.charsLimit,
+          ),
       ],
     );
   }
 
   Widget _buildTranslateTab() {
+    final l = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final translateState = ref.watch(translateProvider);
     final state = translateState.valueOrNull;
@@ -178,43 +352,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final result = state?.result;
     final theme = Theme.of(context);
 
+    // When a reply finishes, auto-copy and offer to replace the input —
+    // mirrors the desktop Cmd+Shift+R flow inside the app.
+    ref.listen<AsyncValue<TranslateState>>(translateProvider, (prev, next) {
+      final prevResult = prev?.valueOrNull?.result;
+      final nextState = next.valueOrNull;
+      final nextResult = nextState?.result;
+      if (nextResult == null || nextResult == prevResult) return;
+      if (nextState?.mode != TranslateMode.reply) return;
+      _onReplyReady(nextResult.translation, l);
+    });
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Language bar
-          _buildLanguageBar(theme, isDark),
+          if (_clipboardSuggestion != null) ...[
+            _buildClipboardChip(theme, isDark, _clipboardSuggestion!),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          _buildLanguageBar(theme, isDark, result),
           const SizedBox(height: AppSpacing.md),
 
-          // Source text field
-          _buildSourceField(theme, isDark),
+          _buildSourceField(theme, isDark, l),
           const SizedBox(height: AppSpacing.md),
 
-          // Feature buttons
-          _buildFeatureButtons(isDark),
+          _buildFeatureButtons(isDark, l),
           const SizedBox(height: AppSpacing.md),
 
-          // Error
           if (state?.error != null)
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               margin: const EdgeInsets.only(bottom: AppSpacing.md),
               decoration: BoxDecoration(
                 color: AppColors.red.withValues(alpha: 0.1),
-                borderRadius:
-                    BorderRadius.circular(AppSpacing.buttonRadius),
+                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
               ),
-              child: Text(
-                state!.error!,
-                style: const TextStyle(color: AppColors.red),
-              ),
+              child: Text(state!.error!,
+                  style: const TextStyle(color: AppColors.red)),
             ),
 
-          // Result card
-          if (result != null) _buildResultCard(theme, isDark, result),
+          if (result != null) _buildResultCard(theme, isDark, result, l),
 
-          // Loading
           if (isLoading)
             const Padding(
               padding: EdgeInsets.all(AppSpacing.xl),
@@ -225,32 +405,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildLanguageBar(ThemeData theme, bool isDark) {
-    final sourceLabel = languageByCode(_sourceLang);
-    final targetLabel = languageByCode(_targetLang);
+  Widget _buildLanguageBar(ThemeData theme, bool isDark, TranslateResult? result) {
+    final langs = ref.watch(languageSettingsProvider).valueOrNull;
+    final sourceLang = langs?.sourceLang ?? 'auto';
+    final targetLang = langs?.targetLang ?? 'en';
+    // When source is auto and we have a detection, show detected name in chip
+    final detectedCode = (sourceLang == 'auto') ? result?.detectedLang : null;
+    final sourceLabel = detectedCode != null
+        ? languageByCode(detectedCode).nativeName
+        : languageByCode(sourceLang).nativeName;
+    final targetLabel = languageByCode(targetLang).nativeName;
 
     return Row(
       children: [
         Expanded(
           child: _langChip(
-            sourceLabel.nativeName,
-            onTap: _pickSourceLang,
+            sourceLabel,
+            subtitle: detectedCode != null ? 'Auto' : null,
+            onTap: () => _pickSourceLang(sourceLang),
             isDark: isDark,
           ),
         ),
         IconButton(
-          onPressed: _sourceLang == 'auto' ? null : _swapLanguages,
+          onPressed: sourceLang == 'auto' ? null : _swapLanguages,
           icon: Icon(
             Icons.swap_horiz,
-            color: _sourceLang == 'auto'
+            color: sourceLang == 'auto'
                 ? AppColors.textSecondary
                 : AppColors.primary,
           ),
         ),
         Expanded(
           child: _langChip(
-            targetLabel.nativeName,
-            onTap: _pickTargetLang,
+            targetLabel,
+            onTap: () => _pickTargetLang(targetLang),
             isDark: isDark,
           ),
         ),
@@ -258,7 +446,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _langChip(String label, {required VoidCallback onTap, required bool isDark}) {
+  Widget _langChip(String label,
+      {String? subtitle,
+      required VoidCallback onTap,
+      required bool isDark}) {
     return Material(
       color: isDark ? AppColors.surface : const Color(0xFFF0EDE8),
       borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
@@ -270,18 +461,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm + 2,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_drop_down, size: 20),
+                ],
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.arrow_drop_down, size: 20),
+              if (subtitle != null)
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.primary.withValues(alpha: 0.7),
+                  ),
+                ),
             ],
           ),
         ),
@@ -289,50 +493,107 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildSourceField(ThemeData theme, bool isDark) {
+  Widget _buildSourceField(ThemeData theme, bool isDark, AppLocalizations l) {
     return Stack(
       alignment: Alignment.topRight,
       children: [
         TextFormField(
           controller: _textController,
+          focusNode: _inputFocus,
           maxLines: 6,
           maxLength: _maxChars,
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            hintText: 'Enter text to translate...',
-            counterStyle: TextStyle(fontSize: 11),
+          // No onChanged here — the clear button below subscribes to the
+          // controller directly via ListenableBuilder, so the surrounding
+          // widget tree no longer rebuilds on every keystroke.
+          decoration: InputDecoration(
+            hintText: l.hintEnterText,
+            counterStyle: const TextStyle(fontSize: 11),
           ),
         ),
-        if (_textController.text.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: IconButton(
-              icon: const Icon(Icons.clear, size: 20),
-              onPressed: () {
-                _textController.clear();
-                ref.read(translateProvider.notifier).clearResult();
-                setState(() {});
-              },
-            ),
-          ),
+        ListenableBuilder(
+          listenable: _textController,
+          builder: (context, _) {
+            if (_textController.text.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: IconButton(
+                icon: const Icon(Icons.clear, size: 20),
+                onPressed: () {
+                  _textController.clear();
+                  ref.read(translateProvider.notifier).clearResult();
+                },
+              ),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildFeatureButtons(bool isDark) {
+  Widget _buildClipboardChip(ThemeData theme, bool isDark, String text) {
+    final preview = text.length > 60 ? '${text.substring(0, 60)}…' : text;
+    return Material(
+      color: AppColors.primary.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        onTap: _useClipboardSuggestion,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md, AppSpacing.sm, AppSpacing.xs, AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.content_paste,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  preview,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Dismiss',
+                icon: const Icon(Icons.close, size: 16),
+                color: AppColors.primary,
+                onPressed: _dismissClipboardSuggestion,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                padding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureButtons(bool isDark, AppLocalizations l) {
     return Row(
       children: [
         _featureBtn(
           icon: Icons.translate,
-          label: 'Translate',
+          label: l.translate,
           onTap: () => _handleAction(TranslateMode.translate),
           isDark: isDark,
           isPrimary: true,
         ),
         const SizedBox(width: AppSpacing.sm),
         _featureBtn(
+          icon: Icons.reply_outlined,
+          label: l.reply,
+          onTap: () => _handleAction(TranslateMode.reply),
+          isDark: isDark,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _featureBtn(
           icon: Icons.summarize_outlined,
-          label: 'Summarize',
+          label: l.summarize,
           locked: !_isProUser,
           onTap: () => _handleAction(TranslateMode.summarize),
           isDark: isDark,
@@ -340,7 +601,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const SizedBox(width: AppSpacing.sm),
         _featureBtn(
           icon: Icons.lightbulb_outline,
-          label: 'Explain',
+          label: l.explain,
           locked: !_isProUser,
           onTap: () => _handleAction(TranslateMode.explain),
           isDark: isDark,
@@ -348,7 +609,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const SizedBox(width: AppSpacing.sm),
         _featureBtn(
           icon: Icons.auto_fix_high,
-          label: 'Refine',
+          label: l.refine,
           locked: !_isProUser,
           onTap: () => _handleAction(TranslateMode.refine),
           isDark: isDark,
@@ -377,33 +638,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
             decoration: BoxDecoration(
-              borderRadius:
-                  BorderRadius.circular(AppSpacing.buttonRadius),
+              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
               border: isPrimary
                   ? null
                   : Border.all(
-                      color: isDark ? AppColors.border : AppColors.borderLight,
-                    ),
+                      color:
+                          isDark ? AppColors.border : AppColors.borderLight),
             ),
             child: Column(
               children: [
                 Icon(
                   locked ? Icons.lock_outline : icon,
-                  size: 20,
+                  size: 18,
                   color: isPrimary
                       ? Colors.white
-                      : (isDark ? AppColors.textSecondary : AppColors.textSecondaryLight),
+                      : (isDark
+                          ? AppColors.textSecondary
+                          : AppColors.textSecondaryLight),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w500,
                     color: isPrimary
                         ? Colors.white
-                        : (isDark ? AppColors.textSecondary : AppColors.textSecondaryLight),
+                        : (isDark
+                            ? AppColors.textSecondary
+                            : AppColors.textSecondaryLight),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -417,29 +682,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ThemeData theme,
     bool isDark,
     TranslateResult result,
+    AppLocalizations l,
   ) {
+    final langs = ref.watch(languageSettingsProvider).valueOrNull;
+    final sourceLang = langs?.sourceLang ?? 'auto';
+    final targetLang = langs?.targetLang ?? 'en';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         border: Border.all(
-          color: isDark ? AppColors.border : AppColors.borderLight,
-        ),
+            color: isDark ? AppColors.border : AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Translation text
-          SelectableText(
-            result.translation,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontSize: 16,
-              height: 1.5,
+          // Detected source language (only when auto-detect)
+          if (result.detectedLang != null && sourceLang == 'auto') ...[
+            Text(
+              l.detectedLang(languageByCode(result.detectedLang!).nativeName),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.primary.withValues(alpha: 0.75),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+
+          // Tap-anywhere-on-result copies. SelectableText still handles
+          // long-press selection + the custom "TransKey" context menu.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _copyToClipboard(result.translation),
+            child: SelectableWithActions(
+              result.translation,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontSize: 16,
+                height: 1.5,
+              ),
+              targetLang: targetLang,
             ),
           ),
 
-          // Romanization
           if (result.romanization != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -451,15 +736,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
 
-          // Suggestions
           if (result.suggestions.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             const Divider(),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Suggestions',
-              style: theme.textTheme.labelLarge,
-            ),
+            Text(l.suggestions, style: theme.textTheme.labelLarge),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,
@@ -473,20 +754,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
 
-          // Action buttons
           const SizedBox(height: AppSpacing.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _actionIcon(Icons.copy_outlined, 'Copy', () {
+              _actionIcon(Icons.copy_outlined, l.copy, () {
                 _copyToClipboard(result.translation);
               }),
               const SizedBox(width: AppSpacing.sm),
-              TtsButton(text: result.translation, lang: _targetLang),
+              TtsButton(text: result.translation, lang: targetLang),
               const SizedBox(width: AppSpacing.sm),
-              _actionIcon(Icons.star_outline, 'Save', () {
-                // TODO: Save to history
-              }),
+              _buildSaveIcon(l),
             ],
           ),
         ],
@@ -494,7 +772,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _actionIcon(IconData icon, String tooltip, VoidCallback onTap) {
+  Widget _buildSaveIcon(AppLocalizations l) {
+    final historyId = ref.watch(
+      translateProvider.select((s) => s.valueOrNull?.lastHistoryId),
+    );
+    final entries = ref.watch(historyProvider).entries;
+    var isFavorite = false;
+    if (historyId != null) {
+      for (final e in entries) {
+        if (e.id == historyId) {
+          isFavorite = e.isFavorite;
+          break;
+        }
+      }
+    }
+    return _actionIcon(
+      isFavorite ? Icons.star : Icons.star_outline,
+      l.save,
+      historyId == null
+          ? null
+          : () => ref.read(historyProvider.notifier).toggleFavorite(historyId),
+    );
+  }
+
+  Widget _actionIcon(IconData icon, String tooltip, VoidCallback? onTap) {
     return IconButton(
       icon: Icon(icon, size: 20),
       tooltip: tooltip,
@@ -502,5 +803,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
       padding: EdgeInsets.zero,
     );
+  }
+}
+
+/// Holds a slot in IndexedStack but defers building its child until the tab
+/// has been visited at least once. Saves cold-start time when the user opens
+/// the app, types, and leaves without ever touching History / Glossary /
+/// Settings — those subtrees never instantiate their providers or widgets.
+class _LazyTab extends StatelessWidget {
+  const _LazyTab({required this.isVisited, required this.builder});
+
+  final bool isVisited;
+  final Widget Function() builder;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisited) return const SizedBox.shrink();
+    return builder();
   }
 }

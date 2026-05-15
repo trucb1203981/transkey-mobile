@@ -14,6 +14,7 @@ class TranslateResult {
   const TranslateResult({
     required this.translation,
     this.romanization,
+    this.detectedLang,
     this.model,
     this.suggestions = const [],
     this.used = 0,
@@ -23,6 +24,7 @@ class TranslateResult {
 
   final String translation;
   final String? romanization;
+  final String? detectedLang;
   final String? model;
   final List<SuggestionEntry> suggestions;
   final int used;
@@ -37,6 +39,7 @@ class TranslateResult {
             map['refined'] as String? ??
             '',
         romanization: map['romanization'] as String?,
+        detectedLang: map['detectedLang'] as String?,
         model: map['model'] as String?,
         suggestions: (map['suggestions'] as List<dynamic>?)
                 ?.map((e) => SuggestionEntry.fromMap(e as Map<String, dynamic>))
@@ -50,6 +53,7 @@ class TranslateResult {
 
 enum TranslateMode {
   translate('translate'),
+  reply('reply'),
   summarize('summarize'),
   explain('explain'),
   refine('refine');
@@ -61,6 +65,8 @@ enum TranslateMode {
     switch (this) {
       case TranslateMode.translate:
         return 'Translate';
+      case TranslateMode.reply:
+        return 'Reply';
       case TranslateMode.summarize:
         return 'Summarize';
       case TranslateMode.explain:
@@ -70,6 +76,6 @@ enum TranslateMode {
     }
   }
 
-  /// Whether this mode requires a paid plan.
-  bool get requiresPro => this != TranslateMode.translate;
+  bool get requiresPro =>
+      this != TranslateMode.translate && this != TranslateMode.reply;
 }
