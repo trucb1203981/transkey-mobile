@@ -88,13 +88,21 @@ class ScreenCaptureService : Service() {
     }
 
     private fun startCapture() {
-        val existing = mediaProjection
-        if (existing != null) {
-            // Already holding a valid grant — reuse it. No consent prompt,
-            // just spin up a new VirtualDisplay for this frame.
-            doCapture(existing, isFirstCapture = false)
+        // Reuse path: pipeline (VirtualDisplay + ImageReader) is already
+        // mirroring the screen. Re-arm `captured = false` and the existing
+        // listener will pick up the next frame the system pushes through
+        // — typically within one display refresh (~16 ms).
+        //
+        // Why we DON'T tear down VirtualDisplay between scans: on Android
+        // 14+ the MediaProjection grant is invalidated as soon as its
+        // last VirtualDisplay is released. We'd then need a fresh
+        // "Start recording?" prompt for every scan, which defeats the
+        // whole point of caching the grant.
+        if (mediaProjection != null && imageReader != null && virtualDisplay != null) {
+            captured = false
             return
         }
+
         // First capture of the session: acquire the token from the activity
         // result the user just approved.
         val resultCode = ScreenCaptureManager.resultCode
@@ -141,13 +149,17 @@ class ScreenCaptureService : Service() {
         // before the next frame is captured — otherwise the dialog itself
         // ends up in the screenshot on some OEMs. Only needed the FIRST
         // time when projection was just granted.
-        handler.postDelayed({ doCapture(projection, isFirstCapture = true) }, 300)
+        handler.postDelayed({ setupPipeline(projection) }, 300)
     }
 
-    private fun doCapture(projection: MediaProjection, isFirstCapture: Boolean) {
-        // Tear down stale pipeline if a previous capture left something
-        // behind (e.g. ImageReader callback was queued mid-cleanup).
-        teardownCapturePipeline()
+    /**
+     * Wire VirtualDisplay → ImageReader exactly once per session. The
+     * listener stays armed for the whole session and uses [captured] as
+     * a gate: when false it grabs the next frame and processes it; when
+     * true it drains incoming frames so ImageReader's small buffer
+     * doesn't back up.
+     */
+    private fun setupPipeline(projection: MediaProjection) {
         captured = false
 
         val metrics = resources.displayMetrics
@@ -159,7 +171,8 @@ class ScreenCaptureService : Service() {
         imageReader = reader
         reader.setOnImageAvailableListener({ r ->
             if (captured) {
-                // Drain extra frames so the reader doesn't back up.
+                // Not in capture mode — drop the frame so the buffer
+                // can recycle for the next one.
                 r.acquireLatestImage()?.close()
                 return@setOnImageAvailableListener
             }
@@ -173,9 +186,8 @@ class ScreenCaptureService : Service() {
             } finally {
                 image.close()
             }
-            // Release per-capture resources promptly; keep MediaProjection
-            // alive so the next scan can reuse the grant.
-            teardownCapturePipeline()
+            // Pipeline stays alive — next scan will set captured=false and
+            // this same listener will pick up the next available frame.
 
             if (bitmap == null) {
                 deliverEmptyToBubble()
@@ -183,11 +195,6 @@ class ScreenCaptureService : Service() {
             }
             runOcr(bitmap)
         }, handler)
-
-        // On subsequent captures the projection is still warm — no need to
-        // pad for the consent dialog dismiss animation. The 300ms delay
-        // already happened in startCapture() for the first capture.
-        @Suppress("UNUSED_PARAMETER") val _firstCapture = isFirstCapture
 
         try {
             virtualDisplay = projection.createVirtualDisplay(
@@ -203,7 +210,7 @@ class ScreenCaptureService : Service() {
         }
     }
 
-    /** Release VirtualDisplay + ImageReader only — leaves [mediaProjection] alive. */
+    /** Release VirtualDisplay + ImageReader. Called only on full session stop. */
     private fun teardownCapturePipeline() {
         try { virtualDisplay?.release() } catch (_: Exception) {}
         virtualDisplay = null
