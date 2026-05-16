@@ -83,8 +83,11 @@ class LanguageSettingsNotifier extends AsyncNotifier<LanguageSettings> {
   /// Re-reads from SharedPreferences. Use when external code (native bubble
   /// service) may have changed the values — e.g. when the app resumes from
   /// background after the user changed languages in the floating popup.
+  /// Calls prefs.reload() to invalidate the shared_preferences Dart-side
+  /// cache so native writes become visible.
   Future<void> reload() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final source = prefs.getString(_kSourceLangKey) ?? _kDefaultSourceLang;
     final target = prefs.getString(_kTargetLangKey) ?? _kDefaultTargetLang;
     final current = state.valueOrNull;

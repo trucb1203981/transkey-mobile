@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/empty_states.dart';
 import '../providers/history_provider.dart';
@@ -37,12 +38,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final historyState = ref.watch(historyProvider);
     final filtered = historyState.filtered;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History'),
+        title: Text(l.historyTitle),
         actions: [
           if (historyState.entries.isNotEmpty)
             PopupMenuButton<String>(
@@ -55,13 +57,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'clear',
-                  child: Text('Clear all'),
+                  child: Text(l.historyMenuClearAll),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'clear_non_fav',
-                  child: Text('Keep favorites only'),
+                  child: Text(l.historyMenuKeepFavorites),
                 ),
               ],
             ),
@@ -79,7 +81,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               controller: _searchController,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Search history...',
+                hintText: l.historySearchHint,
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -103,7 +105,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             child: Row(
               children: [
                 _filterChip(
-                  label: 'All',
+                  label: l.historyFilterAll,
                   selected: historyState.filter == HistoryFilter.all,
                   onSelected: () => ref
                       .read(historyProvider.notifier)
@@ -111,7 +113,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 _filterChip(
-                  label: '★ Favorites',
+                  label: l.historyFilterFavorites,
                   selected: historyState.filter == HistoryFilter.favorites,
                   onSelected: () => ref
                       .read(historyProvider.notifier)
@@ -119,7 +121,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 _filterChip(
-                  label: '🔒 Locked',
+                  label: l.historyFilterLocked,
                   selected: historyState.filter == HistoryFilter.locked,
                   onSelected: () => ref
                       .read(historyProvider.notifier)
@@ -175,17 +177,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   void _confirmClear(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear history'),
-        content: const Text(
-          'Delete all history? Locked entries will be kept.',
-        ),
+        title: Text(l.historyClearDialogTitle),
+        content: Text(l.historyClearDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -193,7 +194,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               ref.read(historyProvider.notifier).clearAll();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.red),
-            child: const Text('Clear'),
+            child: Text(l.clear),
           ),
         ],
       ),
@@ -201,17 +202,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   void _confirmClearNonFavorites(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Keep favorites only'),
-        content: const Text(
-          'Delete all non-favorite entries? Locked entries will be kept.',
-        ),
+        title: Text(l.historyMenuKeepFavorites),
+        content: Text(l.historyKeepFavDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -219,7 +219,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               ref.read(historyProvider.notifier).clearNonFavorites();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.red),
-            child: const Text('Clear'),
+            child: Text(l.clear),
           ),
         ],
       ),

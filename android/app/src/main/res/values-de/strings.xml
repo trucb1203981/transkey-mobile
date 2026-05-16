@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey kann eine Antwort direkt in das aktive Textfeld jeder App einfügen, wenn Sie in der schwebenden Bubble auf „Antwort einfügen" tippen. Text wird nur beim Auslösen einer Aktion gelesen oder geschrieben — keine Hintergrundverfolgung.</string>
+
+    <string name="bubble_choose_action">Aktion auswählen</string>
+    <string name="bubble_using_selection">Ausgewählten Text wird verwendet.</string>
+    <string name="bubble_need_text">Zuerst Text auswählen oder kopieren, dann eine Aktion unten wählen.</string>
+    <string name="bubble_show_last_result">Letztes Ergebnis anzeigen</string>
+    <string name="bubble_type_text">Eigenen Text eingeben</string>
+    <string name="bubble_input_hint">Text zum Übersetzen eingeben…</string>
+    <string name="bubble_input_paste">Einfügen</string>
+    <string name="bubble_input_clear">Löschen</string>
+    <string name="bubble_action_translate">Übersetzen</string>
+    <string name="bubble_cancel">Abbrechen</string>
+    <string name="bubble_mode_translate">Übersetzen</string>
+    <string name="bubble_mode_reply">Antworten</string>
+    <string name="bubble_mode_summarize">Zusammenfassen</string>
+    <string name="bubble_mode_explain">Erklären</string>
+    <string name="bubble_mode_refine">Verfeinern</string>
+
+    <string name="bubble_settings">Einstellungen</string>
+    <string name="bubble_translate_tone">Übersetzungston</string>
+    <string name="bubble_reply_tone">Antwortton</string>
+    <string name="bubble_speech_rate">Sprechgeschwindigkeit</string>
+    <string name="bubble_romanization">Romanisierung (Romaji/Pinyin)</string>
+    <string name="bubble_reply_suggestions">Antwortvorschläge</string>
+
+    <string name="bubble_tone_auto">Auto</string>
+    <string name="bubble_tone_business">Geschäftlich</string>
+    <string name="bubble_tone_casual">Locker</string>
+    <string name="bubble_tone_formal">Formell</string>
+    <string name="bubble_tone_polite">Höflich</string>
+    <string name="bubble_tone_technical">Technisch</string>
+    <string name="bubble_tone_neutral">Neutral</string>
+    <string name="bubble_reply_tone_same">Wie Übersetzungston</string>
+
+    <string name="process_text_translate">TransKey: Übersetzen</string>
+    <string name="process_text_reply">TransKey: Antworten</string>
+    <string name="process_text_summarize">TransKey: Zusammenfassen</string>
+    <string name="process_text_explain">TransKey: Erklären</string>
+    <string name="process_text_refine">TransKey: Verfeinern</string>
+</resources>

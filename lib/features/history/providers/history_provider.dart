@@ -59,8 +59,16 @@ class HistoryNotifier extends Notifier<HistoryState> {
 
   Future<void> _loadFromStorage() async {
     final store = HistoryStore();
-    final entries = await store.load();
-    state = state.copyWith(entries: entries);
+    final loaded = await store.load();
+    // Merge instead of replace: during the cold-start window between build()
+    // (state = empty) and this load completing, the bubble service can call
+    // addFromTranslate and prepend a new entry into state. A naive replace
+    // would trample that entry in the UI (the file still has it, but the
+    // user wouldn't see it until next launch). Dedupe by id, keep prepended
+    // in-memory entries at the front.
+    final loadedIds = loaded.map((e) => e.id).toSet();
+    final unmerged = state.entries.where((e) => !loadedIds.contains(e.id));
+    state = state.copyWith(entries: [...unmerged, ...loaded]);
   }
 
   Future<String> addFromTranslate({

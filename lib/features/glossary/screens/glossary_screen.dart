@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/empty_states.dart';
 import '../models/glossary_entry.dart';
@@ -20,6 +21,11 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Auto-pull server glossary on first visit this session, so the user sees
+    // entries created on desktop / web without having to tap Sync manually.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(glossaryProvider.notifier).ensureInitialPull();
+    });
   }
 
   @override
@@ -40,11 +46,12 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final glossary = ref.watch(glossaryProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Glossary (${glossary.count}/50)'),
+        title: Text(l.glossaryTitle(glossary.count, 50)),
         actions: [
           IconButton(
             icon: glossary.isSyncing
@@ -54,7 +61,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.sync),
-            tooltip: 'Sync',
+            tooltip: l.glossarySync,
             onPressed: glossary.isSyncing
                 ? null
                 : () => ref.read(glossaryProvider.notifier).pull(),
@@ -137,16 +144,17 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, int index) {
+    final l = AppLocalizations.of(context)!;
     final source = ref.read(glossaryProvider).entries[index].source;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete entry'),
-        content: Text('Delete "$source"?'),
+        title: Text(l.glossaryDeleteTitle),
+        content: Text(l.glossaryDeleteBody(source)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -154,7 +162,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
               ref.read(glossaryProvider.notifier).delete(index);
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.red),
-            child: const Text('Delete'),
+            child: Text(l.delete),
           ),
         ],
       ),

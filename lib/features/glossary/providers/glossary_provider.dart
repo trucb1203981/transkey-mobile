@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/dio_client.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../models/glossary_entry.dart';
 
 const _kGlossaryKey = 'tk_glossary';
@@ -44,12 +45,29 @@ class GlossaryState {
 
 class GlossaryNotifier extends Notifier<GlossaryState> {
   Timer? _pushDebounce;
+  bool _hasInitialPulled = false;
 
   @override
   GlossaryState build() {
     _loadLocal();
     ref.onDispose(() => _pushDebounce?.cancel());
     return const GlossaryState();
+  }
+
+  /// Pull from server once per session when the user first opens the glossary
+  /// screen. Without this, fresh installs / cleared local storage show an
+  /// empty list even though the user has entries on desktop / web.
+  /// Idempotent — safe to call from initState every screen visit.
+  Future<void> ensureInitialPull() async {
+    if (_hasInitialPulled) return;
+    final auth = ref.read(authStateProvider).valueOrNull;
+    // Skip when not logged in yet — pull would 401 → trigger logout.
+    if (auth?.session == null) return;
+    _hasInitialPulled = true;
+    // Flush any pending local edits first so the server-side pull doesn't
+    // trample uncommitted user changes.
+    await flushPendingPush();
+    await pull();
   }
 
   /// Coalesce rapid add/update/delete sequences into a single PUT. Users

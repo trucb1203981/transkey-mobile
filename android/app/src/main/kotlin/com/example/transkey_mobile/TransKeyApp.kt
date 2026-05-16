@@ -41,12 +41,26 @@ class TransKeyApp : FlutterApplication() {
                     val detectedLang = args?.get("detectedLang") as? String
                     val error = args?.get("error") as? String
                     val reqId = (args?.get("requestId") as? Number)?.toLong() ?: -1L
+                    // Bilingual suggestions arrive as two parallel arrays —
+                    // sources are the reply text to send back to the
+                    // conversation partner (their language), targets are the
+                    // same idea in the user's language so they understand
+                    // what they'd be sending. Preserve indexing including
+                    // empty strings — BubbleService pairs them by position.
+                    val sources = (args?.get("suggestionSources") as? List<*>)
+                        ?.map { (it as? String).orEmpty() }
+                        ?.toTypedArray()
+                    val targets = (args?.get("suggestionTargets") as? List<*>)
+                        ?.map { (it as? String).orEmpty() }
+                        ?.toTypedArray()
 
                     val intent = Intent(this, BubbleService::class.java).apply {
                         action = BubbleService.ACTION_SHOW_RESULT
                         putExtra(BubbleService.EXTRA_TRANSLATION, translation)
                         putExtra(BubbleService.EXTRA_ROMANIZATION, romanization)
                         putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
+                        putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
+                        putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
                         putExtra(BubbleService.EXTRA_ERROR, error)
                         putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
                     }

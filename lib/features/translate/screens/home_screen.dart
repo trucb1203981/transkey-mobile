@@ -10,18 +10,22 @@ import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../core/auth/auth_provider.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/plan_status_banner.dart';
 import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../history/providers/history_provider.dart';
 import '../../history/screens/history_screen.dart';
 import '../../glossary/screens/glossary_screen.dart';
 import '../../onboarding/screens/keyboard_setup_screen.dart';
+import '../../settings/providers/app_settings_provider.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../upgrade/providers/usage_provider.dart';
 import '../models/language.dart';
 import '../models/translate_models.dart';
+import '../providers/features_provider.dart';
 import '../providers/language_settings_provider.dart';
 import '../providers/translate_provider.dart';
+import '../services/tts_service.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/tts_button.dart';
 import '../../../shared/widgets/selectable_with_actions.dart';
@@ -59,6 +63,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _bootstrap();
     _textController.addListener(_persistSourceText);
+    // Fetch /features so the language picker shows the full live catalog
+    // (134 langs) instead of the embedded 16-lang fallback. Fire-and-forget;
+    // if it fails the fallback list keeps the picker usable.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(featuresProvider.notifier).refreshIfNeeded();
+    });
   }
 
   Future<void> _bootstrap() async {
@@ -89,12 +99,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Reload language settings when app comes to foreground — user may have
-    // changed source/target lang via the floating popup while in another app.
+    // Reload settings when app comes to foreground — the floating bubble (or
+    // Share Extension) may have changed language/tone/reply-lang in
+    // SharedPreferences while we were backgrounded. Without these reloads the
+    // in-app settings UI would show stale values until next cold start.
     if (state == AppLifecycleState.resumed) {
       ref.read(languageSettingsProvider.notifier).reload();
+      ref.read(appSettingsProvider.notifier).reload();
+      ref.read(ttsProvider.notifier).reload();
       ref.read(usageProvider.notifier).refreshIfStale();
       ref.read(authStateProvider.notifier).refreshUser();
+      // Pick up admin changes to the language catalog (enable/disable/rename)
+      // without forcing a full app restart.
+      ref.read(featuresProvider.notifier).refreshIfNeeded();
       // Skip the clipboard peek on iOS resume — every Clipboard.getData call
       // raises a "TransKey pasted from..." privacy banner on iOS 14+. We pay
       // that cost once at cold start; on resume the user can long-press the
@@ -185,6 +202,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       context,
       selectedCode: currentSource,
       showAuto: true,
+      field: LanguagePickerField.source,
     );
     if (code != null) {
       await ref.read(languageSettingsProvider.notifier).setSourceLang(code);
@@ -198,6 +216,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       context,
       selectedCode: currentTarget,
       showAuto: false,
+      field: LanguagePickerField.target,
     );
     if (code == null || code == currentTarget) return;
     await ref.read(languageSettingsProvider.notifier).setTargetLang(code);
@@ -377,11 +396,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _onReplyReady(nextResult.translation, l);
     });
 
+    // Mid-session plan downgrade detection: usage refresh runs after every
+    // translate, so when the server-side plan field diverges from what's in
+    // the local session (trial expired, sub cancelled past ends_at, etc.),
+    // pull a fresh /auth/me so the UI flips to free immediately instead of
+    // waiting for the next cold start.
+    ref.listen<AsyncValue<UsageInfo?>>(usageProvider, (prev, next) {
+      final usagePlan = next.valueOrNull?.plan;
+      if (usagePlan == null) return;
+      final sessionPlan = ref.read(authStateProvider).valueOrNull?.session?.plan;
+      if (sessionPlan != null && sessionPlan != usagePlan) {
+        ref.read(authStateProvider.notifier).refreshUser();
+      }
+    });
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Trial countdown / subscription-expired banner — shown above
+          // everything so the user can't miss it. The banner widget
+          // returns SizedBox.shrink() with no margin when nothing is to
+          // be shown, so no awkward spacing on the common case.
+          const PlanStatusBanner(),
           if (_clipboardSuggestion != null) ...[
             _buildClipboardChip(theme, isDark, _clipboardSuggestion!),
             const SizedBox(height: AppSpacing.sm),
@@ -756,13 +794,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const SizedBox(height: AppSpacing.sm),
             Text(l.suggestions, style: theme.textTheme.labelLarge),
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
+            // Bilingual chips (matches desktop popup): each card shows the
+            // reply in the partner's language on top, the user's language
+            // hint below, and tap copies the SOURCE (what the user would
+            // actually send back).
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: result.suggestions.map((s) {
-                return ActionChip(
-                  label: Text(s.target),
-                  onPressed: () => _copyToClipboard(s.target),
+                final source = s.source.trim();
+                final target = s.target.trim();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: InkWell(
+                    onTap: () => _copyToClipboard(
+                      source.isNotEmpty ? source : target,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.border
+                              : AppColors.borderLight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (source.isNotEmpty)
+                            Text(
+                              source,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          if (target.isNotEmpty && target != source) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              target,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 );
               }).toList(),
             ),

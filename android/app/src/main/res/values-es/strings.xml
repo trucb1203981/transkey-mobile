@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey puede pegar una respuesta directamente en el campo de texto activo de cualquier app cuando toca «Pegar respuesta» en la burbuja flotante. El texto solo se lee o escribe cuando activa una acción — sin seguimiento en segundo plano.</string>
+
+    <string name="bubble_choose_action">Elegir acción</string>
+    <string name="bubble_using_selection">Usando el texto seleccionado.</string>
+    <string name="bubble_need_text">Seleccione o copie texto primero, luego elija una acción.</string>
+    <string name="bubble_show_last_result">Mostrar último resultado</string>
+    <string name="bubble_type_text">Escribir texto propio</string>
+    <string name="bubble_input_hint">Escriba texto para traducir…</string>
+    <string name="bubble_input_paste">Pegar</string>
+    <string name="bubble_input_clear">Borrar</string>
+    <string name="bubble_action_translate">Traducir</string>
+    <string name="bubble_cancel">Cancelar</string>
+    <string name="bubble_mode_translate">Traducir</string>
+    <string name="bubble_mode_reply">Responder</string>
+    <string name="bubble_mode_summarize">Resumir</string>
+    <string name="bubble_mode_explain">Explicar</string>
+    <string name="bubble_mode_refine">Refinar</string>
+
+    <string name="bubble_settings">Ajustes</string>
+    <string name="bubble_translate_tone">Tono de traducción</string>
+    <string name="bubble_reply_tone">Tono de respuesta</string>
+    <string name="bubble_speech_rate">Velocidad de lectura</string>
+    <string name="bubble_romanization">Romanización (Romaji/Pinyin)</string>
+    <string name="bubble_reply_suggestions">Sugerencias de respuesta</string>
+
+    <string name="bubble_tone_auto">Auto</string>
+    <string name="bubble_tone_business">Negocios</string>
+    <string name="bubble_tone_casual">Casual</string>
+    <string name="bubble_tone_formal">Formal</string>
+    <string name="bubble_tone_polite">Cortés</string>
+    <string name="bubble_tone_technical">Técnico</string>
+    <string name="bubble_tone_neutral">Neutral</string>
+    <string name="bubble_reply_tone_same">Igual que tono de traducción</string>
+
+    <string name="process_text_translate">TransKey: Traducir</string>
+    <string name="process_text_reply">TransKey: Responder</string>
+    <string name="process_text_summarize">TransKey: Resumir</string>
+    <string name="process_text_explain">TransKey: Explicar</string>
+    <string name="process_text_refine">TransKey: Refinar</string>
+</resources>

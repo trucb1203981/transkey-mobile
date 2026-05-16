@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/api/api_errors.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -49,11 +50,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     // Show OAuth error from deep link (e.g. pro_device_limit)
     final authError = ref.read(authStateProvider).valueOrNull?.error;
     if (authError != null && _errorMessage == null) {
+      final l = AppLocalizations.of(context)!;
       final msg = authError == 'pro_device_limit'
-          ? 'Pro account already registered on max devices'
+          ? l.proDeviceLimitError
           : authError == 'device_limit'
-              ? 'Too many accounts on this device'
-              : 'Google sign-in failed: $authError';
+              ? l.deviceLimitError
+              : l.googleSignInFailed(authError);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _errorMessage = msg);
       });
@@ -111,29 +113,70 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       final apiErr = ApiException.fromDio(e);
       setState(() => _errorMessage = apiErr.message);
     } catch (e) {
-      setState(() => _errorMessage = 'Something went wrong');
+      setState(() => _errorMessage = AppLocalizations.of(context)!.errorGeneric);
     }
   }
 
   Future<void> _googleOAuth() async {
-    final baseUrl = dotenv.env['TRANSKEY_API_URL'] ?? 'https://api.transkey.app';
-    // Server reads "state" param: portPart|deviceId|deviceName|platform
-    // "mobile" tells the callback to redirect to transkey:// deep link
-    final uri = Uri.parse('$baseUrl/auth/google').replace(queryParameters: {
-      'state': 'mobile',
-    });
+    // Native Google Sign-In: the OS shows its built-in account picker, returns
+    // an idToken signed for our server, and we exchange it server-side. No
+    // browser redirect / deep-link gymnastics — far more reliable than the
+    // previous /auth/google?state=mobile flow.
+    //
+    // `serverClientId` must be the WEB OAuth client ID (the one already used
+    // by passport-google on the server), so the idToken's `aud` matches what
+    // the server's verifyIdToken expects. The OS-specific iOS / Android
+    // client IDs are configured via Info.plist URL scheme and Android OAuth
+    // client (SHA-1 + package name) in Google Cloud Console — they identify
+    // the *app* to Google but don't appear in the token audience.
+    final serverClientId = dotenv.env['GOOGLE_SERVER_CLIENT_ID'];
+    final l = AppLocalizations.of(context)!;
+    if (serverClientId == null || serverClientId.isEmpty) {
+      setState(() => _errorMessage = l.googleNotConfigured);
+      return;
+    }
+
+    final googleSignIn = GoogleSignIn(
+      scopes: const ['email', 'profile'],
+      serverClientId: serverClientId,
+    );
+
     try {
-      // Use the system browser (Chrome) instead of an in-app Custom Tab —
-      // Chrome Custom Tab silently blocks auto-navigation to intent:// without
-      // a user gesture, which leaves the user stuck on the redirect page after
-      // Google sign-in. Regular Chrome handles intent:// → app launch reliably.
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!ok && mounted) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      // signOut first so the account picker always shows — otherwise the SDK
+      // silently re-uses the previous account on subsequent attempts, which is
+      // confusing when the user is trying to switch accounts after an error.
+      await googleSignIn.signOut();
+
+      final account = await googleSignIn.signIn();
+      if (account == null) return; // user cancelled the picker
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        if (mounted) {
+          setState(() => _errorMessage = l.googleSignInNoIdToken);
+        }
+        return;
       }
+
+      await ref.read(authStateProvider.notifier).signInWithGoogleIdToken(idToken);
+
+      final state = ref.read(authStateProvider);
+      if (state.hasError) {
+        final err = state.error;
+        if (err is DioException) {
+          setState(() => _errorMessage = ApiException.fromDio(err).message);
+        } else {
+          setState(() => _errorMessage = err.toString());
+        }
+        return;
+      }
+      if (mounted) context.go('/');
+    } on DioException catch (e) {
+      setState(() => _errorMessage = ApiException.fromDio(e).message);
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage = 'Failed to open Google sign-in: $e');
+        setState(() => _errorMessage = l.googleSignInFailed(e.toString()));
       }
     }
   }
@@ -195,9 +238,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
-                    tabs: const [
-                      Tab(text: 'Login'),
-                      Tab(text: 'Sign Up'),
+                    tabs: [
+                      Tab(text: AppLocalizations.of(context)!.login),
+                      Tab(text: AppLocalizations.of(context)!.signUp),
                     ],
                   ),
                 ),
@@ -225,6 +268,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     required bool isLoading,
   }) {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -266,13 +310,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               textCapitalization: TextCapitalization.words,
               validator: (v) {
                 if (_isRegister && (v == null || v.trim().isEmpty)) {
-                  return 'Name is required';
+                  return l.nameRequired;
                 }
                 return null;
               },
-              decoration: const InputDecoration(
-                hintText: 'Your name',
-                prefixIcon: Icon(Icons.person_outline),
+              decoration: InputDecoration(
+                hintText: l.nameHint,
+                prefixIcon: const Icon(Icons.person_outline),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -286,13 +330,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             textInputAction: TextInputAction.next,
             autocorrect: false,
             validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'Email is required';
-              if (!v.contains('@')) return 'Enter a valid email';
+              if (v == null || v.trim().isEmpty) return l.emailRequired;
+              if (!v.contains('@')) return l.emailInvalid;
               return null;
             },
-            decoration: const InputDecoration(
-              hintText: 'Email',
-              prefixIcon: Icon(Icons.email_outlined),
+            decoration: InputDecoration(
+              hintText: l.emailHint,
+              prefixIcon: const Icon(Icons.email_outlined),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -304,13 +348,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             obscureText: _obscurePassword,
             textInputAction: _isRegister ? TextInputAction.done : TextInputAction.done,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Password is required';
-              if (v.length < 6) return 'At least 6 characters';
+              if (v == null || v.isEmpty) return l.passwordRequired;
+              if (v.length < 6) return l.passwordMinSix;
               return null;
             },
             onFieldSubmitted: (_) => _submit(),
             decoration: InputDecoration(
-              hintText: 'Password',
+              hintText: l.passwordHint,
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -339,7 +383,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                         color: Colors.white,
                       ),
                     )
-                  : Text(_isRegister ? 'Create Account' : 'Log In'),
+                  : Text(_isRegister ? l.createAccount : l.logIn),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -352,7 +396,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 child: Text(
-                  'or',
+                  l.orDivider,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: isDark
                         ? AppColors.textSecondary
@@ -371,7 +415,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             child: OutlinedButton.icon(
               onPressed: isLoading ? null : _googleOAuth,
               icon: const Icon(Icons.g_mobiledata, size: 28),
-              label: const Text('Continue with Google'),
+              label: Text(l.continueWithGoogle),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),

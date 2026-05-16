@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_provider.dart';
 import '../../features/auth/screens/auth_screen.dart';
+import '../../features/auth/screens/banned_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/onboarding/screens/keyboard_setup_screen.dart';
 import '../../features/settings/screens/change_password_screen.dart';
@@ -48,9 +49,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = auth?.isLoggedIn ?? false;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final isOnboarding = state.matchedLocation == '/onboarding';
+      final isBannedRoute = state.matchedLocation == '/banned';
+
+      // Banned users see the full-screen notice — block every other route.
+      // Logout (from inside BannedScreen) clears session, redirect then
+      // sends them to /auth/login.
+      if (isLoggedIn && (auth?.session?.isBanned ?? false)) {
+        return isBannedRoute ? null : '/banned';
+      }
 
       if (!isLoggedIn && !isAuthRoute && !isOnboarding) return '/auth/login';
-      if (isLoggedIn && (isAuthRoute || isOnboarding)) return '/';
+      if (isLoggedIn && (isAuthRoute || isOnboarding || isBannedRoute)) return '/';
 
       return null;
     },
@@ -66,6 +75,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/auth/login',
         builder: (context, state) => const AuthScreen(),
+      ),
+      GoRoute(
+        path: '/banned',
+        builder: (context, state) => const BannedScreen(),
       ),
       GoRoute(
         path: '/upgrade',

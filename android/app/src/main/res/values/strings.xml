@@ -1,4 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="accessibility_service_description">TransKey can paste a reply directly into the focused text field of any app when you tap "Paste reply" on the floating bubble. Text content is only read or written when you trigger an action — no background tracking.</string>
+
+    <!-- Floating bubble action picker -->
+    <string name="bubble_choose_action">Choose action</string>
+    <string name="bubble_using_selection">Using your selected text.</string>
+    <string name="bubble_need_text">Select or copy text first, then pick an action below.</string>
+    <string name="bubble_show_last_result">Show last result</string>
+    <string name="bubble_type_text">Type your own text</string>
+    <string name="bubble_input_hint">Type text to translate…</string>
+    <string name="bubble_input_paste">Paste</string>
+    <string name="bubble_input_clear">Clear</string>
+    <string name="bubble_action_translate">Translate</string>
+    <string name="bubble_cancel">Cancel</string>
+    <string name="bubble_mode_translate">Translate</string>
+    <string name="bubble_mode_reply">Reply</string>
+    <string name="bubble_mode_summarize">Summarize</string>
+    <string name="bubble_mode_explain">Explain</string>
+    <string name="bubble_mode_refine">Refine</string>
+
+    <!-- Settings sheet -->
+    <string name="bubble_settings">Settings</string>
+    <string name="bubble_translate_tone">Translate tone</string>
+    <string name="bubble_reply_tone">Reply tone</string>
+    <string name="bubble_speech_rate">Speech rate</string>
+    <string name="bubble_romanization">Romanization (phonetics)</string>
+    <string name="bubble_reply_suggestions">Reply suggestions</string>
+
+    <!-- Tone options — must match Flutter `toneOptions` in app_settings_provider.dart -->
+    <string name="bubble_tone_auto">Auto</string>
+    <string name="bubble_tone_business">Business</string>
+    <string name="bubble_tone_casual">Casual</string>
+    <string name="bubble_tone_formal">Formal</string>
+    <string name="bubble_tone_polite">Polite</string>
+    <string name="bubble_tone_technical">Technical</string>
+    <string name="bubble_tone_neutral">Neutral</string>
+    <string name="bubble_reply_tone_same">Same as translate tone</string>
+
+    <!-- PROCESS_TEXT activity labels — appear in the system text-selection
+         floating toolbar (or overflow ⋮) of any app when user selects text.
+         "TransKey:" prefix makes them recognizable as our actions vs system. -->
+    <string name="process_text_translate">TransKey: Translate</string>
+    <string name="process_text_reply">TransKey: Reply</string>
+    <string name="process_text_summarize">TransKey: Summarize</string>
+    <string name="process_text_explain">TransKey: Explain</string>
+    <string name="process_text_refine">TransKey: Refine</string>
 </resources>

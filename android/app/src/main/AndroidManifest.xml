@@ -44,7 +44,7 @@
         <activity
             android:name=".ShareActivity"
             android:exported="true"
-            android:label="Translate"
+            android:label="@string/process_text_translate"
             android:icon="@mipmap/ic_launcher"
             android:excludeFromRecents="true"
             android:noHistory="true"
@@ -72,7 +72,7 @@
             android:name=".ReplyAlias"
             android:targetActivity=".ShareActivity"
             android:exported="true"
-            android:label="Reply"
+            android:label="@string/process_text_reply"
             android:icon="@mipmap/ic_launcher">
             <meta-data android:name="transkey.mode" android:value="reply"/>
             <intent-filter android:priority="950">
@@ -86,7 +86,7 @@
             android:name=".SummarizeAlias"
             android:targetActivity=".ShareActivity"
             android:exported="true"
-            android:label="Summarize"
+            android:label="@string/process_text_summarize"
             android:icon="@mipmap/ic_launcher">
             <meta-data android:name="transkey.mode" android:value="summarize"/>
             <intent-filter android:priority="900">
@@ -100,7 +100,7 @@
             android:name=".ExplainAlias"
             android:targetActivity=".ShareActivity"
             android:exported="true"
-            android:label="Explain"
+            android:label="@string/process_text_explain"
             android:icon="@mipmap/ic_launcher">
             <meta-data android:name="transkey.mode" android:value="explain"/>
             <intent-filter android:priority="800">
@@ -114,7 +114,7 @@
             android:name=".RefineAlias"
             android:targetActivity=".ShareActivity"
             android:exported="true"
-            android:label="Refine"
+            android:label="@string/process_text_refine"
             android:icon="@mipmap/ic_launcher">
             <meta-data android:name="transkey.mode" android:value="refine"/>
             <intent-filter android:priority="700">

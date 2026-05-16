@@ -8,6 +8,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/selectable_with_actions.dart';
+import '../../../shared/widgets/toast.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../settings/providers/app_settings_provider.dart';
 import '../models/language.dart';
@@ -121,6 +122,7 @@ class _ResultBottomSheetState extends ConsumerState<ResultBottomSheet>
       context,
       selectedCode: _currentTargetLang,
       showAuto: false,
+      field: LanguagePickerField.target,
     );
     if (code != null && code != _currentTargetLang) {
       setState(() => _overrideTargetLang = code);
@@ -131,9 +133,9 @@ class _ResultBottomSheetState extends ConsumerState<ResultBottomSheet>
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
     final l = AppLocalizations.of(context)!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l.copied), duration: const Duration(seconds: 1)),
-    );
+    // Toast appears on the root overlay so it stays visible above this
+    // modal sheet (a SnackBar would render behind it on the parent Scaffold).
+    showAppToast(context, l.copied);
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -27,23 +28,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _currentPage = 0;
 
-  static const _pages = <_OnboardingPageData>[
-    _OnboardingPageData(
-      icon: Icons.translate_rounded,
-      title: 'Welcome to TransKey',
-      subtitle: 'Translate text in real-time across\n20+ languages instantly.',
-    ),
-    _OnboardingPageData(
-      icon: Icons.language_rounded,
-      title: 'Choose Your Language',
-      subtitle: 'Pick your preferred target language.\nYou can change it anytime in settings.',
-    ),
-    _OnboardingPageData(
-      icon: Icons.rocket_launch_rounded,
-      title: 'Get Started',
-      subtitle: 'Sign in or create a free account\nto start translating now.',
-    ),
-  ];
+  List<_OnboardingPageData> _pages(AppLocalizations l) => [
+        _OnboardingPageData(
+          icon: Icons.translate_rounded,
+          title: l.onboardWelcomeTitle,
+          subtitle: l.onboardWelcomeSubtitle,
+        ),
+        _OnboardingPageData(
+          icon: Icons.language_rounded,
+          title: l.onboardChooseTitle,
+          subtitle: l.onboardChooseSubtitle,
+        ),
+        _OnboardingPageData(
+          icon: Icons.rocket_launch_rounded,
+          title: l.onboardStartedTitle,
+          subtitle: l.onboardStartedSubtitle,
+        ),
+      ];
 
   @override
   void dispose() {
@@ -52,7 +53,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _goNext() {
-    if (_currentPage < _pages.length - 1) {
+    final pagesLen = _pages(AppLocalizations.of(context)!).length;
+    if (_currentPage < pagesLen - 1) {
       _controller.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -71,6 +73,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
+    final pages = _pages(l);
 
     return Scaffold(
       body: SafeArea(
@@ -81,7 +85,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: TextButton(
                 onPressed: _finish,
                 child: Text(
-                  'Skip',
+                  l.skip,
                   style: TextStyle(
                     color: isDark
                         ? AppColors.textSecondary
@@ -93,10 +97,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _controller,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemBuilder: (context, index) {
-                  final page = _pages[index];
+                  final page = pages[index];
                   return Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.xl,
@@ -147,7 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
-                      _pages.length,
+                      pages.length,
                       (i) => AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -171,9 +175,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: ElevatedButton(
                       onPressed: _goNext,
                       child: Text(
-                        _currentPage == _pages.length - 1
-                            ? 'Get Started'
-                            : 'Next',
+                        _currentPage == pages.length - 1
+                            ? l.onboardGetStarted
+                            : l.next,
                       ),
                     ),
                   ),

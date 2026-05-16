@@ -13,10 +13,12 @@ import '../../../core/auth/session_store.dart';
 import '../../../core/bubble/bubble_manager.dart';
 import '../../../core/locale/locale_provider.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/plan_status_banner.dart';
 import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../translate/models/language.dart';
 import '../../translate/providers/language_settings_provider.dart';
+import '../../translate/services/tts_service.dart';
 import '../../translate/widgets/language_picker_sheet.dart';
 import '../../upgrade/providers/usage_provider.dart';
 import '../providers/app_settings_provider.dart';
@@ -25,6 +27,12 @@ import '../widgets/plan_badge.dart';
 const _appLangOptions = [
   ('en', 'English'),
   ('vi', 'Tiếng Việt'),
+  ('zh', '中文'),
+  ('ja', '日本語'),
+  ('ko', '한국어'),
+  ('fr', 'Français'),
+  ('de', 'Deutsch'),
+  ('es', 'Español'),
 ];
 
 const _replyLangOptions = [
@@ -139,6 +147,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           : ListView(
               children: [
                 if (session != null) ...[
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.md, AppSpacing.md, AppSpacing.md, 0,
+                    ),
+                    child: PlanStatusBanner(),
+                  ),
                   _buildAccountSection(theme, isDark, session, plan, t),
                   ListTile(
                     leading: const Icon(Icons.lock_outline),
@@ -202,6 +216,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                       .read(appSettingsProvider.notifier)
                       .setReplySuggestions(v),
                 ),
+
+                const SizedBox(height: AppSpacing.md),
+                _sectionHeader(t.sectionSpeech),
+                _speechSpeedTile(t),
 
                 const SizedBox(height: AppSpacing.md),
                 _sectionHeader(t.sectionOther),
@@ -353,6 +371,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     ),
                     const SizedBox(height: 6),
                     PlanBadge(plan: plan),
+                    _buildSubscriptionLine(theme, plan, usage, t),
                   ],
                 ),
               ),
@@ -417,6 +436,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   void _logout() {
     ref.read(authStateProvider.notifier).logout();
+  }
+
+  /// Subline under the plan badge: subscription type + end date (if any).
+  /// Lets the user see at a glance whether they're on Mobile or Pro, and
+  /// when access actually ends (for cancelled / trial users).
+  Widget _buildSubscriptionLine(
+    ThemeData theme,
+    String plan,
+    UsageInfo? usage,
+    AppLocalizations t,
+  ) {
+    String? typeLabel;
+    String? endIso;
+    if (plan == 'mobile') {
+      typeLabel = t.planMobileSubscription;
+      endIso = usage?.subEndsAt;
+    } else if (plan == 'pro') {
+      typeLabel = t.planProSubscription;
+      endIso = usage?.subEndsAt;
+    } else if (plan == 'trial') {
+      typeLabel = t.planTrial;
+      endIso = usage?.trialEndsAt;
+    }
+    if (typeLabel == null && endIso == null) return const SizedBox.shrink();
+
+    final parts = <String>[
+      if (typeLabel != null) typeLabel,
+      if (endIso != null) t.subscriptionEndsOn(_formatIsoDate(endIso)),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        parts.join(' · '),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+  String _formatIsoDate(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return iso;
+    }
   }
 
   String _avatarInitial(AuthSession session) {
@@ -484,6 +551,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           context,
           selectedCode: current,
           showAuto: showAuto,
+          field: isTarget ? LanguagePickerField.target : LanguagePickerField.source,
         );
         if (picked != null) {
           final notifier = ref.read(languageSettingsProvider.notifier);
@@ -637,6 +705,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         subtitle: Text(_replyLangLabel(current, t)),
         trailing: const Icon(Icons.chevron_right, size: 20),
         onTap: isLocked ? null : () => _showReplyLangPicker(current, t),
+      ),
+    );
+  }
+
+  Widget _speechSpeedTile(AppLocalizations t) {
+    final rate = ref.watch(ttsProvider).rate;
+    final label = rate == 1.0 ? '1.0× (${t.speedNormal})' : '$rate×';
+    return ListTile(
+      leading: const Icon(Icons.speed_outlined),
+      title: Text(t.speedPickerTitle),
+      subtitle: Text(label),
+      trailing: const Icon(Icons.chevron_right, size: 20),
+      onTap: () => _showSpeedPicker(rate, t),
+    );
+  }
+
+  void _showSpeedPicker(double current, AppLocalizations t) {
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75];
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSpacing.sheetRadius)),
+      ),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const DragHandle(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+            child: Text(t.speedPickerTitle,
+                style: Theme.of(ctx).textTheme.titleLarge),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ...speeds.map((s) => ListTile(
+                title: Text(s == 1.0 ? '1.0× (${t.speedNormal})' : '$s×'),
+                trailing: s == current
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ref.read(ttsProvider.notifier).setRate(s);
+                },
+              )),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + AppSpacing.sm),
+        ],
       ),
     );
   }

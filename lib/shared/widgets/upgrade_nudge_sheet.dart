@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 
 class UpgradeNudgeSheet extends ConsumerStatefulWidget {
@@ -54,10 +55,12 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
               );
         }
         if (mounted) {
+          final info = data['trialEndsAt']?.toString() ?? '7 days';
+          final l = AppLocalizations.of(context)!;
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Trial activated! ${data['trialEndsAt'] ?? '7 days remaining'}'),
+              content: Text(l.upgradeTrialActivated(info)),
               backgroundColor: AppColors.green,
             ),
           );
@@ -66,8 +69,8 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to activate trial'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.upgradeTrialActivateFailed),
             backgroundColor: AppColors.red,
           ),
         );
@@ -88,8 +91,8 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to open checkout'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.upgradeCheckoutFailed),
             backgroundColor: AppColors.red,
           ),
         );
@@ -102,6 +105,7 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final plan = _currentPlan;
+    final l = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -113,15 +117,13 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
           const Icon(Icons.lock_outline, size: 40, color: AppColors.primary),
           const SizedBox(height: AppSpacing.md),
           Text(
-            'Unlock ${widget.featureName}',
+            l.nudgeUnlock(widget.featureName),
             style: theme.textTheme.titleLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            plan == 'mobile'
-                ? 'Upgrade to Pro to use this feature\nacross all platforms.'
-                : 'Choose a plan that fits your needs.',
+            plan == 'mobile' ? l.nudgeMobileCopy : l.nudgeChoosePlan,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
               height: 1.5,
@@ -134,27 +136,27 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
           if (plan == 'mobile') ...[
             _planButton(
               icon: Icons.devices,
-              title: 'Upgrade to Pro',
-              price: '\$6/month',
-              subtitle: 'Use on all platforms — desktop + mobile',
+              title: l.nudgeUpgradeToPro,
+              price: l.nudgePriceProMonthly,
+              subtitle: l.nudgeUpgradeToProSubtitle,
               color: AppColors.amber,
               onTap: () => _checkout('pro'),
             ),
           ] else ...[
             _planButton(
               icon: Icons.phone_android,
-              title: '📱 Mobile',
-              price: '\$3/month',
-              subtitle: 'All features, mobile only',
+              title: l.nudgeMobileTitle,
+              price: l.nudgePriceMobile,
+              subtitle: l.upgradeMobileSubtitle,
               color: AppColors.primary,
               onTap: () => _checkout('mobile'),
             ),
             const SizedBox(height: AppSpacing.sm),
             _planButton(
               icon: Icons.devices,
-              title: '💻 Pro',
-              price: '\$6/month',
-              subtitle: 'All features, all platforms',
+              title: l.nudgeProTitle,
+              price: l.nudgePriceProMonthly,
+              subtitle: l.upgradeProSubtitle,
               color: AppColors.amber,
               onTap: () => _checkout('pro'),
             ),
@@ -173,7 +175,7 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
                           color: AppColors.primary,
                         ),
                       )
-                    : const Text('Try free for 7 days'),
+                    : Text(l.upgradeTryFreeDays),
               ),
             ),
           ],
@@ -182,7 +184,7 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Maybe later',
+              l.nudgeMaybeLater,
               style: TextStyle(
                 color: isDark ? AppColors.textSecondary : AppColors.textSecondaryLight,
               ),

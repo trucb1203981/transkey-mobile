@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">フローティングバブルで「返信を貼り付け」をタップすると、TransKey は任意のアプリのフォーカスされたテキスト欄に返信を直接貼り付けることができます。テキストの読み取り/書き込みはアクション実行時のみで、バックグラウンド追跡はありません。</string>
+
+    <string name="bubble_choose_action">アクションを選択</string>
+    <string name="bubble_using_selection">選択したテキストを使用中。</string>
+    <string name="bubble_need_text">先にテキストを選択またはコピーしてから、下のアクションを選んでください。</string>
+    <string name="bubble_show_last_result">最後の結果を表示</string>
+    <string name="bubble_type_text">テキストを入力</string>
+    <string name="bubble_input_hint">翻訳するテキストを入力…</string>
+    <string name="bubble_input_paste">貼り付け</string>
+    <string name="bubble_input_clear">クリア</string>
+    <string name="bubble_action_translate">翻訳</string>
+    <string name="bubble_cancel">キャンセル</string>
+    <string name="bubble_mode_translate">翻訳</string>
+    <string name="bubble_mode_reply">返信</string>
+    <string name="bubble_mode_summarize">要約</string>
+    <string name="bubble_mode_explain">説明</string>
+    <string name="bubble_mode_refine">推敲</string>
+
+    <string name="bubble_settings">設定</string>
+    <string name="bubble_translate_tone">翻訳トーン</string>
+    <string name="bubble_reply_tone">返信トーン</string>
+    <string name="bubble_speech_rate">読み上げ速度</string>
+    <string name="bubble_romanization">ふりがな（ローマ字/拼音）</string>
+    <string name="bubble_reply_suggestions">返信候補</string>
+
+    <string name="bubble_tone_auto">自動</string>
+    <string name="bubble_tone_business">ビジネス</string>
+    <string name="bubble_tone_casual">カジュアル</string>
+    <string name="bubble_tone_formal">フォーマル</string>
+    <string name="bubble_tone_polite">丁寧</string>
+    <string name="bubble_tone_technical">技術的</string>
+    <string name="bubble_tone_neutral">中立</string>
+    <string name="bubble_reply_tone_same">翻訳トーンと同じ</string>
+
+    <string name="process_text_translate">TransKey: 翻訳</string>
+    <string name="process_text_reply">TransKey: 返信</string>
+    <string name="process_text_summarize">TransKey: 要約</string>
+    <string name="process_text_explain">TransKey: 説明</string>
+    <string name="process_text_refine">TransKey: 推敲</string>
+</resources>

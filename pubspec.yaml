@@ -38,6 +38,9 @@ dependencies:
   # Deep links
   app_links: ^6.3.0
 
+  # Google Sign-In (native, replaces browser OAuth flow on mobile)
+  google_sign_in: ^6.2.1
+
   # Utilities
   url_launcher: ^6.2.0
   flutter_dotenv: ^5.1.0

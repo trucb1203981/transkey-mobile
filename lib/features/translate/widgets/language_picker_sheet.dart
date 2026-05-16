@@ -1,25 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../models/language.dart';
+import '../providers/features_provider.dart';
 import '../providers/language_settings_provider.dart';
 
-class LanguagePickerSheet extends StatefulWidget {
+/// Which slot the picker is filling. Drives the allowed_* gate so admin's
+/// per-field restrictions in /system-config are respected here.
+enum LanguagePickerField { target, source, reply }
+
+class LanguagePickerSheet extends ConsumerStatefulWidget {
   const LanguagePickerSheet({
     super.key,
     required this.selectedCode,
     this.showAuto = true,
+    this.field = LanguagePickerField.target,
   });
 
   final String selectedCode;
   final bool showAuto;
+  final LanguagePickerField field;
 
   static Future<String?> show(
     BuildContext context, {
     required String selectedCode,
     bool showAuto = true,
+    LanguagePickerField field = LanguagePickerField.target,
   }) {
     return showModalBottomSheet<String>(
       context: context,
@@ -32,26 +41,24 @@ class LanguagePickerSheet extends StatefulWidget {
       builder: (_) => LanguagePickerSheet(
         selectedCode: selectedCode,
         showAuto: showAuto,
+        field: field,
       ),
     );
   }
 
   @override
-  State<LanguagePickerSheet> createState() => _LanguagePickerSheetState();
+  ConsumerState<LanguagePickerSheet> createState() => _LanguagePickerSheetState();
 }
 
-class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
+class _LanguagePickerSheetState extends ConsumerState<LanguagePickerSheet> {
   late final TextEditingController _searchController;
-  late List<Language> _filtered;
   List<Language> _recents = const [];
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    _filtered = kSupportedLanguages
-        .where((l) => widget.showAuto || l.code != 'auto')
-        .toList();
     _searchController.addListener(_onSearch);
     _loadRecents();
   }
@@ -74,26 +81,51 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
   }
 
   void _onSearch() {
-    final query = _searchController.text.toLowerCase();
-    final source = kSupportedLanguages
-        .where((l) => widget.showAuto || l.code != 'auto')
-        .toList();
-    setState(() {
-      _filtered = query.isEmpty
-          ? source
-          : source
-              .where((l) =>
-                  l.code.toLowerCase().contains(query) ||
-                  l.nativeName.toLowerCase().contains(query) ||
-                  (l.name?.toLowerCase().contains(query) ?? false))
-              .toList();
-    });
+    setState(() => _query = _searchController.text.toLowerCase());
+  }
+
+  List<String> _allowedListFor(FeatureFlags flags) {
+    switch (widget.field) {
+      case LanguagePickerField.target:
+        return flags.allowedTargetLangs;
+      case LanguagePickerField.source:
+        return flags.allowedSourceLangs;
+      case LanguagePickerField.reply:
+        return flags.allowedReplyTargetLangs;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    // Watch features so the picker re-renders when /features refresh brings
+    // a new catalog or new allowed_* gates.
+    final flags = ref.watch(featuresProvider).flags;
+    final allowed = _allowedListFor(flags);
+    final allowedSet = allowed.toSet();
+    final filterByAllowed = allowed.isNotEmpty;
+
+    final base = supportedLanguages
+        .where((l) => widget.showAuto || l.code != 'auto')
+        .where((l) => !filterByAllowed || l.code == 'auto' || allowedSet.contains(l.code))
+        .toList();
+
+    final filtered = _query.isEmpty
+        ? base
+        : base
+            .where((l) =>
+                l.code.toLowerCase().contains(_query) ||
+                l.nativeName.toLowerCase().contains(_query) ||
+                (l.name?.toLowerCase().contains(_query) ?? false))
+            .toList();
+
+    // Recents must also respect the per-field allowed_* gate; a code the
+    // admin removed shouldn't reappear via the user's history.
+    final visibleRecents = _recents
+        .where((l) => !filterByAllowed || l.code == 'auto' || allowedSet.contains(l.code))
+        .toList();
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -128,14 +160,14 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
               slivers: [
                 // Only show recents when the user isn't actively searching —
                 // otherwise the search results pull from the full list.
-                if (_recents.isNotEmpty && _searchController.text.isEmpty) ...[
+                if (visibleRecents.isNotEmpty && _query.isEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0,
                       ),
                       child: Text(
-                        _localeIsVi(context) ? 'Gần đây' : 'Recent',
+                        AppLocalizations.of(context)!.recent,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: AppColors.textSecondary,
                           letterSpacing: 0.6,
@@ -144,9 +176,9 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
                     ),
                   ),
                   SliverList.builder(
-                    itemCount: _recents.length,
+                    itemCount: visibleRecents.length,
                     itemBuilder: (context, index) =>
-                        _buildLangTile(_recents[index], theme),
+                        _buildLangTile(visibleRecents[index], theme),
                   ),
                   const SliverToBoxAdapter(child: Divider(height: 1)),
                   SliverToBoxAdapter(
@@ -155,7 +187,7 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
                         AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0,
                       ),
                       child: Text(
-                        _localeIsVi(context) ? 'Tất cả ngôn ngữ' : 'All languages',
+                        AppLocalizations.of(context)!.allLanguages,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: AppColors.textSecondary,
                           letterSpacing: 0.6,
@@ -165,9 +197,9 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
                   ),
                 ],
                 SliverList.builder(
-                  itemCount: _filtered.length,
+                  itemCount: filtered.length,
                   itemBuilder: (context, index) =>
-                      _buildLangTile(_filtered[index], theme),
+                      _buildLangTile(filtered[index], theme),
                 ),
               ],
             ),
@@ -177,9 +209,6 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
       ),
     );
   }
-
-  bool _localeIsVi(BuildContext ctx) =>
-      Localizations.localeOf(ctx).languageCode == 'vi';
 
   Widget _buildLangTile(Language lang, ThemeData theme) {
     final isSelected = lang.code == widget.selectedCode;

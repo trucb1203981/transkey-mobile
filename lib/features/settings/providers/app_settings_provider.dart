@@ -51,7 +51,15 @@ class AppSettings {
 class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
   @override
   Future<AppSettings> build() async {
+    return _readFromPrefs();
+  }
+
+  Future<AppSettings> _readFromPrefs({bool forceReload = false}) async {
     final prefs = await SharedPreferences.getInstance();
+    // shared_preferences keeps a Dart-side in-memory cache; native writes
+    // (from BubbleService) won't show up until we reload. Skip for cold start
+    // since the cache is already authoritative there.
+    if (forceReload) await prefs.reload();
     return AppSettings(
       historySave: prefs.getBool(_kHistorySave) ?? true,
       romanization: prefs.getBool(_kRomanization) ?? false,
@@ -61,6 +69,26 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       replyLang: prefs.getString(_kReplyLang) ?? '',
       autoCloseSeconds: prefs.getInt(_kAutoCloseSeconds) ?? 0,
     );
+  }
+
+  /// Re-read all settings from SharedPreferences. Use when external code
+  /// (the floating bubble service on Android, or the Share Extension on iOS)
+  /// may have changed values while the app was backgrounded — otherwise the
+  /// in-memory state stays stale until next cold start.
+  Future<void> reload() async {
+    final fresh = await _readFromPrefs(forceReload: true);
+    final current = state.valueOrNull;
+    if (current != null &&
+        current.historySave == fresh.historySave &&
+        current.romanization == fresh.romanization &&
+        current.replySuggestions == fresh.replySuggestions &&
+        current.toneOverride == fresh.toneOverride &&
+        current.replyToneOverride == fresh.replyToneOverride &&
+        current.replyLang == fresh.replyLang &&
+        current.autoCloseSeconds == fresh.autoCloseSeconds) {
+      return;
+    }
+    state = AsyncData(fresh);
   }
 
   Future<void> setHistorySave(bool value) async {

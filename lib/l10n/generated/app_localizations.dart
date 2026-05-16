@@ -5,8 +5,14 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_fr.dart';
+import 'app_localizations_ja.dart';
+import 'app_localizations_ko.dart';
 import 'app_localizations_vi.dart';
+import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
 
@@ -94,8 +100,14 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
     Locale('en'),
-    Locale('vi')
+    Locale('es'),
+    Locale('fr'),
+    Locale('ja'),
+    Locale('ko'),
+    Locale('vi'),
+    Locale('zh')
   ];
 
   /// No description provided for @translate.
@@ -170,6 +182,78 @@ abstract class AppLocalizations {
   /// **'Copied'**
   String get copied;
 
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get dismiss;
+
+  /// No description provided for @required.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get required;
+
+  /// No description provided for @addAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addAction;
+
+  /// No description provided for @saveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveAction;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @skip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get skip;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
   /// No description provided for @hintEnterText.
   ///
   /// In en, this message translates to:
@@ -235,6 +319,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get sectionOther;
+
+  /// No description provided for @sectionSpeech.
+  ///
+  /// In en, this message translates to:
+  /// **'Read aloud'**
+  String get sectionSpeech;
 
   /// No description provided for @targetLanguage.
   ///
@@ -620,6 +710,12 @@ abstract class AppLocalizations {
   /// **'No active subscription'**
   String get subscriptionInactive;
 
+  /// No description provided for @subscriptionAdminGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan was activated by support, not through self-serve billing. Contact us to change or cancel it.'**
+  String get subscriptionAdminGranted;
+
   /// No description provided for @subscriptionCancel.
   ///
   /// In en, this message translates to:
@@ -643,24 +739,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not cancel subscription'**
   String get subscriptionCancelFailed;
-
-  /// No description provided for @cancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get cancel;
-
-  /// No description provided for @ok.
-  ///
-  /// In en, this message translates to:
-  /// **'OK'**
-  String get ok;
-
-  /// No description provided for @confirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm'**
-  String get confirm;
 
   /// No description provided for @voicePickerTitle.
   ///
@@ -752,6 +830,18 @@ abstract class AppLocalizations {
   /// **'Search languages...'**
   String get searchLanguages;
 
+  /// No description provided for @recent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get recent;
+
+  /// No description provided for @allLanguages.
+  ///
+  /// In en, this message translates to:
+  /// **'All languages'**
+  String get allLanguages;
+
   /// No description provided for @login.
   ///
   /// In en, this message translates to:
@@ -806,6 +896,66 @@ abstract class AppLocalizations {
   /// **'Your name'**
   String get nameHint;
 
+  /// No description provided for @nameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get nameRequired;
+
+  /// No description provided for @emailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Email is required'**
+  String get emailRequired;
+
+  /// No description provided for @emailInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email'**
+  String get emailInvalid;
+
+  /// No description provided for @passwordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is required'**
+  String get passwordRequired;
+
+  /// No description provided for @passwordMinSix.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 6 characters'**
+  String get passwordMinSix;
+
+  /// No description provided for @proDeviceLimitError.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro account already registered on max devices'**
+  String get proDeviceLimitError;
+
+  /// No description provided for @deviceLimitError.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many accounts on this device'**
+  String get deviceLimitError;
+
+  /// No description provided for @googleSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in failed: {error}'**
+  String googleSignInFailed(String error);
+
+  /// No description provided for @googleNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in not configured (missing serverClientId)'**
+  String get googleNotConfigured;
+
+  /// No description provided for @googleSignInNoIdToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in returned no idToken — check serverClientId'**
+  String get googleSignInNoIdToken;
+
   /// No description provided for @proRequired.
   ///
   /// In en, this message translates to:
@@ -859,6 +1009,684 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{used}/{limit} chars'**
   String usageCharacters(int used, int limit);
+
+  /// No description provided for @trialEndsInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial ends in {days} {days, plural, one{day} other{days}}'**
+  String trialEndsInDays(int days);
+
+  /// No description provided for @trialEndsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial ends today'**
+  String get trialEndsToday;
+
+  /// No description provided for @trialEndsTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial ends tomorrow'**
+  String get trialEndsTomorrow;
+
+  /// No description provided for @trialUpgradeNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade now'**
+  String get trialUpgradeNow;
+
+  /// No description provided for @trialAlreadyUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve already used your free trial'**
+  String get trialAlreadyUsed;
+
+  /// No description provided for @subscriptionExpiredBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Your subscription has expired'**
+  String get subscriptionExpiredBanner;
+
+  /// No description provided for @subscriptionExpiredRenew.
+  ///
+  /// In en, this message translates to:
+  /// **'Renew'**
+  String get subscriptionExpiredRenew;
+
+  /// No description provided for @subscriptionEndsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends {date}'**
+  String subscriptionEndsOn(String date);
+
+  /// No description provided for @planMobileSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile subscription'**
+  String get planMobileSubscription;
+
+  /// No description provided for @planProSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro subscription'**
+  String get planProSubscription;
+
+  /// No description provided for @discountFirstMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'−50% first month'**
+  String get discountFirstMonth;
+
+  /// No description provided for @accountBannedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account suspended'**
+  String get accountBannedTitle;
+
+  /// No description provided for @accountBannedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your TransKey account has been suspended. Please contact support if you believe this is a mistake.'**
+  String get accountBannedBody;
+
+  /// No description provided for @accountBannedContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support'**
+  String get accountBannedContact;
+
+  /// No description provided for @accountBannedLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get accountBannedLogout;
+
+  /// No description provided for @historyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get historyTitle;
+
+  /// No description provided for @historySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search history...'**
+  String get historySearchHint;
+
+  /// No description provided for @historyFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get historyFilterAll;
+
+  /// No description provided for @historyFilterFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'★ Favorites'**
+  String get historyFilterFavorites;
+
+  /// No description provided for @historyFilterLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 Locked'**
+  String get historyFilterLocked;
+
+  /// No description provided for @historyMenuClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get historyMenuClearAll;
+
+  /// No description provided for @historyMenuKeepFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep favorites only'**
+  String get historyMenuKeepFavorites;
+
+  /// No description provided for @historyClearDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear history'**
+  String get historyClearDialogTitle;
+
+  /// No description provided for @historyClearDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all history? Locked entries will be kept.'**
+  String get historyClearDialogBody;
+
+  /// No description provided for @historyKeepFavDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all non-favorite entries? Locked entries will be kept.'**
+  String get historyKeepFavDialogBody;
+
+  /// No description provided for @historyDetailSourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get historyDetailSourceLabel;
+
+  /// No description provided for @historyDetailTranslationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation'**
+  String get historyDetailTranslationLabel;
+
+  /// No description provided for @historyDetailRomanizationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Romanization'**
+  String get historyDetailRomanizationLabel;
+
+  /// No description provided for @historyDetailFavoriteBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'★ Favorite'**
+  String get historyDetailFavoriteBadge;
+
+  /// No description provided for @historyDetailLockedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 Locked'**
+  String get historyDetailLockedBadge;
+
+  /// No description provided for @historyDetailCopyTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy\ntranslation'**
+  String get historyDetailCopyTranslation;
+
+  /// No description provided for @historyDetailCopySource.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy\nsource'**
+  String get historyDetailCopySource;
+
+  /// No description provided for @historyDetailUnfavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfavorite'**
+  String get historyDetailUnfavorite;
+
+  /// No description provided for @historyDetailFavoriteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite'**
+  String get historyDetailFavoriteAction;
+
+  /// No description provided for @historyDetailUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get historyDetailUnlock;
+
+  /// No description provided for @historyDetailLockAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock'**
+  String get historyDetailLockAction;
+
+  /// No description provided for @historyDetailTtsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS'**
+  String get historyDetailTtsLabel;
+
+  /// No description provided for @glossaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Glossary ({count}/{max})'**
+  String glossaryTitle(int count, int max);
+
+  /// No description provided for @glossarySync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get glossarySync;
+
+  /// No description provided for @glossaryDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete entry'**
+  String get glossaryDeleteTitle;
+
+  /// No description provided for @glossaryDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{source}\"?'**
+  String glossaryDeleteBody(String source);
+
+  /// No description provided for @glossaryLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Glossary limit reached ({max})'**
+  String glossaryLimitReached(int max);
+
+  /// No description provided for @glossarySourceTargetRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Source and target are required'**
+  String get glossarySourceTargetRequired;
+
+  /// No description provided for @glossarySyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to sync glossary'**
+  String get glossarySyncFailed;
+
+  /// No description provided for @glossaryEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit entry'**
+  String get glossaryEditTitle;
+
+  /// No description provided for @glossaryAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get glossaryAddTitle;
+
+  /// No description provided for @glossarySourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get glossarySourceLabel;
+
+  /// No description provided for @glossarySourceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Word or phrase'**
+  String get glossarySourceHint;
+
+  /// No description provided for @glossaryTargetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get glossaryTargetLabel;
+
+  /// No description provided for @glossaryTargetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation'**
+  String get glossaryTargetHint;
+
+  /// No description provided for @upgradeScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade TransKey'**
+  String get upgradeScreenTitle;
+
+  /// No description provided for @upgradeChooseYourPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your plan'**
+  String get upgradeChooseYourPlan;
+
+  /// No description provided for @upgradeUnlockFullPower.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the full power of TransKey'**
+  String get upgradeUnlockFullPower;
+
+  /// No description provided for @upgradeCurrentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get upgradeCurrentLabel;
+
+  /// No description provided for @upgradePopularBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get upgradePopularBadge;
+
+  /// No description provided for @upgradeTryFreeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Try free for 7 days'**
+  String get upgradeTryFreeDays;
+
+  /// No description provided for @upgradeTrialActivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial activated! {info}'**
+  String upgradeTrialActivated(String info);
+
+  /// No description provided for @upgradeTrialActivateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to activate trial'**
+  String get upgradeTrialActivateFailed;
+
+  /// No description provided for @upgradeCheckoutFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to open checkout'**
+  String get upgradeCheckoutFailed;
+
+  /// No description provided for @upgradeMobileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All features, mobile only'**
+  String get upgradeMobileSubtitle;
+
+  /// No description provided for @upgradeProSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All features, all platforms'**
+  String get upgradeProSubtitle;
+
+  /// No description provided for @upgradeFreeFeat1.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate'**
+  String get upgradeFreeFeat1;
+
+  /// No description provided for @upgradeFreeFeat2.
+  ///
+  /// In en, this message translates to:
+  /// **'20 req/day'**
+  String get upgradeFreeFeat2;
+
+  /// No description provided for @upgradeFreeFeat3.
+  ///
+  /// In en, this message translates to:
+  /// **'2000 chars/day'**
+  String get upgradeFreeFeat3;
+
+  /// No description provided for @upgradeFreeFeat4.
+  ///
+  /// In en, this message translates to:
+  /// **'Glossary'**
+  String get upgradeFreeFeat4;
+
+  /// No description provided for @upgradeMobileFeat1.
+  ///
+  /// In en, this message translates to:
+  /// **'All features'**
+  String get upgradeMobileFeat1;
+
+  /// No description provided for @upgradeMobileFeat2.
+  ///
+  /// In en, this message translates to:
+  /// **'iOS & Android'**
+  String get upgradeMobileFeat2;
+
+  /// No description provided for @upgradeMobileFeat3.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get upgradeMobileFeat3;
+
+  /// No description provided for @upgradeProFeat1.
+  ///
+  /// In en, this message translates to:
+  /// **'All features'**
+  String get upgradeProFeat1;
+
+  /// No description provided for @upgradeProFeat2.
+  ///
+  /// In en, this message translates to:
+  /// **'All platforms'**
+  String get upgradeProFeat2;
+
+  /// No description provided for @upgradeProFeat3.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop + Mobile'**
+  String get upgradeProFeat3;
+
+  /// No description provided for @upgradeFeatureColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Feature'**
+  String get upgradeFeatureColumn;
+
+  /// No description provided for @upgradeMobilePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'📱 Mobile · \$3/mo'**
+  String get upgradeMobilePrice;
+
+  /// No description provided for @upgradeProPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'💻 Pro · \$6/mo'**
+  String get upgradeProPrice;
+
+  /// No description provided for @upgradeFooterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'📱 Mobile: best value if you only use your phone\n💻 Pro: works on both phone and desktop'**
+  String get upgradeFooterHint;
+
+  /// No description provided for @comparisonReplyTranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply translate'**
+  String get comparisonReplyTranslate;
+
+  /// No description provided for @comparisonMobileApps.
+  ///
+  /// In en, this message translates to:
+  /// **'📱 iOS & Android'**
+  String get comparisonMobileApps;
+
+  /// No description provided for @comparisonDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'💻 Desktop'**
+  String get comparisonDesktop;
+
+  /// No description provided for @nudgeUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock {feature}'**
+  String nudgeUnlock(String feature);
+
+  /// No description provided for @nudgeMobileCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Pro to use this feature\nacross all platforms.'**
+  String get nudgeMobileCopy;
+
+  /// No description provided for @nudgeChoosePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a plan that fits your needs.'**
+  String get nudgeChoosePlan;
+
+  /// No description provided for @nudgeMaybeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe later'**
+  String get nudgeMaybeLater;
+
+  /// No description provided for @nudgeMobileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'📱 Mobile'**
+  String get nudgeMobileTitle;
+
+  /// No description provided for @nudgeProTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'💻 Pro'**
+  String get nudgeProTitle;
+
+  /// No description provided for @nudgeUpgradeToPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Pro'**
+  String get nudgeUpgradeToPro;
+
+  /// No description provided for @nudgeUpgradeToProSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use on all platforms — desktop + mobile'**
+  String get nudgeUpgradeToProSubtitle;
+
+  /// No description provided for @nudgePriceMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'\$3/month'**
+  String get nudgePriceMobile;
+
+  /// No description provided for @nudgePriceProMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'\$6/month'**
+  String get nudgePriceProMonthly;
+
+  /// No description provided for @onboardWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to TransKey'**
+  String get onboardWelcomeTitle;
+
+  /// No description provided for @onboardWelcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate text in real-time across\n20+ languages instantly.'**
+  String get onboardWelcomeSubtitle;
+
+  /// No description provided for @onboardChooseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Your Language'**
+  String get onboardChooseTitle;
+
+  /// No description provided for @onboardChooseSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your preferred target language.\nYou can change it anytime in settings.'**
+  String get onboardChooseSubtitle;
+
+  /// No description provided for @onboardStartedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get onboardStartedTitle;
+
+  /// No description provided for @onboardStartedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in or create a free account\nto start translating now.'**
+  String get onboardStartedSubtitle;
+
+  /// No description provided for @onboardGetStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get onboardGetStarted;
+
+  /// No description provided for @setupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup Keyboard'**
+  String get setupTitle;
+
+  /// No description provided for @setupOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get setupOpenSettings;
+
+  /// No description provided for @setupOpenPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Permissions'**
+  String get setupOpenPermissions;
+
+  /// No description provided for @setupStep1TitleIOS.
+  ///
+  /// In en, this message translates to:
+  /// **'Add TransKey Keyboard'**
+  String get setupStep1TitleIOS;
+
+  /// No description provided for @setupStep1TitleAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Floating Bubble'**
+  String get setupStep1TitleAndroid;
+
+  /// No description provided for @setupStep1DescIOS.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Settings and add TransKey as a custom keyboard so you can translate directly while typing.'**
+  String get setupStep1DescIOS;
+
+  /// No description provided for @setupStep1DescAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow TransKey to display over other apps so the floating bubble can appear when you need it.'**
+  String get setupStep1DescAndroid;
+
+  /// No description provided for @setupStep2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Full Access'**
+  String get setupStep2Title;
+
+  /// No description provided for @setupStep2DescIOS.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap TransKey in the keyboard list and enable \"Allow Full Access\". This is needed to connect to the internet for translations.'**
+  String get setupStep2DescIOS;
+
+  /// No description provided for @setupStep2DescAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'The overlay permission lets TransKey show a floating bubble on top of other apps for quick translations.'**
+  String get setupStep2DescAndroid;
+
+  /// No description provided for @setupStep3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re All Set!'**
+  String get setupStep3Title;
+
+  /// No description provided for @setupStep3DescIOS.
+  ///
+  /// In en, this message translates to:
+  /// **'When typing in any app, long-press the globe key 🌐 to switch to TransKey. Tap \"Reply\" to translate your message instantly.'**
+  String get setupStep3DescIOS;
+
+  /// No description provided for @setupStep3DescAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Select text in any app and share it to TransKey, or use the floating bubble for quick translations.'**
+  String get setupStep3DescAndroid;
+
+  /// No description provided for @setupStep4Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate from Any App'**
+  String get setupStep4Title;
+
+  /// No description provided for @setupStep4DescIOS.
+  ///
+  /// In en, this message translates to:
+  /// **'Select any text → tap \"Share\" → choose TransKey. Or copy text and open TransKey — it reads your clipboard automatically.'**
+  String get setupStep4DescIOS;
+
+  /// No description provided for @setupStep4DescAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Select text in any app → tap \"Share\" → choose TransKey. Or use the floating bubble after copying text.'**
+  String get setupStep4DescAndroid;
+
+  /// No description provided for @setupStep5Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart Features'**
+  String get setupStep5Title;
+
+  /// No description provided for @setupStep5Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.'**
+  String get setupStep5Desc;
 }
 
 class _AppLocalizationsDelegate
@@ -871,8 +1699,16 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'vi'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+        'de',
+        'en',
+        'es',
+        'fr',
+        'ja',
+        'ko',
+        'vi',
+        'zh'
+      ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -881,10 +1717,22 @@ class _AppLocalizationsDelegate
 AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'de':
+      return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
+    case 'fr':
+      return AppLocalizationsFr();
+    case 'ja':
+      return AppLocalizationsJa();
+    case 'ko':
+      return AppLocalizationsKo();
     case 'vi':
       return AppLocalizationsVi();
+    case 'zh':
+      return AppLocalizationsZh();
   }
 
   throw FlutterError(

@@ -1,0 +1,858 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Spanish Castilian (`es`).
+class AppLocalizationsEs extends AppLocalizations {
+  AppLocalizationsEs([String locale = 'es']) : super(locale);
+
+  @override
+  String get translate => 'Traducir';
+
+  @override
+  String get summarize => 'Resumir';
+
+  @override
+  String get explain => 'Explicar';
+
+  @override
+  String get refine => 'Refinar';
+
+  @override
+  String get reply => 'Responder';
+
+  @override
+  String get history => 'Historial';
+
+  @override
+  String get glossary => 'Glosario';
+
+  @override
+  String get settings => 'Ajustes';
+
+  @override
+  String get suggestions => 'Sugerencias';
+
+  @override
+  String get copy => 'Copiar';
+
+  @override
+  String get save => 'Guardar';
+
+  @override
+  String get copied => 'Copiado';
+
+  @override
+  String get delete => 'Eliminar';
+
+  @override
+  String get cancel => 'Cancelar';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get confirm => 'Confirmar';
+
+  @override
+  String get clear => 'Borrar';
+
+  @override
+  String get dismiss => 'Descartar';
+
+  @override
+  String get required => 'Obligatorio';
+
+  @override
+  String get addAction => 'Añadir';
+
+  @override
+  String get saveAction => 'Guardar';
+
+  @override
+  String get next => 'Siguiente';
+
+  @override
+  String get skip => 'Omitir';
+
+  @override
+  String get done => 'Listo';
+
+  @override
+  String get hintEnterText => 'Introduzca el texto a traducir...';
+
+  @override
+  String detectedLang(String lang) {
+    return 'Detectado: $lang';
+  }
+
+  @override
+  String get autoDetect => 'Detección automática';
+
+  @override
+  String get sourceLang => 'Origen';
+
+  @override
+  String get targetLang => 'Destino';
+
+  @override
+  String get swapLanguages => 'Intercambiar idiomas';
+
+  @override
+  String get settingsTitle => 'Ajustes';
+
+  @override
+  String get sectionLanguage => 'Idioma';
+
+  @override
+  String get sectionTranslation => 'Traducción';
+
+  @override
+  String get sectionAdvanced => 'Avanzado';
+
+  @override
+  String get sectionOther => 'Otros';
+
+  @override
+  String get sectionSpeech => 'Leer en voz alta';
+
+  @override
+  String get targetLanguage => 'Idioma destino';
+
+  @override
+  String get sourceLanguage => 'Idioma origen';
+
+  @override
+  String get appLanguage => 'Idioma de la app';
+
+  @override
+  String get saveHistory => 'Guardar historial';
+
+  @override
+  String get romanization => 'Romanización';
+
+  @override
+  String get replySuggestions => 'Sugerencias de respuesta';
+
+  @override
+  String get toneOverride => 'Tono de traducción';
+
+  @override
+  String get replyToneOverride => 'Tono de respuesta';
+
+  @override
+  String get replyLanguage => 'Idioma de respuesta';
+
+  @override
+  String get replyLanguageFromConversation => 'De la conversación';
+
+  @override
+  String get autoCloseResult => 'Cierre automático';
+
+  @override
+  String get autoCloseSeconds => 'Cierre auto (segundos)';
+
+  @override
+  String get autoCloseUnit => 'segundos';
+
+  @override
+  String get autoCloseDisabled => 'Desactivado';
+
+  @override
+  String get toneAuto => 'Auto';
+
+  @override
+  String get toneBusiness => 'Negocios';
+
+  @override
+  String get toneCasual => 'Casual';
+
+  @override
+  String get toneFormal => 'Formal';
+
+  @override
+  String get tonePolite => 'Cortés';
+
+  @override
+  String get toneTechnical => 'Técnico';
+
+  @override
+  String get toneNeutral => 'Neutral';
+
+  @override
+  String get toneReplySameAsTranslate => 'Igual que traducción';
+
+  @override
+  String get popupTo => 'A:';
+
+  @override
+  String get tabTranslate => 'Traducir';
+
+  @override
+  String get tabReply => 'Responder';
+
+  @override
+  String get tabSummarize => 'Resumir';
+
+  @override
+  String get tabExplain => 'Explicar';
+
+  @override
+  String get tabRefine => 'Refinar';
+
+  @override
+  String get keyboardSetup => 'Configurar teclado';
+
+  @override
+  String get bubbleSetup => 'Configurar burbuja';
+
+  @override
+  String get floatingBubble => 'Burbuja flotante';
+
+  @override
+  String get bubbleActive => 'Activa';
+
+  @override
+  String get bubbleInactive => 'Inactiva';
+
+  @override
+  String get sendFeedback => 'Enviar comentarios';
+
+  @override
+  String get termsOfService => 'Términos de servicio';
+
+  @override
+  String get privacyPolicy => 'Política de privacidad';
+
+  @override
+  String get version => 'Versión';
+
+  @override
+  String get upgrade => 'Actualizar';
+
+  @override
+  String get upgradeToPro => 'Actualizar a Pro';
+
+  @override
+  String get logOut => 'Cerrar sesión';
+
+  @override
+  String get changePassword => 'Cambiar contraseña';
+
+  @override
+  String get manageDevices => 'Gestionar dispositivos';
+
+  @override
+  String get manageSubscription => 'Gestionar suscripción';
+
+  @override
+  String get currentPassword => 'Contraseña actual';
+
+  @override
+  String get newPassword => 'Nueva contraseña';
+
+  @override
+  String get confirmPassword => 'Confirmar nueva contraseña';
+
+  @override
+  String get passwordTooShort =>
+      'La contraseña debe tener al menos 8 caracteres';
+
+  @override
+  String get passwordMismatch => 'Las contraseñas no coinciden';
+
+  @override
+  String get changePasswordSuccess => 'Contraseña actualizada';
+
+  @override
+  String get changePasswordFailed => 'Error al actualizar la contraseña';
+
+  @override
+  String get devicesTitle => 'Dispositivos registrados';
+
+  @override
+  String get devicesEmpty => 'No hay dispositivos registrados aún.';
+
+  @override
+  String get devicesProLimit => 'El plan Pro permite hasta 2 dispositivos.';
+
+  @override
+  String get deviceCurrentThis => 'Este dispositivo';
+
+  @override
+  String deviceLastUsed(String date) {
+    return 'Último uso: $date';
+  }
+
+  @override
+  String get removeDevice => 'Eliminar';
+
+  @override
+  String get removeDeviceConfirm =>
+      '¿Eliminar este dispositivo? Tendrá que volver a iniciar sesión.';
+
+  @override
+  String get removeDeviceFailed => 'No se pudo eliminar el dispositivo';
+
+  @override
+  String get subscriptionTitle => 'Suscripción';
+
+  @override
+  String get subscriptionStatus => 'Estado';
+
+  @override
+  String get subscriptionRenewsAt => 'Se renueva';
+
+  @override
+  String get subscriptionEndsAt => 'Termina';
+
+  @override
+  String get subscriptionTrialEndsAt => 'Fin de la prueba';
+
+  @override
+  String get subscriptionInactive => 'Sin suscripción activa';
+
+  @override
+  String get subscriptionAdminGranted =>
+      'Su plan fue activado por soporte, no mediante facturación de autoservicio. Contáctenos para cambiarlo o cancelarlo.';
+
+  @override
+  String get subscriptionCancel => 'Cancelar suscripción';
+
+  @override
+  String get subscriptionCancelConfirm =>
+      '¿Cancelar su suscripción Pro? Mantendrá Pro hasta el final del período actual.';
+
+  @override
+  String get subscriptionCancelled =>
+      'La suscripción terminará en la fecha de renovación.';
+
+  @override
+  String get subscriptionCancelFailed => 'No se pudo cancelar la suscripción';
+
+  @override
+  String get voicePickerTitle => 'Voz';
+
+  @override
+  String get voiceDefault => 'Predeterminada';
+
+  @override
+  String get speedPickerTitle => 'Velocidad de lectura';
+
+  @override
+  String get speedNormal => 'Normal';
+
+  @override
+  String get accessibilityPasteBack => 'Pegar respuesta en otras apps';
+
+  @override
+  String get accessibilityPasteBackDesc =>
+      'Active TransKey en los ajustes de Accesibilidad para que «Pegar» escriba la respuesta en el campo activo de cualquier app.';
+
+  @override
+  String get accessibilityEnabled => 'Activado';
+
+  @override
+  String get accessibilityDisabled => 'No activado — toque para abrir ajustes';
+
+  @override
+  String get feedbackTitle => 'Enviar comentarios';
+
+  @override
+  String get feedbackHint => 'Díganos qué piensa...';
+
+  @override
+  String get feedbackSend => 'Enviar';
+
+  @override
+  String get feedbackThanks => '¡Gracias por su comentario!';
+
+  @override
+  String get feedbackFailed => 'Error al enviar comentarios';
+
+  @override
+  String get selectLanguage => 'Seleccionar idioma';
+
+  @override
+  String get searchLanguages => 'Buscar idiomas...';
+
+  @override
+  String get recent => 'Recientes';
+
+  @override
+  String get allLanguages => 'Todos los idiomas';
+
+  @override
+  String get login => 'Iniciar sesión';
+
+  @override
+  String get signUp => 'Registrarse';
+
+  @override
+  String get logIn => 'Iniciar sesión';
+
+  @override
+  String get createAccount => 'Crear cuenta';
+
+  @override
+  String get continueWithGoogle => 'Continuar con Google';
+
+  @override
+  String get orDivider => 'o';
+
+  @override
+  String get emailHint => 'Correo electrónico';
+
+  @override
+  String get passwordHint => 'Contraseña';
+
+  @override
+  String get nameHint => 'Su nombre';
+
+  @override
+  String get nameRequired => 'El nombre es obligatorio';
+
+  @override
+  String get emailRequired => 'El correo es obligatorio';
+
+  @override
+  String get emailInvalid => 'Introduzca un correo válido';
+
+  @override
+  String get passwordRequired => 'La contraseña es obligatoria';
+
+  @override
+  String get passwordMinSix => 'Al menos 6 caracteres';
+
+  @override
+  String get proDeviceLimitError =>
+      'La cuenta Pro ya está registrada en el máximo de dispositivos';
+
+  @override
+  String get deviceLimitError => 'Demasiadas cuentas en este dispositivo';
+
+  @override
+  String googleSignInFailed(String error) {
+    return 'Inicio de sesión de Google fallido: $error';
+  }
+
+  @override
+  String get googleNotConfigured =>
+      'Inicio de sesión de Google no configurado (falta serverClientId)';
+
+  @override
+  String get googleSignInNoIdToken =>
+      'El inicio de sesión de Google no devolvió idToken — verifique serverClientId';
+
+  @override
+  String get proRequired => 'Se requiere plan Pro';
+
+  @override
+  String get noTextToTranslate => 'Introduzca texto primero';
+
+  @override
+  String get errorGeneric => 'Algo salió mal';
+
+  @override
+  String get planFree => 'Gratis';
+
+  @override
+  String get planPro => 'Pro';
+
+  @override
+  String get planMobile => 'Mobile';
+
+  @override
+  String get planTrial => 'Prueba';
+
+  @override
+  String usageRequests(int used, int limit) {
+    return '$used/$limit solicitudes';
+  }
+
+  @override
+  String usageCharacters(int used, int limit) {
+    return '$used/$limit car.';
+  }
+
+  @override
+  String trialEndsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'días',
+      one: 'día',
+    );
+    return 'Prueba termina en $days $_temp0';
+  }
+
+  @override
+  String get trialEndsToday => 'La prueba termina hoy';
+
+  @override
+  String get trialEndsTomorrow => 'La prueba termina mañana';
+
+  @override
+  String get trialUpgradeNow => 'Actualizar ahora';
+
+  @override
+  String get trialAlreadyUsed => 'Ya ha usado su prueba gratuita';
+
+  @override
+  String get subscriptionExpiredBanner => 'Su suscripción ha expirado';
+
+  @override
+  String get subscriptionExpiredRenew => 'Renovar';
+
+  @override
+  String subscriptionEndsOn(String date) {
+    return 'Termina el $date';
+  }
+
+  @override
+  String get planMobileSubscription => 'Suscripción Mobile';
+
+  @override
+  String get planProSubscription => 'Suscripción Pro';
+
+  @override
+  String get discountFirstMonth => '−50 % el primer mes';
+
+  @override
+  String get accountBannedTitle => 'Cuenta suspendida';
+
+  @override
+  String get accountBannedBody =>
+      'Su cuenta TransKey ha sido suspendida. Contacte con soporte si cree que es un error.';
+
+  @override
+  String get accountBannedContact => 'Contactar soporte';
+
+  @override
+  String get accountBannedLogout => 'Cerrar sesión';
+
+  @override
+  String get historyTitle => 'Historial';
+
+  @override
+  String get historySearchHint => 'Buscar en el historial...';
+
+  @override
+  String get historyFilterAll => 'Todo';
+
+  @override
+  String get historyFilterFavorites => '★ Favoritos';
+
+  @override
+  String get historyFilterLocked => '🔒 Bloqueados';
+
+  @override
+  String get historyMenuClearAll => 'Borrar todo';
+
+  @override
+  String get historyMenuKeepFavorites => 'Mantener solo favoritos';
+
+  @override
+  String get historyClearDialogTitle => 'Borrar historial';
+
+  @override
+  String get historyClearDialogBody =>
+      '¿Eliminar todo el historial? Las entradas bloqueadas se conservarán.';
+
+  @override
+  String get historyKeepFavDialogBody =>
+      '¿Eliminar todas las entradas no favoritas? Las entradas bloqueadas se conservarán.';
+
+  @override
+  String get historyDetailSourceLabel => 'Origen';
+
+  @override
+  String get historyDetailTranslationLabel => 'Traducción';
+
+  @override
+  String get historyDetailRomanizationLabel => 'Romanización';
+
+  @override
+  String get historyDetailFavoriteBadge => '★ Favorito';
+
+  @override
+  String get historyDetailLockedBadge => '🔒 Bloqueado';
+
+  @override
+  String get historyDetailCopyTranslation => 'Copiar\ntraducción';
+
+  @override
+  String get historyDetailCopySource => 'Copiar\norigen';
+
+  @override
+  String get historyDetailUnfavorite => 'Quitar favorito';
+
+  @override
+  String get historyDetailFavoriteAction => 'Favorito';
+
+  @override
+  String get historyDetailUnlock => 'Desbloquear';
+
+  @override
+  String get historyDetailLockAction => 'Bloquear';
+
+  @override
+  String get historyDetailTtsLabel => 'TTS';
+
+  @override
+  String glossaryTitle(int count, int max) {
+    return 'Glosario ($count/$max)';
+  }
+
+  @override
+  String get glossarySync => 'Sincronizar';
+
+  @override
+  String get glossaryDeleteTitle => 'Eliminar entrada';
+
+  @override
+  String glossaryDeleteBody(String source) {
+    return '¿Eliminar «$source»?';
+  }
+
+  @override
+  String glossaryLimitReached(int max) {
+    return 'Límite del glosario alcanzado ($max)';
+  }
+
+  @override
+  String get glossarySourceTargetRequired =>
+      'Origen y destino son obligatorios';
+
+  @override
+  String get glossarySyncFailed => 'Error al sincronizar el glosario';
+
+  @override
+  String get glossaryEditTitle => 'Editar entrada';
+
+  @override
+  String get glossaryAddTitle => 'Añadir entrada';
+
+  @override
+  String get glossarySourceLabel => 'Origen';
+
+  @override
+  String get glossarySourceHint => 'Palabra o frase';
+
+  @override
+  String get glossaryTargetLabel => 'Destino';
+
+  @override
+  String get glossaryTargetHint => 'Traducción';
+
+  @override
+  String get upgradeScreenTitle => 'Actualizar TransKey';
+
+  @override
+  String get upgradeChooseYourPlan => 'Elija su plan';
+
+  @override
+  String get upgradeUnlockFullPower => 'Desbloquee todo el poder de TransKey';
+
+  @override
+  String get upgradeCurrentLabel => 'Actual';
+
+  @override
+  String get upgradePopularBadge => 'Popular';
+
+  @override
+  String get upgradeTryFreeDays => 'Pruebe gratis 7 días';
+
+  @override
+  String upgradeTrialActivated(String info) {
+    return '¡Prueba activada! $info';
+  }
+
+  @override
+  String get upgradeTrialActivateFailed => 'Error al activar la prueba';
+
+  @override
+  String get upgradeCheckoutFailed => 'Error al abrir el pago';
+
+  @override
+  String get upgradeMobileSubtitle => 'Todas las funciones, solo móvil';
+
+  @override
+  String get upgradeProSubtitle => 'Todas las funciones, todas las plataformas';
+
+  @override
+  String get upgradeFreeFeat1 => 'Traducir';
+
+  @override
+  String get upgradeFreeFeat2 => '20 sol./día';
+
+  @override
+  String get upgradeFreeFeat3 => '2000 car./día';
+
+  @override
+  String get upgradeFreeFeat4 => 'Glosario';
+
+  @override
+  String get upgradeMobileFeat1 => 'Todas las funciones';
+
+  @override
+  String get upgradeMobileFeat2 => 'iOS y Android';
+
+  @override
+  String get upgradeMobileFeat3 => 'Ilimitado';
+
+  @override
+  String get upgradeProFeat1 => 'Todas las funciones';
+
+  @override
+  String get upgradeProFeat2 => 'Todas las plataformas';
+
+  @override
+  String get upgradeProFeat3 => 'Escritorio + Móvil';
+
+  @override
+  String get upgradeFeatureColumn => 'Función';
+
+  @override
+  String get upgradeMobilePrice => '📱 Mobile · 3 \$/mes';
+
+  @override
+  String get upgradeProPrice => '💻 Pro · 6 \$/mes';
+
+  @override
+  String get upgradeFooterHint =>
+      '📱 Mobile: mejor valor si solo usa su teléfono\n💻 Pro: funciona en teléfono y escritorio';
+
+  @override
+  String get comparisonReplyTranslate => 'Traducción de respuesta';
+
+  @override
+  String get comparisonMobileApps => '📱 iOS y Android';
+
+  @override
+  String get comparisonDesktop => '💻 Escritorio';
+
+  @override
+  String nudgeUnlock(String feature) {
+    return 'Desbloquear $feature';
+  }
+
+  @override
+  String get nudgeMobileCopy =>
+      'Actualice a Pro para usar esta función\nen todas las plataformas.';
+
+  @override
+  String get nudgeChoosePlan =>
+      'Elija un plan que se ajuste a sus necesidades.';
+
+  @override
+  String get nudgeMaybeLater => 'Quizás más tarde';
+
+  @override
+  String get nudgeMobileTitle => '📱 Mobile';
+
+  @override
+  String get nudgeProTitle => '💻 Pro';
+
+  @override
+  String get nudgeUpgradeToPro => 'Actualizar a Pro';
+
+  @override
+  String get nudgeUpgradeToProSubtitle =>
+      'Use en todas las plataformas — escritorio + móvil';
+
+  @override
+  String get nudgePriceMobile => '3 \$/mes';
+
+  @override
+  String get nudgePriceProMonthly => '6 \$/mes';
+
+  @override
+  String get onboardWelcomeTitle => 'Bienvenido a TransKey';
+
+  @override
+  String get onboardWelcomeSubtitle =>
+      'Traduzca texto en tiempo real en\nmás de 20 idiomas al instante.';
+
+  @override
+  String get onboardChooseTitle => 'Elija su idioma';
+
+  @override
+  String get onboardChooseSubtitle =>
+      'Elija su idioma destino preferido.\nPuede cambiarlo en cualquier momento en ajustes.';
+
+  @override
+  String get onboardStartedTitle => 'Empezar';
+
+  @override
+  String get onboardStartedSubtitle =>
+      'Inicie sesión o cree una cuenta gratuita\npara empezar a traducir ahora.';
+
+  @override
+  String get onboardGetStarted => 'Empezar';
+
+  @override
+  String get setupTitle => 'Configurar teclado';
+
+  @override
+  String get setupOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get setupOpenPermissions => 'Abrir permisos';
+
+  @override
+  String get setupStep1TitleIOS => 'Añadir teclado TransKey';
+
+  @override
+  String get setupStep1TitleAndroid => 'Activar burbuja flotante';
+
+  @override
+  String get setupStep1DescIOS =>
+      'Vaya a Ajustes y añada TransKey como teclado personalizado para traducir directamente mientras escribe.';
+
+  @override
+  String get setupStep1DescAndroid =>
+      'Permita que TransKey se muestre sobre otras apps para que la burbuja flotante aparezca cuando la necesite.';
+
+  @override
+  String get setupStep2Title => 'Permitir acceso completo';
+
+  @override
+  String get setupStep2DescIOS =>
+      'Toque TransKey en la lista de teclados y active «Permitir acceso completo». Necesario para conectarse a Internet para las traducciones.';
+
+  @override
+  String get setupStep2DescAndroid =>
+      'El permiso de superposición permite a TransKey mostrar una burbuja flotante sobre otras apps para traducciones rápidas.';
+
+  @override
+  String get setupStep3Title => '¡Todo listo!';
+
+  @override
+  String get setupStep3DescIOS =>
+      'Al escribir en cualquier app, mantenga la tecla del globo 🌐 para cambiar a TransKey. Toque «Responder» para traducir su mensaje al instante.';
+
+  @override
+  String get setupStep3DescAndroid =>
+      'Seleccione texto en cualquier app y compártalo con TransKey, o use la burbuja flotante para traducciones rápidas.';
+
+  @override
+  String get setupStep4Title => 'Traducir desde cualquier app';
+
+  @override
+  String get setupStep4DescIOS =>
+      'Seleccione texto → toque «Compartir» → elija TransKey. O copie texto y abra TransKey — lee su portapapeles automáticamente.';
+
+  @override
+  String get setupStep4DescAndroid =>
+      'Seleccione texto en cualquier app → toque «Compartir» → elija TransKey. O use la burbuja flotante después de copiar texto.';
+
+  @override
+  String get setupStep5Title => 'Funciones inteligentes';
+
+  @override
+  String get setupStep5Desc =>
+      'Traducir, Responder, Resumir, Explicar y Refinar — todo con IA. Las funciones Pro están marcadas con un candado.';
+}

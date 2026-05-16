@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../providers/subscription_provider.dart';
@@ -12,6 +13,8 @@ class SubscriptionScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final subAsync = ref.watch(subscriptionProvider);
+    final plan =
+        ref.watch(authStateProvider).valueOrNull?.session?.plan ?? 'free';
 
     return Scaffold(
       appBar: AppBar(title: Text(l.subscriptionTitle)),
@@ -20,11 +23,34 @@ class SubscriptionScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('$e')),
         data: (sub) {
           if (!sub.active && sub.status == null) {
+            // Empty subscription on a paid plan = admin-granted (no LemonSqueezy
+            // record). Tell the user clearly instead of the cryptic "No active
+            // subscription" — they ARE on Pro, just not through self-serve
+            // billing, so the cancel button wouldn't have anything to cancel.
+            final isPaidPlan = plan == 'pro' || plan == 'mobile' || plan == 'trial';
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(l.subscriptionInactive,
-                    style: const TextStyle(color: AppColors.textSecondary)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPaidPlan
+                          ? Icons.workspace_premium_outlined
+                          : Icons.info_outline,
+                      size: 48,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      isPaidPlan
+                          ? l.subscriptionAdminGranted
+                          : l.subscriptionInactive,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
               ),
             );
           }

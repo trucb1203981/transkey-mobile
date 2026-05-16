@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">在悬浮气泡上点击"粘贴回复"时，TransKey 可以将回复直接粘贴到任何应用获得焦点的输入框中。仅在触发操作时读取或写入文本，无后台追踪。</string>
+
+    <string name="bubble_choose_action">选择操作</string>
+    <string name="bubble_using_selection">使用您选中的文本。</string>
+    <string name="bubble_need_text">先选中或复制文本，然后选择下方操作。</string>
+    <string name="bubble_show_last_result">显示最近结果</string>
+    <string name="bubble_type_text">直接输入文本</string>
+    <string name="bubble_input_hint">输入要翻译的文本…</string>
+    <string name="bubble_input_paste">粘贴</string>
+    <string name="bubble_input_clear">清除</string>
+    <string name="bubble_action_translate">翻译</string>
+    <string name="bubble_cancel">取消</string>
+    <string name="bubble_mode_translate">翻译</string>
+    <string name="bubble_mode_reply">回复</string>
+    <string name="bubble_mode_summarize">总结</string>
+    <string name="bubble_mode_explain">解释</string>
+    <string name="bubble_mode_refine">润色</string>
+
+    <string name="bubble_settings">设置</string>
+    <string name="bubble_translate_tone">翻译语气</string>
+    <string name="bubble_reply_tone">回复语气</string>
+    <string name="bubble_speech_rate">朗读速度</string>
+    <string name="bubble_romanization">注音（Romaji/拼音）</string>
+    <string name="bubble_reply_suggestions">回复建议</string>
+
+    <string name="bubble_tone_auto">自动</string>
+    <string name="bubble_tone_business">商务</string>
+    <string name="bubble_tone_casual">随意</string>
+    <string name="bubble_tone_formal">正式</string>
+    <string name="bubble_tone_polite">礼貌</string>
+    <string name="bubble_tone_technical">技术</string>
+    <string name="bubble_tone_neutral">中性</string>
+    <string name="bubble_reply_tone_same">与翻译语气相同</string>
+
+    <string name="process_text_translate">TransKey: 翻译</string>
+    <string name="process_text_reply">TransKey: 回复</string>
+    <string name="process_text_summarize">TransKey: 总结</string>
+    <string name="process_text_explain">TransKey: 解释</string>
+    <string name="process_text_refine">TransKey: 润色</string>
+</resources>

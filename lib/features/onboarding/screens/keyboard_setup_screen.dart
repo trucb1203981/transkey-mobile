@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/theme/app_theme.dart';
 
 class KeyboardSetupScreen extends StatefulWidget {
@@ -115,17 +116,18 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Setup Keyboard'),
+        title: Text(l.setupTitle),
         leading: widget.showSkip
             ? TextButton(
                 onPressed: () {
                   KeyboardSetupScreen.markDone();
                   Navigator.of(context).pop();
                 },
-                child: const Text('Skip'),
+                child: Text(l.skip),
               )
             : null,
       ),
@@ -140,45 +142,45 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
                   step: 1,
                   icon: Icons.keyboard_outlined,
                   title: Platform.isIOS
-                      ? 'Add TransKey Keyboard'
-                      : 'Enable Floating Bubble',
+                      ? l.setupStep1TitleIOS
+                      : l.setupStep1TitleAndroid,
                   description: Platform.isIOS
-                      ? 'Go to Settings and add TransKey as a custom keyboard so you can translate directly while typing.'
-                      : 'Allow TransKey to display over other apps so the floating bubble can appear when you need it.',
+                      ? l.setupStep1DescIOS
+                      : l.setupStep1DescAndroid,
                   illustration: _buildIllustration(1, isDark),
                 ),
                 _StepPage(
                   step: 2,
                   icon: Icons.verified_user_outlined,
-                  title: 'Allow Full Access',
+                  title: l.setupStep2Title,
                   description: Platform.isIOS
-                      ? 'Tap TransKey in the keyboard list and enable "Allow Full Access". This is needed to connect to the internet for translations.'
-                      : 'The overlay permission lets TransKey show a floating bubble on top of other apps for quick translations.',
+                      ? l.setupStep2DescIOS
+                      : l.setupStep2DescAndroid,
                   illustration: _buildIllustration(2, isDark),
                 ),
                 _StepPage(
                   step: 3,
                   icon: Icons.check_circle_outline,
-                  title: 'You\'re All Set!',
+                  title: l.setupStep3Title,
                   description: Platform.isIOS
-                      ? 'When typing in any app, long-press the globe key 🌐 to switch to TransKey. Tap "Reply" to translate your message instantly.'
-                      : 'Select text in any app and share it to TransKey, or use the floating bubble for quick translations.',
+                      ? l.setupStep3DescIOS
+                      : l.setupStep3DescAndroid,
                   illustration: _buildIllustration(3, isDark),
                 ),
                 _StepPage(
                   step: 4,
                   icon: Icons.translate_outlined,
-                  title: 'Translate from Any App',
+                  title: l.setupStep4Title,
                   description: Platform.isIOS
-                      ? 'Select any text → tap "Share" → choose TransKey. Or copy text and open TransKey — it reads your clipboard automatically.'
-                      : 'Select text in any app → tap "Share" → choose TransKey. Or use the floating bubble after copying text.',
+                      ? l.setupStep4DescIOS
+                      : l.setupStep4DescAndroid,
                   illustration: _buildIllustration(4, isDark),
                 ),
                 _StepPage(
                   step: 5,
                   icon: Icons.auto_awesome_outlined,
-                  title: 'Smart Features',
-                  description: 'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.',
+                  title: l.setupStep5Title,
+                  description: l.setupStep5Desc,
                   illustration: _buildIllustration(5, isDark),
                 ),
               ],
@@ -229,7 +231,7 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
                       },
                       icon: const Icon(Icons.settings_outlined),
                       label: Text(
-                        Platform.isIOS ? 'Open Settings' : 'Open Permissions',
+                        Platform.isIOS ? l.setupOpenSettings : l.setupOpenPermissions,
                       ),
                     ),
                   ),
@@ -248,7 +250,7 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
                           )
                         : null,
                     child: Text(
-                      _currentStep < 4 ? 'Next' : 'Done',
+                      _currentStep < 4 ? l.next : l.done,
                     ),
                   ),
                 ),

@@ -45,6 +45,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copied => 'Copied';
 
   @override
+  String get delete => 'Delete';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get dismiss => 'Dismiss';
+
+  @override
+  String get required => 'Required';
+
+  @override
+  String get addAction => 'Add';
+
+  @override
+  String get saveAction => 'Save';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get skip => 'Skip';
+
+  @override
+  String get done => 'Done';
+
+  @override
   String get hintEnterText => 'Enter text to translate...';
 
   @override
@@ -78,6 +114,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionOther => 'Other';
+
+  @override
+  String get sectionSpeech => 'Read aloud';
 
   @override
   String get targetLanguage => 'Target language';
@@ -275,6 +314,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscriptionInactive => 'No active subscription';
 
   @override
+  String get subscriptionAdminGranted =>
+      'Your plan was activated by support, not through self-serve billing. Contact us to change or cancel it.';
+
+  @override
   String get subscriptionCancel => 'Cancel subscription';
 
   @override
@@ -287,15 +330,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subscriptionCancelFailed => 'Could not cancel subscription';
-
-  @override
-  String get cancel => 'Cancel';
-
-  @override
-  String get ok => 'OK';
-
-  @override
-  String get confirm => 'Confirm';
 
   @override
   String get voicePickerTitle => 'Voice';
@@ -344,6 +378,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchLanguages => 'Search languages...';
 
   @override
+  String get recent => 'Recent';
+
+  @override
+  String get allLanguages => 'All languages';
+
+  @override
   String get login => 'Login';
 
   @override
@@ -369,6 +409,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nameHint => 'Your name';
+
+  @override
+  String get nameRequired => 'Name is required';
+
+  @override
+  String get emailRequired => 'Email is required';
+
+  @override
+  String get emailInvalid => 'Enter a valid email';
+
+  @override
+  String get passwordRequired => 'Password is required';
+
+  @override
+  String get passwordMinSix => 'At least 6 characters';
+
+  @override
+  String get proDeviceLimitError =>
+      'Pro account already registered on max devices';
+
+  @override
+  String get deviceLimitError => 'Too many accounts on this device';
+
+  @override
+  String googleSignInFailed(String error) {
+    return 'Google sign-in failed: $error';
+  }
+
+  @override
+  String get googleNotConfigured =>
+      'Google sign-in not configured (missing serverClientId)';
+
+  @override
+  String get googleSignInNoIdToken =>
+      'Google sign-in returned no idToken — check serverClientId';
 
   @override
   String get proRequired => 'Pro plan required';
@@ -400,4 +475,381 @@ class AppLocalizationsEn extends AppLocalizations {
   String usageCharacters(int used, int limit) {
     return '$used/$limit chars';
   }
+
+  @override
+  String trialEndsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'days',
+      one: 'day',
+    );
+    return 'Trial ends in $days $_temp0';
+  }
+
+  @override
+  String get trialEndsToday => 'Trial ends today';
+
+  @override
+  String get trialEndsTomorrow => 'Trial ends tomorrow';
+
+  @override
+  String get trialUpgradeNow => 'Upgrade now';
+
+  @override
+  String get trialAlreadyUsed => 'You\'ve already used your free trial';
+
+  @override
+  String get subscriptionExpiredBanner => 'Your subscription has expired';
+
+  @override
+  String get subscriptionExpiredRenew => 'Renew';
+
+  @override
+  String subscriptionEndsOn(String date) {
+    return 'Ends $date';
+  }
+
+  @override
+  String get planMobileSubscription => 'Mobile subscription';
+
+  @override
+  String get planProSubscription => 'Pro subscription';
+
+  @override
+  String get discountFirstMonth => '−50% first month';
+
+  @override
+  String get accountBannedTitle => 'Account suspended';
+
+  @override
+  String get accountBannedBody =>
+      'Your TransKey account has been suspended. Please contact support if you believe this is a mistake.';
+
+  @override
+  String get accountBannedContact => 'Contact support';
+
+  @override
+  String get accountBannedLogout => 'Log out';
+
+  @override
+  String get historyTitle => 'History';
+
+  @override
+  String get historySearchHint => 'Search history...';
+
+  @override
+  String get historyFilterAll => 'All';
+
+  @override
+  String get historyFilterFavorites => '★ Favorites';
+
+  @override
+  String get historyFilterLocked => '🔒 Locked';
+
+  @override
+  String get historyMenuClearAll => 'Clear all';
+
+  @override
+  String get historyMenuKeepFavorites => 'Keep favorites only';
+
+  @override
+  String get historyClearDialogTitle => 'Clear history';
+
+  @override
+  String get historyClearDialogBody =>
+      'Delete all history? Locked entries will be kept.';
+
+  @override
+  String get historyKeepFavDialogBody =>
+      'Delete all non-favorite entries? Locked entries will be kept.';
+
+  @override
+  String get historyDetailSourceLabel => 'Source';
+
+  @override
+  String get historyDetailTranslationLabel => 'Translation';
+
+  @override
+  String get historyDetailRomanizationLabel => 'Romanization';
+
+  @override
+  String get historyDetailFavoriteBadge => '★ Favorite';
+
+  @override
+  String get historyDetailLockedBadge => '🔒 Locked';
+
+  @override
+  String get historyDetailCopyTranslation => 'Copy\ntranslation';
+
+  @override
+  String get historyDetailCopySource => 'Copy\nsource';
+
+  @override
+  String get historyDetailUnfavorite => 'Unfavorite';
+
+  @override
+  String get historyDetailFavoriteAction => 'Favorite';
+
+  @override
+  String get historyDetailUnlock => 'Unlock';
+
+  @override
+  String get historyDetailLockAction => 'Lock';
+
+  @override
+  String get historyDetailTtsLabel => 'TTS';
+
+  @override
+  String glossaryTitle(int count, int max) {
+    return 'Glossary ($count/$max)';
+  }
+
+  @override
+  String get glossarySync => 'Sync';
+
+  @override
+  String get glossaryDeleteTitle => 'Delete entry';
+
+  @override
+  String glossaryDeleteBody(String source) {
+    return 'Delete \"$source\"?';
+  }
+
+  @override
+  String glossaryLimitReached(int max) {
+    return 'Glossary limit reached ($max)';
+  }
+
+  @override
+  String get glossarySourceTargetRequired => 'Source and target are required';
+
+  @override
+  String get glossarySyncFailed => 'Failed to sync glossary';
+
+  @override
+  String get glossaryEditTitle => 'Edit entry';
+
+  @override
+  String get glossaryAddTitle => 'Add entry';
+
+  @override
+  String get glossarySourceLabel => 'Source';
+
+  @override
+  String get glossarySourceHint => 'Word or phrase';
+
+  @override
+  String get glossaryTargetLabel => 'Target';
+
+  @override
+  String get glossaryTargetHint => 'Translation';
+
+  @override
+  String get upgradeScreenTitle => 'Upgrade TransKey';
+
+  @override
+  String get upgradeChooseYourPlan => 'Choose your plan';
+
+  @override
+  String get upgradeUnlockFullPower => 'Unlock the full power of TransKey';
+
+  @override
+  String get upgradeCurrentLabel => 'Current';
+
+  @override
+  String get upgradePopularBadge => 'Popular';
+
+  @override
+  String get upgradeTryFreeDays => 'Try free for 7 days';
+
+  @override
+  String upgradeTrialActivated(String info) {
+    return 'Trial activated! $info';
+  }
+
+  @override
+  String get upgradeTrialActivateFailed => 'Failed to activate trial';
+
+  @override
+  String get upgradeCheckoutFailed => 'Failed to open checkout';
+
+  @override
+  String get upgradeMobileSubtitle => 'All features, mobile only';
+
+  @override
+  String get upgradeProSubtitle => 'All features, all platforms';
+
+  @override
+  String get upgradeFreeFeat1 => 'Translate';
+
+  @override
+  String get upgradeFreeFeat2 => '20 req/day';
+
+  @override
+  String get upgradeFreeFeat3 => '2000 chars/day';
+
+  @override
+  String get upgradeFreeFeat4 => 'Glossary';
+
+  @override
+  String get upgradeMobileFeat1 => 'All features';
+
+  @override
+  String get upgradeMobileFeat2 => 'iOS & Android';
+
+  @override
+  String get upgradeMobileFeat3 => 'Unlimited';
+
+  @override
+  String get upgradeProFeat1 => 'All features';
+
+  @override
+  String get upgradeProFeat2 => 'All platforms';
+
+  @override
+  String get upgradeProFeat3 => 'Desktop + Mobile';
+
+  @override
+  String get upgradeFeatureColumn => 'Feature';
+
+  @override
+  String get upgradeMobilePrice => '📱 Mobile · \$3/mo';
+
+  @override
+  String get upgradeProPrice => '💻 Pro · \$6/mo';
+
+  @override
+  String get upgradeFooterHint =>
+      '📱 Mobile: best value if you only use your phone\n💻 Pro: works on both phone and desktop';
+
+  @override
+  String get comparisonReplyTranslate => 'Reply translate';
+
+  @override
+  String get comparisonMobileApps => '📱 iOS & Android';
+
+  @override
+  String get comparisonDesktop => '💻 Desktop';
+
+  @override
+  String nudgeUnlock(String feature) {
+    return 'Unlock $feature';
+  }
+
+  @override
+  String get nudgeMobileCopy =>
+      'Upgrade to Pro to use this feature\nacross all platforms.';
+
+  @override
+  String get nudgeChoosePlan => 'Choose a plan that fits your needs.';
+
+  @override
+  String get nudgeMaybeLater => 'Maybe later';
+
+  @override
+  String get nudgeMobileTitle => '📱 Mobile';
+
+  @override
+  String get nudgeProTitle => '💻 Pro';
+
+  @override
+  String get nudgeUpgradeToPro => 'Upgrade to Pro';
+
+  @override
+  String get nudgeUpgradeToProSubtitle =>
+      'Use on all platforms — desktop + mobile';
+
+  @override
+  String get nudgePriceMobile => '\$3/month';
+
+  @override
+  String get nudgePriceProMonthly => '\$6/month';
+
+  @override
+  String get onboardWelcomeTitle => 'Welcome to TransKey';
+
+  @override
+  String get onboardWelcomeSubtitle =>
+      'Translate text in real-time across\n20+ languages instantly.';
+
+  @override
+  String get onboardChooseTitle => 'Choose Your Language';
+
+  @override
+  String get onboardChooseSubtitle =>
+      'Pick your preferred target language.\nYou can change it anytime in settings.';
+
+  @override
+  String get onboardStartedTitle => 'Get Started';
+
+  @override
+  String get onboardStartedSubtitle =>
+      'Sign in or create a free account\nto start translating now.';
+
+  @override
+  String get onboardGetStarted => 'Get Started';
+
+  @override
+  String get setupTitle => 'Setup Keyboard';
+
+  @override
+  String get setupOpenSettings => 'Open Settings';
+
+  @override
+  String get setupOpenPermissions => 'Open Permissions';
+
+  @override
+  String get setupStep1TitleIOS => 'Add TransKey Keyboard';
+
+  @override
+  String get setupStep1TitleAndroid => 'Enable Floating Bubble';
+
+  @override
+  String get setupStep1DescIOS =>
+      'Go to Settings and add TransKey as a custom keyboard so you can translate directly while typing.';
+
+  @override
+  String get setupStep1DescAndroid =>
+      'Allow TransKey to display over other apps so the floating bubble can appear when you need it.';
+
+  @override
+  String get setupStep2Title => 'Allow Full Access';
+
+  @override
+  String get setupStep2DescIOS =>
+      'Tap TransKey in the keyboard list and enable \"Allow Full Access\". This is needed to connect to the internet for translations.';
+
+  @override
+  String get setupStep2DescAndroid =>
+      'The overlay permission lets TransKey show a floating bubble on top of other apps for quick translations.';
+
+  @override
+  String get setupStep3Title => 'You\'re All Set!';
+
+  @override
+  String get setupStep3DescIOS =>
+      'When typing in any app, long-press the globe key 🌐 to switch to TransKey. Tap \"Reply\" to translate your message instantly.';
+
+  @override
+  String get setupStep3DescAndroid =>
+      'Select text in any app and share it to TransKey, or use the floating bubble for quick translations.';
+
+  @override
+  String get setupStep4Title => 'Translate from Any App';
+
+  @override
+  String get setupStep4DescIOS =>
+      'Select any text → tap \"Share\" → choose TransKey. Or copy text and open TransKey — it reads your clipboard automatically.';
+
+  @override
+  String get setupStep4DescAndroid =>
+      'Select text in any app → tap \"Share\" → choose TransKey. Or use the floating bubble after copying text.';
+
+  @override
+  String get setupStep5Title => 'Smart Features';
+
+  @override
+  String get setupStep5Desc =>
+      'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.';
 }

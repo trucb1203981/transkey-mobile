@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey có thể dán câu trả lời thẳng vào ô nhập đang được focus của bất kỳ app nào khi bạn nhấn "Dán trả lời" trên bubble. Văn bản chỉ được đọc hoặc ghi khi bạn kích hoạt — không theo dõi nền.</string>
+
+    <string name="bubble_choose_action">Chọn hành động</string>
+    <string name="bubble_using_selection">Đang dùng văn bản đã chọn.</string>
+    <string name="bubble_need_text">Chọn hoặc copy văn bản trước, rồi chọn hành động bên dưới.</string>
+    <string name="bubble_show_last_result">Xem kết quả gần nhất</string>
+    <string name="bubble_type_text">Nhập văn bản</string>
+    <string name="bubble_input_hint">Nhập nội dung cần dịch…</string>
+    <string name="bubble_input_paste">Dán</string>
+    <string name="bubble_input_clear">Xoá</string>
+    <string name="bubble_action_translate">Dịch</string>
+    <string name="bubble_cancel">Hủy</string>
+    <string name="bubble_mode_translate">Dịch</string>
+    <string name="bubble_mode_reply">Trả lời</string>
+    <string name="bubble_mode_summarize">Tóm tắt</string>
+    <string name="bubble_mode_explain">Giải thích</string>
+    <string name="bubble_mode_refine">Tinh chỉnh</string>
+
+    <string name="bubble_settings">Cài đặt</string>
+    <string name="bubble_translate_tone">Tone dịch</string>
+    <string name="bubble_reply_tone">Tone trả lời</string>
+    <string name="bubble_speech_rate">Tốc độ đọc</string>
+    <string name="bubble_romanization">Phiên âm (Romaji/Pinyin)</string>
+    <string name="bubble_reply_suggestions">Gợi ý trả lời</string>
+
+    <string name="bubble_tone_auto">Auto</string>
+    <string name="bubble_tone_business">Công việc</string>
+    <string name="bubble_tone_casual">Thân mật</string>
+    <string name="bubble_tone_formal">Trang trọng</string>
+    <string name="bubble_tone_polite">Lịch sự</string>
+    <string name="bubble_tone_technical">Kỹ thuật</string>
+    <string name="bubble_tone_neutral">Trung tính</string>
+    <string name="bubble_reply_tone_same">Giống tone dịch</string>
+
+    <string name="process_text_translate">TransKey: Dịch</string>
+    <string name="process_text_reply">TransKey: Trả lời</string>
+    <string name="process_text_summarize">TransKey: Tóm tắt</string>
+    <string name="process_text_explain">TransKey: Giải thích</string>
+    <string name="process_text_refine">TransKey: Tinh chỉnh</string>
+</resources>

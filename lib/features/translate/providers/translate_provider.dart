@@ -77,7 +77,7 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
     final tone = body['toneOverride'] ?? '';
     final roman = body['withRomanization'] == true ? '1' : '0';
     final isReply = body['isReply'] == true ? '1' : '0';
-    final suggestions = body['withSuggestions'] == true ? '1' : '0';
+    final suggestions = body['suggestReplies'] == true ? '1' : '0';
     final source = body['sourceLang'] ?? 'auto';
     return '$text|$source|$targetLang|${mode.value}|$tone|$roman|$isReply|$suggestions';
   }
@@ -112,7 +112,13 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         if (src != 'auto') 'sourceLang': src,
         if (s.romanization) 'withRomanization': true,
         if (tone.isNotEmpty) 'toneOverride': tone,
-        if (isReply && s.replySuggestions) 'withSuggestions': true,
+        // Backend DTO uses `suggestReplies` (see translate-web TranslateDto);
+        // any other key — `withSuggestions`, `suggestions` — is silently
+        // dropped by class-validator and the user never gets quick replies.
+        // Only meaningful in plain translate mode: Reply mode already
+        // generates a single targeted reply, so a second "suggest more
+        // replies" pass would be redundant + cost extra tokens.
+        if (!isReply && s.replySuggestions) 'suggestReplies': true,
       },
     );
   }

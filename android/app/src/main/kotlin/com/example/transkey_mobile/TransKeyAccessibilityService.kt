@@ -1,7 +1,11 @@
 package com.example.transkey_mobile
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
@@ -15,6 +19,8 @@ import android.view.accessibility.AccessibilityNodeInfo
 class TransKeyAccessibilityService : AccessibilityService() {
 
     companion object {
+        private const val TAG = "TransKeyA11y"
+
         @Volatile
         var instance: TransKeyAccessibilityService? = null
 
@@ -43,22 +49,72 @@ class TransKeyAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Replace text in the currently focused editable field across the active
-     * window. Returns true on success.
+     * Replace text in the currently focused editable field. Tries three
+     * strategies in order — different apps respond to different actions:
+     *
+     *   1. ACTION_SET_TEXT alone — works for most native EditText.
+     *   2. ACTION_FOCUS + ACTION_SET_TEXT — some apps lose input focus when an
+     *      overlay appears (even if FLAG_NOT_FOCUSABLE) and need an explicit
+     *      re-focus before they accept SET_TEXT.
+     *   3. Clipboard + ACTION_SET_SELECTION (select all) + ACTION_PASTE —
+     *      fallback for WebView, Jetpack Compose TextField, and React Native
+     *      TextInput, which silently no-op ACTION_SET_TEXT.
+     *
+     * Returns true if ANY strategy succeeded.
      */
     fun replaceFocusedText(text: String): Boolean {
-        val node = findFocusedEditable() ?: return false
-        return try {
-            val args = Bundle().apply {
-                putCharSequence(
-                    AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                    text,
-                )
-            }
-            node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-        } catch (e: Exception) {
-            false
+        val node = findFocusedEditable() ?: run {
+            Log.w(TAG, "replaceFocusedText: no focused editable node found")
+            return false
         }
+
+        val setTextArgs = Bundle().apply {
+            putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                text,
+            )
+        }
+
+        // Strategy 1
+        if (safePerform(node, AccessibilityNodeInfo.ACTION_SET_TEXT, setTextArgs)) {
+            Log.d(TAG, "paste: SET_TEXT ok")
+            return true
+        }
+
+        // Strategy 2 — refresh + focus + retry
+        if (node.refresh()) {
+            if (safePerform(node, AccessibilityNodeInfo.ACTION_FOCUS, null)) {
+                if (safePerform(node, AccessibilityNodeInfo.ACTION_SET_TEXT, setTextArgs)) {
+                    Log.d(TAG, "paste: FOCUS+SET_TEXT ok")
+                    return true
+                }
+            }
+        }
+
+        // Strategy 3 — clipboard + select all + PASTE
+        // ACTION_PASTE is supported by AbsListView/EditText/WebView consistently,
+        // unlike ACTION_SET_TEXT which is opt-in per widget.
+        try {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText("TransKey", text))
+        } catch (e: Exception) {
+            Log.w(TAG, "paste: clipboard set failed: ${e.message}")
+            return false
+        }
+
+        // Select all existing text so PASTE replaces, doesn't append.
+        val existing = node.text?.length ?: 0
+        if (existing > 0) {
+            val selectArgs = Bundle().apply {
+                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 0)
+                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, existing)
+            }
+            safePerform(node, AccessibilityNodeInfo.ACTION_SET_SELECTION, selectArgs)
+        }
+
+        val pasted = safePerform(node, AccessibilityNodeInfo.ACTION_PASTE, null)
+        Log.d(TAG, "paste: CLIPBOARD+PASTE result=$pasted")
+        return pasted
     }
 
     /**
@@ -71,8 +127,35 @@ class TransKeyAccessibilityService : AccessibilityService() {
 
     private fun findFocusedEditable(): AccessibilityNodeInfo? {
         val root = rootInActiveWindow ?: return null
-        val node = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return null
-        return if (node.isEditable) node else null
+        // Prefer the input-focused node (where the cursor is). Some apps mark
+        // a non-editable ancestor as input-focused — climb up until we find
+        // an editable, or fall back to a recursive search.
+        val direct = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (direct?.isEditable == true) return direct
+        return findFirstEditable(root)
+    }
+
+    private fun findFirstEditable(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+        if (node == null) return null
+        if (node.isEditable && node.isFocused) return node
+        for (i in 0 until node.childCount) {
+            val result = findFirstEditable(node.getChild(i))
+            if (result != null) return result
+        }
+        return null
+    }
+
+    private fun safePerform(
+        node: AccessibilityNodeInfo,
+        action: Int,
+        args: Bundle?,
+    ): Boolean {
+        return try {
+            node.performAction(action, args)
+        } catch (e: Exception) {
+            Log.w(TAG, "performAction $action failed: ${e.message}")
+            false
+        }
     }
 
     /**

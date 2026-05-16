@@ -4,7 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../providers/plans_provider.dart';
+import '../providers/usage_provider.dart';
 
 class UpgradeScreen extends ConsumerStatefulWidget {
   const UpgradeScreen({super.key});
@@ -26,22 +29,43 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final plan = _currentPlan;
+    final l = AppLocalizations.of(context)!;
+    final usage = ref.watch(usageProvider).valueOrNull;
+    final plansAsync = ref.watch(plansProvider);
+    // Hide the 7-day-trial CTA once the user has used it — backend rejects a
+    // second attempt anyway, and showing the button leads to a confusing
+    // "Failed to activate trial" toast.
+    final canActivateTrial = !(usage?.trialUsed ?? false);
+    // First-month half-price discount: badge on the Pro card + appended to
+    // the checkout button so the price is honest.
+    final hasDiscount = usage?.firstMonthDiscount ?? false;
+
+    // Server is the source of truth for prices, feature lists, and limits.
+    // Fall back to a sensible default while the request is in flight or if
+    // it fails — the user can still see the comparison and proceed to
+    // checkout, but with cached values that may be slightly stale.
+    final plans = plansAsync.valueOrNull;
+    final mobilePlan = planByKey(plans, 'mobile');
+    final proPlan = planByKey(plans, 'pro');
+    final freePlan = planByKey(plans, 'free');
+    final mobilePrice = mobilePlan?.priceMonthly;
+    final proPrice = proPlan?.priceMonthly;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Upgrade TransKey')),
+      appBar: AppBar(title: Text(l.upgradeScreenTitle)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Choose your plan',
+              l.upgradeChooseYourPlan,
               style: theme.textTheme.headlineMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Unlock the full power of TransKey',
+              l.upgradeUnlockFullPower,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -50,55 +74,96 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
             const SizedBox(height: AppSpacing.xl),
 
             // ── Plan cards ──
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _planCard('FREE', '\$0', null, plan == 'free', isDark,
-                  isCurrent: plan == 'free',
-                  highlight: false,
-                  features: const ['Translate', '20 req/day', '2000 chars/day', 'Glossary'],
-                )),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(child: _planCard('📱 MOBILE', '\$3/mo', 'Popular', plan != 'free', isDark,
-                  isCurrent: plan == 'mobile',
-                  highlight: true,
-                  features: const ['All features', 'iOS & Android', 'Unlimited'],
-                )),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(child: _planCard('⭐ PRO', '\$6/mo', null, plan == 'pro', isDark,
-                  isCurrent: plan == 'pro',
-                  highlight: false,
-                  isGold: true,
-                  features: const ['All features', 'All platforms', 'Desktop + Mobile'],
-                )),
-              ],
-            ),
+            // Loading state — render skeleton-equivalent so users on slow
+            // networks don't see "no plans" briefly.
+            if (plans == null && plansAsync.isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _planCard(
+                    (freePlan?.displayName ?? l.planFree).toUpperCase(),
+                    _formatPrice(freePlan?.priceMonthly, 0),
+                    null,
+                    plan == 'free',
+                    isDark,
+                    isCurrent: plan == 'free',
+                    highlight: false,
+                    features: _featuresFor(freePlan, l, [
+                      l.upgradeFreeFeat1,
+                      l.upgradeFreeFeat2,
+                      l.upgradeFreeFeat3,
+                      l.upgradeFreeFeat4,
+                    ]),
+                  )),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: _planCard(
+                    '📱 ${(mobilePlan?.displayName ?? l.planMobile).toUpperCase()}',
+                    _formatPrice(mobilePrice, 3),
+                    l.upgradePopularBadge,
+                    plan != 'free',
+                    isDark,
+                    isCurrent: plan == 'mobile',
+                    highlight: true,
+                    features: _featuresFor(mobilePlan, l, [
+                      l.upgradeMobileFeat1,
+                      l.upgradeMobileFeat2,
+                      l.upgradeMobileFeat3,
+                    ]),
+                  )),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: _planCard(
+                    '⭐ ${(proPlan?.displayName ?? l.planPro).toUpperCase()}',
+                    _formatPrice(proPrice, 6),
+                    hasDiscount ? l.discountFirstMonth : null,
+                    plan == 'pro',
+                    isDark,
+                    isCurrent: plan == 'pro',
+                    highlight: false,
+                    isGold: true,
+                    features: _featuresFor(proPlan, l, [
+                      l.upgradeProFeat1,
+                      l.upgradeProFeat2,
+                      l.upgradeProFeat3,
+                    ]),
+                  )),
+                ],
+              ),
             const SizedBox(height: AppSpacing.xl),
 
             // ── Feature comparison ──
-            _buildComparisonTable(theme, isDark),
+            _buildComparisonTable(theme, isDark, l, plans),
             const SizedBox(height: AppSpacing.xl),
 
             // ── Action buttons ──
+            // Labels include the current price pulled from /plans so the CTA
+            // never mismatches the plan card above (e.g. if the team runs a
+            // pricing experiment server-side).
             if (plan == 'free') ...[
-              _actionButton(
-                label: 'Try free for 7 days',
-                onPressed: () => _activateTrial(),
-                isSecondary: true,
-              ),
-              const SizedBox(height: AppSpacing.sm),
+              if (canActivateTrial) ...[
+                _actionButton(
+                  label: l.upgradeTryFreeDays,
+                  onPressed: () => _activateTrial(),
+                  isSecondary: true,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
               Row(
                 children: [
                   Expanded(
                     child: _actionButton(
-                      label: '📱 Mobile · \$3/mo',
+                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice, 3)}',
                       onPressed: () => _checkout('mobile'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _actionButton(
-                      label: '💻 Pro · \$6/mo',
+                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice, 6)}',
                       onPressed: () => _checkout('pro'),
                       isGold: true,
                     ),
@@ -110,14 +175,14 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                 children: [
                   Expanded(
                     child: _actionButton(
-                      label: '📱 Mobile · \$3/mo',
+                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice, 3)}',
                       onPressed: () => _checkout('mobile'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _actionButton(
-                      label: '💻 Pro · \$6/mo',
+                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice, 6)}',
                       onPressed: () => _checkout('pro'),
                       isGold: true,
                     ),
@@ -126,7 +191,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
               ),
             ] else if (plan == 'mobile') ...[
               _actionButton(
-                label: '💻 Upgrade to Pro · \$6/mo',
+                label: '💻 ${l.upgradeToPro} · ${_formatPrice(proPrice, 6)}',
                 onPressed: () => _checkout('pro'),
                 isGold: true,
               ),
@@ -134,7 +199,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
 
             const SizedBox(height: AppSpacing.lg),
             Text(
-              '📱 Mobile: best value if you only use your phone\n💻 Pro: works on both phone and desktop',
+              l.upgradeFooterHint,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
                 height: 1.5,
@@ -220,7 +285,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Current',
+                AppLocalizations.of(context)!.upgradeCurrentLabel,
                 style: TextStyle(fontSize: 10, color: accentColor, fontWeight: FontWeight.w600),
               ),
             ),
@@ -243,7 +308,35 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
 
   // ── Comparison table ──
 
-  Widget _buildComparisonTable(ThemeData theme, bool isDark) {
+  Widget _buildComparisonTable(
+    ThemeData theme,
+    bool isDark,
+    AppLocalizations l,
+    List<PlanInfo>? plans,
+  ) {
+    // Pull the features map for each tier — drives the check / X icons.
+    // Fall back to hardcoded availability so the table still renders before
+    // /plans completes or if the API is down.
+    final freeFeat = planByKey(plans, 'free')?.features ?? const {};
+    final mobileFeat = planByKey(plans, 'mobile')?.features ?? const {};
+    final proFeat = planByKey(plans, 'pro')?.features ?? const {};
+
+    bool has(Map<String, bool> map, String key, bool fallback) =>
+        map.containsKey(key) ? (map[key] ?? false) : fallback;
+
+    // Comparison rows: (label, server feature key, fallback availability per
+    // tier). The fallback triple kicks in only when /plans hasn't returned
+    // a value for that key — once it does, the API wins.
+    final rows = [
+      (l.translate, 'translate', (true, true, true)),
+      (l.summarize, 'summarize', (false, true, true)),
+      (l.explain, 'explain', (false, true, true)),
+      (l.refine, 'refine', (false, true, true)),
+      (l.comparisonReplyTranslate, 'reply', (false, true, true)),
+      (l.romanization, 'romanization', (false, true, true)),
+      (l.glossary, 'glossary', (true, true, true)),
+    ];
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : AppColors.surfaceLight,
@@ -252,31 +345,32 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
       ),
       child: Column(
         children: [
-          _tableHeader(isDark),
+          _tableHeader(isDark, l),
           const Divider(height: 1),
-          _tableRow('Translate', true, true, true, isDark),
-          _tableRow('Summarize', false, true, true, isDark),
-          _tableRow('Explain', false, true, true, isDark),
-          _tableRow('Refine', false, true, true, isDark),
-          _tableRow('Reply translate', false, true, true, isDark),
-          _tableRow('Romanization', false, true, true, isDark),
-          _tableRow('Glossary', true, true, true, isDark),
-          _tableRow('📱 iOS & Android', true, true, true, isDark),
-          _tableRow('💻 Desktop', false, false, true, isDark, highlight: true),
+          for (final (label, key, fb) in rows)
+            _tableRow(
+              label,
+              has(freeFeat, key, fb.$1),
+              has(mobileFeat, key, fb.$2),
+              has(proFeat, key, fb.$3),
+              isDark,
+            ),
+          _tableRow(l.comparisonMobileApps, true, true, true, isDark),
+          _tableRow(l.comparisonDesktop, false, false, true, isDark, highlight: true),
         ],
       ),
     );
   }
 
-  Widget _tableHeader(bool isDark) {
+  Widget _tableHeader(bool isDark, AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.sm),
-      child: const Row(
+      child: Row(
         children: [
-          Expanded(flex: 3, child: Text('Feature', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
-          Expanded(child: Text('Free', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-          Expanded(child: Text('Mobile', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-          Expanded(child: Text('Pro', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+          Expanded(flex: 3, child: Text(l.upgradeFeatureColumn, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+          Expanded(child: Text(l.planFree, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+          Expanded(child: Text(l.planMobile, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+          Expanded(child: Text(l.planPro, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
         ],
       ),
     );
@@ -373,9 +467,10 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
               );
         }
         if (mounted) {
+          final info = data['trialEndsAt']?.toString() ?? '7 days';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Trial activated! ${data['trialEndsAt'] ?? '7 days remaining'}'),
+              content: Text(AppLocalizations.of(context)!.upgradeTrialActivated(info)),
               backgroundColor: AppColors.green,
             ),
           );
@@ -384,7 +479,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to activate trial'), backgroundColor: AppColors.red),
+          SnackBar(content: Text(AppLocalizations.of(context)!.upgradeTrialActivateFailed), backgroundColor: AppColors.red),
         );
       }
     } finally {
@@ -404,11 +499,35 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to open checkout'), backgroundColor: AppColors.red),
+          SnackBar(content: Text(AppLocalizations.of(context)!.upgradeCheckoutFailed), backgroundColor: AppColors.red),
         );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Render a monthly price label, e.g. `$3/mo`. Uses the API-returned
+  /// value when available, else [fallbackDollars]. `0` (free) and `null`
+  /// both render as `$0`.
+  String _formatPrice(num? price, num fallbackDollars) {
+    final value = price ?? fallbackDollars;
+    if (value == 0) return '\$0';
+    // Trim trailing zeros — `3.0` → `3`, `3.50` → `3.5`.
+    final str = value % 1 == 0 ? value.toInt().toString() : value.toString();
+    return '\$$str/mo';
+  }
+
+  /// Pick highlights to show on a plan card. Prefer the server's curated
+  /// `highlights` array; fall back to the i18n defaults so the UI never
+  /// renders an empty card before /plans resolves.
+  List<String> _featuresFor(
+    PlanInfo? plan,
+    AppLocalizations l,
+    List<String> fallback,
+  ) {
+    final hl = plan?.highlights;
+    if (hl != null && hl.isNotEmpty) return hl;
+    return fallback;
   }
 }

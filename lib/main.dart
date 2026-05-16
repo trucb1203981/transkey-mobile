@@ -80,6 +80,11 @@ Future<void> _translateForBubble(
     }
 
     final prefs = await SharedPreferences.getInstance();
+    // The floating bubble's settings sheet writes directly to native
+    // SharedPreferences. Without reload() the Dart-side cache returns stale
+    // values, so a toggle the user just flipped in the popup would have no
+    // effect on the very next bubble-triggered translation.
+    await prefs.reload();
     final romanizationEnabled = prefs.getBool('tk_romanization') ?? false;
     final sourceLang = prefs.getString('tk_source_lang') ?? 'auto';
     final toneValue = prefs.getString('tk_tone_override') ?? '';
@@ -115,7 +120,10 @@ Future<void> _translateForBubble(
           if (sourceLang != 'auto') 'sourceLang': sourceLang,
           if (romanizationEnabled) 'withRomanization': true,
           if (effectiveTone.isNotEmpty) 'toneOverride': effectiveTone,
-          if (replySuggestions) 'withSuggestions': true,
+          // Reply mode produces a single targeted reply that the user pastes
+          // straight back — suggesting more replies on top would just be
+          // noise (and pay for a bigger combined prompt). Suggestions live
+          // on the plain translate flow only.
         },
       'translate' => {
           'text': text,
@@ -123,6 +131,11 @@ Future<void> _translateForBubble(
           if (sourceLang != 'auto') 'sourceLang': sourceLang,
           if (romanizationEnabled) 'withRomanization': true,
           if (effectiveTone.isNotEmpty) 'toneOverride': effectiveTone,
+          // Match desktop: ask for quick-reply suggestions on the regular
+          // translate flow too. Backend gates with `looksConversational(text)`
+          // so non-conversational input still pays only the translate-only
+          // prompt cost.
+          if (replySuggestions) 'suggestReplies': true,
         },
       _ => {
           'text': text,
@@ -150,10 +163,26 @@ Future<void> _translateForBubble(
     }
     final romanization = data?['romanization'] as String?;
     final detectedLang = data?['detectedLang'] as String?;
+    // Suggestions arrive as [{source, target}, ...]. Pass as two parallel
+    // string arrays so the platform channel can use plain primitives — the
+    // popup renders both (bilingual, like desktop) and copies the SOURCE
+    // string on tap (the reply to send back to the conversation partner).
+    final rawSuggestions = data?['suggestions'] as List?;
+    final pairs = rawSuggestions
+            ?.whereType<Map>()
+            .map((s) => (
+                  source: (s['source'] as String? ?? '').trim(),
+                  target: (s['target'] as String? ?? '').trim(),
+                ))
+            .where((p) => p.source.isNotEmpty || p.target.isNotEmpty)
+            .toList(growable: false) ??
+        const [];
     await _sendResultToBubble(
       translation: output,
       romanization: romanization,
       detectedLang: detectedLang,
+      suggestionSources: pairs.map((p) => p.source).toList(growable: false),
+      suggestionTargets: pairs.map((p) => p.target).toList(growable: false),
       requestId: requestId,
     );
 
@@ -206,6 +235,8 @@ Future<void> _sendResultToBubble({
   String? translation,
   String? romanization,
   String? detectedLang,
+  List<String>? suggestionSources,
+  List<String>? suggestionTargets,
   String? error,
   required int requestId,
 }) async {
@@ -214,6 +245,8 @@ Future<void> _sendResultToBubble({
       'translation': translation,
       'romanization': romanization,
       'detectedLang': detectedLang,
+      'suggestionSources': suggestionSources,
+      'suggestionTargets': suggestionTargets,
       'error': error,
       'requestId': requestId,
     });

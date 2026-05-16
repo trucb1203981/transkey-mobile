@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
+import 'toast.dart';
 
 class CopyButton extends StatefulWidget {
   const CopyButton({
@@ -29,14 +31,10 @@ class _CopyButtonState extends State<CopyButton> {
     setState(() => _copied = true);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Copied'),
-          duration: Duration(seconds: 1),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      // Use overlay toast so it stays visible even when this button is
+      // rendered inside a modal bottom sheet (Settings screens, history
+      // detail sheet, etc).
+      showAppToast(context, AppLocalizations.of(context)!.copied);
     }
 
     await Future.delayed(const Duration(seconds: 2));

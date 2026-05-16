@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/dio_client.dart';
+import '../models/language.dart';
 
 class FeatureFlags {
   const FeatureFlags({
@@ -13,6 +14,9 @@ class FeatureFlags {
     this.glossary = true,
     this.toneOverride = false,
     this.romanization = false,
+    this.allowedTargetLangs = const <String>[],
+    this.allowedSourceLangs = const <String>[],
+    this.allowedReplyTargetLangs = const <String>[],
   });
 
   final bool translate;
@@ -25,6 +29,12 @@ class FeatureFlags {
   final bool toneOverride;
   final bool romanization;
 
+  /// Empty list = unrestricted (every language in the catalog is offered).
+  /// Non-empty = client must intersect with the catalog before showing.
+  final List<String> allowedTargetLangs;
+  final List<String> allowedSourceLangs;
+  final List<String> allowedReplyTargetLangs;
+
   factory FeatureFlags.fromMap(Map<String, dynamic> map) => FeatureFlags(
         translate: map['translate'] as bool? ?? true,
         summarize: map['summarize'] as bool? ?? false,
@@ -35,7 +45,43 @@ class FeatureFlags {
         glossary: map['glossary'] as bool? ?? true,
         toneOverride: map['tone_override'] as bool? ?? false,
         romanization: map['romanization'] as bool? ?? false,
+        allowedTargetLangs: _asStringList(map['allowed_target_langs']),
+        allowedSourceLangs: _asStringList(map['allowed_source_langs']),
+        allowedReplyTargetLangs:
+            _asStringList(map['allowed_reply_target_langs']),
       );
+}
+
+List<String> _asStringList(dynamic raw) {
+  if (raw is List) {
+    return raw.whereType<String>().toList(growable: false);
+  }
+  return const <String>[];
+}
+
+List<Language> _parseLanguages(dynamic raw) {
+  if (raw is! List) return const <Language>[];
+  final out = <Language>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final code = item['code'] as String?;
+    if (code == null || code.isEmpty) continue;
+    if (item['enabled'] == false) continue;
+    // Backend `label` is "🇰🇷 한국어" — flag + native name. Strip the flag
+    // for mobile since iOS/Android render flags inconsistently and the
+    // Material list tile shows them as raw codepoints. Native name alone
+    // reads cleaner. English name (separate field) is the subtitle.
+    final label = (item['label'] as String?) ?? code;
+    final firstSpace = label.indexOf(' ');
+    final native = firstSpace >= 0 ? label.substring(firstSpace + 1).trim() : label;
+    out.add(Language(
+      code: code,
+      nativeName: native.isEmpty ? code : native,
+      name: item['english_name'] as String?,
+      isLowResource: item['is_low_resource'] as bool? ?? false,
+    ));
+  }
+  return out;
 }
 
 class FeaturesState {
@@ -79,9 +125,14 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
     try {
       final api = ref.read(apiClientProvider);
       final response = await api.dio.get('/features');
-      final flags = FeatureFlags.fromMap(
-        response.data as Map<String, dynamic>,
-      );
+      final data = response.data as Map<String, dynamic>;
+      final flags = FeatureFlags.fromMap(data);
+      // Update the catalog lookup *before* notifying listeners so widgets
+      // re-rendered by the state change see fresh language names.
+      final languages = _parseLanguages(data['languages']);
+      if (languages.isNotEmpty) {
+        setDynamicLanguageCatalog(languages);
+      }
       state = FeaturesState(
         flags: flags,
         fetchedAt: DateTime.now(),

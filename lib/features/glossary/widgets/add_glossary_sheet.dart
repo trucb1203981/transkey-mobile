@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../models/glossary_entry.dart';
 
@@ -49,6 +50,7 @@ class _AddGlossarySheetState extends State<AddGlossarySheet> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final l = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -80,7 +82,7 @@ class _AddGlossarySheetState extends State<AddGlossarySheet> {
               ),
 
               Text(
-                _isEditing ? 'Edit entry' : 'Add entry',
+                _isEditing ? l.glossaryEditTitle : l.glossaryAddTitle,
                 style: theme.textTheme.titleLarge,
               ),
               const SizedBox(height: AppSpacing.md),
@@ -90,12 +92,12 @@ class _AddGlossarySheetState extends State<AddGlossarySheet> {
                 controller: _sourceController,
                 autofocus: !_isEditing,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Source',
-                  hintText: 'Word or phrase',
+                decoration: InputDecoration(
+                  labelText: l.glossarySourceLabel,
+                  hintText: l.glossarySourceHint,
                 ),
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (v == null || v.trim().isEmpty) return l.required;
                   return null;
                 },
               ),
@@ -105,12 +107,12 @@ class _AddGlossarySheetState extends State<AddGlossarySheet> {
               TextFormField(
                 controller: _targetController,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Target',
-                  hintText: 'Translation',
+                decoration: InputDecoration(
+                  labelText: l.glossaryTargetLabel,
+                  hintText: l.glossaryTargetHint,
                 ),
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (v == null || v.trim().isEmpty) return l.required;
                   return null;
                 },
               ),
@@ -122,14 +124,14 @@ class _AddGlossarySheetState extends State<AddGlossarySheet> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: Text(l.cancel),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _submit,
-                      child: Text(_isEditing ? 'Save' : 'Add'),
+                      child: Text(_isEditing ? l.saveAction : l.addAction),
                     ),
                   ),
                 ],

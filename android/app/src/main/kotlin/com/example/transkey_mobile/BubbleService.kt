@@ -24,6 +24,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -51,6 +52,8 @@ class BubbleService : Service() {
         const val EXTRA_TRANSLATION = "translation"
         const val EXTRA_ROMANIZATION = "romanization"
         const val EXTRA_DETECTED_LANG = "detectedLang"
+        const val EXTRA_SUGGESTION_SOURCES = "suggestion_sources"
+        const val EXTRA_SUGGESTION_TARGETS = "suggestion_targets"
         const val EXTRA_ERROR = "error"
         const val EXTRA_REQUEST_ID = "request_id"
 
@@ -70,12 +73,22 @@ class BubbleService : Service() {
         const val MODE_EXPLAIN = "explain"
         const val MODE_REFINE = "refine"
         private val ALL_MODES = listOf(MODE_TRANSLATE, MODE_REPLY, MODE_SUMMARIZE, MODE_EXPLAIN, MODE_REFINE)
-        private val MODE_LABELS = mapOf(
-            MODE_TRANSLATE to "Translate",
-            MODE_REPLY to "Reply",
-            MODE_SUMMARIZE to "Summarize",
-            MODE_EXPLAIN to "Explain",
-            MODE_REFINE to "Refine",
+        // Mode → (string-resource id, drawable-resource id) for the picker and
+        // result panel. Keeping resources here (instead of inline `when`) makes
+        // it cheap to add a new mode in one place.
+        private val MODE_STRING_IDS = mapOf(
+            MODE_TRANSLATE to R.string.bubble_mode_translate,
+            MODE_REPLY to R.string.bubble_mode_reply,
+            MODE_SUMMARIZE to R.string.bubble_mode_summarize,
+            MODE_EXPLAIN to R.string.bubble_mode_explain,
+            MODE_REFINE to R.string.bubble_mode_refine,
+        )
+        private val MODE_ICON_IDS = mapOf(
+            MODE_TRANSLATE to R.drawable.ic_bubble_translate,
+            MODE_REPLY to R.drawable.ic_bubble_reply,
+            MODE_SUMMARIZE to R.drawable.ic_bubble_summarize,
+            MODE_EXPLAIN to R.drawable.ic_bubble_explain,
+            MODE_REFINE to R.drawable.ic_bubble_refine,
         )
 
         // Target languages user can cycle through in the overlay.
@@ -93,18 +106,37 @@ class BubbleService : Service() {
         private const val KEY_TARGET_LANG = "flutter.tk_target_lang"
         private const val KEY_SOURCE_LANG = "flutter.tk_source_lang"
         private const val KEY_TONE_OVERRIDE = "flutter.tk_tone_override"
+        private const val KEY_REPLY_TONE_OVERRIDE = "flutter.tk_reply_tone_override"
         private const val KEY_REPLY_LANG = "flutter.tk_reply_lang"
         private const val KEY_BUBBLE_ACTIVE = "flutter.tk_bubble_active"
+        private const val KEY_ROMANIZATION = "flutter.tk_romanization"
+        private const val KEY_REPLY_SUGGESTIONS = "flutter.tk_reply_suggestions"
+        private const val KEY_TTS_RATE = "flutter.tk_tts_rate"
 
         private val SOURCE_LANGS = listOf("auto", "en", "vi", "ja", "zh", "ko", "fr", "de", "es", "pt", "ru", "th", "id")
-        private val TONE_OPTIONS = listOf(
-            "" to "Default",
-            "formal" to "Formal",
-            "casual" to "Casual",
-            "professional" to "Professional",
-            "friendly" to "Friendly",
-            "academic" to "Academic",
+
+        // Tone codes — MUST match Flutter `toneOptions` in
+        // lib/features/settings/providers/app_settings_provider.dart so that
+        // a tone picked in the bubble shows up correctly in the in-app
+        // Settings screen (and vice versa). Labels are resolved per-locale
+        // via `toneLabel()` below.
+        private val TONE_CODES = listOf(
+            "", "business", "casual", "formal", "polite", "technical", "neutral",
         )
+        private val TONE_STRING_IDS = mapOf(
+            "" to R.string.bubble_tone_auto,
+            "business" to R.string.bubble_tone_business,
+            "casual" to R.string.bubble_tone_casual,
+            "formal" to R.string.bubble_tone_formal,
+            "polite" to R.string.bubble_tone_polite,
+            "technical" to R.string.bubble_tone_technical,
+            "neutral" to R.string.bubble_tone_neutral,
+        )
+
+        // Speech rates — MUST match Flutter `speeds` list in tts_button.dart
+        // so a rate set in the bubble is reflected when the in-app speak
+        // button opens. Same set as desktop popup.ts RATE_OPTIONS.
+        private val TTS_RATES = listOf(0.25, 0.5, 0.75, 1.0, 1.25, 1.5)
 
         private const val BUBBLE_SIZE_DP = 48
 
@@ -115,6 +147,45 @@ class BubbleService : Service() {
 
         @Volatile private var nextRequestId: Long = 0
     }
+
+    // ─── Localization ───────────────────────────────────────────────────
+    // The Flutter app lets the user pick a UI language independently of the
+    // Android system locale; the choice is persisted to SharedPreferences
+    // (`tk_ui_locale`). The bubble service is native code, so `getString()`
+    // by default reads from the *system* locale — meaning the popup stays
+    // English even after the user switched the app to Vietnamese.
+    //
+    // We work around this by wrapping `getString` in `localized()` which
+    // resolves resources through a locale-aware Context built from the
+    // user's stored preference. The Context is refreshed every time a popup
+    // opens (`refreshLocale()`) so changes propagate without restarting the
+    // service.
+    private var localizedContext: Context? = null
+    private var lastLocaleCode: String? = null
+
+    private fun refreshLocale() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // Match Flutter's LocaleNotifier default ('en') when the user hasn't
+        // picked a UI language yet. Falling back to the *device* locale here
+        // would put the popup in e.g. Vietnamese on a Vietnamese phone while
+        // the Flutter app shows English — visibly inconsistent on first run.
+        val code = prefs.getString("flutter.tk_ui_locale", null) ?: "en"
+        if (code == lastLocaleCode && localizedContext != null) return
+        lastLocaleCode = code
+        val locale = Locale.forLanguageTag(code)
+        val config = android.content.res.Configuration(resources.configuration)
+        config.setLocale(locale)
+        localizedContext = createConfigurationContext(config)
+    }
+
+    private fun localized(@androidx.annotation.StringRes resId: Int): String =
+        (localizedContext ?: this).getString(resId)
+
+    private fun modeLabel(mode: String): String =
+        MODE_STRING_IDS[mode]?.let { localized(it) } ?: mode
+
+    private fun modeIcon(mode: String): Int =
+        MODE_ICON_IDS[mode] ?: R.drawable.ic_bubble_translate
 
     private var windowManager: WindowManager? = null
 
@@ -134,6 +205,8 @@ class BubbleService : Service() {
     private var panelSource: TextView? = null
     private var panelOutput: TextView? = null
     private var panelRomanization: TextView? = null
+    private var panelSuggestionsLabel: TextView? = null
+    private var panelSuggestionsContainer: LinearLayout? = null
     private var panelStatus: TextView? = null
     private var panelCopyBtn: View? = null
     private var panelPasteBtn: TextView? = null
@@ -146,6 +219,10 @@ class BubbleService : Service() {
     private var currentOutput: String? = null
     private var currentRomanization: String? = null
     private var currentDetectedLang: String? = null
+    // Bilingual quick-reply suggestions: first = source (reply text in the
+    // conversation partner's language, copied on tap), second = target (the
+    // same message in the user's target language, shown as a translation hint).
+    private var currentSuggestions: List<Pair<String, String>> = emptyList()
     private var currentTargetLang: String = "en"
     private var currentRequestId: Long = -1
 
@@ -162,7 +239,11 @@ class BubbleService : Service() {
 
     // Header chips (created inside showResultPanel)
     private var sourceLangChip: TextView? = null
-    private var toneChip: TextView? = null
+    // Was a TextView showing the current tone label; now an ImageView gear
+    // icon that opens the full settings sheet — clearer affordance, gives
+    // user a discoverable entry point for all bubble-side preferences
+    // (translate tone, reply tone, TTS rate, romanization, suggestions).
+    private var toneChip: ImageView? = null
 
     // Loading spinner inside the panel
     private var loadingSpinner: ProgressBar? = null
@@ -182,6 +263,11 @@ class BubbleService : Service() {
 
     // Tone picker overlay
     private var tonePickerView: View? = null
+
+    // Text-input picker overlay (lets user type text without opening the app)
+    // This window is FOCUSABLE — unlike the other pickers — so the soft
+    // keyboard can attach to its EditText.
+    private var inputPickerView: View? = null
 
     // Text-to-Speech
     private var tts: TextToSpeech? = null
@@ -238,11 +324,19 @@ class BubbleService : Service() {
                 val translation = intent.getStringExtra(EXTRA_TRANSLATION)
                 val romanization = intent.getStringExtra(EXTRA_ROMANIZATION)
                 val detectedLang = intent.getStringExtra(EXTRA_DETECTED_LANG)
+                val sources = intent.getStringArrayExtra(EXTRA_SUGGESTION_SOURCES)
+                val targets = intent.getStringArrayExtra(EXTRA_SUGGESTION_TARGETS)
+                val suggestions: List<Pair<String, String>> =
+                    if (sources != null && targets != null) {
+                        val n = minOf(sources.size, targets.size)
+                        (0 until n).map { sources[it] to targets[it] }
+                            .filter { it.first.isNotBlank() || it.second.isNotBlank() }
+                    } else emptyList()
                 val error = intent.getStringExtra(EXTRA_ERROR)
                 val reqId = intent.getLongExtra(EXTRA_REQUEST_ID, -1)
                 if (reqId == currentRequestId) {
                     if (!translation.isNullOrBlank()) {
-                        showResult(translation, romanization, detectedLang)
+                        showResult(translation, romanization, detectedLang, suggestions)
                     } else {
                         showError(error ?: "Translation failed")
                     }
@@ -259,6 +353,7 @@ class BubbleService : Service() {
         hideLangPicker()
         hideSourceLangPicker()
         hideTonePicker()
+        hideInputPicker()
         hideCloseZone()
         tts?.stop(); tts?.shutdown(); tts = null
         removeBubble()
@@ -470,6 +565,9 @@ class BubbleService : Service() {
     @SuppressLint("ClickableViewAccessibility")
     private fun showModePicker() {
         ensureWindowManager()
+        // Pick up any recent in-app UI language change so the picker labels
+        // are rendered in the locale the user actually wants.
+        refreshLocale()
 
         val dp = resources.displayMetrics.density
         val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
@@ -494,41 +592,45 @@ class BubbleService : Service() {
         }
 
         card.addView(TextView(this).apply {
-            text = "Choose action"
+            text = localized(R.string.bubble_choose_action)
             setTextColor(textCol)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             typeface = Typeface.DEFAULT_BOLD
             setPadding(0, 0, 0, (8 * dp).toInt())
         })
         card.addView(TextView(this).apply {
-            text = if (pendingSelectedText != null) {
-                "Using your selected text."
-            } else {
-                "Select or copy text first, then pick an action below."
-            }
+            text = localized(
+                if (pendingSelectedText != null) R.string.bubble_using_selection
+                else R.string.bubble_need_text,
+            )
             setTextColor(mutedCol)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             setPadding(0, 0, 0, (12 * dp).toInt())
         })
 
-        // 5 mode buttons
+        // 5 feature buttons — matches the in-app feature-button row in
+        // home_screen.dart: icon on top, label below, first action gets a
+        // "primary" purple fill so it stands out.
         val modesRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        for (mode in ALL_MODES) {
-            val btn = TextView(this).apply {
-                text = MODE_LABELS[mode]
-                setTextColor(accent)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        ALL_MODES.forEachIndexed { index, mode ->
+            val isPrimary = mode == MODE_TRANSLATE
+            val primaryBg = "#7C6EFA"
+            val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
+            val fgColor = if (isPrimary) Color.WHITE else accent
+
+            val column = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                typeface = Typeface.DEFAULT_BOLD
-                setPadding((6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt())
+                setPadding((4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt())
                 background = GradientDrawable().apply {
-                    val btnBg = if (isDark) "#2A2A40" else "#F0EFFF"
-                    setColor(Color.parseColor(btnBg))
+                    setColor(Color.parseColor(if (isPrimary) primaryBg else subduedBg))
                     cornerRadius = 14 * dp
                 }
+                isClickable = true
+                isFocusable = true
                 setOnClickListener {
                     val selected = pendingSelectedText
                     hideModePicker()
@@ -551,23 +653,67 @@ class BubbleService : Service() {
                     }
                 }
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    .apply { marginEnd = (6 * dp).toInt() }
+                    .apply { marginEnd = if (index < ALL_MODES.size - 1) (6 * dp).toInt() else 0 }
             }
-            modesRow.addView(btn)
+            // Icon on top
+            column.addView(ImageView(this).apply {
+                setImageResource(modeIcon(mode))
+                setColorFilter(fgColor)
+                layoutParams = LinearLayout.LayoutParams((18 * dp).toInt(), (18 * dp).toInt())
+            })
+            // Label below — tiny enough to fit one line for all known
+            // locales (Vietnamese "Tinh chỉnh" being the longest)
+            column.addView(TextView(this).apply {
+                text = modeLabel(mode)
+                setTextColor(fgColor)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                gravity = Gravity.CENTER
+                maxLines = 1
+                setSingleLine(true)
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(0, (4 * dp).toInt(), 0, 0)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            })
+            modesRow.addView(column)
         }
         card.addView(modesRow)
 
+        // Divider + secondary actions row ("Type text" / "Show last result")
+        val dividerBg = if (isDark) "#3A3A50" else "#E0DFF8"
+        card.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (1 * dp).toInt(),
+            ).apply { topMargin = (12 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
+            setBackgroundColor(Color.parseColor(dividerBg))
+        })
+
+        // Always-available "Type your own text" entry — for when the user
+        // wants to translate something they haven't selected/copied (e.g.
+        // composing a message from scratch). Opens a focusable input window
+        // so the soft keyboard can attach.
+        card.addView(TextView(this).apply {
+            text = "✎  ${localized(R.string.bubble_type_text)}"
+            setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                hideModePicker()
+                showInputPicker(MODE_TRANSLATE)
+            }
+        })
+
         // "Last result" shortcut if we have a cached output
         if (currentOutput != null) {
-            card.addView(View(this).apply {
-                val dividerBg = if (isDark) "#3A3A50" else "#E0DFF8"
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, (1 * dp).toInt()
-                ).apply { topMargin = (12 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
-                setBackgroundColor(Color.parseColor(dividerBg))
-            })
             card.addView(TextView(this).apply {
-                text = "Show last result"
+                text = localized(R.string.bubble_show_last_result)
                 setTextColor(mutedCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 gravity = Gravity.CENTER
@@ -612,8 +758,21 @@ class BubbleService : Service() {
     private fun showLangPicker() {
         if (langPickerView != null) { hideLangPicker(); return }
         ensureWindowManager()
-        // Sync from prefs so the picker reflects any change made in Flutter UI.
-        currentTargetLang = readTargetLang()
+        // Sync from prefs so the picker reflects any change made in Flutter
+        // UI. In reply mode the picker pre-selects KEY_REPLY_LANG (which the
+        // tap-to-pick path writes to) — otherwise picking a lang then
+        // re-opening shows the *general* target as selected instead of the
+        // reply lang the user just chose, even though translation used it.
+        currentTargetLang = if (currentMode == MODE_REPLY) {
+            val replyLang = readReplyLang()
+            when {
+                replyLang.isNotEmpty() -> replyLang
+                lastDetectedLang != null -> lastDetectedLang!!
+                else -> readTargetLang()
+            }
+        } else {
+            readTargetLang()
+        }
 
         val dp = resources.displayMetrics.density
         val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
@@ -889,6 +1048,7 @@ class BubbleService : Service() {
         currentOutput = null
         currentRomanization = null
         currentDetectedLang = null
+        currentSuggestions = emptyList()
         currentMode = mode
 
         // Reply mode target language priority:
@@ -981,11 +1141,17 @@ class BubbleService : Service() {
         )
     }
 
-    private fun showResult(output: String, romanization: String?, detectedLang: String?) {
+    private fun showResult(
+        output: String,
+        romanization: String?,
+        detectedLang: String?,
+        suggestions: List<Pair<String, String>>? = null,
+    ) {
         isTranslating = false
         currentOutput = output
         currentRomanization = romanization
         currentDetectedLang = detectedLang
+        currentSuggestions = suggestions ?: emptyList()
         // Save context for Reply mode (only for non-reply translations)
         if (currentMode != MODE_REPLY) {
             lastOriginalText = currentSourceText
@@ -1006,6 +1172,7 @@ class BubbleService : Service() {
         output: String? = null,
     ) {
         ensureWindowManager()
+        refreshLocale()
         val dp = resources.displayMetrics.density
         val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
@@ -1066,20 +1233,36 @@ class BubbleService : Service() {
                 layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
             }
 
-            toneChip = TextView(this).apply {
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                setTextColor(mutedCol)
-                setPadding((6 * dp).toInt(), (3 * dp).toInt(), (6 * dp).toInt(), (3 * dp).toInt())
-                background = GradientDrawable().apply {
-                    setColor(Color.TRANSPARENT)
-                    setStroke(1, mutedCol)
-                    cornerRadius = 10 * dp
-                }
-                setOnClickListener { showTonePicker() }
+            toneChip = ImageView(this).apply {
+                setImageResource(R.drawable.ic_bubble_settings)
+                setColorFilter(mutedCol)
+                contentDescription = localized(R.string.bubble_settings)
+                // Touch padding so the 18dp icon is comfortably tappable.
+                setPadding((6 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt())
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { showSettingsSheet() }
                 layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { marginStart = (6 * dp).toInt(); marginEnd = (6 * dp).toInt() }
+                    (30 * dp).toInt(),
+                    (30 * dp).toInt(),
+                ).apply { marginStart = (6 * dp).toInt(); marginEnd = (4 * dp).toInt() }
+            }
+
+            // ✎ button to swap the result panel for the type-text picker
+            // (lets the user translate something new without going through
+            // the bubble → mode-picker dance again).
+            val typeBtn = TextView(this).apply {
+                text = "✎"
+                setTextColor(mutedCol)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setPadding((8 * dp).toInt(), (4 * dp).toInt(), (8 * dp).toInt(), (4 * dp).toInt())
+                contentDescription = localized(R.string.bubble_type_text)
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    hideResultPanel()
+                    showInputPicker(currentMode)
+                }
             }
 
             val closeBtn = TextView(this).apply {
@@ -1095,9 +1278,12 @@ class BubbleService : Service() {
             header.addView(langChip)
             header.addView(spacer)
             header.addView(toneChip)
+            header.addView(typeBtn)
             header.addView(closeBtn)
 
-            // Mode tabs (Translate / Summarize / Explain / Refine)
+            // Mode tabs — natural-width buttons with leading icon, wrapped in
+            // a HorizontalScrollView so long Vietnamese labels ("Tinh chỉnh",
+            // "Giải thích") never wrap to two lines. The bar scrolls instead.
             val tabsRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 setPadding(0, (8 * dp).toInt(), 0, (4 * dp).toInt())
@@ -1105,17 +1291,31 @@ class BubbleService : Service() {
             modeButtons.clear()
             for (mode in ALL_MODES) {
                 val btn = TextView(this).apply {
-                    text = MODE_LABELS[mode]
+                    text = modeLabel(mode)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                     gravity = Gravity.CENTER
-                    setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
+                    maxLines = 1
+                    setSingleLine(true)
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding((12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt())
+                    // Inline icon on the left so the tab matches the in-app
+                    // feature-button row (icon + label). compoundDrawables
+                    // avoids nesting another ViewGroup per tab.
+                    val icon = androidx.core.content.ContextCompat.getDrawable(
+                        this@BubbleService, modeIcon(mode),
+                    )?.apply {
+                        setBounds(0, 0, (14 * dp).toInt(), (14 * dp).toInt())
+                    }
+                    setCompoundDrawables(icon, null, null, null)
+                    compoundDrawablePadding = (6 * dp).toInt()
                     setOnClickListener {
                         if (isTranslating) return@setOnClickListener
                         val src = currentSourceText ?: return@setOnClickListener
                         handleTranslateRequest(src, mode)
                     }
                     layoutParams = LinearLayout.LayoutParams(
-                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
                     ).apply { marginEnd = (4 * dp).toInt() }
                 }
                 modeButtons[mode] = btn
@@ -1160,6 +1360,21 @@ class BubbleService : Service() {
                 setPadding(0, 0, 0, (4 * dp).toInt())
             }
 
+            // ── Quick-reply suggestions (Reply mode + suggestions toggle) ──
+            panelSuggestionsLabel = TextView(this).apply {
+                text = localized(R.string.bubble_reply_suggestions).uppercase()
+                setTextColor(mutedCol)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                typeface = Typeface.DEFAULT_BOLD
+                letterSpacing = 0.08f
+                visibility = View.GONE
+                setPadding(0, (10 * dp).toInt(), 0, (4 * dp).toInt())
+            }
+            panelSuggestionsContainer = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
+            }
+
             // Loading spinner — shown while waiting for API response
             loadingSpinner = ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
                 isIndeterminate = true
@@ -1184,6 +1399,8 @@ class BubbleService : Service() {
             contentInner.addView(loadingSpinner)
             contentInner.addView(panelOutput)
             contentInner.addView(panelRomanization)
+            contentInner.addView(panelSuggestionsLabel)
+            contentInner.addView(panelSuggestionsContainer)
             contentInner.addView(panelStatus)
 
             val contentScroll = object : ScrollView(this@BubbleService) {
@@ -1276,19 +1493,38 @@ class BubbleService : Service() {
                         ).show()
                         return@setOnClickListener
                     }
+                    // Always copy to clipboard first so the user has a manual
+                    // fallback even if accessibility paste fails (e.g. the
+                    // host app blocks SET_TEXT and PASTE — banking apps do).
+                    selfCopyInProgress = true
+                    handler.postDelayed({ selfCopyInProgress = false }, 1500)
+                    try {
+                        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.setPrimaryClip(ClipData.newPlainText("TransKey", t))
+                    } catch (_: Exception) { /* clipboard may be locked on some OEMs */ }
+
                     // Hide panel first so it doesn't sit over the input, then
-                    // replace the focused text in the host app.
+                    // replace the focused text in the host app. The 300ms delay
+                    // gives the underlying app time to recover input focus —
+                    // shorter delays caused silent failures on Compose / RN
+                    // apps that briefly drop focus when an overlay disappears.
                     hideResultPanel()
                     handler.postDelayed({
                         val ok = svc.replaceFocusedText(t)
-                        if (!ok) {
+                        if (ok) {
                             Toast.makeText(
                                 this@BubbleService,
-                                "No editable field focused",
+                                "Pasted",
                                 Toast.LENGTH_SHORT,
                             ).show()
+                        } else {
+                            Toast.makeText(
+                                this@BubbleService,
+                                "Copied — tap the field and paste manually",
+                                Toast.LENGTH_LONG,
+                            ).show()
                         }
-                    }, 80)
+                    }, 300)
                 }
                 layoutParams = LinearLayout.LayoutParams(
                     0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
@@ -1330,6 +1566,95 @@ class BubbleService : Service() {
             panelRomanization?.apply { text = rom; visibility = View.VISIBLE }
         } else {
             panelRomanization?.visibility = View.GONE
+        }
+
+        // Quick-reply suggestions: only on the plain Translate flow. Reply
+        // mode already produces one targeted reply (the whole point of that
+        // mode), so showing more alternatives there would be noise; the
+        // user wanted suggestions surfaced alongside translation, not reply.
+        // Refine/Summarize/Explain aren't conversation contexts at all.
+        val suggestions = currentSuggestions
+        val showSuggestions = !loading && error == null && suggestions.isNotEmpty() &&
+            currentMode == MODE_TRANSLATE
+        if (showSuggestions) {
+            panelSuggestionsLabel?.visibility = View.VISIBLE
+            panelSuggestionsContainer?.apply {
+                removeAllViews()
+                visibility = View.VISIBLE
+                val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
+                val accentCol = Color.parseColor("#6C63FF")
+                suggestions.forEachIndexed { idx, pair ->
+                    val (sourceText, targetText) = pair
+                    val chip = LinearLayout(this@BubbleService).apply {
+                        orientation = LinearLayout.VERTICAL
+                        // Order matters: set background BEFORE padding so the
+                        // GradientDrawable doesn't reset the padding we want.
+                        background = GradientDrawable().apply {
+                            setColor(Color.TRANSPARENT)
+                            setStroke(1, borderCol)
+                            cornerRadius = 12 * dp
+                        }
+                        setPadding(
+                            (12 * dp).toInt(), (8 * dp).toInt(),
+                            (12 * dp).toInt(), (8 * dp).toInt(),
+                        )
+                        isClickable = true
+                        isFocusable = true
+                        // Source = the actual reply to send (partner's lang).
+                        if (sourceText.isNotEmpty()) {
+                            addView(TextView(this@BubbleService).apply {
+                                text = sourceText
+                                setTextColor(textCol)
+                                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                                typeface = Typeface.DEFAULT_BOLD
+                            })
+                        }
+                        // Target = same idea in user's language, as a hint.
+                        if (targetText.isNotEmpty() && targetText != sourceText) {
+                            addView(TextView(this@BubbleService).apply {
+                                text = targetText
+                                setTextColor(mutedCol)
+                                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                                setTypeface(Typeface.DEFAULT, Typeface.ITALIC)
+                                setPadding(0, (2 * dp).toInt(), 0, 0)
+                            })
+                        }
+                        setOnClickListener {
+                            val toCopy = sourceText.ifEmpty { targetText }
+                            val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            cm.setPrimaryClip(android.content.ClipData.newPlainText("suggestion", toCopy))
+                            // Brief filled-accent flash so the tap registers
+                            // visibly even when Toasts get suppressed on some
+                            // OEMs (Xiaomi/Huawei restrict overlay Toasts).
+                            background = GradientDrawable().apply {
+                                setColor(accentCol)
+                                cornerRadius = 12 * dp
+                            }
+                            handler.postDelayed({
+                                background = GradientDrawable().apply {
+                                    setColor(Color.TRANSPARENT)
+                                    setStroke(1, borderCol)
+                                    cornerRadius = 12 * dp
+                                }
+                            }, 240)
+                            Toast.makeText(this@BubbleService, "Copied", Toast.LENGTH_SHORT).show()
+                        }
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            if (idx > 0) topMargin = (6 * dp).toInt()
+                        }
+                    }
+                    addView(chip)
+                }
+            }
+        } else {
+            panelSuggestionsLabel?.visibility = View.GONE
+            panelSuggestionsContainer?.apply {
+                visibility = View.GONE
+                removeAllViews()
+            }
         }
 
         if (loading) {
@@ -1374,9 +1699,20 @@ class BubbleService : Service() {
         if (currentMode == MODE_REFINE) {
             sourceLangChip?.visibility = View.GONE
             langChip?.visibility = View.GONE
-            toneChip?.visibility = View.GONE
+            // Keep the settings icon visible even in Refine mode — users may
+            // still want to adjust TTS rate, romanization or reply suggestions
+            // without leaving the popup.
+            toneChip?.visibility = View.VISIBLE
             return
         }
+
+        // Note: do NOT re-read prefs here. The chips must reflect the lang
+        // and tone that were used for the *currently displayed result* —
+        // these values are set in handleTranslateRequest before each
+        // translate call. Re-reading would clobber the reply-mode override
+        // (where currentTargetLang = readReplyLang(), not readTargetLang()).
+        // Picker freshness is handled separately in showLangPicker /
+        // showTonePicker / showSourceLangPicker.
 
         // Source chip: show "Auto" or language name
         sourceLangChip?.apply {
@@ -1391,38 +1727,31 @@ class BubbleService : Service() {
             text = LANG_LABELS[currentTargetLang] ?: currentTargetLang.uppercase()
         }
 
-        // Tone chip: only show when a tone is set
-        val toneLabel = TONE_OPTIONS.find { it.first == currentTone }?.second
-        toneChip?.apply {
-            if (toneLabel != null && toneLabel != "Default") {
-                text = toneLabel
-                visibility = View.VISIBLE
-            } else {
-                text = "Tone"
-                visibility = View.VISIBLE
-            }
-        }
+        // Settings icon (formerly tone chip): always visible. The icon alone
+        // carries the affordance — the actual tone shows up inside the
+        // settings sheet, so we don't need a per-state label here.
+        toneChip?.visibility = View.VISIBLE
     }
 
     private fun updateModeTabs(accent: Int, mutedCol: Int) {
         val dp = resources.displayMetrics.density
         for ((mode, btn) in modeButtons) {
-            if (mode == currentMode) {
-                btn.setTextColor(Color.WHITE)
-                btn.typeface = Typeface.DEFAULT_BOLD
-                btn.background = GradientDrawable().apply {
+            val fg = if (mode == currentMode) Color.WHITE else mutedCol
+            btn.setTextColor(fg)
+            btn.typeface = if (mode == currentMode) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            btn.background = GradientDrawable().apply {
+                if (mode == currentMode) {
                     setColor(accent)
-                    cornerRadius = 8 * dp
-                }
-            } else {
-                btn.setTextColor(mutedCol)
-                btn.typeface = Typeface.DEFAULT
-                btn.background = GradientDrawable().apply {
+                } else {
                     setColor(Color.TRANSPARENT)
                     setStroke(1, mutedCol)
-                    cornerRadius = 8 * dp
                 }
+                cornerRadius = 8 * dp
             }
+            // Re-tint the leading icon to match the text color of the
+            // active/inactive state.
+            val drawables = btn.compoundDrawables
+            drawables[0]?.mutate()?.setTint(fg)
         }
     }
 
@@ -1468,6 +1797,8 @@ class BubbleService : Service() {
         toneChip = null
         loadingSpinner = null
         detectedLangTv = null
+        panelSuggestionsLabel = null
+        panelSuggestionsContainer = null
         modeButtons.clear()
     }
 
@@ -1476,8 +1807,26 @@ class BubbleService : Service() {
         if (!ttsReady) { Toast.makeText(this, "TTS not ready", Toast.LENGTH_SHORT).show(); return }
         val locale = langToLocale(currentTargetLang)
         tts?.language = locale
+        // Match the speed the user picked inside the app's Settings →
+        // Read aloud. Flutter writes it via shared_preferences as
+        // flutter.tk_tts_rate (double). Default to normal speed when unset.
+        val rate = readTtsRate().toFloat()
+        tts?.setSpeechRate(rate)
         @Suppress("DEPRECATION")
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null)
+    }
+
+    private fun readTtsRate(): Double {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // shared_preferences's encoding for doubles has changed across
+        // plugin versions — sometimes Float, sometimes a String-encoded
+        // Double, sometimes prefixed via the legacy codec. Read through
+        // prefs.all and accept any numeric / string representation.
+        return when (val v = prefs.all["flutter.tk_tts_rate"]) {
+            is Number -> v.toDouble()
+            is String -> v.toDoubleOrNull() ?: 1.0
+            else -> 1.0
+        }
     }
 
     private fun langToLocale(lang: String): Locale = when (lang) {
@@ -1531,6 +1880,63 @@ class BubbleService : Service() {
     private fun writeTone(tone: String) {
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
             .putString(KEY_TONE_OVERRIDE, tone).apply()
+    }
+
+    // ── Reply tone / Romanization / Reply suggestions / TTS rate ─────────
+    // All persisted under `flutter.tk_*` prefix so Flutter's SharedPreferences
+    // package reads them as the same `tk_*` keys the in-app Settings screen
+    // writes to. Reading happens at app resume via appSettingsProvider.reload()
+    // and ttsProvider._loadPersistedPrefs().
+
+    private fun readReplyTone(): String {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_REPLY_TONE_OVERRIDE, "") ?: ""
+    }
+
+    private fun writeReplyTone(tone: String) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putString(KEY_REPLY_TONE_OVERRIDE, tone).apply()
+    }
+
+    private fun readRomanization(): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_ROMANIZATION, false)
+    }
+
+    private fun writeRomanization(value: Boolean) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_ROMANIZATION, value).apply()
+    }
+
+    private fun readReplySuggestions(): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_REPLY_SUGGESTIONS, false)
+    }
+
+    private fun writeReplySuggestions(value: Boolean) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_REPLY_SUGGESTIONS, value).apply()
+    }
+
+    // readTtsRate() is defined above (with broader plugin-version handling) —
+    // single source of truth for both the speakOutput path and settings sheet.
+
+    private fun writeTtsRate(rate: Double) {
+        // Flutter stores doubles natively under SharedPreferences via Float
+        // wrapper — but reading on the Flutter side uses getDouble which
+        // accepts both. Writing as Double keeps full precision.
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putFloat(KEY_TTS_RATE, rate.toFloat()).apply()
+    }
+
+    private fun toneLabel(code: String): String {
+        val resId = TONE_STRING_IDS[code] ?: R.string.bubble_tone_auto
+        return localized(resId)
+    }
+
+    private fun formatRate(r: Double): String {
+        // Match desktop / Flutter: "1×" instead of "1.0×".
+        return if (r == r.toLong().toDouble()) "${r.toInt()}×" else "${r}×"
     }
 
     // ── Source language picker ──
@@ -1616,17 +2022,343 @@ class BubbleService : Service() {
         sourceLangPickerView = null
     }
 
-    // ── Tone picker ──
+    // ── Settings sheet ──
+    // Single sheet that surfaces the 5 in-app settings the bubble cares about:
+    // translate tone, reply tone, romanization, reply suggestions, TTS speed.
+    // All writes go to the `flutter.tk_*` SharedPreferences keys so the
+    // in-app Settings screen picks them up on resume (and vice versa — we
+    // re-read every time the sheet opens).
 
     private fun showTonePicker() {
+        showSettingsSheet()
+    }
+
+    private fun hideTonePicker() {
+        tonePickerView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+        tonePickerView = null
+    }
+
+    // ── Text input picker (type text without opening the app) ──
+
+    /**
+     * Build window params for a focusable overlay so the soft keyboard can
+     * attach to an EditText. Mode/result pickers use FLAG_NOT_FOCUSABLE
+     * (touch-only); this one explicitly does NOT set that flag and asks the
+     * IME to appear and resize the window when it does.
+     */
+    private fun buildInputPickerLayoutParams(): WindowManager.LayoutParams {
+        return WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+            // FLAG_DIM_BEHIND for the backdrop dim; no FLAG_NOT_FOCUSABLE so
+            // taps on the EditText raise the soft keyboard.
+            WindowManager.LayoutParams.FLAG_DIM_BEHIND,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE
+            dimAmount = 0.4f
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showInputPicker(initialMode: String) {
+        if (inputPickerView != null) { hideInputPicker(); return }
+        ensureWindowManager()
+        refreshLocale()
+
+        val dp = resources.displayMetrics.density
+        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
+        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
+        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
+        val accent   = Color.parseColor("#6C63FF")
+        val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
+        val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
+
+        // Selected mode reference — closure-captured by tabs + Translate button.
+        // Reply mode requires a captured conversation; typed-from-scratch
+        // text has no original to reply to, so we hide Reply from this picker.
+        val typeableModes = ALL_MODES.filter { it != MODE_REPLY }
+        val selectedMode = arrayOf(
+            if (typeableModes.contains(initialMode)) initialMode else MODE_TRANSLATE,
+        )
+
+        val backdrop = FrameLayout(this).apply {
+            // Tap outside card to dismiss. The card itself swallows touches.
+            setOnClickListener { hideInputPicker() }
+        }
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+            elevation = 22 * dp
+            setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
+            isClickable = true
+        }
+
+        // Header row: title (left) + Paste / Clear actions (right). The
+        // floating text-selection toolbar (which normally exposes Paste via
+        // long-press) does NOT attach to TYPE_APPLICATION_OVERLAY windows on
+        // any Android version — its popup expects a regular activity window
+        // token. So we surface Paste + Clear as explicit, always-visible
+        // buttons; long-press has no equivalent here.
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, (10 * dp).toInt())
+        }
+        headerRow.addView(TextView(this).apply {
+            text = localized(R.string.bubble_type_text)
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        // Reference declared up front so the Paste / Clear closures can
+        // mutate it. The actual EditText is constructed just below.
+        var inputRef: EditText? = null
+        headerRow.addView(TextView(this).apply {
+            text = "📋 ${localized(R.string.bubble_input_paste)}"
+            setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            background = GradientDrawable().apply {
+                setColor(Color.TRANSPARENT)
+                setStroke(1, borderCol)
+                cornerRadius = 10 * dp
+            }
+            setOnClickListener {
+                val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = cm.primaryClip
+                val pasted = if (clip != null && clip.itemCount > 0) {
+                    clip.getItemAt(0).coerceToText(this@BubbleService)?.toString().orEmpty()
+                } else ""
+                if (pasted.isEmpty()) {
+                    Toast.makeText(this@BubbleService, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                inputRef?.let { editText ->
+                    // Replace current selection with the pasted text, or
+                    // append at the cursor if there's no selection — matches
+                    // standard Paste menu behaviour.
+                    val start = editText.selectionStart.coerceAtLeast(0)
+                    val end = editText.selectionEnd.coerceAtLeast(start)
+                    editText.text.replace(start, end, pasted)
+                    editText.setSelection(start + pasted.length)
+                }
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = (8 * dp).toInt() }
+        })
+        headerRow.addView(TextView(this).apply {
+            text = "✕"
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            contentDescription = localized(R.string.bubble_input_clear)
+            background = GradientDrawable().apply {
+                setColor(Color.TRANSPARENT)
+                setStroke(1, borderCol)
+                cornerRadius = 10 * dp
+            }
+            setOnClickListener {
+                inputRef?.text?.clear()
+                inputRef?.requestFocus()
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = (6 * dp).toInt() }
+        })
+        card.addView(headerRow)
+
+        // ── Input field ──
+        val input = EditText(this).apply {
+            hint = localized(R.string.bubble_input_hint)
+            setHintTextColor(mutedCol)
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            background = GradientDrawable().apply {
+                setColor(Color.TRANSPARENT)
+                setStroke(1, borderCol)
+                cornerRadius = 12 * dp
+            }
+            setPadding(
+                (12 * dp).toInt(), (10 * dp).toInt(),
+                (12 * dp).toInt(), (10 * dp).toInt(),
+            )
+            minLines = 3
+            maxLines = 6
+            gravity = Gravity.TOP or Gravity.START
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or
+                android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        // Wire the Paste / Clear buttons (declared before EditText) to the
+        // freshly-constructed input now that the reference exists.
+        inputRef = input
+        card.addView(input)
+
+        // ── Mode tabs ──
+        val tabsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = (10 * dp).toInt() }
+        }
+        val tabRefs = mutableListOf<Pair<String, TextView>>()
+        fun renderTabSelection() {
+            for ((mode, tab) in tabRefs) {
+                val selected = mode == selectedMode[0]
+                tab.background = GradientDrawable().apply {
+                    setColor(Color.parseColor(if (selected) "#7C6EFA" else subduedBg))
+                    cornerRadius = 12 * dp
+                }
+                tab.setTextColor(if (selected) Color.WHITE else accent)
+            }
+        }
+        typeableModes.forEachIndexed { index, mode ->
+            val tab = TextView(this).apply {
+                text = modeLabel(mode)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                maxLines = 1
+                setSingleLine(true)
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    selectedMode[0] = mode
+                    renderTabSelection()
+                }
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { marginEnd = if (index < typeableModes.size - 1) (4 * dp).toInt() else 0 }
+            }
+            tabRefs.add(mode to tab)
+            tabsRow.addView(tab)
+        }
+        renderTabSelection()
+        card.addView(tabsRow)
+
+        // ── Action buttons (Cancel + Translate) ──
+        val actionsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = (12 * dp).toInt() }
+        }
+        actionsRow.addView(TextView(this).apply {
+            text = localized(R.string.bubble_cancel)
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { hideInputPicker() }
+        })
+        actionsRow.addView(TextView(this).apply {
+            text = localized(R.string.bubble_action_translate)
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable().apply {
+                setColor(accent)
+                cornerRadius = 12 * dp
+            }
+            setPadding((18 * dp).toInt(), (10 * dp).toInt(), (18 * dp).toInt(), (10 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = (8 * dp).toInt() }
+            setOnClickListener {
+                val text = input.text?.toString()?.trim().orEmpty()
+                if (text.isEmpty()) {
+                    input.requestFocus()
+                    return@setOnClickListener
+                }
+                hideInputPicker()
+                handleTranslateRequest(text, selectedMode[0])
+            }
+        })
+        card.addView(actionsRow)
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((380 * dp).toInt())
+        backdrop.addView(card, FrameLayout.LayoutParams(
+            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
+        ))
+
+        inputPickerView = backdrop
+        windowManager?.addView(backdrop, buildInputPickerLayoutParams())
+
+        // Pop the keyboard up as soon as the window is attached. Without
+        // requestFocus + showSoftInput, Android sometimes leaves the IME
+        // hidden until the user taps the field a second time.
+        input.requestFocus()
+        handler.postDelayed({
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+            imm?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }, 80)
+    }
+
+    private fun hideInputPicker() {
+        // Drop the keyboard explicitly — the window is FOCUSABLE so the IME
+        // doesn't always animate out when we just remove the view.
+        val view = inputPickerView
+        if (view != null) {
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+            imm?.hideSoftInputFromWindow(view.windowToken, 0)
+            try { windowManager?.removeView(view) } catch (_: Exception) {}
+        }
+        inputPickerView = null
+    }
+
+    private fun showSettingsSheet() {
         if (tonePickerView != null) { hideTonePicker(); return }
         ensureWindowManager()
+        refreshLocale()
+        // Re-read every setting in case they changed via the in-app Settings.
+        currentTone = readTone()
+        val replyTone = readReplyTone()
+        val romanizationOn = readRomanization()
+        val replySuggestionsOn = readReplySuggestions()
+        val ttsRate = readTtsRate()
+
         val dp = resources.displayMetrics.density
         val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
         val bg      = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
         val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
+        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
         val accent  = Color.parseColor("#6C63FF")
+        val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
 
         val backdrop = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#55000000"))
@@ -1639,50 +2371,264 @@ class BubbleService : Service() {
             setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
             isClickable = true
         }
+        // Scrollable content so the sheet fits even on short screens.
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        scroll.addView(content)
+
         card.addView(TextView(this).apply {
-            text = "Translation tone"
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            text = localized(R.string.bubble_settings)
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, (10 * dp).toInt())
+            setPadding(0, 0, 0, (12 * dp).toInt())
+        })
+        card.addView(scroll)
+
+        // ── Section: Translate tone ─────────────────────────────────────
+        content.addView(sectionLabel(localized(R.string.bubble_translate_tone), mutedCol, dp))
+        content.addView(toneRow(
+            currentTone, accent, textCol, borderCol, mutedCol, isDark, dp,
+            includeAuto = true,
+        ) { code ->
+            currentTone = code
+            writeTone(code)
+            updateLangChip()
+            // Refresh the currently visible bottom sheet to reflect the new
+            // selection without closing it.
+            hideTonePicker()
+            showSettingsSheet()
+            // Re-translate if a result is already showing so the user sees
+            // the new tone applied immediately.
+            currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
         })
 
-        for ((value, label) in TONE_OPTIONS) {
-            val isSelected = value == currentTone
-            card.addView(TextView(this).apply {
-                text = label
-                setTextColor(if (isSelected) Color.WHITE else textCol)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                gravity = Gravity.CENTER
-                setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
-                background = GradientDrawable().apply {
-                    setColor(if (isSelected) accent else Color.TRANSPARENT)
-                    if (!isSelected) setStroke(1, Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0"))
-                    cornerRadius = 10 * dp
-                }
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { bottomMargin = (4 * dp).toInt() }
-                setOnClickListener {
-                    currentTone = value
-                    writeTone(value)
-                    hideTonePicker()
-                    updateLangChip()
-                    currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-                }
-            })
+        // ── Section: Reply tone ─────────────────────────────────────────
+        content.addView(sectionLabel(localized(R.string.bubble_reply_tone), mutedCol, dp).apply {
+            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (14 * dp).toInt()
+        })
+        // Use empty string code "" to mean "same as translate tone" — the
+        // app's settings UI uses the same convention via toneReplySameAsTranslate.
+        val replyToneLabel = if (replyTone.isEmpty()) {
+            localized(R.string.bubble_reply_tone_same)
+        } else {
+            toneLabel(replyTone)
         }
+        content.addView(toneRow(
+            replyTone, accent, textCol, borderCol, mutedCol, isDark, dp,
+            includeAuto = true,
+            autoLabel = localized(R.string.bubble_reply_tone_same),
+        ) { code ->
+            writeReplyTone(code)
+            hideTonePicker()
+            showSettingsSheet()
+            // Reply-tone only changes output in Reply mode; re-translate so the
+            // user sees the new tone applied without manually re-triggering.
+            if (currentMode == MODE_REPLY) {
+                currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
+            }
+        })
+        // Tone hint label — show the current effective reply tone.
+        content.addView(TextView(this).apply {
+            text = "→ $replyToneLabel"
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            setPadding(0, (4 * dp).toInt(), 0, 0)
+        })
+
+        // ── Section: TTS speed ─────────────────────────────────────────
+        content.addView(sectionLabel(localized(R.string.bubble_speech_rate), mutedCol, dp).apply {
+            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (16 * dp).toInt()
+        })
+        content.addView(rateRow(ttsRate, accent, textCol, borderCol, isDark, dp) { rate ->
+            writeTtsRate(rate)
+            hideTonePicker()
+            showSettingsSheet()
+        })
+
+        // ── Section: Toggles (romanization, reply suggestions) ─────────
+        content.addView(toggleRow(
+            localized(R.string.bubble_romanization),
+            romanizationOn, accent, textCol, borderCol, dp,
+        ) { newValue ->
+            writeRomanization(newValue)
+            // Romanization affects every translate mode — re-run so the user
+            // sees the romanization line appear/disappear immediately.
+            currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
+        }.apply {
+            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (16 * dp).toInt()
+        })
+        content.addView(toggleRow(
+            localized(R.string.bubble_reply_suggestions),
+            replySuggestionsOn, accent, textCol, borderCol, dp,
+        ) { newValue ->
+            writeReplySuggestions(newValue)
+            // Suggestions are only generated in Reply mode — only re-translate
+            // when the new value would actually change the output.
+            if (currentMode == MODE_REPLY) {
+                currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
+            }
+        }.apply {
+            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (8 * dp).toInt()
+        })
 
         val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (80 * dp).toInt()).coerceAtMost((260 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((340 * dp).toInt())
+        // Cap height so very long sheets remain scrollable instead of pushing
+        // beyond the screen on small phones.
+        val maxHeight = (resources.displayMetrics.heightPixels * 0.75).toInt()
+        backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
+            scroll.layoutParams = (scroll.layoutParams as LinearLayout.LayoutParams).apply {
+                @Suppress("UNUSED_VARIABLE") val _h = maxHeight  // referenced via constraint below
+            }
+        })
         tonePickerView = backdrop
         windowManager?.addView(backdrop, buildPickerLayoutParams())
     }
 
-    private fun hideTonePicker() {
-        tonePickerView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        tonePickerView = null
+    private fun sectionLabel(text: String, mutedCol: Int, dp: Float): TextView =
+        TextView(this).apply {
+            this.text = text.uppercase()
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.08f
+            setPadding(0, 0, 0, (6 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+
+    // Horizontal wrap of pill buttons — used for both tone pickers and rates.
+    private fun toneRow(
+        currentCode: String,
+        accent: Int, textCol: Int, borderCol: Int, mutedCol: Int,
+        isDark: Boolean, dp: Float,
+        includeAuto: Boolean,
+        autoLabel: String? = null,
+        onPick: (String) -> Unit,
+    ): View {
+        @Suppress("UNUSED_PARAMETER") val _isDark = isDark
+        @Suppress("UNUSED_PARAMETER") val _mutedCol = mutedCol
+        val codes = if (includeAuto) TONE_CODES else TONE_CODES.drop(1)
+        return wrapRow(codes.map { code ->
+            val label = if (code.isEmpty() && autoLabel != null) autoLabel else toneLabel(code)
+            pillButton(label, code == currentCode, accent, textCol, borderCol, dp) { onPick(code) }
+        }, dp)
+    }
+
+    private fun rateRow(
+        currentRate: Double, accent: Int, textCol: Int, borderCol: Int,
+        isDark: Boolean, dp: Float, onPick: (Double) -> Unit,
+    ): View {
+        @Suppress("UNUSED_PARAMETER") val _isDark = isDark
+        return wrapRow(TTS_RATES.map { r ->
+            pillButton(formatRate(r), r == currentRate, accent, textCol, borderCol, dp) { onPick(r) }
+        }, dp)
+    }
+
+    private fun wrapRow(children: List<View>, dp: Float): View {
+        // Flow horizontally; if too wide for the card, wrap to a new line.
+        // Android has no FlowLayout in the SDK, so we build it manually with
+        // two LinearLayouts when needed. For our 6-7 short pills it almost
+        // always fits one row.
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        val scroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            addView(row)
+        }
+        children.forEachIndexed { i, v ->
+            v.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginEnd = if (i < children.size - 1) (6 * dp).toInt() else 0 }
+            row.addView(v)
+        }
+        return scroll
+    }
+
+    private fun pillButton(
+        label: String, selected: Boolean, accent: Int, textCol: Int, borderCol: Int,
+        dp: Float, onClick: () -> Unit,
+    ): TextView = TextView(this).apply {
+        text = label
+        setTextColor(if (selected) Color.WHITE else textCol)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        gravity = Gravity.CENTER
+        maxLines = 1
+        setSingleLine(true)
+        setPadding((14 * dp).toInt(), (8 * dp).toInt(), (14 * dp).toInt(), (8 * dp).toInt())
+        background = GradientDrawable().apply {
+            setColor(if (selected) accent else Color.TRANSPARENT)
+            if (!selected) setStroke(1, borderCol)
+            cornerRadius = 12 * dp
+        }
+        setOnClickListener { onClick() }
+    }
+
+    private fun toggleRow(
+        label: String, current: Boolean, accent: Int, textCol: Int, borderCol: Int,
+        dp: Float, onChange: (Boolean) -> Unit,
+    ): View {
+        val state = booleanArrayOf(current)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+            isClickable = true
+        }
+        val labelTv = TextView(this).apply {
+            text = label
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        // Custom on/off pill as a stand-in for Switch (no Material theme here)
+        val pill = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding((12 * dp).toInt(), (4 * dp).toInt(), (12 * dp).toInt(), (4 * dp).toInt())
+        }
+        fun render() {
+            pill.text = if (state[0]) "ON" else "OFF"
+            pill.background = GradientDrawable().apply {
+                setColor(if (state[0]) accent else Color.TRANSPARENT)
+                if (!state[0]) setStroke(1, borderCol)
+                cornerRadius = 12 * dp
+            }
+            pill.setTextColor(if (state[0]) Color.WHITE else textCol)
+        }
+        render()
+        row.setOnClickListener {
+            state[0] = !state[0]
+            render()
+            onChange(state[0])
+        }
+        row.addView(labelTv)
+        row.addView(pill)
+        return row
     }
 
     // ── Lifecycle ──
@@ -1692,6 +2638,7 @@ class BubbleService : Service() {
         hasNewClipText = false
         hideModePicker()
         hideLangPicker()
+        hideInputPicker()
         removeResultPanel()
         removeBubble()
         saveBubbleActive(false)

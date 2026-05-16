@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/toast.dart';
 import '../services/tts_service.dart';
 
 class TtsButton extends ConsumerStatefulWidget {
@@ -14,6 +15,7 @@ class TtsButton extends ConsumerStatefulWidget {
     this.lang = 'en',
     this.size = 20,
     this.color,
+    this.showOptions = true,
   });
 
   final String text;
@@ -21,28 +23,96 @@ class TtsButton extends ConsumerStatefulWidget {
   final double size;
   final Color? color;
 
+  /// When true, render a companion settings icon next to the speak button
+  /// so users can change speed/voice without discovering long-press. Set to
+  /// false in cramped layouts (e.g. inline history cards).
+  final bool showOptions;
+
   @override
   ConsumerState<TtsButton> createState() => _TtsButtonState();
 }
 
 class _TtsButtonState extends ConsumerState<TtsButton> {
+  Future<bool>? _availabilityCheck;
+  String? _checkedLang;
+
+  Future<bool> _checkAvailability() {
+    // Memoize per-language — re-run only when widget.lang changes.
+    if (_availabilityCheck == null || _checkedLang != widget.lang) {
+      _checkedLang = widget.lang;
+      _availabilityCheck =
+          ref.read(ttsProvider.notifier).isLanguageAvailable(widget.lang);
+    }
+    return _availabilityCheck!;
+  }
+
+  Future<void> _onTap(BuildContext context) async {
+    final available = await _checkAvailability();
+    if (!context.mounted) return;
+    if (!available) {
+      showAppToast(
+        context,
+        'TTS not available for ${widget.lang}',
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+    await ref.read(ttsProvider.notifier).speak(widget.text, lang: widget.lang);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tts = ref.watch(ttsProvider);
     final isActive = tts.isPlaying && tts.currentText == widget.text;
 
-    return GestureDetector(
-      onTap: () {
-        ref.read(ttsProvider.notifier).speak(widget.text, lang: widget.lang);
-      },
-      onLongPress: () => _showOptionsSheet(context),
-      child: isActive
-          ? _WaveAnimation(size: widget.size, color: widget.color)
-          : Icon(
-              Icons.volume_up_outlined,
-              size: widget.size,
-              color: widget.color,
+    return FutureBuilder<bool>(
+      future: _checkAvailability(),
+      builder: (context, snap) {
+        // While checking, show the button normally — speak() will bail out
+        // gracefully if the OS turns out to lack a voice.
+        final isAvailable = snap.data ?? true;
+        final color = isAvailable
+            ? widget.color
+            : (widget.color ?? AppColors.primary).withValues(alpha: 0.35);
+
+        final speakBtn = GestureDetector(
+          onTap: () => _onTap(context),
+          onLongPress: isAvailable ? () => _showOptionsSheet(context) : null,
+          child: isActive
+              ? _WaveAnimation(size: widget.size, color: widget.color)
+              : Icon(
+                  Icons.volume_up_outlined,
+                  size: widget.size,
+                  color: color,
+                ),
+        );
+
+        if (!widget.showOptions || !isAvailable) return speakBtn;
+
+        // Compact companion button for speed/voice picker — much more
+        // discoverable than long-press. Tap opens the same options sheet.
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            speakBtn,
+            GestureDetector(
+              onTap: () => _showOptionsSheet(context),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: widget.size * 0.2),
+                child: Text(
+                  '${_formatRate(tts.rate)}×',
+                  style: TextStyle(
+                    fontSize: widget.size * 0.55,
+                    fontWeight: FontWeight.w600,
+                    color: widget.color ?? AppColors.primary,
+                  ),
+                ),
+              ),
             ),
+          ],
+        );
+      },
     );
   }
 
@@ -53,6 +123,14 @@ class _TtsButtonState extends ConsumerState<TtsButton> {
       builder: (ctx) => _TtsOptionsSheet(lang: widget.lang),
     );
   }
+}
+
+/// Format the speech rate to match desktop's labels: "1×", "1.25×", etc.
+/// (no trailing zero on whole numbers). Shared between speak button chip and
+/// the speed picker sheet so labels stay consistent.
+String _formatRate(double r) {
+  if (r == r.truncateToDouble()) return r.toInt().toString();
+  return r.toString();
 }
 
 class _TtsOptionsSheet extends ConsumerStatefulWidget {
@@ -79,6 +157,7 @@ class _TtsOptionsSheetState extends ConsumerState<_TtsOptionsSheet> {
     final tts = ref.watch(ttsProvider);
     final currentRate = tts.rate;
     final currentVoice = tts.voiceByLang[widget.lang];
+    // Match desktop's rate options exactly: 0.25, 0.5, 0.75, 1, 1.25, 1.5
     const speeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
 
     return SafeArea(
@@ -97,7 +176,9 @@ class _TtsOptionsSheetState extends ConsumerState<_TtsOptionsSheet> {
             ...speeds.map(
               (speed) => ListTile(
                 dense: true,
-                title: Text(speed == 1.0 ? '1.0× (${l.speedNormal})' : '$speed×'),
+                title: Text(speed == 1.0
+                    ? '1× (${l.speedNormal})'
+                    : '${_formatRate(speed)}×'),
                 trailing: speed == currentRate
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,

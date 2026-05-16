@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/selectable_with_actions.dart';
+import '../../../shared/widgets/toast.dart';
 import '../../translate/widgets/tts_button.dart';
 import '../models/history_entry.dart';
 import '../providers/history_provider.dart';
@@ -25,6 +27,7 @@ class HistoryDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l = AppLocalizations.of(context)!;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -68,16 +71,16 @@ class HistoryDetailSheet extends StatelessWidget {
                         ),
                         _chip(context, entry.mode.label, isPrimary: true),
                         if (entry.isFavorite)
-                          _chip(context, '★ Favorite', color: AppColors.amber),
+                          _chip(context, l.historyDetailFavoriteBadge, color: AppColors.amber),
                         if (entry.isLocked)
-                          _chip(context, '🔒 Locked'),
+                          _chip(context, l.historyDetailLockedBadge),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.lg),
 
                     // Source text
                     Text(
-                      'Source',
+                      l.historyDetailSourceLabel,
                       style: theme.textTheme.labelLarge,
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -99,7 +102,7 @@ class HistoryDetailSheet extends StatelessWidget {
 
                     // Translation
                     Text(
-                      'Translation',
+                      l.historyDetailTranslationLabel,
                       style: theme.textTheme.labelLarge,
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -125,7 +128,7 @@ class HistoryDetailSheet extends StatelessWidget {
                     if (entry.romanization != null) ...[
                       const SizedBox(height: AppSpacing.md),
                       Text(
-                        'Romanization',
+                        l.historyDetailRomanizationLabel,
                         style: theme.textTheme.labelLarge,
                       ),
                       const SizedBox(height: AppSpacing.xs),
@@ -146,23 +149,23 @@ class HistoryDetailSheet extends StatelessWidget {
                       children: [
                         _actionBtn(
                           icon: Icons.copy,
-                          label: 'Copy\ntranslation',
+                          label: l.historyDetailCopyTranslation,
                           onTap: () => _copy(context, entry.translation),
                         ),
                         _actionBtn(
                           icon: Icons.copy_outlined,
-                          label: 'Copy\nsource',
+                          label: l.historyDetailCopySource,
                           onTap: () => _copy(context, entry.sourceText),
                         ),
-                        _ttsActionBtn(entry),
+                        _ttsActionBtn(entry, l),
                         Consumer(builder: (context, ref, _) {
                           return _actionBtn(
                             icon: entry.isFavorite
                                 ? Icons.star
                                 : Icons.star_border,
                             label: entry.isFavorite
-                                ? 'Unfavorite'
-                                : 'Favorite',
+                                ? l.historyDetailUnfavorite
+                                : l.historyDetailFavoriteAction,
                             color: entry.isFavorite ? AppColors.amber : null,
                             onTap: () {
                               ref
@@ -177,7 +180,9 @@ class HistoryDetailSheet extends StatelessWidget {
                             icon: entry.isLocked
                                 ? Icons.lock
                                 : Icons.lock_open,
-                            label: entry.isLocked ? 'Unlock' : 'Lock',
+                            label: entry.isLocked
+                                ? l.historyDetailUnlock
+                                : l.historyDetailLockAction,
                             onTap: () {
                               ref
                                   .read(historyProvider.notifier)
@@ -189,7 +194,7 @@ class HistoryDetailSheet extends StatelessWidget {
                         Consumer(builder: (context, ref, _) {
                           return _actionBtn(
                             icon: Icons.delete_outline,
-                            label: 'Delete',
+                            label: l.delete,
                             color: AppColors.red,
                             onTap: () {
                               if (entry.isLocked) return;
@@ -272,7 +277,7 @@ class HistoryDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _ttsActionBtn(HistoryEntry entry) {
+  Widget _ttsActionBtn(HistoryEntry entry, AppLocalizations l) {
     return InkWell(
       onTap: () {
         // TtsButton handles tap internally, but this provides the outer tap area
@@ -289,10 +294,10 @@ class HistoryDetailSheet extends StatelessWidget {
               size: 22,
             ),
             const SizedBox(height: 4),
-            const Text(
-              'TTS',
+            Text(
+              l.historyDetailTtsLabel,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 10, color: AppColors.primary),
+              style: const TextStyle(fontSize: 10, color: AppColors.primary),
             ),
           ],
         ),
@@ -302,11 +307,9 @@ class HistoryDetailSheet extends StatelessWidget {
 
   void _copy(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Copied'),
-        duration: Duration(seconds: 1),
-      ),
-    );
+    // Use overlay-based toast instead of SnackBar — the sheet's own backdrop
+    // hides any SnackBar that anchors to the parent Scaffold below it, so
+    // the user gets no feedback that the copy succeeded.
+    showAppToast(context, AppLocalizations.of(context)!.copied);
   }
 }

@@ -51,26 +51,54 @@ class TtsNotifier extends Notifier<TtsState> {
   static const _kRateKey = 'tk_tts_rate';
   static const _kVoicePrefix = 'tk_tts_voice_';
 
+  // ISO 639-1 code → BCP-47 locale used by Android TextToSpeech / iOS
+  // AVSpeechSynthesizer. Falls back to the raw code (which both engines
+  // accept as a 2-letter shortcut) for any language not listed here, so
+  // OS-level voice resolution still works for the long tail of catalog
+  // languages. Old fallback was hard-coded 'en-US' — meant Thai/Hindi/etc.
+  // were read with an English voice, which sounded wrong.
   static const _langToLocale = <String, String>{
-    'vi': 'vi-VN',
-    'en': 'en-US',
-    'ja': 'ja-JP',
-    'zh': 'zh-CN',
-    'ko': 'ko-KR',
-    'fr': 'fr-FR',
-    'es': 'es-ES',
-    'de': 'de-DE',
-    'pt': 'pt-BR',
-    'ru': 'ru-RU',
-    'th': 'th-TH',
-    'id': 'id-ID',
-    'ms': 'ms-MY',
-    'it': 'it-IT',
-    'ar': 'ar-SA',
-    'hi': 'hi-IN',
+    // Tier 1 — popular, widely-installed TTS voices
+    'en':  'en-US', 'vi':  'vi-VN', 'zh':  'zh-CN', 'zh-TW': 'zh-TW',
+    'ja':  'ja-JP', 'ko':  'ko-KR', 'fr':  'fr-FR', 'de':  'de-DE',
+    'es':  'es-ES', 'pt':  'pt-BR', 'it':  'it-IT', 'ru':  'ru-RU',
+    // European
+    'nl':  'nl-NL', 'pl':  'pl-PL', 'uk':  'uk-UA', 'cs':  'cs-CZ',
+    'sk':  'sk-SK', 'hu':  'hu-HU', 'ro':  'ro-RO', 'el':  'el-GR',
+    'sv':  'sv-SE', 'no':  'nb-NO', 'fi':  'fi-FI', 'da':  'da-DK',
+    'is':  'is-IS', 'bg':  'bg-BG', 'hr':  'hr-HR', 'sr':  'sr-RS',
+    'bs':  'bs-BA', 'sl':  'sl-SI', 'mk':  'mk-MK', 'sq':  'sq-AL',
+    'ca':  'ca-ES', 'eu':  'eu-ES', 'gl':  'gl-ES', 'et':  'et-EE',
+    'lv':  'lv-LV', 'lt':  'lt-LT', 'be':  'be-BY', 'mt':  'mt-MT',
+    'ga':  'ga-IE', 'cy':  'cy-GB', 'lb':  'lb-LU', 'fy':  'fy-NL',
+    // Middle East
+    'ar':  'ar-SA', 'he':  'he-IL', 'fa':  'fa-IR', 'tr':  'tr-TR',
+    'az':  'az-AZ', 'hy':  'hy-AM', 'ka':  'ka-GE',
+    // South Asia
+    'hi':  'hi-IN', 'bn':  'bn-IN', 'ur':  'ur-PK', 'pa':  'pa-IN',
+    'ta':  'ta-IN', 'te':  'te-IN', 'mr':  'mr-IN', 'gu':  'gu-IN',
+    'kn':  'kn-IN', 'ml':  'ml-IN', 'or':  'or-IN', 'si':  'si-LK',
+    'ne':  'ne-NP',
+    // Southeast Asia
+    'th':  'th-TH', 'id':  'id-ID', 'ms':  'ms-MY', 'fil': 'fil-PH',
+    'my':  'my-MM', 'km':  'km-KH', 'lo':  'lo-LA', 'jv':  'jv-ID',
+    'su':  'su-ID',
+    // Central + East Asia
+    'mn':  'mn-MN', 'kk':  'kk-KZ', 'uz':  'uz-UZ', 'ky':  'ky-KG',
+    // Africa
+    'sw':  'sw-KE', 'am':  'am-ET', 'ha':  'ha-NG', 'yo':  'yo-NG',
+    'ig':  'ig-NG', 'zu':  'zu-ZA', 'xh':  'xh-ZA', 'af':  'af-ZA',
+    'so':  'so-SO', 'mg':  'mg-MG',
+    // Americas + Other
+    'ht':  'ht-HT', 'eo':  'eo',    'la':  'la',    'haw': 'haw-US',
+    'mi':  'mi-NZ', 'sm':  'sm-WS', 'yi':  'yi',
   };
 
-  static String localeFor(String lang) => _langToLocale[lang] ?? 'en-US';
+  /// Resolve a language code to a BCP-47 locale TTS engines can understand.
+  /// For languages not in the explicit map, return the raw code — most TTS
+  /// engines (Android + iOS) accept 2-letter ISO codes as a fallback and
+  /// will try their best to find a matching voice.
+  static String localeFor(String lang) => _langToLocale[lang] ?? lang;
 
   @override
   TtsState build() {
@@ -142,7 +170,16 @@ class TtsNotifier extends Notifier<TtsState> {
     await _tts.stop();
 
     final locale = localeFor(lang);
-    await _tts.setLanguage(locale);
+    // setLanguage returns 1 on success, 0 if the OS has no voice for that
+    // locale. Don't silently fall back to the OS default (often en-US) —
+    // that would read e.g. Vietnamese text with an English voice. Bail out
+    // instead so the caller can surface "TTS not available for this lang".
+    final ok = await _tts.setLanguage(locale);
+    if (ok != 1) {
+      debugPrint('[TTS] setLanguage($locale) returned $ok — no voice installed');
+      state = state.copyWith(isPlaying: false, clearText: true);
+      return;
+    }
     await _tts.setSpeechRate(state.rate);
 
     final voiceName = state.voiceByLang[lang];
@@ -156,6 +193,18 @@ class TtsNotifier extends Notifier<TtsState> {
 
     await _tts.speak(text.trim());
     state = state.copyWith(isPlaying: true, currentText: text.trim());
+  }
+
+  /// Check if the OS has a TTS voice installed for a language. Callers can
+  /// use this to hide/disable the speak button for unsupported languages.
+  Future<bool> isLanguageAvailable(String lang) async {
+    try {
+      final locale = localeFor(lang);
+      final result = await _tts.isLanguageAvailable(locale);
+      return result == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> pause() async {
@@ -173,6 +222,19 @@ class TtsNotifier extends Notifier<TtsState> {
     state = state.copyWith(rate: rate);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_kRateKey, rate);
+  }
+
+  /// Re-read TTS rate from SharedPreferences. The floating bubble's settings
+  /// sheet writes `tk_tts_rate` directly via native Android code — without
+  /// this reload the in-app TTS would keep using the rate that was cached at
+  /// cold start, ignoring any change the user made from the popup.
+  Future<void> reload() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    final rate = prefs.getDouble(_kRateKey) ?? 1.0;
+    if (rate != state.rate) {
+      state = state.copyWith(rate: rate);
+    }
   }
 
   Future<void> setVoice(String lang, String voiceName) async {

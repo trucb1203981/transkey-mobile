@@ -122,6 +122,38 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     });
   }
 
+  /// Native Google sign-in: the mobile app already used GoogleSignIn SDK to
+  /// produce `idToken`. Verify-and-mint server-side via POST /auth/google/mobile
+  /// — no browser, no deep link.
+  Future<void> signInWithGoogleIdToken(String idToken) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final api = ref.read(apiClientProvider);
+      final response = await api.dio.post(
+        '/auth/google/mobile',
+        data: {'idToken': idToken},
+      ).timeout(const Duration(seconds: 20));
+
+      final data = response.data;
+      final user = data['user'] as Map<String, dynamic>;
+      final session = AuthSession(
+        accessToken: data['accessToken'] as String,
+        userId: user['id'].toString(),
+        email: user['email'] as String,
+        name: user['name'] as String?,
+        plan: user['plan'] as String? ?? 'free',
+        expiresAt: data['expiresAt'] as String?,
+      );
+
+      final sessionStore = ref.read(sessionStoreProvider);
+      await sessionStore.save(session);
+      _invalidateApiSessionCache();
+      await _syncToAppGroup(session);
+
+      return AuthState(isLoggedIn: true, session: session);
+    });
+  }
+
   Future<void> logout() async {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.clear();

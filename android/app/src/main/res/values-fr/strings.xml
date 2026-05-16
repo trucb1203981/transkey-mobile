@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey peut coller une réponse directement dans le champ de texte actif de n\'importe quelle app lorsque vous appuyez sur « Coller la réponse » dans la bulle flottante. Le texte n\'est lu ou écrit que lorsque vous déclenchez une action — aucun suivi en arrière-plan.</string>
+
+    <string name="bubble_choose_action">Choisir une action</string>
+    <string name="bubble_using_selection">Utilisation du texte sélectionné.</string>
+    <string name="bubble_need_text">Sélectionnez ou copiez du texte, puis choisissez une action ci-dessous.</string>
+    <string name="bubble_show_last_result">Afficher le dernier résultat</string>
+    <string name="bubble_type_text">Saisir votre texte</string>
+    <string name="bubble_input_hint">Saisissez du texte à traduire…</string>
+    <string name="bubble_input_paste">Coller</string>
+    <string name="bubble_input_clear">Effacer</string>
+    <string name="bubble_action_translate">Traduire</string>
+    <string name="bubble_cancel">Annuler</string>
+    <string name="bubble_mode_translate">Traduire</string>
+    <string name="bubble_mode_reply">Répondre</string>
+    <string name="bubble_mode_summarize">Résumer</string>
+    <string name="bubble_mode_explain">Expliquer</string>
+    <string name="bubble_mode_refine">Affiner</string>
+
+    <string name="bubble_settings">Paramètres</string>
+    <string name="bubble_translate_tone">Ton de traduction</string>
+    <string name="bubble_reply_tone">Ton de réponse</string>
+    <string name="bubble_speech_rate">Vitesse de lecture</string>
+    <string name="bubble_romanization">Romanisation (Romaji/Pinyin)</string>
+    <string name="bubble_reply_suggestions">Suggestions de réponse</string>
+
+    <string name="bubble_tone_auto">Auto</string>
+    <string name="bubble_tone_business">Affaires</string>
+    <string name="bubble_tone_casual">Décontracté</string>
+    <string name="bubble_tone_formal">Formel</string>
+    <string name="bubble_tone_polite">Poli</string>
+    <string name="bubble_tone_technical">Technique</string>
+    <string name="bubble_tone_neutral">Neutre</string>
+    <string name="bubble_reply_tone_same">Identique au ton de traduction</string>
+
+    <string name="process_text_translate">TransKey : Traduire</string>
+    <string name="process_text_reply">TransKey : Répondre</string>
+    <string name="process_text_summarize">TransKey : Résumer</string>
+    <string name="process_text_explain">TransKey : Expliquer</string>
+    <string name="process_text_refine">TransKey : Affiner</string>
+</resources>
