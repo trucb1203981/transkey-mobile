@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Runtime-requested when user taps the bubble's "Voice input" entry. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Required for the foreground "mediaProjection" service that captures
+         a single screen frame to feed into the bubble's "Scan screen" OCR. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <application
         android:label="TransKey"
@@ -130,6 +135,42 @@
             android:exported="false"
             android:foregroundServiceType="specialUse" />
 
+        <!-- Transparent activity to request RECORD_AUDIO at runtime.
+             A Service cannot request dangerous permissions directly, so the
+             "Voice input" bubble entry routes through this activity, which
+             then signals BubbleService to start the voice picker. -->
+        <activity
+            android:name=".MicPermissionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/ShareActivityTheme" />
+
+        <!-- Transparent activity that calls
+             MediaProjectionManager.createScreenCaptureIntent() so the system
+             can prompt the user once per session. Captured token is held in
+             ScreenCaptureManager (in-memory only) and consumed by
+             ScreenCaptureService for the bubble's "Scan screen" OCR flow. -->
+        <activity
+            android:name=".ScreenCapturePermissionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/ShareActivityTheme" />
+
+        <!-- Foreground service that owns the MediaProjection + VirtualDisplay
+             while capturing a single frame for OCR. The mediaProjection
+             foregroundServiceType is mandatory for Android 14+ — otherwise
+             startForegroundService throws SecurityException at capture time. -->
+        <service
+            android:name=".ScreenCaptureService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
         <!-- Accessibility Service: pastes reply into focused EditText of other apps -->
         <service
             android:name=".TransKeyAccessibilityService"
@@ -152,6 +193,12 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Required on Android 11+ for SpeechRecognizer.isRecognitionAvailable
+             to return true — otherwise the system reports no recognizer even
+             when one is installed. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
         <!-- url_launcher needs this on Android 11+ to launch http/https URLs -->
         <intent>

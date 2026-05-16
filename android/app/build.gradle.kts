@@ -69,3 +69,15 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // ML Kit on-device text recognition for the bubble "Scan screen" / OCR
+    // flow. Latin is required; the CJK + Korean modules let us read sources
+    // the user is most likely to point the lens at (manga, JP/KR apps,
+    // mainland Chinese sites). Each module ships its own offline model and
+    // adds ~3 MB to the APK — drop any if footprint becomes a concern.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+}

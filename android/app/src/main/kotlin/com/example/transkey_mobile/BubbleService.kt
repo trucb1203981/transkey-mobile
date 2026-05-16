@@ -10,6 +10,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -46,6 +47,20 @@ class BubbleService : Service() {
         const val ACTION_TRANSLATE = "transkey.bubble.TRANSLATE"
         const val ACTION_SHOW_RESULT = "transkey.bubble.SHOW_RESULT"
         const val ACTION_HIDE_PANEL = "transkey.bubble.HIDE_PANEL"
+        // Sent by MicPermissionActivity after the user grants RECORD_AUDIO,
+        // so the bubble can open its voice picker overlay.
+        const val ACTION_START_VOICE = "transkey.bubble.START_VOICE"
+        // Sent by ScreenCaptureService after a single frame has been OCR'd —
+        // EXTRA_TEXT carries the recognised text (null on failure).
+        const val ACTION_DELIVER_OCR = "transkey.bubble.DELIVER_OCR"
+        // Sent by ScreenCaptureService for the Lens flow — bitmap + OCR
+        // blocks sit in ScreenCaptureManager; we just need the signal to
+        // start batch-translation and render the overlay.
+        const val ACTION_DELIVER_LENS = "transkey.bubble.DELIVER_LENS"
+        // Region mode: capture finished but OCR deferred — show the
+        // rubber-band selector on top of the bitmap so the user can crop
+        // before we OCR + translate.
+        const val ACTION_DELIVER_REGION_READY = "transkey.bubble.DELIVER_REGION_READY"
         const val EXTRA_STATE = "bubble_state"
         const val EXTRA_TEXT = "text"
         const val EXTRA_MODE = "mode"
@@ -112,6 +127,20 @@ class BubbleService : Service() {
         private const val KEY_ROMANIZATION = "flutter.tk_romanization"
         private const val KEY_REPLY_SUGGESTIONS = "flutter.tk_reply_suggestions"
         private const val KEY_TTS_RATE = "flutter.tk_tts_rate"
+        // Local-only flag (not under flutter.* prefix) so we don't pollute
+        // the Flutter SharedPreferences mirror with native-only state.
+        private const val KEY_SCAN_DISCLOSED = "tk_scan_disclosed"
+        // Speaker's language for the voice picker (independent of translate
+        // source-lang — what you DICTATE in may differ from what you
+        // translate FROM, e.g. dictate JP, translate JP→EN).
+        private const val KEY_VOICE_LANG = "tk_voice_lang"
+
+        // Languages offered as pills in the voice picker. Kept short on
+        // purpose — every entry needs an offline pack downloaded on the
+        // device's Google Speech Services for non-network use.
+        private val VOICE_LANGS = listOf(
+            "en", "vi", "ja", "ko", "zh", "fr", "de", "es", "pt", "ru", "th", "id",
+        )
 
         private val SOURCE_LANGS = listOf("auto", "en", "vi", "ja", "zh", "ko", "fr", "de", "es", "pt", "ru", "th", "id")
 
@@ -269,6 +298,36 @@ class BubbleService : Service() {
     // keyboard can attach to its EditText.
     private var inputPickerView: View? = null
 
+    // Voice-input picker overlay. Active SpeechRecognizer session and the
+    // TextView we stream partial results into. Held here so onDestroy /
+    // stopBubble can release the recognizer's audio focus.
+    private var voicePickerView: View? = null
+    private var voiceHelper: VoiceRecognitionHelper? = null
+    private var voiceTranscriptView: TextView? = null
+    private var voiceStatusView: TextView? = null
+    private var voiceMicIcon: TextView? = null
+
+    // First-run disclosure overlay shown before the "Scan screen" / OCR flow
+    // (MediaProjection) — explains what gets captured and where it goes.
+    private var scanDisclosureView: View? = null
+
+    // Lens flow overlays. The progress card sits over the source app while
+    // batch-translate is in flight; the LensOverlayView is the full-screen
+    // bitmap + translated chips that replaces it on success. Both held so
+    // lifecycle hooks can tear them down on stopBubble / onDestroy.
+    private var lensProgressView: View? = null
+    private var lensOverlayView: LensOverlayView? = null
+
+    // Rubber-band region selector shown when user picks the "Translate
+    // selected area" entry — sits between MediaProjection capture and OCR.
+    private var regionSelectionView: RegionSelectionView? = null
+
+    // Speaker language picked for the current voice session. Read fresh
+    // from prefs (KEY_VOICE_LANG) each time the picker opens; mutated when
+    // the user taps a different lang pill, which also persists + restarts
+    // the recognizer with the new BCP-47 tag.
+    private var currentVoiceLang: String = "en"
+
     // Text-to-Speech
     private var tts: TextToSpeech? = null
     private var ttsReady = false
@@ -343,6 +402,14 @@ class BubbleService : Service() {
                 }
             }
             ACTION_HIDE_PANEL -> hideResultPanel()
+            ACTION_START_VOICE -> showVoicePicker(MODE_TRANSLATE)
+            ACTION_DELIVER_OCR -> {
+                val text = intent.getStringExtra(EXTRA_TEXT)
+                val mode = intent.getStringExtra(EXTRA_MODE) ?: MODE_TRANSLATE
+                handleOcrResult(text, mode)
+            }
+            ACTION_DELIVER_LENS -> handleLensReady()
+            ACTION_DELIVER_REGION_READY -> handleRegionReady()
         }
         return START_STICKY
     }
@@ -354,6 +421,12 @@ class BubbleService : Service() {
         hideSourceLangPicker()
         hideTonePicker()
         hideInputPicker()
+        hideVoicePicker()
+        hideScanDisclosure()
+        hideLensProgress()
+        hideLensOverlay()
+        hideRegionSelectionView()
+        releaseScreenCapture()
         hideCloseZone()
         tts?.stop(); tts?.shutdown(); tts = null
         removeBubble()
@@ -707,6 +780,81 @@ class BubbleService : Service() {
             setOnClickListener {
                 hideModePicker()
                 showInputPicker(MODE_TRANSLATE)
+            }
+        })
+
+        // "Read this screen" — covers apps that disable text selection
+        // (banking, anti-copy chat, reader apps). Walks the source app's
+        // accessibility tree to harvest all visible text, then pre-fills
+        // the input picker so the user can trim before translating.
+        card.addView(TextView(this).apply {
+            text = "📱  ${localized(R.string.bubble_read_screen)}"
+            setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                hideModePicker()
+                handleReadScreenRequest()
+            }
+        })
+
+        // "Voice input" — dictation for users who'd rather speak than type.
+        // Routes through MicPermissionActivity the first time to request
+        // RECORD_AUDIO; subsequent uses skip straight to the voice picker.
+        card.addView(TextView(this).apply {
+            text = "🎤  ${localized(R.string.bubble_voice)}"
+            setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                hideModePicker()
+                handleVoiceRequest()
+            }
+        })
+
+        // "Scan screen (OCR)" — full-screen Lens flow. Captures the
+        // whole frame, OCRs everything that passes the content heuristic,
+        // and renders translated blocks at their original positions.
+        card.addView(TextView(this).apply {
+            text = "📷  ${localized(R.string.bubble_scan_screen)}"
+            setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                hideModePicker()
+                handleScanRequest()
+            }
+        })
+
+        // "Translate selected area" — same Lens pipeline but with a
+        // rubber-band step between capture and OCR so the user can crop
+        // out the rest of the screen (chat header, ads, app chrome).
+        // Cheaper to translate AND avoids translating things the user
+        // doesn't care about.
+        card.addView(TextView(this).apply {
+            text = "🎯  ${localized(R.string.bubble_lens_region)}"
+            setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                hideModePicker()
+                handleLensRegionRequest()
             }
         })
 
@@ -1877,6 +2025,33 @@ class BubbleService : Service() {
             .putString(KEY_REPLY_LANG, lang).apply()
     }
 
+    /**
+     * Read the persisted speaker language for voice input. Falls back to a
+     * sensible default in this order:
+     *   1. Previously-chosen voice lang (persisted across sessions)
+     *   2. System primary locale's ISO code (if it's one we offer)
+     *   3. Translate source-lang (when not "auto")
+     *   4. "en" — universal fallback
+     */
+    private fun readVoiceLang(): String {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stored = prefs.getString(KEY_VOICE_LANG, null)
+        if (!stored.isNullOrEmpty() && stored in VOICE_LANGS) return stored
+
+        val systemLang = resources.configuration.locales.get(0).language
+        if (systemLang in VOICE_LANGS) return systemLang
+
+        val src = readSourceLang()
+        if (src != "auto" && src in VOICE_LANGS) return src
+
+        return "en"
+    }
+
+    private fun writeVoiceLang(lang: String) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putString(KEY_VOICE_LANG, lang).apply()
+    }
+
     private fun writeTone(tone: String) {
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
             .putString(KEY_TONE_OVERRIDE, tone).apply()
@@ -2065,7 +2240,7 @@ class BubbleService : Service() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun showInputPicker(initialMode: String) {
+    private fun showInputPicker(initialMode: String, prefillText: String? = null) {
         if (inputPickerView != null) { hideInputPicker(); return }
         ensureWindowManager()
         refreshLocale()
@@ -2215,6 +2390,12 @@ class BubbleService : Service() {
         // Wire the Paste / Clear buttons (declared before EditText) to the
         // freshly-constructed input now that the reference exists.
         inputRef = input
+        // Pre-fill if caller supplied text (e.g. from Read-screen a11y flow).
+        // Cursor at end so user can keep typing or trim.
+        if (!prefillText.isNullOrBlank()) {
+            input.setText(prefillText)
+            input.setSelection(input.text?.length ?: 0)
+        }
         card.addView(input)
 
         // ── Mode tabs ──
@@ -2338,6 +2519,804 @@ class BubbleService : Service() {
             try { windowManager?.removeView(view) } catch (_: Exception) {}
         }
         inputPickerView = null
+    }
+
+    // ── Voice input picker ──
+
+    /** Pulse animation runnable so we can cancel it on hide. */
+    private var voicePulseRunnable: Runnable? = null
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showVoicePicker(initialMode: String) {
+        if (voicePickerView != null) { hideVoicePicker(); return }
+        ensureWindowManager()
+        refreshLocale()
+
+        val dp = resources.displayMetrics.density
+        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
+        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
+        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
+        val accent   = Color.parseColor("#6C63FF")
+        val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
+
+        val backdrop = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#66000000"))
+            setOnClickListener { cancelVoice() }
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+            elevation = 22 * dp
+            setPadding((20 * dp).toInt(), (20 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt())
+            isClickable = true
+            gravity = Gravity.CENTER_HORIZONTAL
+        }
+
+        // Title
+        card.addView(TextView(this).apply {
+            text = localized(R.string.bubble_voice)
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, (12 * dp).toInt())
+        })
+
+        // Big mic icon — using a TextView with 🎤 so we don't need to ship
+        // a vector drawable just for this. Pulses alpha while listening.
+        val mic = TextView(this).apply {
+            text = "🎤"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 48f)
+            gravity = Gravity.CENTER
+            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+        }
+        voiceMicIcon = mic
+        card.addView(mic)
+
+        // Language pills: which language the user is SPEAKING in. Decoupled
+        // from translate source-lang because dictation language often
+        // differs (you might dictate JP, translate JP → EN). User taps a
+        // pill → we persist the choice, cancel the active recognizer, and
+        // restart it with the new BCP-47 tag.
+        currentVoiceLang = readVoiceLang()
+        val langScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = (4 * dp).toInt() }
+        }
+        val langRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        val pillsByCode = mutableMapOf<String, TextView>()
+        fun renderLangPills() {
+            for ((code, pill) in pillsByCode) {
+                val selected = code == currentVoiceLang
+                pill.background = GradientDrawable().apply {
+                    setColor(if (selected) accent else Color.TRANSPARENT)
+                    if (!selected) setStroke(1, borderCol)
+                    cornerRadius = 12 * dp
+                }
+                pill.setTextColor(if (selected) Color.WHITE else textCol)
+            }
+        }
+        VOICE_LANGS.forEachIndexed { idx, code ->
+            val label = LANG_LABELS[code] ?: code.uppercase()
+            val pill = TextView(this).apply {
+                text = label
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                maxLines = 1
+                setSingleLine(true)
+                setPadding((12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt())
+                isClickable = true
+                isFocusable = true
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginEnd = if (idx < VOICE_LANGS.size - 1) (6 * dp).toInt() else 0 }
+                setOnClickListener {
+                    if (currentVoiceLang == code) return@setOnClickListener
+                    currentVoiceLang = code
+                    writeVoiceLang(code)
+                    renderLangPills()
+                    // Wipe stale transcript + restart recognizer with the
+                    // newly-picked language. Note: voiceHelper?.cancel()
+                    // ALSO calls destroy() under the hood — start a new one.
+                    voiceHelper?.cancel()
+                    voiceHelper = null
+                    voiceTranscriptView?.text = ""
+                    voiceStatusView?.text = localized(R.string.bubble_voice_speak)
+                    startVoiceRecognizer(initialMode)
+                }
+            }
+            pillsByCode[code] = pill
+            langRow.addView(pill)
+        }
+        renderLangPills()
+        langScroll.addView(langRow)
+        card.addView(langScroll)
+
+        // Status line ("Listening…" / "Speak now" / error)
+        val status = TextView(this).apply {
+            text = localized(R.string.bubble_voice_speak)
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            gravity = Gravity.CENTER
+            setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
+        }
+        voiceStatusView = status
+        card.addView(status)
+
+        // Live transcript — fills out as the engine emits partials. Bordered
+        // so empty state still reads as "a place where your words appear".
+        val transcript = TextView(this).apply {
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setPadding(
+                (12 * dp).toInt(), (10 * dp).toInt(),
+                (12 * dp).toInt(), (10 * dp).toInt(),
+            )
+            background = GradientDrawable().apply {
+                setColor(Color.TRANSPARENT)
+                setStroke(1, borderCol)
+                cornerRadius = 12 * dp
+            }
+            minLines = 2
+            maxLines = 4
+            gravity = Gravity.TOP or Gravity.START
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = (8 * dp).toInt() }
+        }
+        voiceTranscriptView = transcript
+        card.addView(transcript)
+
+        // Action row: Cancel + Stop. Stop commits whatever partial we have
+        // and routes the final text into the input picker for review.
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = (12 * dp).toInt() }
+        }
+        actions.addView(TextView(this).apply {
+            text = localized(R.string.bubble_cancel)
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { cancelVoice() }
+        })
+        actions.addView(TextView(this).apply {
+            text = localized(R.string.bubble_voice_stop)
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable().apply {
+                setColor(accent)
+                cornerRadius = 12 * dp
+            }
+            setPadding((18 * dp).toInt(), (10 * dp).toInt(), (18 * dp).toInt(), (10 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = (8 * dp).toInt() }
+            setOnClickListener { voiceHelper?.stop() }
+        })
+        card.addView(actions)
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((360 * dp).toInt())
+        backdrop.addView(card, FrameLayout.LayoutParams(
+            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
+        ))
+        voicePickerView = backdrop
+        windowManager?.addView(backdrop, buildPickerLayoutParams())
+
+        startMicPulse()
+        startVoiceRecognizer(initialMode)
+    }
+
+    /**
+     * (Re-)spin up the SpeechRecognizer using whatever language the user
+     * currently has picked in the voice picker. Called when the picker
+     * first opens and again every time the user taps a different lang pill.
+     */
+    private fun startVoiceRecognizer(initialMode: String) {
+        val tag = VoiceRecognitionHelper.resolveLanguageTag(currentVoiceLang)
+        val helper = VoiceRecognitionHelper(
+            context = this,
+            languageTag = tag,
+            callbacks = object : VoiceRecognitionHelper.Callbacks {
+                override fun onReady() {
+                    handler.post {
+                        voiceStatusView?.text = localized(R.string.bubble_voice_listening)
+                    }
+                }
+                override fun onPartialResult(text: String) {
+                    handler.post {
+                        voiceTranscriptView?.text = text
+                    }
+                }
+                override fun onFinalResult(text: String) {
+                    handler.post {
+                        hideVoicePicker()
+                        // Open the input picker with the recognized text so
+                        // the user can correct mis-hearings before sending.
+                        showInputPicker(initialMode, prefillText = text)
+                    }
+                }
+                override fun onError(message: String) {
+                    handler.post {
+                        voiceStatusView?.text = message
+                        voiceTranscriptView?.text = ""
+                        stopMicPulse()
+                        // Auto-dismiss after a moment so the user isn't stuck
+                        // on the error card — UNLESS they're likely to retry
+                        // with a different language (CJK packs often missing).
+                        handler.postDelayed({ hideVoicePicker() }, 2400)
+                    }
+                }
+            },
+        )
+        voiceHelper = helper
+        helper.start()
+    }
+
+    private fun startMicPulse() {
+        stopMicPulse()
+        val runnable = object : Runnable {
+            override fun run() {
+                val mic = voiceMicIcon ?: return
+                val target = if (mic.alpha > 0.7f) 0.35f else 1f
+                mic.animate().alpha(target).setDuration(550).start()
+                handler.postDelayed(this, 550)
+            }
+        }
+        voicePulseRunnable = runnable
+        handler.post(runnable)
+    }
+
+    private fun stopMicPulse() {
+        voicePulseRunnable?.let { handler.removeCallbacks(it) }
+        voicePulseRunnable = null
+        voiceMicIcon?.animate()?.cancel()
+        voiceMicIcon?.alpha = 1f
+    }
+
+    private fun cancelVoice() {
+        voiceHelper?.cancel()
+        voiceHelper = null
+        hideVoicePicker()
+    }
+
+    private fun hideVoicePicker() {
+        stopMicPulse()
+        voiceHelper?.destroy()
+        voiceHelper = null
+        voicePickerView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+        voicePickerView = null
+        voiceMicIcon = null
+        voiceStatusView = null
+        voiceTranscriptView = null
+    }
+
+    // ── Scan screen (MediaProjection + ML Kit OCR) ──
+
+    /**
+     * Entry from the mode picker. First tap shows a one-time disclosure
+     * explaining that a single frame is captured on-device and discarded
+     * after OCR. Subsequent taps go straight to the MediaProjection consent
+     * prompt — that prompt itself is non-skippable per Android policy and
+     * appears every session because we deliberately don't persist the
+     * projection token.
+     */
+    private fun handleScanRequest() {
+        ScreenCaptureManager.regionMode = false
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
+            launchScanFlow()
+        } else {
+            showScanDisclosure()
+        }
+    }
+
+    /**
+     * Variant of [handleScanRequest] that asks ScreenCaptureService to skip
+     * immediate OCR. After capture, BubbleService receives a bitmap and
+     * presents [RegionSelectionView] so the user can drag a rectangle;
+     * only that sub-region is OCR'd + translated.
+     */
+    private fun handleLensRegionRequest() {
+        ScreenCaptureManager.regionMode = true
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
+            launchScanFlow()
+        } else {
+            showScanDisclosure()
+        }
+    }
+
+    private fun launchScanFlow() {
+        // Lens flow: capture screen → OCR blocks (with bounding boxes) →
+        // batch-translate → render LensOverlayView. The old "OCR → text
+        // → input picker" flow lives on as ScreenCaptureManager.Flow.
+        // TEXT_INTO_INPUT but isn't currently exposed in the mode picker.
+        ScreenCaptureManager.flow = ScreenCaptureManager.Flow.LENS
+        ScreenCaptureManager.languageHint = readSourceLang().takeIf { it != "auto" }
+        ScreenCaptureManager.targetLang = readTargetLang()
+        ScreenCaptureManager.pendingMode = MODE_TRANSLATE
+        // Hide everything we'd otherwise be painting OVER the source app
+        // before the system grabs the next frame — bubble icon + open
+        // pickers would all end up baked into the screenshot otherwise.
+        hideOverlaysForCapture()
+
+        // Reuse the MediaProjection grant if the user already approved it
+        // earlier this bubble session — skips the "Start recording?" prompt
+        // and the consent activity entirely. The persistent capture-service
+        // notification (+ system casting indicator) keeps the user aware
+        // that we still have screen-capture access.
+        if (ScreenCaptureService.isProjectionActive) {
+            val captureIntent = Intent(this, ScreenCaptureService::class.java).apply {
+                action = ScreenCaptureService.ACTION_CAPTURE
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(captureIntent)
+            } else {
+                startService(captureIntent)
+            }
+            return
+        }
+
+        val intent = Intent(this, ScreenCapturePermissionActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_NO_HISTORY or
+                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+        }
+        try { startActivity(intent) } catch (_: Exception) {}
+    }
+
+    private fun hideOverlaysForCapture() {
+        bubbleView?.visibility = View.GONE
+        hideModePicker()
+        hideLangPicker()
+        hideSourceLangPicker()
+        hideTonePicker()
+        hideInputPicker()
+        hideVoicePicker()
+        hideResultPanel()
+    }
+
+    private fun restoreBubbleVisibility() {
+        bubbleView?.visibility = View.VISIBLE
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showScanDisclosure() {
+        if (scanDisclosureView != null) { hideScanDisclosure(); return }
+        ensureWindowManager()
+        refreshLocale()
+
+        val dp = resources.displayMetrics.density
+        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
+        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
+        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
+        val accent   = Color.parseColor("#6C63FF")
+
+        val backdrop = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#66000000"))
+            setOnClickListener { hideScanDisclosure() }
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+            elevation = 22 * dp
+            setPadding((20 * dp).toInt(), (18 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt())
+            isClickable = true
+        }
+        card.addView(TextView(this).apply {
+            text = "📷  ${localized(R.string.bubble_scan_disclosure_title)}"
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, 0, 0, (10 * dp).toInt())
+        })
+        card.addView(TextView(this).apply {
+            text = localized(R.string.bubble_scan_disclosure_body)
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setLineSpacing(2 * dp, 1f)
+            setPadding(0, 0, 0, (16 * dp).toInt())
+        })
+
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+        }
+        actions.addView(TextView(this).apply {
+            text = localized(R.string.bubble_cancel)
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { hideScanDisclosure() }
+        })
+        actions.addView(TextView(this).apply {
+            text = localized(R.string.bubble_scan_continue)
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable().apply {
+                setColor(accent)
+                cornerRadius = 12 * dp
+            }
+            setPadding((18 * dp).toInt(), (10 * dp).toInt(), (18 * dp).toInt(), (10 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = (8 * dp).toInt() }
+            setOnClickListener {
+                getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                    .putBoolean(KEY_SCAN_DISCLOSED, true).apply()
+                hideScanDisclosure()
+                launchScanFlow()
+            }
+        })
+        card.addView(actions)
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((360 * dp).toInt())
+        backdrop.addView(card, FrameLayout.LayoutParams(
+            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
+        ))
+        scanDisclosureView = backdrop
+        windowManager?.addView(backdrop, buildPickerLayoutParams())
+    }
+
+    private fun hideScanDisclosure() {
+        scanDisclosureView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+        scanDisclosureView = null
+    }
+
+    /**
+     * Callback path invoked by ScreenCaptureService once OCR completes.
+     * Routes the recognised text into the input picker so the user can trim
+     * before translating; toasts if the recognizer found nothing.
+     */
+    private fun handleOcrResult(text: String?, mode: String) {
+        // Reachable from BOTH flows: TEXT_INTO_INPUT delivers the joined
+        // text; LENS delivers null via ACTION_DELIVER_OCR only on capture
+        // failure (success goes through ACTION_DELIVER_LENS). Either way
+        // restore the bubble icon so the user can retry.
+        restoreBubbleVisibility()
+        if (text.isNullOrBlank()) {
+            Toast.makeText(
+                this,
+                localized(R.string.bubble_scan_empty),
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        showInputPicker(mode, prefillText = text)
+    }
+
+    // ── Lens flow ──
+
+    /**
+     * Invoked after ScreenCaptureService finishes OCR'ing for the Lens
+     * flow. Bitmap + blocks are sitting in [ScreenCaptureManager]; we
+     * call the Flutter side via the bubble channel to batch-translate all
+     * blocks in one round-trip, then render the overlay.
+     */
+    private fun handleLensReady() {
+        val bitmap = ScreenCaptureManager.screenshot
+        val blocks = ScreenCaptureManager.blocks
+        if (bitmap == null || blocks.isEmpty()) {
+            ScreenCaptureManager.clearAll()
+            restoreBubbleVisibility()
+            Toast.makeText(
+                this,
+                localized(R.string.bubble_scan_empty),
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+
+        showLensProgress()
+
+        val engine = TransKeyApp.engine
+        if (engine == null) {
+            hideLensProgress()
+            ScreenCaptureManager.clearAll()
+            restoreBubbleVisibility()
+            Toast.makeText(this, "App not ready — open TransKey once", Toast.LENGTH_LONG).show()
+            return
+        }
+        val channel = io.flutter.plugin.common.MethodChannel(
+            engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+        )
+        val texts = blocks.map { it.text }
+        val target = ScreenCaptureManager.targetLang
+        val source = ScreenCaptureManager.languageHint
+        val args = mapOf(
+            "texts" to texts,
+            "targetLang" to target,
+            "sourceLang" to (source ?: ""),
+        )
+        channel.invokeMethod("translateBatch", args, object : io.flutter.plugin.common.MethodChannel.Result {
+            override fun success(result: Any?) {
+                handler.post {
+                    val translations = (result as? List<*>)
+                        ?.map { (it as? String).orEmpty() }
+                        ?: emptyList()
+                    val items = blocks.mapIndexed { idx, block ->
+                        val t = translations.getOrNull(idx).takeUnless { it.isNullOrBlank() } ?: block.text
+                        LensOverlayView.Item(block.text, t, block.bounds)
+                    }
+                    hideLensProgress()
+                    showLensOverlay(bitmap, items)
+                }
+            }
+            override fun error(code: String, message: String?, details: Any?) {
+                handler.post {
+                    hideLensProgress()
+                    ScreenCaptureManager.clearAll()
+                    restoreBubbleVisibility()
+                    if (!bitmap.isRecycled) bitmap.recycle()
+                    Toast.makeText(
+                        this@BubbleService,
+                        message ?: "Translation failed",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+            override fun notImplemented() {
+                handler.post {
+                    hideLensProgress()
+                    ScreenCaptureManager.clearAll()
+                    restoreBubbleVisibility()
+                    if (!bitmap.isRecycled) bitmap.recycle()
+                }
+            }
+        })
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showLensProgress() {
+        if (lensProgressView != null) return
+        ensureWindowManager()
+        val dp = resources.displayMetrics.density
+        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val bg      = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
+        val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
+
+        val backdrop = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#88000000"))
+            isClickable = true  // swallow taps so user can't dismiss mid-translate
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply { setColor(bg); cornerRadius = 14 * dp }
+            elevation = 20 * dp
+            setPadding((18 * dp).toInt(), (14 * dp).toInt(), (20 * dp).toInt(), (14 * dp).toInt())
+        }
+        card.addView(ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
+            isIndeterminate = true
+            layoutParams = LinearLayout.LayoutParams(
+                (22 * dp).toInt(), (22 * dp).toInt(),
+            )
+        })
+        card.addView(TextView(this).apply {
+            text = localized(R.string.bubble_lens_translating)
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding((12 * dp).toInt(), 0, 0, 0)
+        })
+        backdrop.addView(card, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER,
+        ))
+        lensProgressView = backdrop
+        windowManager?.addView(backdrop, buildPickerLayoutParams())
+    }
+
+    private fun hideLensProgress() {
+        lensProgressView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+        lensProgressView = null
+    }
+
+    private fun showLensOverlay(bitmap: Bitmap, items: List<LensOverlayView.Item>) {
+        ensureWindowManager()
+        val overlay = LensOverlayView(
+            this, bitmap, items,
+            onDismissOutsideTap = { hideLensOverlay() },
+        )
+        lensOverlayView = overlay
+        windowManager?.addView(overlay, buildPickerLayoutParams())
+    }
+
+    private fun hideLensOverlay() {
+        lensOverlayView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+        lensOverlayView = null
+        // Recycling the bitmap + clearing manager state is done together
+        // here (NOT in service.cleanup) so the bitmap survives until the
+        // user actually dismisses the overlay.
+        ScreenCaptureManager.clearAll()
+        restoreBubbleVisibility()
+    }
+
+    /**
+     * Region mode: capture done, bitmap is sitting in the manager. Show
+     * the rubber-band selector. On confirm we crop the bitmap, OCR the
+     * sub-image, OFFSET each block's bounds back into full-screen coords
+     * (so the Lens overlay paints them at the right place on top of the
+     * still-full screenshot), then reuse [handleLensReady] for the
+     * batch-translate + overlay render.
+     */
+    private fun handleRegionReady() {
+        val bitmap = ScreenCaptureManager.screenshot
+        if (bitmap == null) {
+            ScreenCaptureManager.clearAll()
+            restoreBubbleVisibility()
+            Toast.makeText(this, localized(R.string.bubble_scan_empty), Toast.LENGTH_LONG).show()
+            return
+        }
+        showRegionSelectionView(bitmap)
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showRegionSelectionView(bitmap: Bitmap) {
+        ensureWindowManager()
+        val view = RegionSelectionView(
+            context = this,
+            bitmap = bitmap,
+            onConfirm = { rect -> onRegionConfirmed(bitmap, rect) },
+            onCancel = { hideRegionSelectionView(); ScreenCaptureManager.clearAll(); restoreBubbleVisibility() },
+        )
+        regionSelectionView = view
+        windowManager?.addView(view, buildPickerLayoutParams())
+    }
+
+    private fun hideRegionSelectionView() {
+        regionSelectionView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+        regionSelectionView = null
+    }
+
+    private fun onRegionConfirmed(bitmap: Bitmap, rect: android.graphics.Rect) {
+        hideRegionSelectionView()
+        // Take a defensive copy of the cropped pixels so the source bitmap
+        // can stay live for the Lens overlay underneath.
+        val cropped = try {
+            Bitmap.createBitmap(bitmap, rect.left, rect.top, rect.width(), rect.height())
+        } catch (error: Exception) {
+            android.util.Log.w("BubbleService", "Region crop failed: ${error.message}")
+            null
+        }
+        if (cropped == null) {
+            ScreenCaptureManager.clearAll()
+            restoreBubbleVisibility()
+            Toast.makeText(this, localized(R.string.bubble_scan_empty), Toast.LENGTH_LONG).show()
+            return
+        }
+        showLensProgress()
+        OcrHelper.recognizeBlocks(cropped, ScreenCaptureManager.languageHint) { blocks ->
+            handler.post {
+                // The cropped bitmap was only needed for OCR — recycle it
+                // immediately so we don't hold ~MBs of pixels alongside the
+                // still-live full screenshot.
+                if (!cropped.isRecycled) cropped.recycle()
+                val offset = blocks
+                    ?.map { block ->
+                        val newBounds = android.graphics.Rect(
+                            block.bounds.left + rect.left,
+                            block.bounds.top + rect.top,
+                            block.bounds.right + rect.left,
+                            block.bounds.bottom + rect.top,
+                        )
+                        OcrHelper.Block(block.text, newBounds)
+                    }
+                    ?: emptyList()
+                if (offset.isEmpty()) {
+                    hideLensProgress()
+                    ScreenCaptureManager.clearAll()
+                    restoreBubbleVisibility()
+                    Toast.makeText(
+                        this,
+                        localized(R.string.bubble_scan_empty),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    return@post
+                }
+                // Stash the offset blocks where handleLensReady expects
+                // them, then run the existing batch-translate + overlay
+                // path so we don't duplicate the channel + overlay code.
+                ScreenCaptureManager.blocks = offset
+                hideLensProgress()
+                handleLensReady()
+            }
+        }
+    }
+
+    /**
+     * Mode-picker entry for the voice flow. Requests RECORD_AUDIO via a
+     * transparent activity since a Service can't show a runtime prompt.
+     * The activity calls back via ACTION_START_VOICE.
+     */
+    private fun handleVoiceRequest() {
+        val granted = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            showVoicePicker(MODE_TRANSLATE)
+            return
+        }
+        val intent = Intent(this, MicPermissionActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+        }
+        try { startActivity(intent) } catch (_: Exception) {}
+    }
+
+    /**
+     * "Read this screen" flow — works for apps that disable selection but
+     * still render text via standard views (banking, anti-copy chat apps,
+     * reader apps). Falls back to a Toast + Accessibility-settings prompt
+     * when the service isn't enabled; canvas-only games / image content
+     * return empty and the user is told to use another input method.
+     */
+    private fun handleReadScreenRequest() {
+        val a11y = TransKeyAccessibilityService.instance
+        if (a11y == null) {
+            Toast.makeText(
+                this,
+                localized(R.string.bubble_read_screen_a11y_off),
+                Toast.LENGTH_LONG,
+            ).show()
+            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            try { startActivity(intent) } catch (_: Exception) {}
+            return
+        }
+        // Wait for the mode picker overlay to fully detach so the active
+        // window is the source app (not our just-removed picker). Without
+        // this 200ms grace, rootInActiveWindow occasionally returns null
+        // mid-transition on some OEM builds.
+        handler.postDelayed({
+            val text = a11y.getScreenText()
+            if (text.isNullOrBlank()) {
+                Toast.makeText(
+                    this,
+                    localized(R.string.bubble_read_screen_empty),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } else {
+                showInputPicker(MODE_TRANSLATE, prefillText = text)
+            }
+        }, 200)
     }
 
     private fun showSettingsSheet() {
@@ -2639,11 +3618,39 @@ class BubbleService : Service() {
         hideModePicker()
         hideLangPicker()
         hideInputPicker()
+        hideVoicePicker()
+        hideScanDisclosure()
+        hideLensProgress()
+        hideLensOverlay()
+        hideRegionSelectionView()
+        releaseScreenCapture()
         removeResultPanel()
         removeBubble()
         saveBubbleActive(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    /**
+     * Tell the screen-capture service to drop the MediaProjection grant.
+     * Called when the user closes the bubble — keeping the grant alive
+     * past that would leave the system casting indicator on with no
+     * obvious way to dismiss it.
+     */
+    private fun releaseScreenCapture() {
+        if (!ScreenCaptureService.isProjectionActive) return
+        val intent = Intent(this, ScreenCaptureService::class.java).apply {
+            action = ScreenCaptureService.ACTION_STOP_PROJECTION
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        } catch (_: Exception) {
+            // Service may already be dying; nothing to do.
+        }
     }
 
     private fun removeBubble() {

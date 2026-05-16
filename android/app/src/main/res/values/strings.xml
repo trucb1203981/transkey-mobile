@@ -8,6 +8,34 @@
     <string name="bubble_need_text">Select or copy text first, then pick an action below.</string>
     <string name="bubble_show_last_result">Show last result</string>
     <string name="bubble_type_text">Type your own text</string>
+    <string name="bubble_read_screen">Read this screen</string>
+    <string name="bubble_read_screen_a11y_off">Enable TransKey in Accessibility to read screen text</string>
+    <string name="bubble_read_screen_empty">No readable text on this screen</string>
+    <string name="bubble_voice">Voice input</string>
+    <string name="bubble_voice_listening">Listening…</string>
+    <string name="bubble_voice_speak">Speak now</string>
+    <string name="bubble_voice_stop">Stop</string>
+    <string name="bubble_voice_no_match">Didn\'t catch that. Try again.</string>
+    <string name="bubble_voice_network">Voice input needs internet</string>
+    <string name="bubble_voice_perm_denied">Microphone permission needed for voice input</string>
+    <string name="bubble_voice_unsupported">Voice recognition not available on this device</string>
+    <string name="bubble_voice_lang_missing">Voice pack not installed for this language. Open Settings → Languages &amp; Input → Voice → download offline pack.</string>
+
+    <!-- "Scan screen" / OCR strings -->
+    <string name="bubble_scan_screen">Scan screen (OCR)</string>
+    <string name="bubble_scan_disclosure_title">TransKey will capture this screen</string>
+    <string name="bubble_scan_disclosure_body">A single frame is captured on-device, scanned for text with on-device OCR (Google ML Kit), then discarded. Nothing is uploaded or saved.</string>
+    <string name="bubble_scan_continue">Continue</string>
+    <string name="bubble_scan_processing">Reading screen…</string>
+    <string name="bubble_scan_empty">No text found on this screen</string>
+    <string name="bubble_scan_perm_denied">Screen capture permission needed for OCR</string>
+    <string name="bubble_scan_notification_title">Reading screen for translation</string>
+    <string name="bubble_scan_notification_body">A single frame is being captured and processed on-device</string>
+    <string name="bubble_scan_stop">Stop screen capture</string>
+    <string name="bubble_lens_translating">Translating screen…</string>
+    <string name="bubble_lens_region">Translate selected area</string>
+    <string name="bubble_lens_region_hint">Drag to select the area to translate</string>
+    <string name="bubble_lens_region_confirm">Translate this area</string>
     <string name="bubble_input_hint">Type text to translate…</string>
     <string name="bubble_input_paste">Paste</string>
     <string name="bubble_input_clear">Clear</string>

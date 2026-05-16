@@ -25,6 +25,13 @@ class TransKeyAccessibilityService : AccessibilityService() {
         var instance: TransKeyAccessibilityService? = null
 
         fun isAvailable(): Boolean = instance != null
+
+        // Sentence-ending punctuation (Latin + CJK + a few others) used by
+        // looksLikeContent() to keep short-but-meaningful nodes like "Tnx!"
+        // while dropping short button labels like "OK", "Cancel".
+        private val PUNCT_CHARS = setOf(
+            '.', '!', '?', '…', '。', '！', '？', '،', ';', '；', ':', '：',
+        )
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -156,6 +163,124 @@ class TransKeyAccessibilityService : AccessibilityService() {
             Log.w(TAG, "performAction $action failed: ${e.message}")
             false
         }
+    }
+
+    /**
+     * Read ALL visible text from the currently-active app window via the
+     * accessibility node tree — covers apps that disable text selection
+     * (banking, anti-copy chat apps, anti-piracy readers) as long as they
+     * render text via standard TextView / EditText / WebView. Will NOT
+     * pick up canvas/OpenGL game UI, image-only content, or apps that
+     * disable accessibility entirely (those need OCR / Phase 2).
+     *
+     * De-dupes via LinkedHashSet so nested views (parent View + child
+     * TextView reporting the same string) only contribute once. Result is
+     * capped at 5000 chars to match the translate input limit.
+     *
+     * Returns null if a11y service is not connected OR if the active
+     * window has no readable text at all.
+     */
+    fun getScreenText(): String? {
+        val root = rootInActiveWindow ?: return null
+        val ownPackage = packageName
+        val collected = LinkedHashSet<String>()
+        collectVisibleText(root, ownPackage, collected)
+        if (collected.isEmpty()) return null
+        val merged = collected.joinToString("\n").trim()
+        return merged.take(5000).takeIf { it.isNotEmpty() }
+    }
+
+    private fun collectVisibleText(
+        node: AccessibilityNodeInfo?,
+        ownPackage: CharSequence?,
+        out: LinkedHashSet<String>,
+    ) {
+        if (node == null) return
+        // Don't echo back our own bubble / pickers if they happen to be in
+        // the active window when called.
+        if (node.packageName != null && node.packageName == ownPackage) return
+
+        // Skip the entire subtree of "UI chrome" containers — toolbars,
+        // tab bars, bottom navigation. The labels they hold are app UI
+        // ("Home", "Settings", "Search"), not content the user wants to
+        // translate; pulling them in just makes the result picker noisy
+        // and forces the user to manually trim.
+        if (isChromeContainer(node.className)) return
+
+        // Prefer node.text, fall back to contentDescription so we still pick
+        // up text the developer attached as a11y description instead of as
+        // visible text (common in some compose / RN apps).
+        val text = node.text?.toString()?.trim()
+        val desc = node.contentDescription?.toString()?.trim()
+        val value = when {
+            !text.isNullOrEmpty() -> text
+            !desc.isNullOrEmpty() -> desc
+            else -> null
+        }
+        if (value != null && looksLikeContent(value, node)) out.add(value)
+
+        for (i in 0 until node.childCount) {
+            collectVisibleText(node.getChild(i), ownPackage, out)
+        }
+    }
+
+    /**
+     * Whitelist of substrings that mark a node as part of the surrounding
+     * app frame rather than the article / chat / document the user is
+     * actually reading. Skipping the WHOLE subtree of these drops nav
+     * labels in one pass instead of trying to filter each text node
+     * individually.
+     */
+    private fun isChromeContainer(className: CharSequence?): Boolean {
+        val cls = className?.toString() ?: return false
+        return cls.contains("Toolbar", ignoreCase = true) ||
+            cls.contains("ActionBar", ignoreCase = true) ||
+            cls.contains("TabLayout", ignoreCase = true) ||
+            cls.contains("TabBar", ignoreCase = true) ||
+            cls.contains("BottomNavigation", ignoreCase = true) ||
+            cls.contains("BottomBar", ignoreCase = true) ||
+            cls.contains("NavigationBar", ignoreCase = true) ||
+            cls.contains("AppBar", ignoreCase = true)
+    }
+
+    /**
+     * Distinguish content text from UI labels. Heuristics tuned for "user
+     * is reading something" — chat message, article, doc paragraph:
+     *
+     *  - Long enough on its own (≥ 8 chars), or
+     *  - Multi-word (has whitespace), or
+     *  - Ends with sentence punctuation (Latin or CJK).
+     *
+     * Buttons / tab labels / chips are usually 1-3 short words without
+     * punctuation, so they get filtered out without us needing per-class
+     * rules. Short content (one-word reply "ok") is the false-negative
+     * we accept — user can fall back to Type or paste.
+     */
+    private fun looksLikeContent(text: String, node: AccessibilityNodeInfo): Boolean {
+        // Editable fields are almost always real content (the user's draft
+        // message etc), keep regardless of length.
+        if (node.isEditable) return true
+
+        val trimmed = text.trim()
+        if (trimmed.length >= 8) return true
+        if (trimmed.contains(' ') || trimmed.contains('\t') || trimmed.contains('\n')) return true
+        if (trimmed.any { it in PUNCT_CHARS }) return true
+        // CJK scripts are information-dense — a 3-char Japanese / Chinese
+        // / Korean line carries as much meaning as 8-10 chars of Latin.
+        // Without this exception the 8-char threshold silently drops most
+        // CJK content (chat bubbles, headlines, manga speech bubbles).
+        if (trimmed.any { isCjk(it) }) return true
+        return false
+    }
+
+    private fun isCjk(ch: Char): Boolean {
+        val code = ch.code
+        return (code in 0x4E00..0x9FFF) ||   // CJK Unified Ideographs
+            (code in 0x3040..0x309F) ||      // Hiragana
+            (code in 0x30A0..0x30FF) ||      // Katakana
+            (code in 0xAC00..0xD7AF) ||      // Hangul Syllables
+            (code in 0x3400..0x4DBF) ||      // CJK Ext A
+            (code in 0xFF66..0xFF9F)         // Halfwidth Katakana
     }
 
     /**

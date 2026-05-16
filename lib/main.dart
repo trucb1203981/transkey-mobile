@@ -60,8 +60,64 @@ void _wireBubbleChannel() {
       }
       return null;
     }
+    if (call.method == 'translateBatch') {
+      // Mobile "Lens" / scan-screen flow: native side hands us N OCR text
+      // blocks; we batch-translate them in a single /translate-batch call
+      // and return the array of translations (same order, same length).
+      // Awaiting here is fine because this call replaces N parallel
+      // /translate round-trips and the caller already shows a spinner.
+      final args = (call.arguments as Map?)?.cast<Object?, Object?>() ?? {};
+      final texts = (args['texts'] as List?)
+              ?.whereType<String>()
+              .toList(growable: false) ??
+          const <String>[];
+      final targetLang = (args['targetLang'] as String?) ?? 'en';
+      final sourceLang = args['sourceLang'] as String?;
+      if (texts.isEmpty) return <String>[];
+      return await _translateBatchForLens(texts, targetLang, sourceLang);
+    }
     return null;
   });
+}
+
+Future<List<String>> _translateBatchForLens(
+  List<String> texts,
+  String targetLang,
+  String? sourceLang,
+) async {
+  try {
+    final session = await SessionStore().load();
+    if (session == null || session.accessToken.isEmpty) {
+      // Logged out — return originals so the overlay still shows SOMETHING
+      // rather than blowing up the native side.
+      return texts;
+    }
+    final api = _rootContainer.read(apiClientProvider);
+    final response = await api.dio.post('/translate-batch', data: {
+      'texts': texts,
+      'targetLang': targetLang,
+      if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
+        'sourceLang': sourceLang,
+      'appHint': 'lens',
+    });
+    final data = response.data as Map?;
+    final raw = data?['translations'] as List?;
+    if (raw == null) return texts;
+    // Backend guarantees same-length array via parseBatchResponse fallback;
+    // mirror that guarantee here in case middleware ever drops items.
+    final out = <String>[];
+    for (var i = 0; i < texts.length; i++) {
+      final value = i < raw.length ? raw[i] : null;
+      out.add(value is String && value.trim().isNotEmpty ? value : texts[i]);
+    }
+    return out;
+  } on DioException catch (e) {
+    debugPrint('[LensTranslate] Dio error: ${e.response?.statusCode} ${e.message}');
+    return texts;
+  } catch (e) {
+    debugPrint('[LensTranslate] Error: $e');
+    return texts;
+  }
 }
 
 Future<void> _translateForBubble(
