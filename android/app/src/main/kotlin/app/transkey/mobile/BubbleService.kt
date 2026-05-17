@@ -693,17 +693,17 @@ class BubbleService : Service() {
         // are rendered in the locale the user actually wants.
         refreshLocale()
 
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg      = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val mutedCol= if (isDark) Color.parseColor("#9090A0") else Color.parseColor("#6B6B7A")
-        val accent  = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val mutedCol = style.muted
+        val accent = style.accent
 
         // Semi-transparent backdrop — tap outside card to dismiss
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#66000000"))
+            setBackgroundColor(Palette.BACKDROP_DIM)
             setOnClickListener { hideModePicker() }
         }
 
@@ -942,16 +942,16 @@ class BubbleService : Service() {
             readTargetLang()
         }
 
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg      = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val accent  = Color.parseColor("#6C63FF")
-        val selBg   = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val accent = style.accent
+        val selBg = style.accent
 
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#55000000"))
+            setBackgroundColor(Palette.BACKDROP_LIGHT)
             setOnClickListener { hideLangPicker() }
         }
 
@@ -1349,14 +1349,13 @@ class BubbleService : Service() {
     ) {
         ensureWindowManager()
         refreshLocale()
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-
-        val bg = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val mutedCol = if (isDark) Color.parseColor("#9090A0") else Color.parseColor("#6B6B7A")
-        val accent = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val mutedCol = style.muted
+        val accent = style.accent
 
         if (panelView == null) {
             val rootCard = LinearLayout(this).apply {
@@ -2101,10 +2100,9 @@ class BubbleService : Service() {
     }
 
     private fun updateModeTabs(accent: Int, mutedCol: Int) {
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val subduedBg = Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val subduedBg = Color.parseColor(if (style.isDark) "#2A2A40" else "#F0EFFF")
         val primaryBg = Color.parseColor("#7C6EFA")
         for ((mode, tab) in modeButtons) {
             val isActive = mode == currentMode
@@ -2423,16 +2421,16 @@ class BubbleService : Service() {
         ensureWindowManager()
         // Sync from prefs so the picker reflects any change made in Flutter UI.
         currentSourceLang = readSourceLang()
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg      = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val accent  = Color.parseColor("#6C63FF")
-        val selBg   = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val accent = style.accent
+        val selBg = style.accent
 
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#55000000"))
+            setBackgroundColor(Palette.BACKDROP_LIGHT)
             setOnClickListener { hideSourceLangPicker() }
         }
         val card = LinearLayout(this).apply {
@@ -2547,13 +2545,13 @@ class BubbleService : Service() {
         ensureWindowManager()
         refreshLocale()
 
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
-        val accent   = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val mutedCol = style.muted
+        val accent = style.accent
         val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
         val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
 
@@ -2834,17 +2832,17 @@ class BubbleService : Service() {
         ensureWindowManager()
         refreshLocale()
 
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
-        val accent   = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val mutedCol = style.muted
+        val accent = style.accent
         val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
 
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#66000000"))
+            setBackgroundColor(Palette.BACKDROP_DIM)
             setOnClickListener { cancelVoice() }
         }
         val card = LinearLayout(this).apply {
@@ -3138,16 +3136,16 @@ class BubbleService : Service() {
     private fun showScanModeChooser(isRegion: Boolean) {
         ensureWindowManager()
         refreshLocale()
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
-        val accent   = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val mutedCol = style.muted
+        val accent = style.accent
 
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#66000000"))
+            setBackgroundColor(Palette.BACKDROP_DIM)
             setOnClickListener { hideScanModeChooser() }
         }
         val card = LinearLayout(this).apply {
@@ -3304,16 +3302,16 @@ class BubbleService : Service() {
         ensureWindowManager()
         refreshLocale()
 
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
-        val accent   = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val mutedCol = style.muted
+        val accent = style.accent
 
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#66000000"))
+            setBackgroundColor(Palette.BACKDROP_DIM)
             setOnClickListener { hideScanDisclosure() }
         }
         val card = LinearLayout(this).apply {
@@ -3508,14 +3506,13 @@ class BubbleService : Service() {
     private fun showLensProgress() {
         if (lensProgressView != null) return
         ensureWindowManager()
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg      = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val bg = style.bg
+        val textCol = style.text
 
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#88000000"))
+            setBackgroundColor(0x88000000.toInt())
             isClickable = true  // swallow taps so user can't dismiss mid-translate
         }
         val card = LinearLayout(this).apply {
@@ -3704,17 +3701,17 @@ class BubbleService : Service() {
         val replySuggestionsOn = readReplySuggestions()
         val ttsRate = readTtsRate()
 
-        val dp = resources.displayMetrics.density
-        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg      = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
-        val textCol = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
-        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
-        val accent  = Color.parseColor("#6C63FF")
+        val style = BubbleStyle.of(this)
+        val dp = style.dp
+        val isDark = style.isDark
+        val bg = style.bg
+        val textCol = style.text
+        val mutedCol = style.muted
+        val accent = style.accent
         val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
 
         val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#55000000"))
+            setBackgroundColor(Palette.BACKDROP_LIGHT)
             setOnClickListener { hideTonePicker() }
         }
         val card = LinearLayout(this).apply {
