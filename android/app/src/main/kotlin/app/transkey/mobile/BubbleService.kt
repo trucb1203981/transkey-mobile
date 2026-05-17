@@ -234,48 +234,26 @@ class BubbleService : Service() {
     private var closeZoneIcon: TextView? = null
     private var isOverCloseZone: Boolean = false
 
-    // Floating result panel
-    private var panelView: View? = null
-    // Resize / fullscreen state for the result panel. When `panelFullscreen`
-    // is true, layout params switch to MATCH_PARENT × MATCH_PARENT. Otherwise
-    // height defaults to WRAP_CONTENT until the user drags the bottom handle;
-    // `panelHeightPx > 0` then pins a custom height.
-    private var panelHeightPx: Int = 0
-    private var panelFullscreen: Boolean = false
-    private var panelFullscreenBtn: ImageView? = null
-    private var panelContentScroll: ScrollView? = null
-    // Reply-only banner shown above the action row when Accessibility is
-    // off — Paste relies on the a11y service to inject text into the
-    // currently-focused EditText. Without it the button is greyed out.
-    private var panelA11yWarning: View? = null
-    // Source-text expand/collapse: collapsed (3 lines + ellipsis) by
-    // default, expanded (full text) on tap. Toggles so the user can
+    // Floating result panel — see ResultPanel for field doc. When
+    // `panel.fullscreen` is true, layout params switch to
+    // MATCH_PARENT × MATCH_PARENT. Otherwise height defaults to
+    // WRAP_CONTENT until the user drags the bottom handle; then
+    // `panel.heightPx > 0` pins a custom height. `panel.a11yWarning`
+    // is the Reply-only banner shown above the action row when
+    // Accessibility is off — Paste relies on the a11y service to
+    // inject text into the currently-focused EditText. Without it the
+    // button is greyed out. `panel.sourceExpanded` toggles between
+    // collapsed (3 lines + ellipsis) and full text so the user can
     // line up source ↔ translation side by side.
-    private var panelSourceExpanded: Boolean = false
-    private var panelSourceToggle: TextView? = null
-    private var panelSource: TextView? = null
-    private var panelOutput: TextView? = null
-    private var panelRomanization: TextView? = null
-    private var panelSuggestionsLabel: TextView? = null
-    private var panelSuggestionsContainer: LinearLayout? = null
-    private var panelStatus: TextView? = null
-    private var panelCopyBtn: View? = null
-    private var panelPasteBtn: TextView? = null
-    private var panelTtsBtn: TextView? = null
-    private var langChip: TextView? = null
-    private var detectedLangTv: TextView? = null
+    private val panel = ResultPanel()
+    // panel.langChip / panel.detectedLangTv / panel.sourceLangChip / panel.toneChip /
+    // panel.loadingSpinner moved into ResultPanel (header chips + spinner).
     /**
      * One column entry in the result panel's mode-tab row. Matches the
      * bubble picker's column style: icon on top, label below, weight=1
      * across the row, primary-coloured background for the active mode.
      */
-    private data class PanelModeTab(
-        val container: LinearLayout,
-        val icon: ImageView,
-        val label: TextView,
-    )
-
-    private val modeButtons = mutableMapOf<String, PanelModeTab>()
+    // PanelModeTab data class + panel.modeButtons map moved into ResultPanel.
     private var currentMode: String = MODE_TRANSLATE
     private var currentSourceText: String? = null
     private var currentOutput: String? = null
@@ -299,16 +277,11 @@ class BubbleService : Service() {
     private var lastOriginalText: String? = null
     private var lastDetectedLang: String? = null
 
-    // Header chips (created inside showResultPanel)
-    private var sourceLangChip: TextView? = null
-    // Was a TextView showing the current tone label; now an ImageView gear
-    // icon that opens the full settings sheet — clearer affordance, gives
-    // user a discoverable entry point for all bubble-side preferences
-    // (translate tone, reply tone, TTS rate, romanization, suggestions).
-    private var toneChip: ImageView? = null
-
-    // Loading spinner inside the panel
-    private var loadingSpinner: ProgressBar? = null
+    // panel.sourceLangChip + panel.toneChip + panel.loadingSpinner: see ResultPanel.
+    // The header chip used to be a tone-label TextView; it's now an
+    // ImageView gear icon that opens the settings sheet — clearer
+    // affordance for the bubble-side preferences (translate tone, reply
+    // tone, TTS rate, romanization, suggestions).
 
     // Mode picker overlay (shown when bubble tapped)
     private var modePickerView: View? = null
@@ -673,7 +646,7 @@ class BubbleService : Service() {
     private fun onBubbleTapped() {
         when {
             modePickerView != null -> { hideModePicker(); return }
-            panelView != null      -> { hideResultPanel(); return }
+            panel.view != null      -> { hideResultPanel(); return }
         }
         // Per the feature spec, the bubble-tap path is exclusively for
         // CLIPBOARD-driven input — the user has copied (or is about to)
@@ -1357,7 +1330,7 @@ class BubbleService : Service() {
         val mutedCol = style.muted
         val accent = style.accent
 
-        if (panelView == null) {
+        if (panel.view == null) {
             val rootCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 background = GradientDrawable().apply {
@@ -1380,7 +1353,7 @@ class BubbleService : Service() {
                 cornerRadius = 12 * dp
             }
 
-            sourceLangChip = TextView(this).apply {
+            panel.sourceLangChip = TextView(this).apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(accent)
@@ -1395,7 +1368,7 @@ class BubbleService : Service() {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             }
 
-            langChip = TextView(this).apply {
+            panel.langChip = TextView(this).apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(accent)
@@ -1431,7 +1404,7 @@ class BubbleService : Service() {
                     layoutParams = headerIconParams()
                 }
 
-            toneChip = ImageView(this).apply {
+            panel.toneChip = ImageView(this).apply {
                 setImageResource(R.drawable.ic_bubble_settings)
                 setColorFilter(mutedCol)
                 contentDescription = localized(R.string.bubble_settings)
@@ -1454,7 +1427,7 @@ class BubbleService : Service() {
             // same visual weight as ⚙ (settings) next door.
             val fullscreenBtn = ImageView(this).apply {
                 setImageResource(
-                    if (panelFullscreen) R.drawable.ic_bubble_fullscreen_exit
+                    if (panel.fullscreen) R.drawable.ic_bubble_fullscreen_exit
                     else R.drawable.ic_bubble_fullscreen,
                 )
                 setColorFilter(mutedCol)
@@ -1463,14 +1436,14 @@ class BubbleService : Service() {
                 isFocusable = true
                 layoutParams = headerIconParams()
                 setOnClickListener {
-                    panelFullscreen = !panelFullscreen
-                    panelHeightPx = 0
+                    panel.fullscreen = !panel.fullscreen
+                    panel.heightPx = 0
                     setImageResource(
-                        if (panelFullscreen) R.drawable.ic_bubble_fullscreen_exit
+                        if (panel.fullscreen) R.drawable.ic_bubble_fullscreen_exit
                         else R.drawable.ic_bubble_fullscreen,
                     )
                     applyPanelLayoutMode()
-                    panelView?.let { v ->
+                    panel.view?.let { v ->
                         try { windowManager?.updateViewLayout(v, buildPanelLayoutParams()) }
                         catch (e: Exception) {
                             android.util.Log.w("TKBubble", "panel fullscreen toggle failed: ${e.message}")
@@ -1478,15 +1451,15 @@ class BubbleService : Service() {
                     }
                 }
             }
-            panelFullscreenBtn = fullscreenBtn
+            panel.fullscreenBtn = fullscreenBtn
 
             val closeBtn = headerTextIcon("✕") { hideResultPanel() }
 
-            header.addView(sourceLangChip)
+            header.addView(panel.sourceLangChip)
             header.addView(arrowTv)
-            header.addView(langChip)
+            header.addView(panel.langChip)
             header.addView(spacer)
-            header.addView(toneChip)
+            header.addView(panel.toneChip)
             header.addView(typeBtn)
             header.addView(fullscreenBtn)
             header.addView(closeBtn)
@@ -1501,7 +1474,7 @@ class BubbleService : Service() {
                 gravity = Gravity.CENTER
                 setPadding(0, (8 * dp).toInt(), 0, (4 * dp).toInt())
             }
-            modeButtons.clear()
+            panel.modeButtons.clear()
             ALL_MODES.forEachIndexed { index, mode ->
                 val container = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
@@ -1542,12 +1515,12 @@ class BubbleService : Service() {
                 }
                 container.addView(iconView)
                 container.addView(labelView)
-                modeButtons[mode] = PanelModeTab(container, iconView, labelView)
+                panel.modeButtons[mode] = PanelModeTab(container, iconView, labelView)
                 tabsRow.addView(container)
             }
 
             // ── Scrollable content area ──
-            detectedLangTv = TextView(this).apply {
+            panel.detectedLangTv = TextView(this).apply {
                 setTextColor(mutedCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                 setTypeface(Typeface.DEFAULT, Typeface.ITALIC)
@@ -1555,7 +1528,7 @@ class BubbleService : Service() {
                 setPadding(0, (6 * dp).toInt(), 0, 0)
             }
 
-            panelSource = TextView(this).apply {
+            panel.source = TextView(this).apply {
                 setTextColor(mutedCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 maxLines = 3
@@ -1568,7 +1541,7 @@ class BubbleService : Service() {
             // Tiny "Show more / Show less" affordance under the source —
             // makes the tap target discoverable without crowding the
             // header chip row. Hidden when source text fits in 3 lines.
-            panelSourceToggle = TextView(this).apply {
+            panel.sourceToggle = TextView(this).apply {
                 setTextColor(accent)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -1579,7 +1552,7 @@ class BubbleService : Service() {
                 setOnClickListener { togglePanelSourceExpanded() }
             }
 
-            panelOutput = TextView(this).apply {
+            panel.output = TextView(this).apply {
                 setTextColor(textCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -1587,7 +1560,7 @@ class BubbleService : Service() {
                 setPadding(0, (4 * dp).toInt(), 0, (4 * dp).toInt())
             }
 
-            panelRomanization = TextView(this).apply {
+            panel.romanization = TextView(this).apply {
                 setTextColor(mutedCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setTypeface(Typeface.DEFAULT, Typeface.ITALIC)
@@ -1596,7 +1569,7 @@ class BubbleService : Service() {
             }
 
             // ── Quick-reply suggestions (Reply mode + suggestions toggle) ──
-            panelSuggestionsLabel = TextView(this).apply {
+            panel.suggestionsLabel = TextView(this).apply {
                 text = localized(R.string.bubble_reply_suggestions).uppercase()
                 setTextColor(mutedCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
@@ -1605,13 +1578,13 @@ class BubbleService : Service() {
                 visibility = View.GONE
                 setPadding(0, (10 * dp).toInt(), 0, (4 * dp).toInt())
             }
-            panelSuggestionsContainer = LinearLayout(this).apply {
+            panel.suggestionsContainer = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 visibility = View.GONE
             }
 
             // Loading spinner — shown while waiting for API response
-            loadingSpinner = ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
+            panel.loadingSpinner = ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
                 isIndeterminate = true
                 visibility = View.GONE
                 layoutParams = LinearLayout.LayoutParams(
@@ -1619,7 +1592,7 @@ class BubbleService : Service() {
                 ).apply { topMargin = (8 * dp).toInt(); bottomMargin = (4 * dp).toInt() }
             }
 
-            panelStatus = TextView(this).apply {
+            panel.status = TextView(this).apply {
                 setTextColor(mutedCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setPadding(0, (4 * dp).toInt(), 0, (4 * dp).toInt())
@@ -1629,15 +1602,15 @@ class BubbleService : Service() {
             val contentInner = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
             }
-            contentInner.addView(detectedLangTv)
-            contentInner.addView(panelSource)
-            panelSourceToggle?.let { contentInner.addView(it) }
-            contentInner.addView(loadingSpinner)
-            contentInner.addView(panelOutput)
-            contentInner.addView(panelRomanization)
-            contentInner.addView(panelSuggestionsLabel)
-            contentInner.addView(panelSuggestionsContainer)
-            contentInner.addView(panelStatus)
+            contentInner.addView(panel.detectedLangTv)
+            contentInner.addView(panel.source)
+            panel.sourceToggle?.let { contentInner.addView(it) }
+            contentInner.addView(panel.loadingSpinner)
+            contentInner.addView(panel.output)
+            contentInner.addView(panel.romanization)
+            contentInner.addView(panel.suggestionsLabel)
+            contentInner.addView(panel.suggestionsContainer)
+            contentInner.addView(panel.status)
 
             val contentScroll = object : ScrollView(this@BubbleService) {
                 override fun onMeasure(widthSpec: Int, heightSpec: Int) {
@@ -1645,7 +1618,7 @@ class BubbleService : Service() {
                     // make the floating panel taller than the screen. When the
                     // user has resized or fullscreen'd the panel, let it
                     // expand to the parent's fixed height instead.
-                    if (panelFullscreen || panelHeightPx > 0) {
+                    if (panel.fullscreen || panel.heightPx > 0) {
                         super.onMeasure(widthSpec, heightSpec)
                     } else {
                         val maxPx = (220 * resources.displayMetrics.density).toInt()
@@ -1659,7 +1632,7 @@ class BubbleService : Service() {
                 ).apply { topMargin = (4 * dp).toInt() }
                 addView(contentInner)
             }
-            panelContentScroll = contentScroll
+            panel.contentScroll = contentScroll
 
             // Action buttons row (TTS + Copy)
             val actionsRow = LinearLayout(this).apply {
@@ -1679,7 +1652,7 @@ class BubbleService : Service() {
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                     .apply { this.marginStart = marginStart }
 
-            panelTtsBtn = TextView(this).apply {
+            panel.ttsBtn = TextView(this).apply {
                 text = "▶"
                 setTextColor(accent)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -1695,7 +1668,7 @@ class BubbleService : Service() {
                 layoutParams = actionRowParams()
             }
 
-            panelCopyBtn = TextView(this).apply {
+            panel.copyBtn = TextView(this).apply {
                 text = localized(R.string.bubble_panel_copy)
                 setTextColor(Color.WHITE)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -1718,7 +1691,7 @@ class BubbleService : Service() {
                 layoutParams = actionRowParams(marginStart = (8 * dp).toInt())
             }
 
-            panelPasteBtn = TextView(this).apply {
+            panel.pasteBtn = TextView(this).apply {
                 text = "↓ ${localized(R.string.bubble_panel_paste)}"
                 setTextColor(Color.WHITE)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -1776,9 +1749,9 @@ class BubbleService : Service() {
                 layoutParams = actionRowParams(marginStart = (8 * dp).toInt())
             }
 
-            actionsRow.addView(panelTtsBtn)
-            actionsRow.addView(panelCopyBtn)
-            actionsRow.addView(panelPasteBtn)
+            actionsRow.addView(panel.ttsBtn)
+            actionsRow.addView(panel.copyBtn)
+            actionsRow.addView(panel.pasteBtn)
 
             // Reply-only a11y warning. Visible only when MODE_REPLY is the
             // active mode AND TransKey accessibility service is OFF. Lets
@@ -1836,7 +1809,7 @@ class BubbleService : Service() {
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply { marginStart = (8 * dp).toInt() }
             })
-            panelA11yWarning = warningView
+            panel.a11yWarning = warningView
 
             // Bottom resize handle: drag to make the panel taller. A thin
             // bar centered horizontally; touch radius is the full bottom
@@ -1858,7 +1831,7 @@ class BubbleService : Service() {
                 var dragStartY = 0f
                 var dragStartHeight = 0
                 setOnTouchListener { _, ev ->
-                    val v = panelView ?: return@setOnTouchListener false
+                    val v = panel.view ?: return@setOnTouchListener false
                     val lp = v.layoutParams as? WindowManager.LayoutParams
                         ?: return@setOnTouchListener false
                     when (ev.action) {
@@ -1873,8 +1846,8 @@ class BubbleService : Service() {
                         MotionEvent.ACTION_MOVE -> {
                             val dy = (ev.rawY - dragStartY).toInt()
                             val newHeight = (dragStartHeight + dy).coerceAtLeast((120 * dp).toInt())
-                            panelHeightPx = newHeight
-                            panelFullscreen = false
+                            panel.heightPx = newHeight
+                            panel.fullscreen = false
                             applyPanelLayoutMode()
                             try {
                                 windowManager?.updateViewLayout(v, buildPanelLayoutParams())
@@ -1894,12 +1867,12 @@ class BubbleService : Service() {
             warningView.let { rootCard.addView(it) }
             rootCard.addView(resizeHandle)
 
-            panelView = rootCard
+            panel.view = rootCard
             windowManager?.addView(rootCard, buildPanelLayoutParams())
         }
 
         // Update content
-        panelSource?.text = currentSourceText ?: ""
+        panel.source?.text = currentSourceText ?: ""
         refreshPanelSourceToggle()
         updateModeTabs(accent, mutedCol)
         updateLangChip()
@@ -1907,7 +1880,7 @@ class BubbleService : Service() {
         // Detected lang only shown in result/error state, not while loading
         val detected = currentDetectedLang
         if (!loading && !detected.isNullOrBlank()) {
-            detectedLangTv?.apply {
+            panel.detectedLangTv?.apply {
                 text = (localizedContext ?: this@BubbleService).getString(
                     R.string.bubble_panel_detected,
                     LANG_LABELS[detected] ?: detected.uppercase(),
@@ -1915,15 +1888,15 @@ class BubbleService : Service() {
                 visibility = View.VISIBLE
             }
         } else {
-            detectedLangTv?.visibility = View.GONE
+            panel.detectedLangTv?.visibility = View.GONE
         }
 
         // Romanization shown only when output is shown and value present
         val rom = currentRomanization
         if (!loading && error == null && !rom.isNullOrBlank()) {
-            panelRomanization?.apply { text = rom; visibility = View.VISIBLE }
+            panel.romanization?.apply { text = rom; visibility = View.VISIBLE }
         } else {
-            panelRomanization?.visibility = View.GONE
+            panel.romanization?.visibility = View.GONE
         }
 
         // Quick-reply suggestions: only on the plain Translate flow. Reply
@@ -1935,8 +1908,8 @@ class BubbleService : Service() {
         val showSuggestions = !loading && error == null && suggestions.isNotEmpty() &&
             currentMode == MODE_TRANSLATE
         if (showSuggestions) {
-            panelSuggestionsLabel?.visibility = View.VISIBLE
-            panelSuggestionsContainer?.apply {
+            panel.suggestionsLabel?.visibility = View.VISIBLE
+            panel.suggestionsContainer?.apply {
                 removeAllViews()
                 visibility = View.VISIBLE
                 val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
@@ -2008,67 +1981,67 @@ class BubbleService : Service() {
                 }
             }
         } else {
-            panelSuggestionsLabel?.visibility = View.GONE
-            panelSuggestionsContainer?.apply {
+            panel.suggestionsLabel?.visibility = View.GONE
+            panel.suggestionsContainer?.apply {
                 visibility = View.GONE
                 removeAllViews()
             }
         }
 
         if (loading) {
-            panelOutput?.visibility = View.GONE
-            panelStatus?.visibility = View.GONE
-            loadingSpinner?.visibility = View.VISIBLE
-            panelCopyBtn?.visibility = View.GONE
-            panelTtsBtn?.visibility = View.GONE
-            panelPasteBtn?.visibility = View.GONE
-            panelA11yWarning?.visibility = View.GONE
+            panel.output?.visibility = View.GONE
+            panel.status?.visibility = View.GONE
+            panel.loadingSpinner?.visibility = View.VISIBLE
+            panel.copyBtn?.visibility = View.GONE
+            panel.ttsBtn?.visibility = View.GONE
+            panel.pasteBtn?.visibility = View.GONE
+            panel.a11yWarning?.visibility = View.GONE
             // Dim mode tabs to signal busy state
-            for ((_, tab) in modeButtons) {
+            for ((_, tab) in panel.modeButtons) {
                 tab.container.alpha = 0.35f
                 tab.container.isEnabled = false
             }
             setState(STATE_LOADING)
         } else if (error != null) {
-            loadingSpinner?.visibility = View.GONE
-            panelOutput?.visibility = View.GONE
-            panelStatus?.apply { text = error; visibility = View.VISIBLE }
-            panelCopyBtn?.visibility = View.GONE
-            panelTtsBtn?.visibility = View.GONE
-            panelPasteBtn?.visibility = View.GONE
-            panelA11yWarning?.visibility = View.GONE
-            for ((_, tab) in modeButtons) { tab.container.alpha = 1f; tab.container.isEnabled = true }
+            panel.loadingSpinner?.visibility = View.GONE
+            panel.output?.visibility = View.GONE
+            panel.status?.apply { text = error; visibility = View.VISIBLE }
+            panel.copyBtn?.visibility = View.GONE
+            panel.ttsBtn?.visibility = View.GONE
+            panel.pasteBtn?.visibility = View.GONE
+            panel.a11yWarning?.visibility = View.GONE
+            for ((_, tab) in panel.modeButtons) { tab.container.alpha = 1f; tab.container.isEnabled = true }
             setState(STATE_ERROR)
         } else if (output != null) {
-            loadingSpinner?.visibility = View.GONE
-            panelOutput?.apply { text = output; visibility = View.VISIBLE }
-            panelStatus?.visibility = View.GONE
-            panelCopyBtn?.visibility = View.VISIBLE
-            panelTtsBtn?.visibility = View.VISIBLE
+            panel.loadingSpinner?.visibility = View.GONE
+            panel.output?.apply { text = output; visibility = View.VISIBLE }
+            panel.status?.visibility = View.GONE
+            panel.copyBtn?.visibility = View.VISIBLE
+            panel.ttsBtn?.visibility = View.VISIBLE
             // Paste only makes sense for Reply mode. In Reply mode, if
             // accessibility is OFF the button is greyed out and the
             // warning banner below the action row prompts the user to
             // enable it. Other modes don't expose Paste at all.
             val isReply = currentMode == MODE_REPLY
             val a11yOn = TransKeyAccessibilityService.isAvailable()
-            panelPasteBtn?.visibility = if (isReply) View.VISIBLE else View.GONE
-            panelPasteBtn?.isEnabled = isReply && a11yOn
-            panelPasteBtn?.alpha = if (isReply && !a11yOn) 0.4f else 1f
-            panelA11yWarning?.visibility =
+            panel.pasteBtn?.visibility = if (isReply) View.VISIBLE else View.GONE
+            panel.pasteBtn?.isEnabled = isReply && a11yOn
+            panel.pasteBtn?.alpha = if (isReply && !a11yOn) 0.4f else 1f
+            panel.a11yWarning?.visibility =
                 if (isReply && !a11yOn) View.VISIBLE else View.GONE
-            for ((_, tab) in modeButtons) { tab.container.alpha = 1f; tab.container.isEnabled = true }
+            for ((_, tab) in panel.modeButtons) { tab.container.alpha = 1f; tab.container.isEnabled = true }
             setState(STATE_RESULT)
         }
     }
 
     private fun updateLangChip() {
         if (currentMode == MODE_REFINE) {
-            sourceLangChip?.visibility = View.GONE
-            langChip?.visibility = View.GONE
+            panel.sourceLangChip?.visibility = View.GONE
+            panel.langChip?.visibility = View.GONE
             // Keep the settings icon visible even in Refine mode — users may
             // still want to adjust TTS rate, romanization or reply suggestions
             // without leaving the popup.
-            toneChip?.visibility = View.VISIBLE
+            panel.toneChip?.visibility = View.VISIBLE
             return
         }
 
@@ -2081,14 +2054,14 @@ class BubbleService : Service() {
         // showTonePicker / showSourceLangPicker.
 
         // Source chip: show "Auto" or language name
-        sourceLangChip?.apply {
+        panel.sourceLangChip?.apply {
             visibility = View.VISIBLE
             text = if (currentSourceLang == "auto") "Auto"
                    else (LANG_LABELS[currentSourceLang] ?: currentSourceLang.uppercase())
         }
 
         // Target chip
-        langChip?.apply {
+        panel.langChip?.apply {
             visibility = View.VISIBLE
             text = LANG_LABELS[currentTargetLang] ?: currentTargetLang.uppercase()
         }
@@ -2096,7 +2069,7 @@ class BubbleService : Service() {
         // Settings icon (formerly tone chip): always visible. The icon alone
         // carries the affordance — the actual tone shows up inside the
         // settings sheet, so we don't need a per-state label here.
-        toneChip?.visibility = View.VISIBLE
+        panel.toneChip?.visibility = View.VISIBLE
     }
 
     private fun updateModeTabs(accent: Int, mutedCol: Int) {
@@ -2104,7 +2077,7 @@ class BubbleService : Service() {
         val dp = style.dp
         val subduedBg = Color.parseColor(if (style.isDark) "#2A2A40" else "#F0EFFF")
         val primaryBg = Color.parseColor("#7C6EFA")
-        for ((mode, tab) in modeButtons) {
+        for ((mode, tab) in panel.modeButtons) {
             val isActive = mode == currentMode
             val fg = if (isActive) Color.WHITE else accent
             tab.container.background = GradientDrawable().apply {
@@ -2124,7 +2097,7 @@ class BubbleService : Service() {
         val width: Int
         val height: Int
         val yOffset: Int
-        if (panelFullscreen) {
+        if (panel.fullscreen) {
             // Fullscreen: side-to-side, top to ~24dp from bottom (leave room
             // for system nav). Don't go absolutely edge-to-edge — corners
             // and status bar look better with a tiny margin.
@@ -2133,7 +2106,7 @@ class BubbleService : Service() {
             yOffset = (4 * dp).toInt()
         } else {
             width = (screenWidth - (32 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-            height = if (panelHeightPx > 0) panelHeightPx
+            height = if (panel.heightPx > 0) panel.heightPx
                 else WindowManager.LayoutParams.WRAP_CONTENT
             yOffset = (80 * dp).toInt()
         }
@@ -2157,12 +2130,12 @@ class BubbleService : Service() {
         // Reset resize state so the next panel starts at default geometry
         // — otherwise a previous "drag to expand" or fullscreen toggle
         // would leak into an unrelated translation.
-        panelHeightPx = 0
-        panelFullscreen = false
-        panelFullscreenBtn = null
-        panelContentScroll = null
-        panelSourceExpanded = false
-        panelSourceToggle = null
+        panel.heightPx = 0
+        panel.fullscreen = false
+        panel.fullscreenBtn = null
+        panel.contentScroll = null
+        panel.sourceExpanded = false
+        panel.sourceToggle = null
         removeResultPanel()
         setState(STATE_IDLE)
     }
@@ -2173,13 +2146,13 @@ class BubbleService : Service() {
      * against the translation when the source is longer than 3 lines.
      */
     private fun togglePanelSourceExpanded() {
-        panelSourceExpanded = !panelSourceExpanded
+        panel.sourceExpanded = !panel.sourceExpanded
         applyPanelSourceExpansion()
     }
 
     private fun applyPanelSourceExpansion() {
-        val src = panelSource ?: return
-        if (panelSourceExpanded) {
+        val src = panel.source ?: return
+        if (panel.sourceExpanded) {
             src.maxLines = Int.MAX_VALUE
             src.ellipsize = null
         } else {
@@ -2195,8 +2168,8 @@ class BubbleService : Service() {
      * the inverse label (expanded → "Show less", collapsed → "Show more").
      */
     private fun refreshPanelSourceToggle() {
-        val src = panelSource ?: return
-        val toggle = panelSourceToggle ?: return
+        val src = panel.source ?: return
+        val toggle = panel.sourceToggle ?: return
         // Defer to a post() so getLineCount() reads the laid-out value
         // rather than the pre-measure 0.
         src.post {
@@ -2211,7 +2184,7 @@ class BubbleService : Service() {
                 return@post
             }
             toggle.visibility = View.VISIBLE
-            toggle.text = if (panelSourceExpanded) "▴ ${localized(R.string.bubble_show_less)}"
+            toggle.text = if (panel.sourceExpanded) "▴ ${localized(R.string.bubble_show_less)}"
                           else                     "▾ ${localized(R.string.bubble_show_more)}"
         }
     }
@@ -2224,9 +2197,9 @@ class BubbleService : Service() {
      * with the panel instead of leaving white space below the actions row.
      */
     private fun applyPanelLayoutMode() {
-        val scroll = panelContentScroll ?: return
+        val scroll = panel.contentScroll ?: return
         val lp = scroll.layoutParams as LinearLayout.LayoutParams
-        if (panelFullscreen || panelHeightPx > 0) {
+        if (panel.fullscreen || panel.heightPx > 0) {
             lp.height = 0
             lp.weight = 1f
         } else {
@@ -2237,25 +2210,25 @@ class BubbleService : Service() {
     }
 
     private fun removeResultPanel() {
-        panelView?.let {
+        panel.view?.let {
             try { windowManager?.removeView(it) } catch (_: Exception) {}
         }
-        panelView = null
-        panelSource = null
-        panelOutput = null
-        panelRomanization = null
-        panelStatus = null
-        panelCopyBtn = null
-        panelPasteBtn = null
-        panelTtsBtn = null
-        langChip = null
-        sourceLangChip = null
-        toneChip = null
-        loadingSpinner = null
-        detectedLangTv = null
-        panelSuggestionsLabel = null
-        panelSuggestionsContainer = null
-        modeButtons.clear()
+        panel.view = null
+        panel.source = null
+        panel.output = null
+        panel.romanization = null
+        panel.status = null
+        panel.copyBtn = null
+        panel.pasteBtn = null
+        panel.ttsBtn = null
+        panel.langChip = null
+        panel.sourceLangChip = null
+        panel.toneChip = null
+        panel.loadingSpinner = null
+        panel.detectedLangTv = null
+        panel.suggestionsLabel = null
+        panel.suggestionsContainer = null
+        panel.modeButtons.clear()
     }
 
     private fun speakOutput() {
