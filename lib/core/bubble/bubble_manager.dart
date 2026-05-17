@@ -126,6 +126,18 @@ class BubbleManager extends StateNotifier<bool> {
     }
   }
 
+  /// Open the per-app details page in system Settings. Used by the
+  /// Accessibility onboarding flow on Android 13+ — the "Allow restricted
+  /// settings" toggle that unblocks the Accessibility opt-in lives there.
+  Future<void> openAppDetails() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('openAppDetails');
+    } on PlatformException catch (e) {
+      debugPrint('[BubbleManager] openAppDetails failed: $e');
+    }
+  }
+
   /// Replace text in the focused editable field of whichever app currently
   /// has input focus. Requires the Accessibility service to be enabled.
   /// Returns true on success.
