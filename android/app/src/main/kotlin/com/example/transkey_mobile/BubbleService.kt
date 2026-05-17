@@ -830,32 +830,8 @@ class BubbleService : Service() {
                 isClickable = true
                 isFocusable = true
                 setOnClickListener {
-                    val selected = pendingSelectedText
                     hideModePicker()
-                    if (!selected.isNullOrBlank()) {
-                        // Selection captured via AccessibilityService — translate
-                        // directly, no clipboard / ShareActivity round-trip needed.
-                        handleTranslateRequest(selected, mode)
-                        // Burn both the cached event-driven snapshot AND our
-                        // local copy. Otherwise a second tap on the bubble a
-                        // moment later (e.g. user accidentally double-taps,
-                        // or comes back to retry with a different mode)
-                        // would re-translate the same stale highlight.
-                        pendingSelectedText = null
-                        TransKeyAccessibilityService.instance?.consumeCachedSelection()
-                    } else {
-                        val i = Intent(this@BubbleService, ShareActivity::class.java).apply {
-                            action = ACTION_READ_CLIPBOARD
-                            // FLAG_ACTIVITY_MULTIPLE_TASK: ShareActivity runs in its own isolated task.
-                            // When it finishes, Android returns the user to their previous app (not TransKey).
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
-                                    Intent.FLAG_ACTIVITY_NO_HISTORY or
-                                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                            putExtra(EXTRA_MODE, mode)
-                        }
-                        startActivity(i)
-                    }
+                    onTranslateModePicked(mode)
                 }
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                     .apply { marginEnd = if (index < ALL_MODES.size - 1) (6 * dp).toInt() else 0 }
@@ -1264,6 +1240,82 @@ class BubbleService : Service() {
             putExtra(EXTRA_MODE, mode)
         }
         startActivity(i)
+    }
+
+    /**
+     * Mode-picker button handler. Tries ACTION_COPY first because that's
+     * the only reliable way to capture multi-node selections in Chrome
+     * WebView and other webview-based apps — our accessibility-event
+     * cache only retains the LAST text run there, so a five-word
+     * selection becomes a one-word translation. ACTION_COPY routes
+     * through the host app's own copy handler and lands the full
+     * current selection on the clipboard, where we can read it.
+     *
+     * Fallback order if copy doesn't yield new clipboard text:
+     *   1. The locally-snapshotted accessibility selection (works for
+     *      apps that DO emit text-selection events, e.g. EditText).
+     *   2. The pre-existing clipboard contents (covers the
+     *      "user already copied, then tapped" flow).
+     *   3. Open ShareActivity which will surface the
+     *      "No text in clipboard. Enable Accessibility ..." hint.
+     */
+    private fun onTranslateModePicked(mode: String) {
+        val a11y = TransKeyAccessibilityService.instance
+        val priorClip = readClipboardText()
+
+        if (a11y != null && a11y.copyCurrentSelection()) {
+            // Wait one redraw cycle for the host app's copy to actually
+            // land on the system clipboard. 200 ms is the same settle
+            // window we use elsewhere — short enough to feel snappy,
+            // long enough to outlast Chrome's renderer hop.
+            selfCopyInProgress = true
+            handler.postDelayed({ selfCopyInProgress = false }, 1500)
+            handler.postDelayed({
+                val newClip = readClipboardText()
+                if (!newClip.isNullOrBlank() && newClip != priorClip) {
+                    handleTranslateRequest(newClip, mode)
+                    pendingSelectedText = null
+                    a11y.consumeCachedSelection()
+                } else {
+                    fallbackTranslate(mode, priorClip)
+                }
+            }, 200)
+            return
+        }
+        fallbackTranslate(mode, priorClip)
+    }
+
+    private fun fallbackTranslate(mode: String, currentClip: String?) {
+        val selected = pendingSelectedText
+        if (!selected.isNullOrBlank()) {
+            handleTranslateRequest(selected, mode)
+            pendingSelectedText = null
+            TransKeyAccessibilityService.instance?.consumeCachedSelection()
+            return
+        }
+        if (!currentClip.isNullOrBlank()) {
+            handleTranslateRequest(currentClip, mode)
+            return
+        }
+        // Open ShareActivity so its "no text + a11y hint" toast/error
+        // surface is the source of truth for the user-facing message.
+        val i = Intent(this, ShareActivity::class.java).apply {
+            action = ACTION_READ_CLIPBOARD
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
+                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+            putExtra(EXTRA_MODE, mode)
+        }
+        startActivity(i)
+    }
+
+    private fun readClipboardText(): String? {
+        return try {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.primaryClip?.takeIf { it.itemCount > 0 }
+                ?.getItemAt(0)?.coerceToText(this)?.toString()?.trim()
+        } catch (_: Exception) { null }
     }
 
     // ── State management ──

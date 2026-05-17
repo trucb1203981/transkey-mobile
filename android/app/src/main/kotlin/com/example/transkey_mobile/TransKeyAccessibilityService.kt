@@ -379,6 +379,54 @@ class TransKeyAccessibilityService : AccessibilityService() {
         cachedSelectionTimestampMs = 0L
     }
 
+    /**
+     * Perform ACTION_COPY on the best target node so the system's own
+     * "Copy" handler runs — that's the only reliable way to capture a
+     * MULTI-NODE selection in Chrome WebView (and most webview-based
+     * apps), because [TYPE_VIEW_TEXT_SELECTION_CHANGED] events there
+     * fire per text run, so our cache only retains the last word.
+     *
+     * Routing priority for the target node:
+     *   1. The node currently holding INPUT focus (real EditText / form
+     *      field — usually owns the selection authoritatively).
+     *   2. Otherwise, the first node in the tree that has a real
+     *      selection range (textSelectionStart < textSelectionEnd).
+     *   3. Otherwise, fall back to the active window's root — Chrome
+     *      WebView usually accepts ACTION_COPY at the root and forwards
+     *      it to the renderer's current selection.
+     *
+     * Returns true if the system accepted the copy action — caller
+     * should then read clipboard after a brief settle (~100-200 ms)
+     * for the new clip text to land.
+     */
+    fun copyCurrentSelection(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val target =
+            root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                ?: findFirstSelectionRangeNode(root, depth = 0)
+                ?: root
+        return try {
+            target.performAction(AccessibilityNodeInfo.ACTION_COPY)
+        } catch (error: Exception) {
+            Log.w(TAG, "ACTION_COPY failed: ${error.message}")
+            false
+        }
+    }
+
+    private fun findFirstSelectionRangeNode(
+        node: AccessibilityNodeInfo?,
+        depth: Int,
+    ): AccessibilityNodeInfo? {
+        if (node == null || depth > MAX_TREE_DEPTH) return null
+        val start = node.textSelectionStart
+        val end = node.textSelectionEnd
+        if (start in 0 until end) return node
+        for (i in 0 until node.childCount) {
+            findFirstSelectionRangeNode(node.getChild(i), depth + 1)?.let { return it }
+        }
+        return null
+    }
+
     private fun findSelectedTextRecursive(node: AccessibilityNodeInfo?, depth: Int): String? {
         if (node == null) return null
         // Depth cap: every recursion level costs at least one Binder
