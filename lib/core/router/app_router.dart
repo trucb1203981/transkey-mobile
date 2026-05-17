@@ -11,6 +11,7 @@ import '../../features/auth/screens/auth_screen.dart';
 import '../../features/auth/screens/banned_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/onboarding/screens/keyboard_setup_screen.dart';
+import '../../features/onboarding/screens/accessibility_setup_screen.dart';
 import '../../features/settings/screens/change_password_screen.dart';
 import '../../features/settings/screens/devices_screen.dart';
 import '../../features/settings/screens/subscription_screen.dart';
@@ -89,6 +90,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => KeyboardSetupScreen(
           showSkip: state.uri.queryParameters['skip'] != 'false',
         ),
+      ),
+      GoRoute(
+        path: '/accessibility-setup',
+        builder: (context, state) => const AccessibilitySetupScreen(),
       ),
       GoRoute(
         path: '/settings/devices',

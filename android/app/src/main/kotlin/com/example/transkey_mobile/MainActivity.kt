@@ -92,6 +92,14 @@ class MainActivity : FlutterActivity() {
                         })
                         result.success(null)
                     }
+                    "androidSdkInt" -> {
+                        // Used by the Flutter AccessibilitySetupScreen to
+                        // decide whether to show the Android 13+ restricted-
+                        // settings step. Returning Build.VERSION.SDK_INT
+                        // avoids the screen having to pull device_info_plus
+                        // just for one integer.
+                        result.success(android.os.Build.VERSION.SDK_INT)
+                    }
                     "openAppDetails" -> {
                         // Android 13+ "restricted settings" gate lives on
                         // the per-app details page. Onboarding routes here
