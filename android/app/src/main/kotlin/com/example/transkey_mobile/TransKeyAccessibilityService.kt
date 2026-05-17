@@ -32,10 +32,49 @@ class TransKeyAccessibilityService : AccessibilityService() {
         private val PUNCT_CHARS = setOf(
             '.', '!', '?', '…', '。', '！', '？', '،', ';', '；', ':', '：',
         )
+
+        /**
+         * Max age of a cached text-selection event we'll still trust.
+         * 15 s covers the realistic "highlight → reach for the bubble"
+         * delay without letting an abandoned selection from earlier in
+         * the session leak into a fresh translation request.
+         */
+        private const val CACHE_TTL_MS = 15_000L
     }
 
+    /**
+     * Last-seen text selection (full text of the node + start/end indices),
+     * plus the wall-clock timestamp when we observed it. Used as a fallback
+     * inside [getSelectedText] for the common case where the user highlights
+     * text, taps the floating bubble, and the source app dismisses the
+     * selection between "user tapped" and "we queried rootInActiveWindow".
+     * Without this cache, getSelectedText() would return null even though
+     * the user clearly DID have something selected a moment ago.
+     */
+    @Volatile private var cachedSelectionText: String? = null
+    @Volatile private var cachedSelectionTimestampMs: Long = 0L
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // No tracking needed — we look up the focused node on demand.
+        // Cache live text-selection events so a subsequent tap on the
+        // bubble (which can race the source app dismissing the selection)
+        // can still recover what was just highlighted.
+        if (event?.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) {
+            val source = event.source ?: return
+            try {
+                val full = source.text?.toString() ?: return
+                val start = source.textSelectionStart
+                val end = source.textSelectionEnd
+                if (start in 0 until end && end <= full.length) {
+                    val sel = full.substring(start, end).trim()
+                    if (sel.isNotEmpty()) {
+                        cachedSelectionText = sel
+                        cachedSelectionTimestampMs = System.currentTimeMillis()
+                    }
+                }
+            } finally {
+                try { source.recycle() } catch (_: Exception) {}
+            }
+        }
     }
 
     override fun onInterrupt() {}
@@ -292,8 +331,31 @@ class TransKeyAccessibilityService : AccessibilityService() {
      * actual selection range is present but a node is marked selected.
      */
     fun getSelectedText(): String? {
-        val root = rootInActiveWindow ?: return null
-        return findSelectedTextRecursive(root)
+        // 1) Try the live tree first — only authoritative source when the
+        // selection is still active in the source app.
+        val live = rootInActiveWindow?.let { findSelectedTextRecursive(it) }
+        if (!live.isNullOrEmpty()) return live
+
+        // 2) Fall back to the cached selection from the last
+        // TYPE_VIEW_TEXT_SELECTION_CHANGED event. Expire after
+        // CACHE_TTL_MS so a stale selection from minutes ago doesn't
+        // sneak into a translation the user didn't intend.
+        val cached = cachedSelectionText ?: return null
+        if (System.currentTimeMillis() - cachedSelectionTimestampMs > CACHE_TTL_MS) {
+            cachedSelectionText = null
+            return null
+        }
+        return cached
+    }
+
+    /**
+     * Mark the cached selection as consumed so a second bubble tap doesn't
+     * translate the same stale highlight. Call right after we've actually
+     * used the selection to start a translation.
+     */
+    fun consumeCachedSelection() {
+        cachedSelectionText = null
+        cachedSelectionTimestampMs = 0L
     }
 
     private fun findSelectedTextRecursive(node: AccessibilityNodeInfo?): String? {

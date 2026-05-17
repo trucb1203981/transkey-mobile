@@ -92,6 +92,21 @@ class MainActivity : FlutterActivity() {
                         })
                         result.success(null)
                     }
+                    "openAppDetails" -> {
+                        // Android 13+ "restricted settings" gate lives on
+                        // the per-app details page. Onboarding routes here
+                        // first so the user can unlock the Accessibility
+                        // toggle before navigating to the Accessibility
+                        // list. Bare Intent + package URI works on every
+                        // OEM skin we've tested.
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.parse("package:$packageName"),
+                            ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+                        )
+                        result.success(null)
+                    }
                     "replaceFocusedText" -> {
                         val text = call.argument<String>("text") ?: ""
                         val svc = TransKeyAccessibilityService.instance
