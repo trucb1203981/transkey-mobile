@@ -914,6 +914,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   void _showFeedbackSheet(BuildContext context, AppLocalizations t) {
     final controller = TextEditingController();
     showModalBottomSheet(
+      // Dispose the controller when the sheet is fully gone, otherwise
+      // each open of the feedback sheet leaks a TextEditingController
+      // (and its internal listeners) for the rest of the app session.
       context: context,
       isScrollControlled: true,
       builder: (ctx) => Padding(
@@ -967,7 +970,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           ),
         ),
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 }
 
