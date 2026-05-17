@@ -58,22 +58,30 @@ class TransKeyAccessibilityService : AccessibilityService() {
         // Cache live text-selection events so a subsequent tap on the
         // bubble (which can race the source app dismissing the selection)
         // can still recover what was just highlighted.
-        if (event?.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) {
-            val source = event.source ?: return
-            try {
-                val full = source.text?.toString() ?: return
-                val start = source.textSelectionStart
-                val end = source.textSelectionEnd
-                if (start in 0 until end && end <= full.length) {
-                    val sel = full.substring(start, end).trim()
-                    if (sel.isNotEmpty()) {
-                        cachedSelectionText = sel
-                        cachedSelectionTimestampMs = System.currentTimeMillis()
-                    }
-                }
-            } finally {
-                try { source.recycle() } catch (_: Exception) {}
+        if (event?.eventType != AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) return
+
+        // Pre-flight on the event itself BEFORE asking for source — every
+        // node lookup costs an IPC round-trip and this listener fires
+        // continuously while the user types in any EditText (one event
+        // per character). The event already carries `fromIndex` /
+        // `toIndex`; if they're equal it's a cursor move, not a real
+        // selection, and we skip the IPC entirely. Drops accessibility
+        // CPU cost during typing roughly to zero.
+        val from = event.fromIndex
+        val to   = event.toIndex
+        if (from < 0 || to <= from) return
+
+        val source = event.source ?: return
+        try {
+            val full = source.text?.toString() ?: return
+            if (to > full.length) return
+            val sel = full.substring(from, to).trim()
+            if (sel.isNotEmpty()) {
+                cachedSelectionText = sel
+                cachedSelectionTimestampMs = System.currentTimeMillis()
             }
+        } finally {
+            try { source.recycle() } catch (_: Exception) {}
         }
     }
 

@@ -58,6 +58,21 @@ class ScreenCaptureService : Service() {
     /** Set true while a single frame capture is in flight, cleared after delivery. */
     @Volatile private var captured = false
 
+    /**
+     * Pending auto-release: tears down the projection if the user doesn't
+     * trigger another capture within [IDLE_RELEASE_MS]. Without this the
+     * VirtualDisplay keeps mirroring the screen every refresh — the
+     * device gets noticeably warm during long browsing sessions because
+     * the GPU is composing two surfaces (the real display + our virtual
+     * one) at 60 fps even when no one is asking us to translate. The
+     * trade-off is that the NEXT scan after a quiet minute pops the
+     * consent dialog again.
+     */
+    private val idleReleaseRunnable = Runnable {
+        Log.d(TAG, "idle release: no capture in ${IDLE_RELEASE_MS}ms, dropping projection")
+        stopProjectionAndSelf()
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -105,6 +120,9 @@ class ScreenCaptureService : Service() {
         // whole point of caching the grant.
         if (mediaProjection != null && imageReader != null && virtualDisplay != null) {
             captured = true  // close the gate so stale frames get dropped
+            // Any new capture cancels the pending idle-release; we'll
+            // re-arm it after the capture completes.
+            handler.removeCallbacks(idleReleaseRunnable)
             handler.postDelayed({
                 // Drain any frames buffered during the settle window so
                 // acquireLatestImage doesn't hand us a bubble-visible frame.
@@ -226,9 +244,15 @@ class ScreenCaptureService : Service() {
 
                 if (bitmap == null) {
                     deliverEmptyToBubble()
+                    armIdleRelease()
                     return@setOnImageAvailableListener
                 }
                 runOcr(bitmap)
+                // Schedule auto-release if no further scan within the
+                // idle window — keeps "scan multiple things back to
+                // back" cheap while preventing the VirtualDisplay from
+                // sitting hot on the GPU through the rest of the day.
+                armIdleRelease()
             } catch (error: Throwable) {
                 // Throwable (not Exception) so we also catch OutOfMemoryError
                 // from Bitmap.createBitmap — the screen-recorder scenario
@@ -289,6 +313,16 @@ class ScreenCaptureService : Service() {
             display.getRealMetrics(real)
             Triple(real.widthPixels, real.heightPixels, real.densityDpi)
         }
+    }
+
+    /**
+     * Reset (or start) the idle-release timer. Call after every capture
+     * completes — the timer fires only if no new capture comes in during
+     * [IDLE_RELEASE_MS], in which case we drop the projection entirely.
+     */
+    private fun armIdleRelease() {
+        handler.removeCallbacks(idleReleaseRunnable)
+        handler.postDelayed(idleReleaseRunnable, IDLE_RELEASE_MS)
     }
 
     /** Release VirtualDisplay + ImageReader. Called only on full session stop. */
@@ -408,6 +442,7 @@ class ScreenCaptureService : Service() {
      * closes the bubble, the system revokes the grant, or the OS kills us.
      */
     private fun stopProjectionAndSelf() {
+        handler.removeCallbacks(idleReleaseRunnable)
         teardownCapturePipeline()
         try { mediaProjection?.stop() } catch (_: Exception) {}
         mediaProjection = null
@@ -507,6 +542,19 @@ class ScreenCaptureService : Service() {
          * to mirroring.
          */
         private const val FIRST_CAPTURE_ARM_MS = 500L
+
+        /**
+         * Auto-release the MediaProjection when no capture happens for this
+         * long. The grant-reuse optimisation is great for back-to-back
+         * scans, but holding the VirtualDisplay live forever means the
+         * GPU keeps mirroring the screen at 60 fps the entire time the
+         * bubble is on — which heats the device noticeably during a
+         * regular browsing session. 60 s comfortably covers "scan a few
+         * things in a row" without keeping the projection alive through
+         * the rest of the day. The cost: the NEXT scan after the timer
+         * fires triggers the consent dialog again.
+         */
+        private const val IDLE_RELEASE_MS = 60_000L
 
         /**
          * True while this service holds a live MediaProjection grant.
