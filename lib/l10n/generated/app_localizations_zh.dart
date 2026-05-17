@@ -1016,4 +1016,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get quotaRewardGranted => '奖励已加入今日额度';
+
+  @override
+  String get historyEmpty => '暂无翻译历史';
+
+  @override
+  String get glossaryEmpty => '术语表为空';
+
+  @override
+  String get glossaryEmptyAddCta => '添加词条';
 }

@@ -362,5 +362,9 @@
   "paywallAdNotComplete": "Werbung nicht zu Ende angesehen — versuche es erneut, um die Belohnung zu erhalten.",
   "paywallCreditFailed": "Belohnung konnte nicht gutgeschrieben werden. Versuche es gleich noch einmal.",
   "quotaWatchAd": "+ Werbung ansehen",
-  "quotaRewardGranted": "Belohnung dem heutigen Kontingent gutgeschrieben"
+  "quotaRewardGranted": "Belohnung dem heutigen Kontingent gutgeschrieben",
+
+  "historyEmpty": "Noch kein Übersetzungsverlauf",
+  "glossaryEmpty": "Glossar ist leer",
+  "glossaryEmptyAddCta": "Eintrag hinzufügen"
 }

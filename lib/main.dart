@@ -299,9 +299,11 @@ String _friendlyDioError(DioException e) {
   final serverCode =
       body is Map ? (body['code'] ?? body['error']) as String? : null;
 
+  // Aligned with ApiException.fromDio so the bubble overlay and the in-app
+  // error UI surface identical wording for the same server codes.
   return switch (status) {
     401 => 'Please log in to TransKey',
-    403 when serverCode == 'feature_disabled' => 'This feature requires Pro plan',
+    403 when serverCode == 'feature_disabled' => 'This feature requires a paid plan',
     403 when serverCode == 'email_not_verified' => 'Please verify your email',
     413 => 'Text is too long',
     429 when serverCode == 'quota_exceeded' => 'Daily quota exceeded',

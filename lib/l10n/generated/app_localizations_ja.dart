@@ -1030,4 +1030,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get quotaRewardGranted => '本日の枠に報酬が追加されました';
+
+  @override
+  String get historyEmpty => '翻訳履歴はまだありません';
+
+  @override
+  String get glossaryEmpty => '用語集は空です';
+
+  @override
+  String get glossaryEmptyAddCta => '用語を追加';
 }

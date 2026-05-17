@@ -1067,4 +1067,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get quotaRewardGranted => 'Recompensa acreditada a la cuota de hoy';
+
+  @override
+  String get historyEmpty => 'Aún no hay historial de traducciones';
+
+  @override
+  String get glossaryEmpty => 'El glosario está vacío';
+
+  @override
+  String get glossaryEmptyAddCta => 'Añadir entrada';
 }

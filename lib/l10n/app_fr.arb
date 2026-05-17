@@ -362,5 +362,9 @@
   "paywallAdNotComplete": "La pub n'a pas été terminée — réessayez pour gagner la récompense.",
   "paywallCreditFailed": "Impossible de créditer la récompense. Réessayez dans un instant.",
   "quotaWatchAd": "+ Voir une pub",
-  "quotaRewardGranted": "Récompense créditée sur le quota du jour"
+  "quotaRewardGranted": "Récompense créditée sur le quota du jour",
+
+  "historyEmpty": "Aucun historique de traduction",
+  "glossaryEmpty": "Le glossaire est vide",
+  "glossaryEmptyAddCta": "Ajouter une entrée"
 }

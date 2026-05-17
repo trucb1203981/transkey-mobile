@@ -362,5 +362,9 @@
   "paywallAdNotComplete": "Quảng cáo chưa xem xong — thử lại để nhận thưởng.",
   "paywallCreditFailed": "Không cộng thưởng được. Thử lại sau một lát.",
   "quotaWatchAd": "+ Xem QC",
-  "quotaRewardGranted": "Đã cộng thưởng vào quota hôm nay"
+  "quotaRewardGranted": "Đã cộng thưởng vào quota hôm nay",
+
+  "historyEmpty": "Chưa có lịch sử dịch nào",
+  "glossaryEmpty": "Glossary trống",
+  "glossaryEmptyAddCta": "Thêm từ"
 }

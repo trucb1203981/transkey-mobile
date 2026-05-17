@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 
 class EmptyState extends StatelessWidget {
@@ -60,9 +61,9 @@ class HistoryEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const EmptyState(
+    return EmptyState(
       icon: Icons.inbox_outlined,
-      message: 'No translation history yet',
+      message: AppLocalizations.of(context)!.historyEmpty,
     );
   }
 }
@@ -74,10 +75,11 @@ class GlossaryEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return EmptyState(
       icon: Icons.menu_book_outlined,
-      message: 'Glossary is empty',
-      actionLabel: onAddEntry != null ? 'Add entry' : null,
+      message: l.glossaryEmpty,
+      actionLabel: onAddEntry != null ? l.glossaryEmptyAddCta : null,
       onAction: onAddEntry,
     );
   }

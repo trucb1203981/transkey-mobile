@@ -362,5 +362,9 @@
   "paywallAdNotComplete": "No completaste el anuncio — vuelve a intentarlo para ganar la recompensa.",
   "paywallCreditFailed": "No se pudo acreditar la recompensa. Inténtalo en un momento.",
   "quotaWatchAd": "+ Ver anuncio",
-  "quotaRewardGranted": "Recompensa acreditada a la cuota de hoy"
+  "quotaRewardGranted": "Recompensa acreditada a la cuota de hoy",
+
+  "historyEmpty": "Aún no hay historial de traducciones",
+  "glossaryEmpty": "El glosario está vacío",
+  "glossaryEmptyAddCta": "Añadir entrada"
 }

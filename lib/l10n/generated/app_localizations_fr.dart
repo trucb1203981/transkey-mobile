@@ -1070,4 +1070,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get quotaRewardGranted => 'Récompense créditée sur le quota du jour';
+
+  @override
+  String get historyEmpty => 'Aucun historique de traduction';
+
+  @override
+  String get glossaryEmpty => 'Le glossaire est vide';
+
+  @override
+  String get glossaryEmptyAddCta => 'Ajouter une entrée';
 }

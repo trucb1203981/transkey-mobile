@@ -362,5 +362,9 @@
   "paywallAdNotComplete": "広告が完了しませんでした — もう一度試して報酬を獲得してください。",
   "paywallCreditFailed": "報酬を付与できませんでした。少し時間をおいて再試行してください。",
   "quotaWatchAd": "+ 広告を見る",
-  "quotaRewardGranted": "本日の枠に報酬が追加されました"
+  "quotaRewardGranted": "本日の枠に報酬が追加されました",
+
+  "historyEmpty": "翻訳履歴はまだありません",
+  "glossaryEmpty": "用語集は空です",
+  "glossaryEmptyAddCta": "用語を追加"
 }

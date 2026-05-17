@@ -1052,4 +1052,13 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get quotaRewardGranted => 'Đã cộng thưởng vào quota hôm nay';
+
+  @override
+  String get historyEmpty => 'Chưa có lịch sử dịch nào';
+
+  @override
+  String get glossaryEmpty => 'Glossary trống';
+
+  @override
+  String get glossaryEmptyAddCta => 'Thêm từ';
 }

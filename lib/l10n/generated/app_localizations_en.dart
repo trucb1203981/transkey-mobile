@@ -1062,4 +1062,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quotaRewardGranted => 'Reward credited to today\'s quota';
+
+  @override
+  String get historyEmpty => 'No translation history yet';
+
+  @override
+  String get glossaryEmpty => 'Glossary is empty';
+
+  @override
+  String get glossaryEmptyAddCta => 'Add entry';
 }

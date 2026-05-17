@@ -2053,6 +2053,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reward credited to today\'s quota'**
   String get quotaRewardGranted;
+
+  /// No description provided for @historyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No translation history yet'**
+  String get historyEmpty;
+
+  /// No description provided for @glossaryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Glossary is empty'**
+  String get glossaryEmpty;
+
+  /// No description provided for @glossaryEmptyAddCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get glossaryEmptyAddCta;
 }
 
 class _AppLocalizationsDelegate

@@ -362,5 +362,9 @@
   "paywallAdNotComplete": "광고가 완료되지 않았습니다 — 다시 시도하여 보상을 받으세요.",
   "paywallCreditFailed": "보상을 지급할 수 없습니다. 잠시 후 다시 시도하세요.",
   "quotaWatchAd": "+ 광고 보기",
-  "quotaRewardGranted": "오늘 할당량에 보상이 추가되었습니다"
+  "quotaRewardGranted": "오늘 할당량에 보상이 추가되었습니다",
+
+  "historyEmpty": "아직 번역 기록이 없습니다",
+  "glossaryEmpty": "용어집이 비어 있습니다",
+  "glossaryEmptyAddCta": "항목 추가"
 }

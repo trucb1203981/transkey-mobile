@@ -1069,4 +1069,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get quotaRewardGranted =>
       'Belohnung dem heutigen Kontingent gutgeschrieben';
+
+  @override
+  String get historyEmpty => 'Noch kein Übersetzungsverlauf';
+
+  @override
+  String get glossaryEmpty => 'Glossar ist leer';
+
+  @override
+  String get glossaryEmptyAddCta => 'Eintrag hinzufügen';
 }

@@ -1030,4 +1030,13 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get quotaRewardGranted => '오늘 할당량에 보상이 추가되었습니다';
+
+  @override
+  String get historyEmpty => '아직 번역 기록이 없습니다';
+
+  @override
+  String get glossaryEmpty => '용어집이 비어 있습니다';
+
+  @override
+  String get glossaryEmptyAddCta => '항목 추가';
 }

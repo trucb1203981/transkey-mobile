@@ -362,5 +362,9 @@
   "paywallAdNotComplete": "Ad wasn't completed — try again to earn the reward.",
   "paywallCreditFailed": "Couldn't credit reward. Try again in a moment.",
   "quotaWatchAd": "+ Watch ad",
-  "quotaRewardGranted": "Reward credited to today's quota"
+  "quotaRewardGranted": "Reward credited to today's quota",
+
+  "historyEmpty": "No translation history yet",
+  "glossaryEmpty": "Glossary is empty",
+  "glossaryEmptyAddCta": "Add entry"
 }
