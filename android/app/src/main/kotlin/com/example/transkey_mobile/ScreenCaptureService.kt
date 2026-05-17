@@ -176,7 +176,15 @@ class ScreenCaptureService : Service() {
      * doesn't back up.
      */
     private fun setupPipeline(projection: MediaProjection) {
-        captured = false
+        // Start with the gate CLOSED. VirtualDisplay begins mirroring the
+        // screen the instant it's created, and the consent dialog's
+        // dismiss animation can still be in-flight at that point — without
+        // a second settle window the first captured frame ends up showing
+        // a partially-redrawn screen (status bar in transition, missing
+        // app chrome) instead of the stable source-app frame the user
+        // expected. We re-open the gate after FIRST_CAPTURE_ARM_MS, with
+        // a drain to discard any stale frames the listener buffered.
+        captured = true
 
         // Use the FULL physical display bounds (incl. system bars). The
         // app-context resources.displayMetrics on some devices/orientations
@@ -226,7 +234,22 @@ class ScreenCaptureService : Service() {
             Log.w(TAG, "createVirtualDisplay failed: ${error.message}")
             deliverEmptyToBubble()
             teardownCapturePipeline()
+            return
         }
+
+        // Pipeline is live and mirroring; drop frames the listener
+        // collects during the settle window, then drain + arm so we
+        // capture a stable frame instead of a consent-dialog-dismiss
+        // transition.
+        handler.postDelayed({
+            try {
+                while (true) {
+                    val img = imageReader?.acquireLatestImage() ?: break
+                    img.close()
+                }
+            } catch (_: Exception) {}
+            captured = false
+        }, FIRST_CAPTURE_ARM_MS)
     }
 
     /**
@@ -447,6 +470,18 @@ class ScreenCaptureService : Service() {
          * notice the wait.
          */
         private const val CAPTURE_SETTLE_MS = 200L
+
+        /**
+         * Settle delay (ms) on the FIRST capture, between VirtualDisplay
+         * creation and arming the gate. Longer than the reuse path because
+         * the consent dialog's dismiss animation is still in flight when
+         * the projection token becomes valid, and the source app behind
+         * it hasn't necessarily finished its redraw yet. 500 ms = ~30
+         * frames, enough to outlast both the dialog exit transition and
+         * any one-frame stutter from the system compositor switching back
+         * to mirroring.
+         */
+        private const val FIRST_CAPTURE_ARM_MS = 500L
 
         /**
          * True while this service holds a live MediaProjection grant.
