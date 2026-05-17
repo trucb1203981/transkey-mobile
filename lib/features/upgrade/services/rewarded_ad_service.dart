@@ -24,38 +24,42 @@ class RewardedAdService {
   static const _prodAdUnitAndroid = 'ca-app-pub-4388572340562895/8963970428';
 
   RewardedAd? _ad;
-  bool _isLoading = false;
+  Completer<RewardedAd?>? _loadCompleter;
 
   String get _adUnitId =>
       defaultTargetPlatform == TargetPlatform.iOS ? _adUnitIOS : _adUnitAndroid;
 
-  /// Preload one ad. Safe to call multiple times — no-ops if already
-  /// loading / loaded. Call as soon as you know an ad is likely needed
-  /// (e.g. when the paywall sheet opens) so the user doesn't wait on a
-  /// network fetch after tapping "Watch ad".
-  Future<void> preload() async {
-    if (_ad != null || _isLoading) return;
-    _isLoading = true;
-    try {
-      await RewardedAd.load(
-        adUnitId: _adUnitId,
-        request: const AdRequest(),
-        rewardedAdLoadCallback: RewardedAdLoadCallback(
-          onAdLoaded: (ad) {
-            _ad = ad;
-            _isLoading = false;
-          },
-          onAdFailedToLoad: (err) {
-            debugPrint('[RewardedAd] load failed: ${err.message}');
-            _ad = null;
-            _isLoading = false;
-          },
-        ),
-      );
-    } catch (e) {
+  /// Preload one ad. Safe to call multiple times — concurrent calls
+  /// share the same in-flight Future, idempotent if an ad is already
+  /// loaded. Return the loaded ad (or null on failure) so callers can
+  /// await readiness instead of polling.
+  Future<RewardedAd?> preload() {
+    if (_ad != null) return Future.value(_ad);
+    if (_loadCompleter != null) return _loadCompleter!.future;
+    final completer = Completer<RewardedAd?>();
+    _loadCompleter = completer;
+    RewardedAd.load(
+      adUnitId: _adUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _ad = ad;
+          _loadCompleter = null;
+          if (!completer.isCompleted) completer.complete(ad);
+        },
+        onAdFailedToLoad: (err) {
+          debugPrint('[RewardedAd] load failed: ${err.message}');
+          _ad = null;
+          _loadCompleter = null;
+          if (!completer.isCompleted) completer.complete(null);
+        },
+      ),
+    ).catchError((e) {
       debugPrint('[RewardedAd] preload threw: $e');
-      _isLoading = false;
-    }
+      _loadCompleter = null;
+      if (!completer.isCompleted) completer.complete(null);
+    });
+    return completer.future;
   }
 
   /// Show the loaded ad. Returns `true` if the user finished watching
@@ -63,10 +67,11 @@ class RewardedAdService {
   /// loaded, user dismissed early, ad failed). Disposes the ad
   /// regardless so the next preload starts fresh.
   Future<bool> showAndAwaitReward() async {
-    // If nothing's been preloaded (or load failed), try one synchronous
-    // load before giving up so a tap on "Watch ad" doesn't dead-end.
-    if (_ad == null) await preload();
-    final ad = _ad;
+    // Await the in-flight load (or kick off a fresh one). preload()
+    // shares a single Future across concurrent callers so this works
+    // whether the paywall already started loading or we're a cold
+    // first-tap caller.
+    final ad = _ad ?? await preload();
     if (ad == null) return false;
     _ad = null; // ownership transferred to the SDK once show() fires
 
