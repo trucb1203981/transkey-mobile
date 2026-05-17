@@ -213,13 +213,19 @@ class LensOverlayView(
             .build()
     }
 
-    /** Pick a starting text size proportional to the box height. */
-    private fun heuristicStartSizePx(boxHeight: Int): Float {
-        val density = resources.displayMetrics.density
-        val maxSp = 18f
-        val sp = min(maxSp, max(MIN_SP.toFloat(), (boxHeight / density) * 0.55f))
+    /**
+     * Starting text size. Earlier versions scaled by box height
+     * (`boxHeight * 0.55`) which gave a 9–18sp spread depending on the
+     * original OCR block — multi-line paragraph blocks ended up at 18sp,
+     * tight single-line chips at 9sp, and reading several chunks of
+     * translation on the same screen felt like a ransom note. ML Kit
+     * boxes don't expose line height directly, so we anchor at a fixed
+     * readable size and let the shrink loop in [buildLayout] knock it
+     * down only when the box is genuinely tight.
+     */
+    private fun heuristicStartSizePx(@Suppress("UNUSED_PARAMETER") boxHeight: Int): Float {
         return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_SP, sp, resources.displayMetrics,
+            TypedValue.COMPLEX_UNIT_SP, DEFAULT_SP, resources.displayMetrics,
         )
     }
 
@@ -268,6 +274,12 @@ class LensOverlayView(
     companion object {
         private const val PADDING_PX = 4f
         private const val MIN_SP = 9
+        /**
+         * Uniform starting font size for all blocks. Matches typical mobile
+         * body text — readable on a phone at arm's length without making
+         * any single block look like a heading.
+         */
+        private const val DEFAULT_SP = 13f
         /**
          * How much taller the lens box may grow vs. the original OCR
          * bounds before we start shrinking text. 3x covers most CJK →
