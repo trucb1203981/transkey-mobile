@@ -1012,4 +1012,44 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get voicePickSourceLang =>
       'Chọn ngôn ngữ nguồn trước — nhập giọng nói không tự đoán được';
+
+  @override
+  String get paywallTitle => 'Hết lượt dùng hôm nay';
+
+  @override
+  String get paywallBody =>
+      'Bạn đã dùng hết 20 lượt / 2.000 ký tự miễn phí hôm nay. Xem 1 quảng cáo ngắn để dùng tiếp, hoặc nâng cấp để dùng không giới hạn. Quota miễn phí reset lúc nửa đêm.';
+
+  @override
+  String get paywallWatchAdCta => 'Xem quảng cáo để dùng tiếp';
+
+  @override
+  String get paywallWatchAdSub =>
+      'Nhận thêm lượt dịch và ký tự mỗi quảng cáo. Không giới hạn số quảng cáo trong ngày.';
+
+  @override
+  String get paywallUpgradeCta => 'Nâng cấp — không giới hạn, không quảng cáo';
+
+  @override
+  String get paywallUpgradeSub => 'Từ \$3/tháng. Hủy bất cứ lúc nào.';
+
+  @override
+  String get paywallDismiss => 'Để sau';
+
+  @override
+  String get paywallLoading => 'Đang tải…';
+
+  @override
+  String get paywallAdNotComplete =>
+      'Quảng cáo chưa xem xong — thử lại để nhận thưởng.';
+
+  @override
+  String get paywallCreditFailed =>
+      'Không cộng thưởng được. Thử lại sau một lát.';
+
+  @override
+  String get quotaWatchAd => '+ Xem QC';
+
+  @override
+  String get quotaRewardGranted => 'Đã cộng thưởng vào quota hôm nay';
 }

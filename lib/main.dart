@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api/dio_client.dart';
@@ -32,6 +33,15 @@ void main() async {
 
   _rootContainer = ProviderContainer();
   _wireBubbleChannel();
+
+  // Initialise the AdMob SDK as early as possible so by the time a free
+  // user exhausts their daily quota and the paywall offers "Watch ad",
+  // a rewarded video has already been preloaded. MobileAds.initialize()
+  // is idempotent and fast (~50 ms) once the platform side bootstraps.
+  // Fire-and-forget; pre-loading the actual ad happens lazily inside
+  // the paywall flow so the first frame doesn't wait on a network ad
+  // fetch.
+  unawaited(MobileAds.instance.initialize());
 
   runApp(UncontrolledProviderScope(
     container: _rootContainer,

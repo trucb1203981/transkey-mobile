@@ -11,12 +11,21 @@ class QuotaBar extends StatelessWidget {
     required this.limit,
     this.charsUsed,
     this.charsLimit,
+    this.onWatchAd,
+    this.isWatchingAd = false,
   });
 
   final int used;
   final int limit;
   final int? charsUsed;
   final int? charsLimit;
+  /// When non-null, render a "+Ad" affordance the user can tap to
+  /// proactively top up their daily quota without first hitting the
+  /// 429 wall. Parent supplies the actual rewarded-ad flow.
+  final VoidCallback? onWatchAd;
+  /// Disable the "+Ad" affordance while an ad is loading / playing so
+  /// rapid taps don't queue multiple grants.
+  final bool isWatchingAd;
 
   Color get _barColor {
     final ratio = limit > 0 ? used / limit : 0.0;
@@ -84,8 +93,37 @@ class QuotaBar extends StatelessWidget {
                   ),
                 ),
               ],
-              if (_isWarning) ...[
+              if (onWatchAd != null) ...[
                 const SizedBox(width: AppSpacing.sm),
+                InkWell(
+                  onTap: isWatchingAd ? null : onWatchAd,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isWatchingAd ? Icons.hourglass_top : Icons.play_circle_outline,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          AppLocalizations.of(context)!.quotaWatchAd,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              if (_isWarning) ...[
+                const SizedBox(width: AppSpacing.xs),
                 Icon(Icons.arrow_forward_ios, size: 12, color: _barColor),
               ],
             ],

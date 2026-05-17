@@ -1981,6 +1981,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick a source language first — voice input can\'t auto-detect'**
   String get voicePickSourceLang;
+
+  /// No description provided for @paywallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily limit reached'**
+  String get paywallTitle;
+
+  /// No description provided for @paywallBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used today\'s free quota of 20 requests / 2,000 characters. Watch a short ad to keep going, or upgrade for unlimited use. Your free quota resets at midnight.'**
+  String get paywallBody;
+
+  /// No description provided for @paywallWatchAdCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad to continue'**
+  String get paywallWatchAdCta;
+
+  /// No description provided for @paywallWatchAdSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Earn extra requests and characters each ad. No limit on ads per day.'**
+  String get paywallWatchAdSub;
+
+  /// No description provided for @paywallUpgradeCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade — unlimited, no ads'**
+  String get paywallUpgradeCta;
+
+  /// No description provided for @paywallUpgradeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'From \$3/month. Cancel anytime.'**
+  String get paywallUpgradeSub;
+
+  /// No description provided for @paywallDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe later'**
+  String get paywallDismiss;
+
+  /// No description provided for @paywallLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get paywallLoading;
+
+  /// No description provided for @paywallAdNotComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad wasn\'t completed — try again to earn the reward.'**
+  String get paywallAdNotComplete;
+
+  /// No description provided for @paywallCreditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t credit reward. Try again in a moment.'**
+  String get paywallCreditFailed;
+
+  /// No description provided for @quotaWatchAd.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Watch ad'**
+  String get quotaWatchAd;
+
+  /// No description provided for @quotaRewardGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward credited to today\'s quota'**
+  String get quotaRewardGranted;
 }
 
 class _AppLocalizationsDelegate

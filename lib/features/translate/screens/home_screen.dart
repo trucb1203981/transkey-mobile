@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -10,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../l10n/generated/app_localizations.dart';
 
+import '../../../core/api/api_errors.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/plan_status_banner.dart';
@@ -23,7 +25,10 @@ import '../../onboarding/screens/keyboard_setup_screen.dart';
 import '../../../core/bubble/bubble_manager.dart';
 import '../../settings/providers/app_settings_provider.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../../core/api/dio_client.dart';
 import '../../upgrade/providers/usage_provider.dart';
+import '../../upgrade/services/rewarded_ad_service.dart';
+import '../../upgrade/widgets/paywall_sheet.dart';
 import '../models/language.dart';
 import '../models/translate_models.dart';
 import '../providers/features_provider.dart';
@@ -265,6 +270,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
+  /// Quota wall — opened from the translate listener on 429
+  /// quota_exceeded. If the user watches a rewarded ad and the server
+  /// credits the reward (sheet returns `true`), retry the same mode
+  /// against the still-current text so they don't have to tap again.
+  /// Guarded by `_paywallVisible` because the same error can re-fire
+  /// during a retry race; a second sheet on top of the first is the
+  /// noisiest possible UX.
+  bool _paywallVisible = false;
+  Future<void> _showPaywall(TranslateMode lastMode) async {
+    if (_paywallVisible) return;
+    _paywallVisible = true;
+    try {
+      final earned = await PaywallSheet.show(context);
+      if (!mounted) return;
+      // Clear the error so the result panel doesn't keep showing the
+      // 429 red bar after a successful credit / dismiss.
+      ref.read(translateProvider.notifier).clearError();
+      if (earned == true && _textController.text.trim().isNotEmpty) {
+        _handleAction(lastMode);
+      }
+    } finally {
+      _paywallVisible = false;
+    }
+  }
+
   void _handleAction(TranslateMode mode) {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
@@ -407,9 +437,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             limit: usage.requestsLimit,
             charsUsed: usage.charsUsed,
             charsLimit: usage.charsLimit,
+            isWatchingAd: _isWatchingProactiveAd,
+            onWatchAd: _isWatchingProactiveAd ? null : _watchProactiveAd,
           ),
       ],
     );
+  }
+
+  bool _isWatchingProactiveAd = false;
+
+  /// Proactive "Watch ad for more quota" — lets a free user top up
+  /// BEFORE hitting the daily wall. Necessary because each ad only
+  /// grants +200 chars; a single 500-char translation would otherwise
+  /// require try → 429 → ad → try → 429 → ad → try cycle. With this
+  /// button users can pre-stack 2-3 ads in a row, then translate.
+  Future<void> _watchProactiveAd() async {
+    final l = AppLocalizations.of(context)!;
+    setState(() => _isWatchingProactiveAd = true);
+    final adService = RewardedAdService();
+    try {
+      await adService.preload();
+      final earned = await adService.showAndAwaitReward();
+      if (!mounted) return;
+      if (!earned) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.paywallAdNotComplete)),
+        );
+        return;
+      }
+      try {
+        final api = ref.read(apiClientProvider);
+        await api.dio.post('/quota/grant-reward');
+        await ref.read(usageProvider.notifier).refresh();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.quotaRewardGranted)),
+        );
+      } on DioException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            e.response?.data is Map
+                ? (e.response?.data['message']?.toString() ?? l.paywallCreditFailed)
+                : l.paywallCreditFailed,
+          ),
+        ));
+      }
+    } finally {
+      adService.dispose();
+      if (mounted) setState(() => _isWatchingProactiveAd = false);
+    }
   }
 
   Widget _buildTranslateTab() {
@@ -427,9 +504,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       final prevResult = prev?.valueOrNull?.result;
       final nextState = next.valueOrNull;
       final nextResult = nextState?.result;
-      if (nextResult == null || nextResult == prevResult) return;
-      if (nextState?.mode != TranslateMode.reply) return;
-      _onReplyReady(nextResult.translation, l);
+      if (nextResult != null && nextResult != prevResult &&
+          nextState?.mode == TranslateMode.reply) {
+        _onReplyReady(nextResult.translation, l);
+      }
+
+      // Daily-quota wall: free user just hit the 20-req/2000-char cap.
+      // Intercept the 429 and show the paywall sheet so they can either
+      // watch a rewarded ad (+5 / +500) or upgrade. On a successful ad
+      // grant, retry the original translation with the same mode +
+      // source text the user had in flight.
+      final prevCode = prev?.valueOrNull?.errorCode;
+      final nextCode = nextState?.errorCode;
+      if (nextCode == ApiErrorCode.quotaExceeded && nextCode != prevCode) {
+        _showPaywall(nextState!.mode);
+      }
     });
 
     // Mid-session plan downgrade detection: usage refresh runs after every

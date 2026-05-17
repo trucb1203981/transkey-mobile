@@ -1022,4 +1022,44 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voicePickSourceLang =>
       'Pick a source language first — voice input can\'t auto-detect';
+
+  @override
+  String get paywallTitle => 'Daily limit reached';
+
+  @override
+  String get paywallBody =>
+      'You\'ve used today\'s free quota of 20 requests / 2,000 characters. Watch a short ad to keep going, or upgrade for unlimited use. Your free quota resets at midnight.';
+
+  @override
+  String get paywallWatchAdCta => 'Watch ad to continue';
+
+  @override
+  String get paywallWatchAdSub =>
+      'Earn extra requests and characters each ad. No limit on ads per day.';
+
+  @override
+  String get paywallUpgradeCta => 'Upgrade — unlimited, no ads';
+
+  @override
+  String get paywallUpgradeSub => 'From \$3/month. Cancel anytime.';
+
+  @override
+  String get paywallDismiss => 'Maybe later';
+
+  @override
+  String get paywallLoading => 'Loading…';
+
+  @override
+  String get paywallAdNotComplete =>
+      'Ad wasn\'t completed — try again to earn the reward.';
+
+  @override
+  String get paywallCreditFailed =>
+      'Couldn\'t credit reward. Try again in a moment.';
+
+  @override
+  String get quotaWatchAd => '+ Watch ad';
+
+  @override
+  String get quotaRewardGranted => 'Reward credited to today\'s quota';
 }

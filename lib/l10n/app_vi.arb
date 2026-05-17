@@ -349,5 +349,18 @@
   "voiceListening": "Đang nghe…",
   "voicePermDenied": "Đã từ chối quyền micro",
   "voiceUnsupported": "Thiết bị này không hỗ trợ nhập giọng nói",
-  "voicePickSourceLang": "Chọn ngôn ngữ nguồn trước — nhập giọng nói không tự đoán được"
+  "voicePickSourceLang": "Chọn ngôn ngữ nguồn trước — nhập giọng nói không tự đoán được",
+
+  "paywallTitle": "Hết lượt dùng hôm nay",
+  "paywallBody": "Bạn đã dùng hết 20 lượt / 2.000 ký tự miễn phí hôm nay. Xem 1 quảng cáo ngắn để dùng tiếp, hoặc nâng cấp để dùng không giới hạn. Quota miễn phí reset lúc nửa đêm.",
+  "paywallWatchAdCta": "Xem quảng cáo để dùng tiếp",
+  "paywallWatchAdSub": "Nhận thêm lượt dịch và ký tự mỗi quảng cáo. Không giới hạn số quảng cáo trong ngày.",
+  "paywallUpgradeCta": "Nâng cấp — không giới hạn, không quảng cáo",
+  "paywallUpgradeSub": "Từ $3/tháng. Hủy bất cứ lúc nào.",
+  "paywallDismiss": "Để sau",
+  "paywallLoading": "Đang tải…",
+  "paywallAdNotComplete": "Quảng cáo chưa xem xong — thử lại để nhận thưởng.",
+  "paywallCreditFailed": "Không cộng thưởng được. Thử lại sau một lát.",
+  "quotaWatchAd": "+ Xem QC",
+  "quotaRewardGranted": "Đã cộng thưởng vào quota hôm nay"
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,6 +16,7 @@ class TranslateState {
     this.isLoading = false,
     this.result,
     this.error,
+    this.errorCode,
     this.mode = TranslateMode.translate,
     this.sourceText = '',
     this.lastHistoryId,
@@ -23,6 +25,10 @@ class TranslateState {
   final bool isLoading;
   final TranslateResult? result;
   final String? error;
+  // Machine-readable companion to `error` — lets the UI dispatch a
+  // specific affordance (e.g. paywall sheet on quota_exceeded) instead
+  // of pattern-matching the human-facing error string.
+  final ApiErrorCode? errorCode;
   final TranslateMode mode;
   final String sourceText;
   // ID of the history entry that mirrors `result`. Lets HomeScreen wire the
@@ -33,6 +39,7 @@ class TranslateState {
     bool? isLoading,
     TranslateResult? result,
     String? error,
+    ApiErrorCode? errorCode,
     TranslateMode? mode,
     String? sourceText,
     String? lastHistoryId,
@@ -44,6 +51,7 @@ class TranslateState {
         isLoading: isLoading ?? this.isLoading,
         result: clearResult ? null : (result ?? this.result),
         error: clearError ? null : (error ?? this.error),
+        errorCode: clearError ? null : (errorCode ?? this.errorCode),
         mode: mode ?? this.mode,
         sourceText: sourceText ?? this.sourceText,
         lastHistoryId: clearHistoryId
@@ -272,8 +280,18 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
     } catch (e) {
       if (reqId != _requestSeq) return;
       String message;
-      if (e is ApiException) {
+      ApiErrorCode? code;
+      // Dio errors aren't auto-converted to ApiException by the
+      // interceptor stack — do it inline so quota_exceeded / 429 / etc.
+      // carry the right error code into TranslateState (the paywall
+      // listener pattern-matches on errorCode == quotaExceeded).
+      if (e is DioException) {
+        final api = ApiException.fromDio(e);
+        message = api.message;
+        code = api.code;
+      } else if (e is ApiException) {
         message = e.message;
+        code = e.code;
       } else {
         debugPrint('[Translate] Error: $e');
         message = 'Something went wrong';
@@ -281,6 +299,7 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
       state = AsyncData((state.valueOrNull ?? currentState).copyWith(
         isLoading: false,
         error: message,
+        errorCode: code,
         mode: mode,
         sourceText: trimmed,
       ));
@@ -317,6 +336,16 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
       clearHistoryId: true,
       isLoading: false,
     ));
+  }
+
+  /// Drop the latest error (string + code) but keep the existing
+  /// result and history intact. Used after the paywall sheet handles
+  /// a 429 — we don't want the red error bar lingering after the user
+  /// successfully watched an ad or dismissed.
+  void clearError() {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(clearError: true));
   }
 
   void setMode(TranslateMode mode) {

@@ -349,5 +349,18 @@
   "voiceListening": "Listening…",
   "voicePermDenied": "Microphone permission denied",
   "voiceUnsupported": "Voice input not available on this device",
-  "voicePickSourceLang": "Pick a source language first — voice input can't auto-detect"
+  "voicePickSourceLang": "Pick a source language first — voice input can't auto-detect",
+
+  "paywallTitle": "Daily limit reached",
+  "paywallBody": "You've used today's free quota of 20 requests / 2,000 characters. Watch a short ad to keep going, or upgrade for unlimited use. Your free quota resets at midnight.",
+  "paywallWatchAdCta": "Watch ad to continue",
+  "paywallWatchAdSub": "Earn extra requests and characters each ad. No limit on ads per day.",
+  "paywallUpgradeCta": "Upgrade — unlimited, no ads",
+  "paywallUpgradeSub": "From $3/month. Cancel anytime.",
+  "paywallDismiss": "Maybe later",
+  "paywallLoading": "Loading…",
+  "paywallAdNotComplete": "Ad wasn't completed — try again to earn the reward.",
+  "paywallCreditFailed": "Couldn't credit reward. Try again in a moment.",
+  "quotaWatchAd": "+ Watch ad",
+  "quotaRewardGranted": "Reward credited to today's quota"
 }
