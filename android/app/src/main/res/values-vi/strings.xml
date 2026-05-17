@@ -3,17 +3,33 @@
     <string name="accessibility_service_description">TransKey có thể dán câu trả lời thẳng vào ô nhập đang được focus của bất kỳ app nào khi bạn nhấn "Dán trả lời" trên bubble. Văn bản chỉ được đọc hoặc ghi khi bạn kích hoạt — không theo dõi nền.</string>
 
     <string name="bubble_choose_action">Chọn hành động</string>
-    <string name="bubble_using_selection">Đang dùng văn bản đã chọn.</string>
     <string name="bubble_need_text">Chọn hoặc copy văn bản trước, rồi chọn hành động bên dưới.</string>
+    <string name="bubble_need_copy">Copy text trước, rồi tap bubble.</string>
     <string name="bubble_accessibility_hint">Bôi đen + tap bubble chưa hoạt động. Bật Trợ năng (Accessibility) để dịch không cần Copy.</string>
     <string name="bubble_accessibility_enable">Thiết lập</string>
     <string name="bubble_accessibility_guide_legacy">Tìm TransKey trong danh sách → bật \"Use TransKey\" → tap Cho phép.</string>
     <string name="bubble_accessibility_guide_a13">Android 13+ chặn Accessibility cho app sideload mặc định:\n1. Tap ⋮ (góc trên phải) → \"Cho phép cài đặt giới hạn\"\n2. Quay lại → Trợ năng → TransKey → bật ON</string>
     <string name="bubble_show_last_result">Xem kết quả gần nhất</string>
     <string name="bubble_type_text">Nhập văn bản</string>
-    <string name="bubble_read_screen">Đọc màn hình này</string>
-    <string name="bubble_read_screen_a11y_off">Bật TransKey trong Trợ năng để đọc text màn hình</string>
-    <string name="bubble_read_screen_empty">Không có text đọc được trên màn hình</string>
+    <string name="bubble_paste_a11y_required">Bật Trợ năng để dán câu trả lời thẳng vào ô nhập đang focus.</string>
+
+    <string name="bubble_panel_source_lang">Ngôn ngữ nguồn</string>
+    <string name="bubble_panel_target_lang">Ngôn ngữ đích</string>
+    <string name="bubble_panel_copy">Copy</string>
+    <string name="bubble_panel_paste">Dán</string>
+    <string name="bubble_panel_copied">Đã copy</string>
+    <string name="bubble_panel_pasted">Đã dán</string>
+    <string name="bubble_panel_paste_manual_fallback">Đã copy — tap vào ô nhập rồi dán thủ công</string>
+    <string name="bubble_panel_paste_a11y_off">Bật TransKey trong Trợ năng để dùng nút Dán</string>
+    <string name="bubble_panel_clipboard_empty">Clipboard rỗng</string>
+    <string name="bubble_panel_tts_not_ready">TTS chưa sẵn sàng</string>
+    <string name="bubble_panel_translation_failed">Dịch thất bại</string>
+    <string name="bubble_panel_app_not_ready">App chưa sẵn sàng — mở TransKey một lần để khởi tạo</string>
+    <string name="bubble_panel_detected">Phát hiện: %1$s</string>
+    <string name="bubble_notification_channel">TransKey Bubble</string>
+    <string name="bubble_notification_active">Bubble dịch đang hoạt động</string>
+    <string name="bubble_overlay_perm_needed">Bật \'Hiển thị trên ứng dụng khác\' để dùng bubble dịch nổi</string>
+    <string name="bubble_clipboard_empty_error">Clipboard rỗng.\nCopy text trước, rồi tap bubble.</string>
     <string name="bubble_voice">Nhập bằng giọng nói</string>
     <string name="bubble_voice_listening">Đang nghe…</string>
     <string name="bubble_voice_speak">Hãy nói</string>

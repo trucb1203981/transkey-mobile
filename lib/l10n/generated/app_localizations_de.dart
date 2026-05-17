@@ -857,4 +857,157 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get setupStep5Desc =>
       'Übersetzen, Antworten, Zusammenfassen, Erklären & Verfeinern — alles KI-gestützt. Pro-Funktionen sind mit einem Schloss markiert.';
+
+  @override
+  String get guideTitle => 'Verwendung';
+
+  @override
+  String get guideSubtitle => 'Alle Wege, Text für jede Funktion zu erfassen';
+
+  @override
+  String get guideIntroTitle =>
+      'Keine Bedienungshilfen nötig zum Erfassen von Text.';
+
+  @override
+  String get guideIntroBody =>
+      'Jede Funktion liest Quelltext über eine ausdrückliche Benutzeraktion — Kopieren, OCR, Bereichsauswahl, System-Teilen oder Textauswahlmenü. Bedienungshilfen werden nur für eine optionale Annehmlichkeit verwendet: Reply-Ergebnisse automatisch in das fokussierte Eingabefeld einfügen.';
+
+  @override
+  String get guideFeatureTranslate => 'Übersetzen';
+
+  @override
+  String get guideFeatureTranslateSubtitle => 'Quellsprache → Zielsprache';
+
+  @override
+  String get guideFeatureSummary => 'Zusammenfassen';
+
+  @override
+  String get guideFeatureSummarySubtitle =>
+      'Lange Inhalte in wenige Stichpunkte verdichten';
+
+  @override
+  String get guideFeatureRefine => 'Verfeinern';
+
+  @override
+  String get guideFeatureRefineSubtitle =>
+      'Grammatik / Klarheit deines eigenen Entwurfs verbessern';
+
+  @override
+  String get guideFeatureExplain => 'Erklären';
+
+  @override
+  String get guideFeatureExplainSubtitle =>
+      'Schwierige Texte in einfacher Sprache erklären';
+
+  @override
+  String get guideFeatureReply => 'Antworten';
+
+  @override
+  String get guideFeatureReplySubtitle =>
+      'Antwortvorschlag in der Zielsprache erzeugen';
+
+  @override
+  String get guideInputCopyTitle => 'Text kopieren + Bubble tippen';
+
+  @override
+  String get guideInputCopyDesc =>
+      'Text in einer beliebigen App kopieren, dann die schwebende Bubble tippen und die Aktion wählen.';
+
+  @override
+  String get guideInputOcrTitle => 'Bildschirmscan (OCR)';
+
+  @override
+  String get guideInputOcrDesc =>
+      'Bubble → Bildschirmscan. Erfasst einen Screenshot, führt OCR auf dem Gerät aus.';
+
+  @override
+  String get guideInputRegionTitle => 'Bereichsauswahl';
+
+  @override
+  String get guideInputRegionDesc =>
+      'Bubble → Ausgewählten Bereich übersetzen. Rahmen um den gewünschten Bereich ziehen.';
+
+  @override
+  String get guideInputShareTitle => 'Teilen-Menü';
+
+  @override
+  String get guideInputShareDesc =>
+      'In jeder App: Text auswählen → Teilen → TransKey.';
+
+  @override
+  String guideInputMenuTitle(String feature) {
+    return 'Auswahlmenü → TransKey: $feature';
+  }
+
+  @override
+  String guideInputMenuDesc(String feature) {
+    return 'Text lange drücken → Überlauf ⋮ → TransKey: $feature.';
+  }
+
+  @override
+  String get guideReplyA11yTitle => 'Bedienungshilfen (optional)';
+
+  @override
+  String get guideReplyA11yBody =>
+      'Bedienungshilfen AN: Das Ergebnis wird nach der Erzeugung direkt in das fokussierte Eingabefeld eingefügt.\n\nBedienungshilfen AUS: Das Ergebnis wird in die Zwischenablage kopiert. Manuell einfügen, wo benötigt.';
+
+  @override
+  String get appPermissions => 'App-Berechtigungen';
+
+  @override
+  String get permissionsAllSet => 'Alles eingerichtet — tippen zum Prüfen';
+
+  @override
+  String get permissionsNeedSetup =>
+      'Tippen, um erforderliche Berechtigungen zu erteilen';
+
+  @override
+  String get setupTransKey => 'TransKey einrichten';
+
+  @override
+  String get setupTransKeyBody =>
+      'Erteile die Floating-Bubble-Berechtigung zum Starten. Bedienungshilfen sind optional und nur für One-Tap-Reply-Einfügen erforderlich.';
+
+  @override
+  String get permFloatingBubble => 'Floating Bubble';
+
+  @override
+  String get permFloatingBubbleBody =>
+      'TransKey über anderen Apps anzeigen. Erforderlich, damit die Bubble erscheint.';
+
+  @override
+  String get permRestrictedSettings => 'Eingeschränkte Einstellungen erlauben';
+
+  @override
+  String get permRestrictedSettingsBody =>
+      'Android 13+ blockiert standardmäßig Bedienungshilfen für sideloaded Apps. ⋮ oben rechts → \"Eingeschränkte Einstellungen erlauben\".';
+
+  @override
+  String get permAccessibility => 'Bedienungshilfen (optional)';
+
+  @override
+  String get permAccessibilityBody =>
+      'Erlaubt TransKey, Reply-Vorschläge direkt in das fokussierte Textfeld einzufügen. Überspringen, falls manuelles Einfügen kein Problem ist.';
+
+  @override
+  String get permEnabled => 'Aktiviert';
+
+  @override
+  String get permEnable => 'Aktivieren';
+
+  @override
+  String get permDone => 'Fertig';
+
+  @override
+  String get permOpenAppDetails => 'App-Details öffnen';
+
+  @override
+  String get permSkipHint =>
+      'Bedienungshilfen sind optional. Ohne sie landen Reply-Vorschläge in der Zwischenablage und du fügst sie selbst ein.';
+
+  @override
+  String get permSkipForNow => 'Vorerst überspringen';
+
+  @override
+  String get permFinishedCheck => 'Fertig — prüfen';
 }

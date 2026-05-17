@@ -857,4 +857,158 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get setupStep5Desc =>
       'Traduire, Répondre, Résumer, Expliquer & Affiner — tout est propulsé par l’IA. Les fonctionnalités Pro sont marquées d’un cadenas.';
+
+  @override
+  String get guideTitle => 'Comment utiliser';
+
+  @override
+  String get guideSubtitle =>
+      'Toutes les façons de capturer du texte pour chaque fonctionnalité';
+
+  @override
+  String get guideIntroTitle =>
+      'Aucune Accessibilité requise pour capturer du texte.';
+
+  @override
+  String get guideIntroBody =>
+      'Chaque fonctionnalité lit le texte source via une action explicite — Copier, OCR, Sélection de zone, Partage système, ou menu de sélection. L\'Accessibilité sert uniquement pour une commodité optionnelle : coller automatiquement une Réponse dans le champ de saisie ciblé.';
+
+  @override
+  String get guideFeatureTranslate => 'Traduire';
+
+  @override
+  String get guideFeatureTranslateSubtitle => 'Langue source → langue cible';
+
+  @override
+  String get guideFeatureSummary => 'Résumer';
+
+  @override
+  String get guideFeatureSummarySubtitle =>
+      'Condenser un contenu long en quelques puces';
+
+  @override
+  String get guideFeatureRefine => 'Affiner';
+
+  @override
+  String get guideFeatureRefineSubtitle =>
+      'Améliorer la grammaire / clarté de votre propre brouillon';
+
+  @override
+  String get guideFeatureExplain => 'Expliquer';
+
+  @override
+  String get guideFeatureExplainSubtitle =>
+      'Obtenir une explication simple d\'un texte difficile';
+
+  @override
+  String get guideFeatureReply => 'Répondre';
+
+  @override
+  String get guideFeatureReplySubtitle =>
+      'Générer une suggestion de réponse dans la langue cible';
+
+  @override
+  String get guideInputCopyTitle => 'Copier le texte + taper la bulle';
+
+  @override
+  String get guideInputCopyDesc =>
+      'Copiez du texte dans n\'importe quelle application, puis tapez la bulle flottante et choisissez l\'action.';
+
+  @override
+  String get guideInputOcrTitle => 'Scan écran (OCR)';
+
+  @override
+  String get guideInputOcrDesc =>
+      'Bulle → Scan écran. Capture une image, exécute l\'OCR sur l\'appareil.';
+
+  @override
+  String get guideInputRegionTitle => 'Sélection de zone';
+
+  @override
+  String get guideInputRegionDesc =>
+      'Bulle → Traduire la zone sélectionnée. Dessinez un cadre autour de la zone souhaitée.';
+
+  @override
+  String get guideInputShareTitle => 'Menu Partager';
+
+  @override
+  String get guideInputShareDesc =>
+      'Dans n\'importe quelle app : sélectionnez du texte → Partager → TransKey.';
+
+  @override
+  String guideInputMenuTitle(String feature) {
+    return 'Menu de sélection → TransKey: $feature';
+  }
+
+  @override
+  String guideInputMenuDesc(String feature) {
+    return 'Appui long sur le texte → débordement ⋮ → TransKey: $feature.';
+  }
+
+  @override
+  String get guideReplyA11yTitle => 'Accessibilité (optionnel)';
+
+  @override
+  String get guideReplyA11yBody =>
+      'Accessibilité activée : le résultat est collé directement dans le champ de saisie ciblé après génération.\n\nAccessibilité désactivée : le résultat est copié dans le presse-papiers. Collez-le manuellement où vous voulez.';
+
+  @override
+  String get appPermissions => 'Permissions de l\'app';
+
+  @override
+  String get permissionsAllSet => 'Tout est prêt — tapez pour vérifier';
+
+  @override
+  String get permissionsNeedSetup =>
+      'Tapez pour accorder les permissions requises';
+
+  @override
+  String get setupTransKey => 'Configurer TransKey';
+
+  @override
+  String get setupTransKeyBody =>
+      'Accordez l\'autorisation de bulle flottante pour commencer. L\'Accessibilité est optionnelle et n\'est nécessaire que pour le collage de Réponse en un tap.';
+
+  @override
+  String get permFloatingBubble => 'Bulle flottante';
+
+  @override
+  String get permFloatingBubbleBody =>
+      'Afficher TransKey au-dessus des autres apps. Requis pour que la bulle apparaisse.';
+
+  @override
+  String get permRestrictedSettings => 'Autoriser les paramètres restreints';
+
+  @override
+  String get permRestrictedSettingsBody =>
+      'Android 13+ bloque par défaut l\'Accessibilité pour les apps installées hors store. Tapez ⋮ en haut à droite → \"Autoriser les paramètres restreints\".';
+
+  @override
+  String get permAccessibility => 'Accessibilité (optionnel)';
+
+  @override
+  String get permAccessibilityBody =>
+      'Permet à TransKey de coller les suggestions de Réponse directement dans le champ ciblé. Ignorez si le collage manuel ne vous dérange pas.';
+
+  @override
+  String get permEnabled => 'Activé';
+
+  @override
+  String get permEnable => 'Activer';
+
+  @override
+  String get permDone => 'Terminé';
+
+  @override
+  String get permOpenAppDetails => 'Ouvrir les détails de l\'app';
+
+  @override
+  String get permSkipHint =>
+      'L\'Accessibilité est optionnelle. Sans elle, les suggestions de Réponse arrivent dans le presse-papiers et vous les collez vous-même.';
+
+  @override
+  String get permSkipForNow => 'Ignorer pour l\'instant';
+
+  @override
+  String get permFinishedCheck => 'J\'ai terminé — vérifier';
 }

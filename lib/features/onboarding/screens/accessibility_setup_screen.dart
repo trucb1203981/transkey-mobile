@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/bubble/bubble_manager.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// One-screen permission walkthrough surfaced after login (or via the
 /// home-screen banner) so users don't have to figure out the
@@ -145,6 +146,7 @@ class _AccessibilitySetupScreenState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: cs.surface,
       body: SafeArea(
@@ -155,14 +157,14 @@ class _AccessibilitySetupScreenState
             children: [
               const SizedBox(height: 8),
               Text(
-                'Set up TransKey',
+                t.setupTransKey,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Grant a few permissions so TransKey can translate anywhere — without copy/paste.',
+                t.setupTransKeyBody,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: cs.onSurface.withValues(alpha: 0.65),
                     ),
@@ -174,11 +176,10 @@ class _AccessibilitySetupScreenState
                     _PermissionCard(
                       step: 1,
                       icon: Icons.layers_outlined,
-                      title: 'Floating bubble',
-                      body:
-                          'Show TransKey over other apps. Required for the bubble to appear.',
+                      title: t.permFloatingBubble,
+                      body: t.permFloatingBubbleBody,
                       done: _hasOverlay,
-                      actionLabel: _hasOverlay ? 'Enabled' : 'Enable',
+                      actionLabel: _hasOverlay ? t.permEnabled : t.permEnable,
                       onAction: _hasOverlay
                           ? null
                           : () async {
@@ -192,12 +193,12 @@ class _AccessibilitySetupScreenState
                       _PermissionCard(
                         step: 2,
                         icon: Icons.lock_open_outlined,
-                        title: 'Allow restricted settings',
-                        body:
-                            'Android 13+ blocks sideloaded apps from Accessibility by default. Tap ⋮ at the top-right → "Allow restricted settings".',
+                        title: t.permRestrictedSettings,
+                        body: t.permRestrictedSettingsBody,
                         done: _hasAccessibility,
-                        actionLabel:
-                            _hasAccessibility ? 'Done' : 'Open app details',
+                        actionLabel: _hasAccessibility
+                            ? t.permDone
+                            : t.permOpenAppDetails,
                         onAction: _hasAccessibility
                             ? null
                             : () async {
@@ -211,11 +212,11 @@ class _AccessibilitySetupScreenState
                     _PermissionCard(
                       step: _androidThirteenPlus ? 3 : 2,
                       icon: Icons.accessibility_new_outlined,
-                      title: 'Accessibility',
-                      body:
-                          'Lets TransKey read highlighted text without you copying it first. Find TransKey in the list → toggle ON → Allow.',
+                      title: t.permAccessibility,
+                      body: t.permAccessibilityBody,
                       done: _hasAccessibility,
-                      actionLabel: _hasAccessibility ? 'Enabled' : 'Enable',
+                      actionLabel:
+                          _hasAccessibility ? t.permEnabled : t.permEnable,
                       onAction: _hasAccessibility
                           ? null
                           : () async {
@@ -238,7 +239,7 @@ class _AccessibilitySetupScreenState
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Don\'t want to grant Accessibility? You can skip — but you\'ll have to Copy text before tapping the bubble each time.',
+                              t.permSkipHint,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
@@ -254,7 +255,7 @@ class _AccessibilitySetupScreenState
                   Expanded(
                     child: TextButton(
                       onPressed: _skip,
-                      child: const Text('Skip for now'),
+                      child: Text(t.permSkipForNow),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -262,7 +263,8 @@ class _AccessibilitySetupScreenState
                     flex: 2,
                     child: FilledButton(
                       onPressed: _allDone ? _done : _refreshStatuses,
-                      child: Text(_allDone ? 'Done' : 'I\'ve finished — check'),
+                      child: Text(
+                          _allDone ? t.permDone : t.permFinishedCheck),
                     ),
                   ),
                 ],

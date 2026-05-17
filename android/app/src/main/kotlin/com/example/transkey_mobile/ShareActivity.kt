@@ -108,7 +108,7 @@ class ShareActivity : Activity() {
         } else {
             Toast.makeText(
                 this,
-                "Enable 'Display over other apps' to get floating translations",
+                getString(R.string.bubble_overlay_perm_needed),
                 Toast.LENGTH_LONG,
             ).show()
             val mainIntent = Intent(this, MainActivity::class.java).apply {
@@ -152,15 +152,15 @@ class ShareActivity : Activity() {
             // text (no copy), taps bubble, falls through to clipboard
             // (empty), and gets a "copy first" message — but with
             // Accessibility enabled they wouldn't need to copy at all.
-            // Spelling that out cuts the support loop where users think
-            // "select text → translate" should just work like in
-            // Google Translate (which depends on the same permission).
-            val errorMsg = if (TransKeyAccessibilityService.isAvailable()) {
-                "No text in clipboard.\nCopy the selected text first, then tap the bubble."
-            } else {
-                "No text in clipboard.\n\nTip: Enable Accessibility for TransKey (Settings → Accessibility → TransKey) to translate highlighted text without copying first."
-            }
-            svc.putExtra(BubbleService.EXTRA_ERROR, errorMsg)
+            // Per the feature spec, source text is always captured via an
+            // explicit Copy / OCR / Region / Share / menu action — never
+            // via accessibility. So the error message is the same
+            // regardless of a11y state: clipboard is the canonical
+            // bubble-tap source, so a missing clip means "go copy first".
+            svc.putExtra(
+                BubbleService.EXTRA_ERROR,
+                getString(R.string.bubble_clipboard_empty_error),
+            )
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc)
         else startService(svc)

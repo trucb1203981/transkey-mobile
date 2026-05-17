@@ -3,13 +3,9 @@
     <string name="accessibility_service_description">플로팅 버블에서 "답장 붙여넣기"를 탭하면 TransKey가 모든 앱의 포커스된 텍스트 입력란에 답장을 직접 붙여넣을 수 있습니다. 텍스트 읽기/쓰기는 작업을 트리거할 때만 이루어지며 백그라운드 추적은 없습니다.</string>
 
     <string name="bubble_choose_action">작업 선택</string>
-    <string name="bubble_using_selection">선택한 텍스트 사용 중.</string>
     <string name="bubble_need_text">먼저 텍스트를 선택하거나 복사한 후 아래 작업을 선택하세요.</string>
     <string name="bubble_show_last_result">최근 결과 보기</string>
     <string name="bubble_type_text">텍스트 직접 입력</string>
-    <string name="bubble_read_screen">이 화면 읽기</string>
-    <string name="bubble_read_screen_a11y_off">화면 텍스트를 읽으려면 접근성에서 TransKey를 활성화하세요</string>
-    <string name="bubble_read_screen_empty">이 화면에서 읽을 수 있는 텍스트가 없습니다</string>
     <string name="bubble_voice">음성 입력</string>
     <string name="bubble_voice_listening">듣는 중…</string>
     <string name="bubble_voice_speak">지금 말씀하세요</string>

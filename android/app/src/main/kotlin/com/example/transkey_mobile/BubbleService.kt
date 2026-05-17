@@ -237,6 +237,18 @@ class BubbleService : Service() {
 
     // Floating result panel
     private var panelView: View? = null
+    // Resize / fullscreen state for the result panel. When `panelFullscreen`
+    // is true, layout params switch to MATCH_PARENT × MATCH_PARENT. Otherwise
+    // height defaults to WRAP_CONTENT until the user drags the bottom handle;
+    // `panelHeightPx > 0` then pins a custom height.
+    private var panelHeightPx: Int = 0
+    private var panelFullscreen: Boolean = false
+    private var panelFullscreenBtn: TextView? = null
+    private var panelContentScroll: ScrollView? = null
+    // Reply-only banner shown above the action row when Accessibility is
+    // off — Paste relies on the a11y service to inject text into the
+    // currently-focused EditText. Without it the button is greyed out.
+    private var panelA11yWarning: View? = null
     private var panelSource: TextView? = null
     private var panelOutput: TextView? = null
     private var panelRomanization: TextView? = null
@@ -287,11 +299,6 @@ class BubbleService : Service() {
     private var modePickerView: View? = null
     private var pendingPickerText: String? = null
 
-    // Text captured from the active app's selection (via AccessibilityService)
-    // at the moment the bubble is tapped — used instead of clipboard when
-    // available, so apps that block copy (LinkedIn etc.) still work.
-    private var pendingSelectedText: String? = null
-
     // Language picker overlays
     private var langPickerView: View? = null
     private var sourceLangPickerView: View? = null
@@ -316,6 +323,10 @@ class BubbleService : Service() {
     // First-run disclosure overlay shown before the "Scan screen" / OCR flow
     // (MediaProjection) — explains what gets captured and where it goes.
     private var scanDisclosureView: View? = null
+    // Mode chooser shown after the user taps "Scan" or "Region" in the
+    // bubble picker — lets them pick Translate (Lens overlay) vs Summarize
+    // (text panel) before the screen capture grant kicks in.
+    private var scanModeChooserView: View? = null
 
     // Lens flow overlays. The progress card sits over the source app while
     // batch-translate is in flight; the LensOverlayView is the full-screen
@@ -344,11 +355,6 @@ class BubbleService : Service() {
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isDragging = false
-
-    // Clipboard auto-translate
-    private var hasNewClipText = false
-    private var selfCopyInProgress = false
-    private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -416,7 +422,7 @@ class BubbleService : Service() {
                     if (!translation.isNullOrBlank()) {
                         showResult(translation, romanization, detectedLang, suggestions)
                     } else {
-                        showError(error ?: "Translation failed")
+                        showError(error ?: localized(R.string.bubble_panel_translation_failed))
                     }
                 }
             }
@@ -441,7 +447,6 @@ class BubbleService : Service() {
     }
 
     override fun onDestroy() {
-        unregisterClipboardListener()
         hideModePicker()
         hideLangPicker()
         hideSourceLangPicker()
@@ -449,6 +454,7 @@ class BubbleService : Service() {
         hideInputPicker()
         hideVoicePicker()
         hideScanDisclosure()
+        hideScanModeChooser()
         hideLensProgress()
         hideLensOverlay()
         hideRegionSelectionView()
@@ -465,10 +471,10 @@ class BubbleService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, "TransKey Bubble",
+                CHANNEL_ID, getString(R.string.bubble_notification_channel),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Floating translation bubble"
+                description = getString(R.string.bubble_notification_active)
                 setShowBadge(false)
             }
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
@@ -496,7 +502,7 @@ class BubbleService : Service() {
         else @Suppress("DEPRECATION") Notification.Builder(this)
         return builder
             .setContentTitle("TransKey")
-            .setContentText("Floating translator active")
+            .setContentText(getString(R.string.bubble_notification_active))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pending)
             .setOngoing(true)
@@ -566,7 +572,6 @@ class BubbleService : Service() {
         windowManager?.addView(container, buildBubbleLayoutParams())
 
         container.setOnTouchListener { _, event -> handleBubbleTouch(event, dp) }
-        registerClipboardListener()
         saveBubbleActive(true)
     }
 
@@ -643,39 +648,15 @@ class BubbleService : Service() {
             modePickerView != null -> { hideModePicker(); return }
             panelView != null      -> { hideResultPanel(); return }
         }
-        // Capture the active app's text selection before the picker opens —
-        // the picker is FLAG_NOT_FOCUSABLE so the underlying selection should
-        // survive, but reading it now avoids any timing risk.
-        pendingSelectedText = try {
-            TransKeyAccessibilityService.instance?.getSelectedText()?.takeIf { it.isNotBlank() }
-        } catch (_: Exception) {
-            null
-        }
-
-        // Priority: fresh selection > new clipboard > picker. Earlier we
-        // jumped straight to autoTranslateFromClipboard whenever
-        // hasNewClipText was true, even if the user had just highlighted
-        // something new — that meant the old clipboard text (e.g. copied
-        // 10 minutes ago) won over the current selection, and the user
-        // got a translation of something they didn't ask for. The mode
-        // picker is the right destination when there's an active
-        // selection: it lets the user choose translate vs reply vs
-        // summarize vs ... and the Translate button onClick already
-        // prefers pendingSelectedText over clipboard.
-        when {
-            !pendingSelectedText.isNullOrBlank() -> {
-                // Mark the stale-clip flag consumed so a later tap with
-                // NO selection doesn't surprise-translate the now-old
-                // clipboard either.
-                hasNewClipText = false
-                showModePicker()
-            }
-            hasNewClipText -> {
-                hasNewClipText = false
-                autoTranslateFromClipboard()
-            }
-            else -> showModePicker()
-        }
+        // Per the feature spec, the bubble-tap path is exclusively for
+        // CLIPBOARD-driven input — the user has copied (or is about to)
+        // and now picks an action. OCR / Region / Voice / Read-screen
+        // are reached via their own picker rows; system Share and
+        // ACTION_PROCESS_TEXT enter through ShareActivity directly.
+        // So the bubble-tap itself never inspects accessibility state —
+        // it just opens the picker.
+        android.util.Log.w("TKBubble", "bubble-tap: opening picker")
+        showModePicker()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -715,96 +696,20 @@ class BubbleService : Service() {
             setPadding(0, 0, 0, (8 * dp).toInt())
         })
         card.addView(TextView(this).apply {
-            text = localized(
-                if (pendingSelectedText != null) R.string.bubble_using_selection
-                else R.string.bubble_need_text,
-            )
+            // Single subtitle: the picker's action rows translate the
+            // clipboard; the alternative-input rows (OCR / Region / etc)
+            // are explicit. We no longer try to second-guess what the
+            // user has captured because source text always comes from an
+            // explicit action.
+            text = localized(R.string.bubble_need_text)
             setTextColor(mutedCol)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             setPadding(0, 0, 0, (12 * dp).toInt())
         })
 
-        // Accessibility hint banner — only when the user hasn't enabled the
-        // permission yet. Without it, "highlight text → tap bubble" silently
-        // falls through to clipboard and produces a confusing "no text"
-        // error. The banner is in-context (right where users notice the
-        // failure) and the action button takes them directly to the system
-        // settings page so they don't have to hunt through Settings.
-        if (!TransKeyAccessibilityService.isAvailable()) {
-            val hintBg     = if (isDark) "#3A2E10" else "#FFF6D6"
-            val hintFg     = if (isDark) "#FFD86E" else "#7A5A00"
-            val hintBtnBg  = if (isDark) "#FFD86E" else "#7A5A00"
-            val hintBtnFg  = if (isDark) "#3A2E10" else Color.WHITE.let { "#${Integer.toHexString(it).substring(2)}" }
-            val banner = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor(hintBg))
-                    cornerRadius = 10 * dp
-                }
-                setPadding((10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt())
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { bottomMargin = (12 * dp).toInt() }
-            }
-            banner.addView(TextView(this).apply {
-                text = localized(R.string.bubble_accessibility_hint)
-                setTextColor(Color.parseColor(hintFg))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                layoutParams = LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
-                )
-            })
-            banner.addView(TextView(this).apply {
-                text = localized(R.string.bubble_accessibility_enable)
-                setTextColor(Color.parseColor(hintBtnFg))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                typeface = Typeface.DEFAULT_BOLD
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor(hintBtnBg))
-                    cornerRadius = 8 * dp
-                }
-                setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
-                isClickable = true
-                setOnClickListener {
-                    hideModePicker()
-                    // Android 13+ blocks toggling Accessibility on sideloaded
-                    // apps until the user explicitly unlocks "restricted
-                    // settings" from the app's details page. Route THERE
-                    // first on Android 13+ — opening Accessibility settings
-                    // directly leaves the user stuck with a greyed-out
-                    // toggle and no obvious way forward. Pre-Android-13
-                    // there's no restricted-settings gate, so go straight
-                    // to Accessibility.
-                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        Intent(
-                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            android.net.Uri.parse("package:$packageName"),
-                        )
-                    } else {
-                        Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    }
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    val opened = try { startActivity(intent); true } catch (_: Exception) { false }
-                    val guideRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                        R.string.bubble_accessibility_guide_a13
-                    else
-                        R.string.bubble_accessibility_guide_legacy
-                    Toast.makeText(
-                        this@BubbleService,
-                        if (opened) localized(guideRes)
-                        else "Open Settings → Apps → TransKey, then unlock restricted settings + enable Accessibility",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { marginStart = (8 * dp).toInt() }
-            })
-            card.addView(banner)
-        }
+        // (Accessibility banner moved to Reply result panel — it's only
+        // relevant when the user is about to use auto-paste, not for the
+        // generic clipboard-based action flow this picker drives.)
 
         // 5 feature buttons — matches the in-app feature-button row in
         // home_screen.dart: icon on top, label below, first action gets a
@@ -891,25 +796,6 @@ class BubbleService : Service() {
             }
         })
 
-        // "Read this screen" — covers apps that disable text selection
-        // (banking, anti-copy chat, reader apps). Walks the source app's
-        // accessibility tree to harvest all visible text, then pre-fills
-        // the input picker so the user can trim before translating.
-        card.addView(TextView(this).apply {
-            text = "📱  ${localized(R.string.bubble_read_screen)}"
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                hideModePicker()
-                handleReadScreenRequest()
-            }
-        })
-
         // "Voice input" — dictation for users who'd rather speak than type.
         // Routes through MicPermissionActivity the first time to request
         // RECORD_AUDIO; subsequent uses skip straight to the voice picker.
@@ -942,7 +828,7 @@ class BubbleService : Service() {
             isFocusable = true
             setOnClickListener {
                 hideModePicker()
-                handleScanRequest()
+                showScanModeChooser(isRegion = false)
             }
         })
 
@@ -962,7 +848,7 @@ class BubbleService : Service() {
             isFocusable = true
             setOnClickListener {
                 hideModePicker()
-                handleLensRegionRequest()
+                showScanModeChooser(isRegion = true)
             }
         })
 
@@ -1007,7 +893,6 @@ class BubbleService : Service() {
         }
         modePickerView = null
         pendingPickerText = null
-        pendingSelectedText = null
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -1052,7 +937,7 @@ class BubbleService : Service() {
         }
 
         card.addView(TextView(this).apply {
-            text = "Target language"
+            text = localized(R.string.bubble_panel_target_lang)
             setTextColor(accent)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             typeface = Typeface.DEFAULT_BOLD
@@ -1209,39 +1094,6 @@ class BubbleService : Service() {
         return dx * dx + dy * dy <= radius * radius
     }
 
-    // ── Clipboard auto-translate ──
-
-    private fun registerClipboardListener() {
-        if (clipboardListener != null) return
-        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
-            if (selfCopyInProgress) return@OnPrimaryClipChangedListener
-            hasNewClipText = true
-        }
-        cm.addPrimaryClipChangedListener(clipboardListener)
-    }
-
-    private fun unregisterClipboardListener() {
-        clipboardListener?.let {
-            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.removePrimaryClipChangedListener(it)
-        }
-        clipboardListener = null
-    }
-
-    private fun autoTranslateFromClipboard() {
-        val mode = currentMode
-        val i = Intent(this, ShareActivity::class.java).apply {
-            action = ACTION_READ_CLIPBOARD
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
-                    Intent.FLAG_ACTIVITY_NO_HISTORY or
-                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-            putExtra(EXTRA_MODE, mode)
-        }
-        startActivity(i)
-    }
-
     /**
      * Mode-picker button handler. Tries ACTION_COPY first because that's
      * the only reliable way to capture multi-node selections in Chrome
@@ -1260,45 +1112,12 @@ class BubbleService : Service() {
      *      "No text in clipboard. Enable Accessibility ..." hint.
      */
     private fun onTranslateModePicked(mode: String) {
-        val a11y = TransKeyAccessibilityService.instance
-        val priorClip = readClipboardText()
-
-        if (a11y != null && a11y.copyCurrentSelection()) {
-            // Wait one redraw cycle for the host app's copy to actually
-            // land on the system clipboard. 200 ms is the same settle
-            // window we use elsewhere — short enough to feel snappy,
-            // long enough to outlast Chrome's renderer hop.
-            selfCopyInProgress = true
-            handler.postDelayed({ selfCopyInProgress = false }, 1500)
-            handler.postDelayed({
-                val newClip = readClipboardText()
-                if (!newClip.isNullOrBlank() && newClip != priorClip) {
-                    handleTranslateRequest(newClip, mode)
-                    pendingSelectedText = null
-                    a11y.consumeCachedSelection()
-                } else {
-                    fallbackTranslate(mode, priorClip)
-                }
-            }, 200)
-            return
-        }
-        fallbackTranslate(mode, priorClip)
-    }
-
-    private fun fallbackTranslate(mode: String, currentClip: String?) {
-        val selected = pendingSelectedText
-        if (!selected.isNullOrBlank()) {
-            handleTranslateRequest(selected, mode)
-            pendingSelectedText = null
-            TransKeyAccessibilityService.instance?.consumeCachedSelection()
-            return
-        }
-        if (!currentClip.isNullOrBlank()) {
-            handleTranslateRequest(currentClip, mode)
-            return
-        }
-        // Open ShareActivity so its "no text + a11y hint" toast/error
-        // surface is the source of truth for the user-facing message.
+        android.util.Log.w("TKBubble", "onTranslateModePicked: mode=$mode → ShareActivity")
+        // Always route via ShareActivity — that's the only component that
+        // can read primaryClip on Android 10+ (background services are
+        // blocked). ShareActivity reads the clipboard and forwards the
+        // result back via ACTION_TRANSLATE.
+        currentMode = mode
         val i = Intent(this, ShareActivity::class.java).apply {
             action = ACTION_READ_CLIPBOARD
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -1307,7 +1126,12 @@ class BubbleService : Service() {
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
             putExtra(EXTRA_MODE, mode)
         }
-        startActivity(i)
+        try {
+            startActivity(i)
+        } catch (e: Exception) {
+            android.util.Log.w("TKBubble", "ShareActivity launch failed: ${e.message}")
+            Toast.makeText(this, localized(R.string.bubble_need_copy), Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun readClipboardText(): String? {
@@ -1375,6 +1199,7 @@ class BubbleService : Service() {
     // ── Result panel ──
 
     private fun handleTranslateRequest(text: String, mode: String) {
+        android.util.Log.w("TKBubble", "handleTranslateRequest: mode=$mode textLen=${text.length} preview='${text.take(60).replace("\n", "⏎")}'")
         isTranslating = true
         currentSourceText = text
         currentOutput = null
@@ -1410,7 +1235,7 @@ class BubbleService : Service() {
         if (eng != null) {
             invokeFlutterTranslate(eng, text, mode, currentTargetLang, reqId, replyToOriginal, attempt = 0)
         } else {
-            showError("App not ready — please open TransKey once")
+            showError(localized(R.string.bubble_panel_app_not_ready))
         }
     }
 
@@ -1458,7 +1283,7 @@ class BubbleService : Service() {
                 override fun success(result: Any?) { /* Flutter will call back via deliverResult */ }
                 override fun error(code: String, msg: String?, details: Any?) {
                     if (reqId != currentRequestId) return
-                    showError(msg ?: "Translation failed ($code)")
+                    showError(msg ?: "${localized(R.string.bubble_panel_translation_failed)} ($code)")
                 }
                 override fun notImplemented() {
                     if (attempt < 5 && reqId == currentRequestId) {
@@ -1466,7 +1291,7 @@ class BubbleService : Service() {
                             invokeFlutterTranslate(engine, text, mode, targetLang, reqId, replyToOriginal, attempt + 1)
                         }, 300L)
                     } else if (reqId == currentRequestId) {
-                        showError("App not ready — please open TransKey once")
+                        showError(localized(R.string.bubble_panel_app_not_ready))
                     }
                 }
             },
@@ -1597,6 +1422,30 @@ class BubbleService : Service() {
                 }
             }
 
+            val fullscreenBtn = TextView(this).apply {
+                text = if (panelFullscreen) "⤡" else "⤢"  // collapse vs expand glyph
+                setTextColor(mutedCol)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setPadding((8 * dp).toInt(), (4 * dp).toInt(), (8 * dp).toInt(), (4 * dp).toInt())
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    panelFullscreen = !panelFullscreen
+                    // Reset custom drag-height when entering/leaving fullscreen
+                    // so the toggle is predictable.
+                    panelHeightPx = 0
+                    text = if (panelFullscreen) "⤡" else "⤢"
+                    applyPanelLayoutMode()
+                    panelView?.let { v ->
+                        try { windowManager?.updateViewLayout(v, buildPanelLayoutParams()) }
+                        catch (e: Exception) {
+                            android.util.Log.w("TKBubble", "panel fullscreen toggle failed: ${e.message}")
+                        }
+                    }
+                }
+            }
+            panelFullscreenBtn = fullscreenBtn
+
             val closeBtn = TextView(this).apply {
                 text = "✕"
                 setTextColor(mutedCol)
@@ -1611,6 +1460,7 @@ class BubbleService : Service() {
             header.addView(spacer)
             header.addView(toneChip)
             header.addView(typeBtn)
+            header.addView(fullscreenBtn)
             header.addView(closeBtn)
 
             // Mode tabs — natural-width buttons with leading icon, wrapped in
@@ -1737,8 +1587,16 @@ class BubbleService : Service() {
 
             val contentScroll = object : ScrollView(this@BubbleService) {
                 override fun onMeasure(widthSpec: Int, heightSpec: Int) {
-                    val maxPx = (220 * resources.displayMetrics.density).toInt()
-                    super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(maxPx, MeasureSpec.AT_MOST))
+                    // Cap height in default mode so a long translation doesn't
+                    // make the floating panel taller than the screen. When the
+                    // user has resized or fullscreen'd the panel, let it
+                    // expand to the parent's fixed height instead.
+                    if (panelFullscreen || panelHeightPx > 0) {
+                        super.onMeasure(widthSpec, heightSpec)
+                    } else {
+                        val maxPx = (220 * resources.displayMetrics.density).toInt()
+                        super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(maxPx, MeasureSpec.AT_MOST))
+                    }
                 }
             }.apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -1747,6 +1605,7 @@ class BubbleService : Service() {
                 ).apply { topMargin = (4 * dp).toInt() }
                 addView(contentInner)
             }
+            panelContentScroll = contentScroll
 
             // Action buttons row (TTS + Copy)
             val actionsRow = LinearLayout(this).apply {
@@ -1775,7 +1634,7 @@ class BubbleService : Service() {
             }
 
             panelCopyBtn = TextView(this).apply {
-                text = "Copy"
+                text = localized(R.string.bubble_panel_copy)
                 setTextColor(Color.WHITE)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -1788,11 +1647,9 @@ class BubbleService : Service() {
                 setOnClickListener {
                     val t = currentOutput
                     if (!t.isNullOrEmpty()) {
-                        selfCopyInProgress = true
-                        handler.postDelayed({ selfCopyInProgress = false }, 1000)
                         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         cm.setPrimaryClip(ClipData.newPlainText("TransKey", t))
-                        Toast.makeText(this@BubbleService, "Copied", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@BubbleService, localized(R.string.bubble_panel_copied), Toast.LENGTH_SHORT).show()
                         hideResultPanel()
                     }
                 }
@@ -1802,7 +1659,7 @@ class BubbleService : Service() {
             }
 
             panelPasteBtn = TextView(this).apply {
-                text = "↓ Paste"
+                text = "↓ ${localized(R.string.bubble_panel_paste)}"
                 setTextColor(Color.WHITE)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -1820,7 +1677,7 @@ class BubbleService : Service() {
                     if (svc == null) {
                         Toast.makeText(
                             this@BubbleService,
-                            "Enable TransKey in Accessibility settings to paste",
+                            localized(R.string.bubble_panel_paste_a11y_off),
                             Toast.LENGTH_LONG,
                         ).show()
                         return@setOnClickListener
@@ -1828,8 +1685,6 @@ class BubbleService : Service() {
                     // Always copy to clipboard first so the user has a manual
                     // fallback even if accessibility paste fails (e.g. the
                     // host app blocks SET_TEXT and PASTE — banking apps do).
-                    selfCopyInProgress = true
-                    handler.postDelayed({ selfCopyInProgress = false }, 1500)
                     try {
                         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         cm.setPrimaryClip(ClipData.newPlainText("TransKey", t))
@@ -1846,13 +1701,13 @@ class BubbleService : Service() {
                         if (ok) {
                             Toast.makeText(
                                 this@BubbleService,
-                                "Pasted",
+                                localized(R.string.bubble_panel_pasted),
                                 Toast.LENGTH_SHORT,
                             ).show()
                         } else {
                             Toast.makeText(
                                 this@BubbleService,
-                                "Copied — tap the field and paste manually",
+                                localized(R.string.bubble_panel_paste_manual_fallback),
                                 Toast.LENGTH_LONG,
                             ).show()
                         }
@@ -1867,10 +1722,119 @@ class BubbleService : Service() {
             actionsRow.addView(panelCopyBtn)
             actionsRow.addView(panelPasteBtn)
 
+            // Reply-only a11y warning. Visible only when MODE_REPLY is the
+            // active mode AND TransKey accessibility service is OFF. Lets
+            // the user jump straight into the permission walkthrough so
+            // the disabled Paste button becomes usable.
+            val hintBg = if (isDark) Color.parseColor("#3A2E10") else Color.parseColor("#FFF6D6")
+            val hintFg = if (isDark) Color.parseColor("#FFD86E") else Color.parseColor("#7A5A00")
+            val hintBtnBg = if (isDark) Color.parseColor("#FFD86E") else Color.parseColor("#7A5A00")
+            val hintBtnFg = if (isDark) Color.parseColor("#3A2E10") else Color.WHITE
+            val warningView = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = GradientDrawable().apply {
+                    setColor(hintBg)
+                    cornerRadius = 10 * dp
+                }
+                setPadding((10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt())
+                visibility = View.GONE
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = (8 * dp).toInt() }
+            }
+            warningView.addView(TextView(this).apply {
+                text = localized(R.string.bubble_paste_a11y_required)
+                setTextColor(hintFg)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                )
+            })
+            warningView.addView(TextView(this).apply {
+                text = localized(R.string.bubble_accessibility_enable)
+                setTextColor(hintBtnFg)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                typeface = Typeface.DEFAULT_BOLD
+                background = GradientDrawable().apply {
+                    setColor(hintBtnBg)
+                    cornerRadius = 8 * dp
+                }
+                setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    hideResultPanel()
+                    val intent = Intent(this@BubbleService, MainActivity::class.java).apply {
+                        action = MainActivity.ACTION_OPEN_PERMISSIONS
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    }
+                    try { startActivity(intent) } catch (_: Exception) {}
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginStart = (8 * dp).toInt() }
+            })
+            panelA11yWarning = warningView
+
+            // Bottom resize handle: drag to make the panel taller. A thin
+            // bar centered horizontally; touch radius is the full bottom
+            // strip of the card so users don't have to aim precisely.
+            val resizeHandle = FrameLayout(this).apply {
+                setPadding(0, (6 * dp).toInt(), 0, (4 * dp).toInt())
+                addView(View(this@BubbleService).apply {
+                    background = GradientDrawable().apply {
+                        setColor(mutedCol)
+                        cornerRadius = 2 * dp
+                    }
+                    alpha = 0.5f
+                    layoutParams = FrameLayout.LayoutParams(
+                        (40 * dp).toInt(), (3 * dp).toInt(), Gravity.CENTER,
+                    )
+                })
+                isClickable = true
+                isFocusable = false
+                var dragStartY = 0f
+                var dragStartHeight = 0
+                setOnTouchListener { _, ev ->
+                    val v = panelView ?: return@setOnTouchListener false
+                    val lp = v.layoutParams as? WindowManager.LayoutParams
+                        ?: return@setOnTouchListener false
+                    when (ev.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            dragStartY = ev.rawY
+                            // Snapshot CURRENT height — WRAP_CONTENT resolves
+                            // to the actual measured height, which we need as
+                            // the baseline for the drag delta.
+                            dragStartHeight = if (lp.height > 0) lp.height else v.height
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            val dy = (ev.rawY - dragStartY).toInt()
+                            val newHeight = (dragStartHeight + dy).coerceAtLeast((120 * dp).toInt())
+                            panelHeightPx = newHeight
+                            panelFullscreen = false
+                            applyPanelLayoutMode()
+                            try {
+                                windowManager?.updateViewLayout(v, buildPanelLayoutParams())
+                            } catch (_: Exception) {}
+                            true
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> true
+                        else -> false
+                    }
+                }
+            }
+
             rootCard.addView(header)
             rootCard.addView(tabsScroll)
             rootCard.addView(contentScroll)
             rootCard.addView(actionsRow)
+            warningView.let { rootCard.addView(it) }
+            rootCard.addView(resizeHandle)
 
             panelView = rootCard
             windowManager?.addView(rootCard, buildPanelLayoutParams())
@@ -1885,7 +1849,10 @@ class BubbleService : Service() {
         val detected = currentDetectedLang
         if (!loading && !detected.isNullOrBlank()) {
             detectedLangTv?.apply {
-                text = "Detected: ${LANG_LABELS[detected] ?: detected.uppercase()}"
+                text = (localizedContext ?: this@BubbleService).getString(
+                    R.string.bubble_panel_detected,
+                    LANG_LABELS[detected] ?: detected.uppercase(),
+                )
                 visibility = View.VISIBLE
             }
         } else {
@@ -1969,7 +1936,7 @@ class BubbleService : Service() {
                                     cornerRadius = 12 * dp
                                 }
                             }, 240)
-                            Toast.makeText(this@BubbleService, "Copied", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@BubbleService, localized(R.string.bubble_panel_copied), Toast.LENGTH_SHORT).show()
                         }
                         layoutParams = LinearLayout.LayoutParams(
                             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -1996,6 +1963,7 @@ class BubbleService : Service() {
             panelCopyBtn?.visibility = View.GONE
             panelTtsBtn?.visibility = View.GONE
             panelPasteBtn?.visibility = View.GONE
+            panelA11yWarning?.visibility = View.GONE
             // Dim mode tabs to signal busy state
             for ((_, btn) in modeButtons) {
                 btn.alpha = 0.35f
@@ -2009,6 +1977,7 @@ class BubbleService : Service() {
             panelCopyBtn?.visibility = View.GONE
             panelTtsBtn?.visibility = View.GONE
             panelPasteBtn?.visibility = View.GONE
+            panelA11yWarning?.visibility = View.GONE
             for ((_, btn) in modeButtons) { btn.alpha = 1f; btn.isEnabled = true }
             setState(STATE_ERROR)
         } else if (output != null) {
@@ -2017,11 +1986,17 @@ class BubbleService : Service() {
             panelStatus?.visibility = View.GONE
             panelCopyBtn?.visibility = View.VISIBLE
             panelTtsBtn?.visibility = View.VISIBLE
-            // Paste only makes sense for Reply mode, and only when our
-            // AccessibilityService is bound. Show in Reply regardless — if
-            // service is off we'll prompt to enable when user taps.
-            panelPasteBtn?.visibility =
-                if (currentMode == MODE_REPLY) View.VISIBLE else View.GONE
+            // Paste only makes sense for Reply mode. In Reply mode, if
+            // accessibility is OFF the button is greyed out and the
+            // warning banner below the action row prompts the user to
+            // enable it. Other modes don't expose Paste at all.
+            val isReply = currentMode == MODE_REPLY
+            val a11yOn = TransKeyAccessibilityService.isAvailable()
+            panelPasteBtn?.visibility = if (isReply) View.VISIBLE else View.GONE
+            panelPasteBtn?.isEnabled = isReply && a11yOn
+            panelPasteBtn?.alpha = if (isReply && !a11yOn) 0.4f else 1f
+            panelA11yWarning?.visibility =
+                if (isReply && !a11yOn) View.VISIBLE else View.GONE
             for ((_, btn) in modeButtons) { btn.alpha = 1f; btn.isEnabled = true }
             setState(STATE_RESULT)
         }
@@ -2090,11 +2065,28 @@ class BubbleService : Service() {
     private fun buildPanelLayoutParams(): WindowManager.LayoutParams {
         val dp = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
-        val width = (screenWidth - (32 * dp).toInt()).coerceAtMost((360 * dp).toInt())
+        val screenHeight = resources.displayMetrics.heightPixels
+
+        val width: Int
+        val height: Int
+        val yOffset: Int
+        if (panelFullscreen) {
+            // Fullscreen: side-to-side, top to ~24dp from bottom (leave room
+            // for system nav). Don't go absolutely edge-to-edge — corners
+            // and status bar look better with a tiny margin.
+            width = screenWidth - (8 * dp).toInt()
+            height = screenHeight - (24 * dp).toInt()
+            yOffset = (4 * dp).toInt()
+        } else {
+            width = (screenWidth - (32 * dp).toInt()).coerceAtMost((360 * dp).toInt())
+            height = if (panelHeightPx > 0) panelHeightPx
+                else WindowManager.LayoutParams.WRAP_CONTENT
+            yOffset = (80 * dp).toInt()
+        }
 
         return WindowManager.LayoutParams(
             width,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            height,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
@@ -2102,14 +2094,41 @@ class BubbleService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = (80 * dp).toInt()
+            y = yOffset
         }
     }
 
     private fun hideResultPanel() {
         isTranslating = false
+        // Reset resize state so the next panel starts at default geometry
+        // — otherwise a previous "drag to expand" or fullscreen toggle
+        // would leak into an unrelated translation.
+        panelHeightPx = 0
+        panelFullscreen = false
+        panelFullscreenBtn = null
+        panelContentScroll = null
         removeResultPanel()
         setState(STATE_IDLE)
+    }
+
+    /**
+     * Switch the panel content scroll between WRAP_CONTENT (default
+     * sizing, capped at ~220dp via onMeasure) and weight=1 (fills the
+     * remaining space inside a parent that has a fixed height). Called
+     * after fullscreen toggle and drag-resize so the body grows / shrinks
+     * with the panel instead of leaving white space below the actions row.
+     */
+    private fun applyPanelLayoutMode() {
+        val scroll = panelContentScroll ?: return
+        val lp = scroll.layoutParams as LinearLayout.LayoutParams
+        if (panelFullscreen || panelHeightPx > 0) {
+            lp.height = 0
+            lp.weight = 1f
+        } else {
+            lp.height = LinearLayout.LayoutParams.WRAP_CONTENT
+            lp.weight = 0f
+        }
+        scroll.layoutParams = lp
     }
 
     private fun removeResultPanel() {
@@ -2136,7 +2155,7 @@ class BubbleService : Service() {
 
     private fun speakOutput() {
         val text = currentOutput?.takeIf { it.isNotEmpty() } ?: return
-        if (!ttsReady) { Toast.makeText(this, "TTS not ready", Toast.LENGTH_SHORT).show(); return }
+        if (!ttsReady) { Toast.makeText(this, localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show(); return }
         val locale = langToLocale(currentTargetLang)
         tts?.language = locale
         // Match the speed the user picked inside the app's Settings →
@@ -2325,7 +2344,7 @@ class BubbleService : Service() {
             isClickable = true
         }
         card.addView(TextView(this).apply {
-            text = "Source language"
+            text = localized(R.string.bubble_panel_source_lang)
             setTextColor(accent)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             typeface = Typeface.DEFAULT_BOLD
@@ -2501,7 +2520,7 @@ class BubbleService : Service() {
                     clip.getItemAt(0).coerceToText(this@BubbleService)?.toString().orEmpty()
                 } else ""
                 if (pasted.isEmpty()) {
-                    Toast.makeText(this@BubbleService, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@BubbleService, localized(R.string.bubble_panel_clipboard_empty), Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
                 inputRef?.let { editText ->
@@ -3008,13 +3027,103 @@ class BubbleService : Service() {
      * appears every session because we deliberately don't persist the
      * projection token.
      */
-    private fun handleScanRequest() {
+    /**
+     * Mode chooser shown right after the user taps "Scan screen" or
+     * "Region select" in the bubble picker. Translate runs the Lens
+     * visual overlay; Summarize routes OCR text into the input picker
+     * (then result panel). Other modes (Refine/Explain/Reply) aren't
+     * exposed here per the feature spec — they only accept text the
+     * user has already drafted/copied, not images of arbitrary screens.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showScanModeChooser(isRegion: Boolean) {
+        ensureWindowManager()
+        refreshLocale()
+        val dp = resources.displayMetrics.density
+        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val bg       = if (isDark) Color.parseColor("#1E1E30") else Color.WHITE
+        val textCol  = if (isDark) Color.parseColor("#E8E8F0") else Color.parseColor("#1A1A2E")
+        val mutedCol = if (isDark) Color.parseColor("#9090AA") else Color.parseColor("#6B6B7A")
+        val accent   = Color.parseColor("#6C63FF")
+
+        val backdrop = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#66000000"))
+            setOnClickListener { hideScanModeChooser() }
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+            elevation = 22 * dp
+            setPadding((20 * dp).toInt(), (16 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt())
+            isClickable = true
+        }
+        card.addView(TextView(this).apply {
+            text = localized(R.string.bubble_choose_action)
+            setTextColor(textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, 0, 0, (12 * dp).toInt())
+        })
+
+        fun modeButton(mode: String, label: String): TextView = TextView(this).apply {
+            text = label
+            setTextColor(if (mode == MODE_TRANSLATE) Color.WHITE else textCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                setColor(if (mode == MODE_TRANSLATE) accent else Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF"))
+                cornerRadius = 12 * dp
+            }
+            setPadding(0, (12 * dp).toInt(), 0, (12 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = (8 * dp).toInt() }
+            setOnClickListener {
+                hideScanModeChooser()
+                if (isRegion) handleLensRegionRequest(mode) else handleScanRequest(mode)
+            }
+        }
+        card.addView(modeButton(MODE_TRANSLATE, modeLabel(MODE_TRANSLATE)))
+        card.addView(modeButton(MODE_SUMMARIZE, modeLabel(MODE_SUMMARIZE)))
+
+        card.addView(TextView(this).apply {
+            text = localized(R.string.bubble_cancel)
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            gravity = Gravity.CENTER
+            setPadding(0, (12 * dp).toInt(), 0, 0)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { hideScanModeChooser() }
+        })
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((360 * dp).toInt())
+        backdrop.addView(card, FrameLayout.LayoutParams(
+            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
+        ))
+        scanModeChooserView = backdrop
+        try { windowManager?.addView(backdrop, buildPickerLayoutParams()) }
+        catch (e: Exception) { android.util.Log.w("TKBubble", "scan-mode-chooser add failed: ${e.message}") }
+    }
+
+    private fun hideScanModeChooser() {
+        scanModeChooserView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+        scanModeChooserView = null
+    }
+
+    private fun handleScanRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = false
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
-            launchScanFlow()
+            launchScanFlow(mode)
         } else {
-            showScanDisclosure()
+            showScanDisclosure(mode)
         }
     }
 
@@ -3024,25 +3133,29 @@ class BubbleService : Service() {
      * presents [RegionSelectionView] so the user can drag a rectangle;
      * only that sub-region is OCR'd + translated.
      */
-    private fun handleLensRegionRequest() {
+    private fun handleLensRegionRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = true
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
-            launchScanFlow()
+            launchScanFlow(mode)
         } else {
-            showScanDisclosure()
+            showScanDisclosure(mode)
         }
     }
 
-    private fun launchScanFlow() {
-        // Lens flow: capture screen → OCR blocks (with bounding boxes) →
-        // batch-translate → render LensOverlayView. The old "OCR → text
-        // → input picker" flow lives on as ScreenCaptureManager.Flow.
-        // TEXT_INTO_INPUT but isn't currently exposed in the mode picker.
-        ScreenCaptureManager.flow = ScreenCaptureManager.Flow.LENS
+    private fun launchScanFlow(mode: String = MODE_TRANSLATE) {
+        // Translate → LENS overlay (visual: translation painted over original
+        // text in-place on screen). Other modes (Summarize, Refine, Explain)
+        // can't visualise inline so they use TEXT_INTO_INPUT — OCR text is
+        // fed to the input picker, user confirms, BubbleService runs the
+        // mode against the captured text and shows the result panel.
+        ScreenCaptureManager.flow = if (mode == MODE_TRANSLATE)
+            ScreenCaptureManager.Flow.LENS
+        else
+            ScreenCaptureManager.Flow.TEXT_INTO_INPUT
         ScreenCaptureManager.languageHint = readSourceLang().takeIf { it != "auto" }
         ScreenCaptureManager.targetLang = readTargetLang()
-        ScreenCaptureManager.pendingMode = MODE_TRANSLATE
+        ScreenCaptureManager.pendingMode = mode
         // Hide everything we'd otherwise be painting OVER the source app
         // before the system grabs the next frame — bubble icon + open
         // pickers would all end up baked into the screenshot otherwise.
@@ -3089,7 +3202,7 @@ class BubbleService : Service() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun showScanDisclosure() {
+    private fun showScanDisclosure(mode: String = MODE_TRANSLATE) {
         if (scanDisclosureView != null) { hideScanDisclosure(); return }
         ensureWindowManager()
         refreshLocale()
@@ -3162,7 +3275,7 @@ class BubbleService : Service() {
                 getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
                     .putBoolean(KEY_SCAN_DISCLOSED, true).apply()
                 hideScanDisclosure()
-                launchScanFlow()
+                launchScanFlow(mode)
             }
         })
         card.addView(actions)
@@ -3232,7 +3345,7 @@ class BubbleService : Service() {
             hideLensProgress()
             ScreenCaptureManager.clearAll()
             restoreBubbleVisibility()
-            Toast.makeText(this, "App not ready — open TransKey once", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, localized(R.string.bubble_panel_app_not_ready), Toast.LENGTH_LONG).show()
             return
         }
         val channel = io.flutter.plugin.common.MethodChannel(
@@ -3268,7 +3381,7 @@ class BubbleService : Service() {
                     if (!bitmap.isRecycled) bitmap.recycle()
                     Toast.makeText(
                         this@BubbleService,
-                        message ?: "Translation failed",
+                        message ?: localized(R.string.bubble_panel_translation_failed),
                         Toast.LENGTH_LONG,
                     ).show()
                 }
@@ -3434,12 +3547,21 @@ class BubbleService : Service() {
                     ).show()
                     return@post
                 }
-                // Stash the offset blocks where handleLensReady expects
-                // them, then run the existing batch-translate + overlay
-                // path so we don't duplicate the channel + overlay code.
-                ScreenCaptureManager.blocks = offset
+                // Branch on pendingMode: Translate uses the Lens visual
+                // overlay; Summarize (and any future non-Translate mode
+                // that supports Region) feeds OCR text into the input
+                // picker so the user can review/trim before running.
+                val mode = ScreenCaptureManager.pendingMode
                 hideLensProgress()
-                handleLensReady()
+                if (mode == MODE_TRANSLATE) {
+                    ScreenCaptureManager.blocks = offset
+                    handleLensReady()
+                } else {
+                    val joined = offset.joinToString("\n") { it.text }.trim()
+                    ScreenCaptureManager.clearAll()
+                    restoreBubbleVisibility()
+                    handleOcrResult(joined.takeIf { it.isNotEmpty() }, mode)
+                }
             }
         }
     }
@@ -3462,45 +3584,6 @@ class BubbleService : Service() {
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
         }
         try { startActivity(intent) } catch (_: Exception) {}
-    }
-
-    /**
-     * "Read this screen" flow — works for apps that disable selection but
-     * still render text via standard views (banking, anti-copy chat apps,
-     * reader apps). Falls back to a Toast + Accessibility-settings prompt
-     * when the service isn't enabled; canvas-only games / image content
-     * return empty and the user is told to use another input method.
-     */
-    private fun handleReadScreenRequest() {
-        val a11y = TransKeyAccessibilityService.instance
-        if (a11y == null) {
-            Toast.makeText(
-                this,
-                localized(R.string.bubble_read_screen_a11y_off),
-                Toast.LENGTH_LONG,
-            ).show()
-            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            try { startActivity(intent) } catch (_: Exception) {}
-            return
-        }
-        // Wait for the mode picker overlay to fully detach so the active
-        // window is the source app (not our just-removed picker). Without
-        // this 200ms grace, rootInActiveWindow occasionally returns null
-        // mid-transition on some OEM builds.
-        handler.postDelayed({
-            val text = a11y.getScreenText()
-            if (text.isNullOrBlank()) {
-                Toast.makeText(
-                    this,
-                    localized(R.string.bubble_read_screen_empty),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            } else {
-                showInputPicker(MODE_TRANSLATE, prefillText = text)
-            }
-        }, 200)
     }
 
     private fun showSettingsSheet() {
@@ -3797,13 +3880,12 @@ class BubbleService : Service() {
     // ── Lifecycle ──
 
     fun stopBubble() {
-        unregisterClipboardListener()
-        hasNewClipText = false
         hideModePicker()
         hideLangPicker()
         hideInputPicker()
         hideVoicePicker()
         hideScanDisclosure()
+        hideScanModeChooser()
         hideLensProgress()
         hideLensOverlay()
         hideRegionSelectionView()

@@ -852,4 +852,156 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get setupStep5Desc =>
       'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.';
+
+  @override
+  String get guideTitle => 'How to use';
+
+  @override
+  String get guideSubtitle => 'All the ways to capture text for each feature';
+
+  @override
+  String get guideIntroTitle => 'No Accessibility required for capturing text.';
+
+  @override
+  String get guideIntroBody =>
+      'Every feature reads source text via an explicit user action — Copy, OCR, Region select, system Share, or the text-selection menu. Accessibility is only used for one optional convenience: auto-pasting a Reply back into the focused input field.';
+
+  @override
+  String get guideFeatureTranslate => 'Translate';
+
+  @override
+  String get guideFeatureTranslateSubtitle =>
+      'Source language → target language';
+
+  @override
+  String get guideFeatureSummary => 'Summary';
+
+  @override
+  String get guideFeatureSummarySubtitle =>
+      'Distil long content into a few bullets';
+
+  @override
+  String get guideFeatureRefine => 'Refine';
+
+  @override
+  String get guideFeatureRefineSubtitle =>
+      'Improve grammar / clarity of your own draft';
+
+  @override
+  String get guideFeatureExplain => 'Explain';
+
+  @override
+  String get guideFeatureExplainSubtitle =>
+      'Get a plain-language explanation of difficult text';
+
+  @override
+  String get guideFeatureReply => 'Reply';
+
+  @override
+  String get guideFeatureReplySubtitle =>
+      'Generate a reply suggestion in the target language';
+
+  @override
+  String get guideInputCopyTitle => 'Copy text + tap bubble';
+
+  @override
+  String get guideInputCopyDesc =>
+      'Copy any text in any app, then tap the floating bubble and pick the action.';
+
+  @override
+  String get guideInputOcrTitle => 'Scan screen (OCR)';
+
+  @override
+  String get guideInputOcrDesc =>
+      'Tap bubble → Scan screen. Captures one screenshot, runs on-device OCR.';
+
+  @override
+  String get guideInputRegionTitle => 'Region select';
+
+  @override
+  String get guideInputRegionDesc =>
+      'Tap bubble → Translate selected area. Drag a box around the region you want.';
+
+  @override
+  String get guideInputShareTitle => 'Share menu';
+
+  @override
+  String get guideInputShareDesc =>
+      'In any app: select text → Share → TransKey.';
+
+  @override
+  String guideInputMenuTitle(String feature) {
+    return 'Selection menu → TransKey: $feature';
+  }
+
+  @override
+  String guideInputMenuDesc(String feature) {
+    return 'Long-press text → overflow ⋮ → TransKey: $feature.';
+  }
+
+  @override
+  String get guideReplyA11yTitle => 'Accessibility (optional)';
+
+  @override
+  String get guideReplyA11yBody =>
+      'With Accessibility ON: the result is pasted directly into the currently-focused text field after generation.\n\nWith Accessibility OFF: the result is copied to your clipboard. Paste it manually wherever you need.';
+
+  @override
+  String get appPermissions => 'App permissions';
+
+  @override
+  String get permissionsAllSet => 'All set up — tap to review';
+
+  @override
+  String get permissionsNeedSetup => 'Tap to grant required permissions';
+
+  @override
+  String get setupTransKey => 'Set up TransKey';
+
+  @override
+  String get setupTransKeyBody =>
+      'Grant the floating-bubble permission to get started. Accessibility is optional and only needed for one-tap Reply paste.';
+
+  @override
+  String get permFloatingBubble => 'Floating bubble';
+
+  @override
+  String get permFloatingBubbleBody =>
+      'Show TransKey over other apps. Required for the bubble to appear.';
+
+  @override
+  String get permRestrictedSettings => 'Allow restricted settings';
+
+  @override
+  String get permRestrictedSettingsBody =>
+      'Android 13+ blocks sideloaded apps from Accessibility by default. Tap ⋮ at the top-right → \"Allow restricted settings\".';
+
+  @override
+  String get permAccessibility => 'Accessibility (optional)';
+
+  @override
+  String get permAccessibilityBody =>
+      'Lets TransKey paste Reply suggestions directly into the focused text field. Skip if you don\'t mind pasting yourself.';
+
+  @override
+  String get permEnabled => 'Enabled';
+
+  @override
+  String get permEnable => 'Enable';
+
+  @override
+  String get permDone => 'Done';
+
+  @override
+  String get permOpenAppDetails => 'Open app details';
+
+  @override
+  String get permSkipHint =>
+      'Accessibility is optional. Without it, Reply suggestions land on your clipboard and you\'ll paste them yourself.';
+
+  @override
+  String get permSkipForNow => 'Skip for now';
+
+  @override
+  String get permFinishedCheck => 'I\'ve finished — check';
 }

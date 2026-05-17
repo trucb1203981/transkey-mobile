@@ -845,4 +845,155 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get setupStep5Desc =>
       'Dịch, Phản hồi, Tóm tắt, Giải thích & Tinh chỉnh — tất cả do AI. Tính năng Pro có biểu tượng khoá.';
+
+  @override
+  String get guideTitle => 'Cách sử dụng';
+
+  @override
+  String get guideSubtitle => 'Tất cả cách để lấy text cho mỗi tính năng';
+
+  @override
+  String get guideIntroTitle => 'Không cần bật Trợ năng để lấy text.';
+
+  @override
+  String get guideIntroBody =>
+      'Mọi tính năng đều lấy nội dung qua hành động rõ ràng của bạn — Copy, OCR, Quét vùng, Share, hoặc menu chọn text. Trợ năng chỉ dùng cho 1 tiện ích tùy chọn: tự động dán câu trả lời (Reply) vào ô nhập đang focus.';
+
+  @override
+  String get guideFeatureTranslate => 'Dịch';
+
+  @override
+  String get guideFeatureTranslateSubtitle => 'Ngôn ngữ nguồn → ngôn ngữ đích';
+
+  @override
+  String get guideFeatureSummary => 'Tóm tắt';
+
+  @override
+  String get guideFeatureSummarySubtitle =>
+      'Rút gọn nội dung dài thành vài gạch đầu dòng';
+
+  @override
+  String get guideFeatureRefine => 'Tinh chỉnh';
+
+  @override
+  String get guideFeatureRefineSubtitle =>
+      'Sửa ngữ pháp / làm rõ bản nháp của bạn';
+
+  @override
+  String get guideFeatureExplain => 'Giải thích';
+
+  @override
+  String get guideFeatureExplainSubtitle =>
+      'Giải thích đoạn text khó hiểu bằng từ ngữ đơn giản';
+
+  @override
+  String get guideFeatureReply => 'Trả lời';
+
+  @override
+  String get guideFeatureReplySubtitle =>
+      'Tạo câu trả lời gợi ý theo ngôn ngữ đích';
+
+  @override
+  String get guideInputCopyTitle => 'Copy text + tap bubble';
+
+  @override
+  String get guideInputCopyDesc =>
+      'Copy text bất kỳ trong app nào, rồi tap floating bubble và chọn hành động.';
+
+  @override
+  String get guideInputOcrTitle => 'Quét màn hình (OCR)';
+
+  @override
+  String get guideInputOcrDesc =>
+      'Tap bubble → Quét màn hình. Chụp 1 frame, chạy OCR trên máy.';
+
+  @override
+  String get guideInputRegionTitle => 'Quét vùng';
+
+  @override
+  String get guideInputRegionDesc =>
+      'Tap bubble → Dịch vùng đã chọn. Kéo khung quanh vùng bạn muốn.';
+
+  @override
+  String get guideInputShareTitle => 'Menu Share';
+
+  @override
+  String get guideInputShareDesc =>
+      'Trong app bất kỳ: chọn text → Share → TransKey.';
+
+  @override
+  String guideInputMenuTitle(String feature) {
+    return 'Menu chọn text → TransKey: $feature';
+  }
+
+  @override
+  String guideInputMenuDesc(String feature) {
+    return 'Long-press text → ⋮ → TransKey: $feature.';
+  }
+
+  @override
+  String get guideReplyA11yTitle => 'Trợ năng (tùy chọn)';
+
+  @override
+  String get guideReplyA11yBody =>
+      'Bật Trợ năng: kết quả tự động dán vào ô nhập đang focus sau khi sinh xong.\n\nKhông bật Trợ năng: kết quả copy vào clipboard. Bạn dán tay vào nơi cần.';
+
+  @override
+  String get appPermissions => 'Quyền ứng dụng';
+
+  @override
+  String get permissionsAllSet => 'Đã cấp đủ — tap để xem lại';
+
+  @override
+  String get permissionsNeedSetup => 'Tap để cấp các quyền cần thiết';
+
+  @override
+  String get setupTransKey => 'Thiết lập TransKey';
+
+  @override
+  String get setupTransKeyBody =>
+      'Cấp quyền floating bubble để bắt đầu. Trợ năng là tùy chọn, chỉ cần cho tính năng dán Reply một chạm.';
+
+  @override
+  String get permFloatingBubble => 'Floating bubble';
+
+  @override
+  String get permFloatingBubbleBody =>
+      'Hiển thị TransKey trên các app khác. Cần để bubble nổi xuất hiện.';
+
+  @override
+  String get permRestrictedSettings => 'Cho phép cài đặt giới hạn';
+
+  @override
+  String get permRestrictedSettingsBody =>
+      'Android 13+ chặn các app sideload không cho dùng Trợ năng. Tap ⋮ ở góc trên phải → \"Cho phép cài đặt giới hạn\".';
+
+  @override
+  String get permAccessibility => 'Trợ năng (tùy chọn)';
+
+  @override
+  String get permAccessibilityBody =>
+      'Cho phép TransKey dán câu trả lời Reply thẳng vào ô nhập đang focus. Bỏ qua nếu bạn không ngại dán tay.';
+
+  @override
+  String get permEnabled => 'Đã bật';
+
+  @override
+  String get permEnable => 'Bật';
+
+  @override
+  String get permDone => 'Xong';
+
+  @override
+  String get permOpenAppDetails => 'Mở chi tiết app';
+
+  @override
+  String get permSkipHint =>
+      'Trợ năng là tùy chọn. Không có nó, kết quả Reply rơi vào clipboard và bạn dán thủ công.';
+
+  @override
+  String get permSkipForNow => 'Bỏ qua';
+
+  @override
+  String get permFinishedCheck => 'Đã xong — kiểm tra';
 }

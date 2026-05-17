@@ -3,13 +3,9 @@
     <string name="accessibility_service_description">TransKey kann eine Antwort direkt in das aktive Textfeld jeder App einfügen, wenn Sie in der schwebenden Bubble auf „Antwort einfügen" tippen. Text wird nur beim Auslösen einer Aktion gelesen oder geschrieben — keine Hintergrundverfolgung.</string>
 
     <string name="bubble_choose_action">Aktion auswählen</string>
-    <string name="bubble_using_selection">Ausgewählten Text wird verwendet.</string>
     <string name="bubble_need_text">Zuerst Text auswählen oder kopieren, dann eine Aktion unten wählen.</string>
     <string name="bubble_show_last_result">Letztes Ergebnis anzeigen</string>
     <string name="bubble_type_text">Eigenen Text eingeben</string>
-    <string name="bubble_read_screen">Diesen Bildschirm lesen</string>
-    <string name="bubble_read_screen_a11y_off">Aktiviere TransKey in der Bedienungshilfe, um Bildschirmtext zu lesen</string>
-    <string name="bubble_read_screen_empty">Kein lesbarer Text auf diesem Bildschirm</string>
     <string name="bubble_voice">Spracheingabe</string>
     <string name="bubble_voice_listening">Hört zu…</string>
     <string name="bubble_voice_speak">Jetzt sprechen</string>

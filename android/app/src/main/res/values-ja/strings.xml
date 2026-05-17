@@ -3,13 +3,9 @@
     <string name="accessibility_service_description">フローティングバブルで「返信を貼り付け」をタップすると、TransKey は任意のアプリのフォーカスされたテキスト欄に返信を直接貼り付けることができます。テキストの読み取り/書き込みはアクション実行時のみで、バックグラウンド追跡はありません。</string>
 
     <string name="bubble_choose_action">アクションを選択</string>
-    <string name="bubble_using_selection">選択したテキストを使用中。</string>
     <string name="bubble_need_text">先にテキストを選択またはコピーしてから、下のアクションを選んでください。</string>
     <string name="bubble_show_last_result">最後の結果を表示</string>
     <string name="bubble_type_text">テキストを入力</string>
-    <string name="bubble_read_screen">この画面を読み取る</string>
-    <string name="bubble_read_screen_a11y_off">画面テキストを読み取るためユーザー補助で TransKey を有効にしてください</string>
-    <string name="bubble_read_screen_empty">この画面に読み取れるテキストがありません</string>
     <string name="bubble_voice">音声入力</string>
     <string name="bubble_voice_listening">聞き取り中…</string>
     <string name="bubble_voice_speak">話してください</string>

@@ -1687,6 +1687,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.'**
   String get setupStep5Desc;
+
+  /// No description provided for @guideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use'**
+  String get guideTitle;
+
+  /// No description provided for @guideSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All the ways to capture text for each feature'**
+  String get guideSubtitle;
+
+  /// No description provided for @guideIntroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No Accessibility required for capturing text.'**
+  String get guideIntroTitle;
+
+  /// No description provided for @guideIntroBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every feature reads source text via an explicit user action — Copy, OCR, Region select, system Share, or the text-selection menu. Accessibility is only used for one optional convenience: auto-pasting a Reply back into the focused input field.'**
+  String get guideIntroBody;
+
+  /// No description provided for @guideFeatureTranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate'**
+  String get guideFeatureTranslate;
+
+  /// No description provided for @guideFeatureTranslateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Source language → target language'**
+  String get guideFeatureTranslateSubtitle;
+
+  /// No description provided for @guideFeatureSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get guideFeatureSummary;
+
+  /// No description provided for @guideFeatureSummarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Distil long content into a few bullets'**
+  String get guideFeatureSummarySubtitle;
+
+  /// No description provided for @guideFeatureRefine.
+  ///
+  /// In en, this message translates to:
+  /// **'Refine'**
+  String get guideFeatureRefine;
+
+  /// No description provided for @guideFeatureRefineSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Improve grammar / clarity of your own draft'**
+  String get guideFeatureRefineSubtitle;
+
+  /// No description provided for @guideFeatureExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain'**
+  String get guideFeatureExplain;
+
+  /// No description provided for @guideFeatureExplainSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a plain-language explanation of difficult text'**
+  String get guideFeatureExplainSubtitle;
+
+  /// No description provided for @guideFeatureReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get guideFeatureReply;
+
+  /// No description provided for @guideFeatureReplySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate a reply suggestion in the target language'**
+  String get guideFeatureReplySubtitle;
+
+  /// No description provided for @guideInputCopyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy text + tap bubble'**
+  String get guideInputCopyTitle;
+
+  /// No description provided for @guideInputCopyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy any text in any app, then tap the floating bubble and pick the action.'**
+  String get guideInputCopyDesc;
+
+  /// No description provided for @guideInputOcrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan screen (OCR)'**
+  String get guideInputOcrTitle;
+
+  /// No description provided for @guideInputOcrDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap bubble → Scan screen. Captures one screenshot, runs on-device OCR.'**
+  String get guideInputOcrDesc;
+
+  /// No description provided for @guideInputRegionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Region select'**
+  String get guideInputRegionTitle;
+
+  /// No description provided for @guideInputRegionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap bubble → Translate selected area. Drag a box around the region you want.'**
+  String get guideInputRegionDesc;
+
+  /// No description provided for @guideInputShareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share menu'**
+  String get guideInputShareTitle;
+
+  /// No description provided for @guideInputShareDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'In any app: select text → Share → TransKey.'**
+  String get guideInputShareDesc;
+
+  /// No description provided for @guideInputMenuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Selection menu → TransKey: {feature}'**
+  String guideInputMenuTitle(String feature);
+
+  /// No description provided for @guideInputMenuDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press text → overflow ⋮ → TransKey: {feature}.'**
+  String guideInputMenuDesc(String feature);
+
+  /// No description provided for @guideReplyA11yTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility (optional)'**
+  String get guideReplyA11yTitle;
+
+  /// No description provided for @guideReplyA11yBody.
+  ///
+  /// In en, this message translates to:
+  /// **'With Accessibility ON: the result is pasted directly into the currently-focused text field after generation.\n\nWith Accessibility OFF: the result is copied to your clipboard. Paste it manually wherever you need.'**
+  String get guideReplyA11yBody;
+
+  /// No description provided for @appPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'App permissions'**
+  String get appPermissions;
+
+  /// No description provided for @permissionsAllSet.
+  ///
+  /// In en, this message translates to:
+  /// **'All set up — tap to review'**
+  String get permissionsAllSet;
+
+  /// No description provided for @permissionsNeedSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to grant required permissions'**
+  String get permissionsNeedSetup;
+
+  /// No description provided for @setupTransKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up TransKey'**
+  String get setupTransKey;
+
+  /// No description provided for @setupTransKeyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant the floating-bubble permission to get started. Accessibility is optional and only needed for one-tap Reply paste.'**
+  String get setupTransKeyBody;
+
+  /// No description provided for @permFloatingBubble.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating bubble'**
+  String get permFloatingBubble;
+
+  /// No description provided for @permFloatingBubbleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Show TransKey over other apps. Required for the bubble to appear.'**
+  String get permFloatingBubbleBody;
+
+  /// No description provided for @permRestrictedSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow restricted settings'**
+  String get permRestrictedSettings;
+
+  /// No description provided for @permRestrictedSettingsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Android 13+ blocks sideloaded apps from Accessibility by default. Tap ⋮ at the top-right → \"Allow restricted settings\".'**
+  String get permRestrictedSettingsBody;
+
+  /// No description provided for @permAccessibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility (optional)'**
+  String get permAccessibility;
+
+  /// No description provided for @permAccessibilityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets TransKey paste Reply suggestions directly into the focused text field. Skip if you don\'t mind pasting yourself.'**
+  String get permAccessibilityBody;
+
+  /// No description provided for @permEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get permEnabled;
+
+  /// No description provided for @permEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get permEnable;
+
+  /// No description provided for @permDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get permDone;
+
+  /// No description provided for @permOpenAppDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Open app details'**
+  String get permOpenAppDetails;
+
+  /// No description provided for @permSkipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility is optional. Without it, Reply suggestions land on your clipboard and you\'ll paste them yourself.'**
+  String get permSkipHint;
+
+  /// No description provided for @permSkipForNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip for now'**
+  String get permSkipForNow;
+
+  /// No description provided for @permFinishedCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve finished — check'**
+  String get permFinishedCheck;
 }
 
 class _AppLocalizationsDelegate

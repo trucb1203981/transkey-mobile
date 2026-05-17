@@ -824,4 +824,144 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get setupStep5Desc => '翻译、回复、总结、解释、润色 — 均由 AI 驱动。Pro 功能带有锁形图标。';
+
+  @override
+  String get guideTitle => '使用方法';
+
+  @override
+  String get guideSubtitle => '每个功能可用的所有文本输入方式';
+
+  @override
+  String get guideIntroTitle => '捕获文本无需启用辅助功能。';
+
+  @override
+  String get guideIntroBody =>
+      '每个功能都通过明确的用户操作读取源文本 — 复制、OCR、区域选择、系统分享或文本选择菜单。辅助功能仅用于一项可选便利:将 Reply 结果直接粘贴到当前聚焦的输入框。';
+
+  @override
+  String get guideFeatureTranslate => '翻译';
+
+  @override
+  String get guideFeatureTranslateSubtitle => '源语言 → 目标语言';
+
+  @override
+  String get guideFeatureSummary => '总结';
+
+  @override
+  String get guideFeatureSummarySubtitle => '将长内容浓缩为几个要点';
+
+  @override
+  String get guideFeatureRefine => '润色';
+
+  @override
+  String get guideFeatureRefineSubtitle => '改善你自己草稿的语法与清晰度';
+
+  @override
+  String get guideFeatureExplain => '解释';
+
+  @override
+  String get guideFeatureExplainSubtitle => '用通俗的语言解释难懂的文本';
+
+  @override
+  String get guideFeatureReply => '回复';
+
+  @override
+  String get guideFeatureReplySubtitle => '用目标语言生成回复建议';
+
+  @override
+  String get guideInputCopyTitle => '复制文本 + 点击气泡';
+
+  @override
+  String get guideInputCopyDesc => '在任意应用复制文本,然后点击悬浮气泡并选择操作。';
+
+  @override
+  String get guideInputOcrTitle => '屏幕扫描 (OCR)';
+
+  @override
+  String get guideInputOcrDesc => '点击气泡 → 屏幕扫描。捕获一帧截图,本机运行 OCR。';
+
+  @override
+  String get guideInputRegionTitle => '区域选择';
+
+  @override
+  String get guideInputRegionDesc => '点击气泡 → 翻译选定区域。拖动方框圈出你想要的区域。';
+
+  @override
+  String get guideInputShareTitle => '分享菜单';
+
+  @override
+  String get guideInputShareDesc => '在任意应用:选中文本 → 分享 → TransKey。';
+
+  @override
+  String guideInputMenuTitle(String feature) {
+    return '选择菜单 → TransKey: $feature';
+  }
+
+  @override
+  String guideInputMenuDesc(String feature) {
+    return '长按文本 → 溢出菜单 ⋮ → TransKey: $feature。';
+  }
+
+  @override
+  String get guideReplyA11yTitle => '辅助功能 (可选)';
+
+  @override
+  String get guideReplyA11yBody =>
+      '启用辅助功能:生成结果后直接粘贴到当前聚焦的输入框。\n\n关闭辅助功能:结果会复制到剪贴板。你需要手动粘贴到目标位置。';
+
+  @override
+  String get appPermissions => '应用权限';
+
+  @override
+  String get permissionsAllSet => '全部就绪 — 点击查看';
+
+  @override
+  String get permissionsNeedSetup => '点击授予所需权限';
+
+  @override
+  String get setupTransKey => '设置 TransKey';
+
+  @override
+  String get setupTransKeyBody => '授予悬浮气泡权限即可开始。辅助功能为可选项,仅用于一键粘贴 Reply。';
+
+  @override
+  String get permFloatingBubble => '悬浮气泡';
+
+  @override
+  String get permFloatingBubbleBody => '在其他应用上方显示 TransKey。气泡显示必需。';
+
+  @override
+  String get permRestrictedSettings => '允许受限设置';
+
+  @override
+  String get permRestrictedSettingsBody =>
+      'Android 13+ 默认禁止旁加载应用使用辅助功能。点击右上角 ⋮ → \"允许受限设置\"。';
+
+  @override
+  String get permAccessibility => '辅助功能 (可选)';
+
+  @override
+  String get permAccessibilityBody =>
+      '允许 TransKey 将 Reply 建议直接粘贴到当前聚焦的输入框。如果你不介意手动粘贴可以跳过。';
+
+  @override
+  String get permEnabled => '已启用';
+
+  @override
+  String get permEnable => '启用';
+
+  @override
+  String get permDone => '完成';
+
+  @override
+  String get permOpenAppDetails => '打开应用详情';
+
+  @override
+  String get permSkipHint => '辅助功能为可选项。没有它,Reply 建议会进入剪贴板,你需要自己粘贴。';
+
+  @override
+  String get permSkipForNow => '暂时跳过';
+
+  @override
+  String get permFinishedCheck => '已完成 — 检查';
 }

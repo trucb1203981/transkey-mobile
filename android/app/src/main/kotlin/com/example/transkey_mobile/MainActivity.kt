@@ -137,6 +137,24 @@ class MainActivity : FlutterActivity() {
     private var pendingSharedText: String? = null
 
     private fun handleIncomingIntent(intent: Intent?) {
+        // Deep-link from BubbleService banner: "go to the in-app
+        // permissions checklist so the user can see all 3 statuses
+        // (overlay / restricted settings / accessibility) and grant
+        // whichever is missing." Routing them straight to the system
+        // Accessibility settings (the old behavior) skipped the bigger
+        // picture and dropped them somewhere they couldn't see what
+        // else was off.
+        if (intent?.action == ACTION_OPEN_PERMISSIONS) {
+            val messenger = flutterEngine?.dartExecutor?.binaryMessenger
+            if (messenger != null) {
+                MethodChannel(messenger, bubbleChannel)
+                    .invokeMethod("openPermissions", null)
+            } else {
+                pendingOpenPermissions = true
+            }
+            return
+        }
+
         val sharedText = when (intent?.action) {
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain") {
@@ -161,12 +179,28 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private var pendingOpenPermissions = false
+
+    companion object {
+        // Intent action BubbleService fires when its accessibility banner is
+        // tapped — keeps the contract one-way (BubbleService → MainActivity
+        // → Flutter) and grep-friendly.
+        const val ACTION_OPEN_PERMISSIONS = "transkey.app.OPEN_PERMISSIONS"
+    }
+
     // Flush any pending text once the engine is ready
     fun flushPendingText() {
         val text = pendingSharedText ?: return
         val messenger = flutterEngine?.dartExecutor?.binaryMessenger ?: return
         MethodChannel(messenger, shareChannel).invokeMethod("onSharedText", text)
         pendingSharedText = null
+    }
+
+    fun flushPendingOpenPermissions() {
+        if (!pendingOpenPermissions) return
+        val messenger = flutterEngine?.dartExecutor?.binaryMessenger ?: return
+        MethodChannel(messenger, bubbleChannel).invokeMethod("openPermissions", null)
+        pendingOpenPermissions = false
     }
 
     /**

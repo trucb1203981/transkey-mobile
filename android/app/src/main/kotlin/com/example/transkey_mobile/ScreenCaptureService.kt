@@ -350,11 +350,13 @@ class ScreenCaptureService : Service() {
     }
 
     private fun runOcr(bitmap: Bitmap) {
-        // Region mode: defer OCR to BubbleService so the user can crop the
-        // captured frame first. We hand over the raw bitmap and let the
-        // overlay run OCR on the sub-image after the rubber-band release.
-        if (ScreenCaptureManager.flow == ScreenCaptureManager.Flow.LENS &&
-            ScreenCaptureManager.regionMode) {
+        // Region mode: defer OCR to BubbleService regardless of downstream
+        // flow. The user dragged the "Region select" entry to crop the
+        // capture before OCR runs — running OCR here would OCR the WHOLE
+        // screen and skip the rubber-band step entirely (the user reported
+        // exactly this when picking Region → Summarize: the input picker
+        // showed full-screen text before they could draw the box).
+        if (ScreenCaptureManager.regionMode) {
             ScreenCaptureManager.screenshot = bitmap
             deliverRegionReadyToBubble()
             return

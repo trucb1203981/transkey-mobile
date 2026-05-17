@@ -834,4 +834,147 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get setupStep5Desc =>
       '번역, 답장, 요약, 설명, 다듬기 — 모두 AI 기반. Pro 기능은 자물쇠 아이콘으로 표시됩니다.';
+
+  @override
+  String get guideTitle => '사용법';
+
+  @override
+  String get guideSubtitle => '각 기능에서 텍스트를 가져오는 모든 방법';
+
+  @override
+  String get guideIntroTitle => '텍스트 캡처에 접근성 권한은 필요하지 않습니다.';
+
+  @override
+  String get guideIntroBody =>
+      '모든 기능은 명시적인 사용자 동작 — 복사, OCR, 영역 선택, 시스템 공유, 텍스트 선택 메뉴 — 를 통해 원본 텍스트를 읽습니다. 접근성은 한 가지 선택적 편의 기능에만 사용됩니다: Reply 결과를 현재 포커스된 입력 필드에 자동 붙여넣기.';
+
+  @override
+  String get guideFeatureTranslate => '번역';
+
+  @override
+  String get guideFeatureTranslateSubtitle => '원본 언어 → 대상 언어';
+
+  @override
+  String get guideFeatureSummary => '요약';
+
+  @override
+  String get guideFeatureSummarySubtitle => '긴 내용을 몇 가지 핵심으로 요약';
+
+  @override
+  String get guideFeatureRefine => '다듬기';
+
+  @override
+  String get guideFeatureRefineSubtitle => '초안의 문법과 명료성을 향상';
+
+  @override
+  String get guideFeatureExplain => '설명';
+
+  @override
+  String get guideFeatureExplainSubtitle => '어려운 문장을 쉬운 말로 설명';
+
+  @override
+  String get guideFeatureReply => '답장';
+
+  @override
+  String get guideFeatureReplySubtitle => '대상 언어로 답장 제안 생성';
+
+  @override
+  String get guideInputCopyTitle => '텍스트 복사 + 버블 탭';
+
+  @override
+  String get guideInputCopyDesc => '어떤 앱에서든 텍스트를 복사한 후 플로팅 버블을 탭하여 동작을 선택하세요.';
+
+  @override
+  String get guideInputOcrTitle => '화면 스캔 (OCR)';
+
+  @override
+  String get guideInputOcrDesc =>
+      '버블 → 화면 스캔. 한 장의 스크린샷을 캡처하고 온디바이스 OCR을 실행합니다.';
+
+  @override
+  String get guideInputRegionTitle => '영역 선택';
+
+  @override
+  String get guideInputRegionDesc => '버블 → 선택 영역 번역. 원하는 영역에 박스를 드래그하세요.';
+
+  @override
+  String get guideInputShareTitle => '공유 메뉴';
+
+  @override
+  String get guideInputShareDesc => '어떤 앱에서든: 텍스트 선택 → 공유 → TransKey.';
+
+  @override
+  String guideInputMenuTitle(String feature) {
+    return '선택 메뉴 → TransKey: $feature';
+  }
+
+  @override
+  String guideInputMenuDesc(String feature) {
+    return '텍스트 길게 누르기 → 오버플로 ⋮ → TransKey: $feature.';
+  }
+
+  @override
+  String get guideReplyA11yTitle => '접근성 (선택)';
+
+  @override
+  String get guideReplyA11yBody =>
+      '접근성 ON: 생성된 결과가 현재 포커스된 입력 필드에 직접 붙여집니다.\n\n접근성 OFF: 결과가 클립보드에 복사됩니다. 필요한 곳에 직접 붙여넣으세요.';
+
+  @override
+  String get appPermissions => '앱 권한';
+
+  @override
+  String get permissionsAllSet => '모두 설정 완료 — 탭하여 확인';
+
+  @override
+  String get permissionsNeedSetup => '필요한 권한을 부여하려면 탭';
+
+  @override
+  String get setupTransKey => 'TransKey 설정';
+
+  @override
+  String get setupTransKeyBody =>
+      '플로팅 버블 권한만 부여하면 시작할 수 있습니다. 접근성은 선택사항이며 원탭 Reply 붙여넣기에만 필요합니다.';
+
+  @override
+  String get permFloatingBubble => '플로팅 버블';
+
+  @override
+  String get permFloatingBubbleBody => '다른 앱 위에 TransKey 표시. 버블이 나타나는 데 필수.';
+
+  @override
+  String get permRestrictedSettings => '제한된 설정 허용';
+
+  @override
+  String get permRestrictedSettingsBody =>
+      'Android 13+는 사이드로드 앱의 접근성을 기본 차단합니다. 우상단 ⋮ → \"제한된 설정 허용\".';
+
+  @override
+  String get permAccessibility => '접근성 (선택)';
+
+  @override
+  String get permAccessibilityBody =>
+      'Reply 제안을 포커스된 텍스트 필드에 직접 붙여넣습니다. 수동 붙여넣기가 괜찮으면 건너뛰세요.';
+
+  @override
+  String get permEnabled => '활성화됨';
+
+  @override
+  String get permEnable => '활성화';
+
+  @override
+  String get permDone => '완료';
+
+  @override
+  String get permOpenAppDetails => '앱 정보 열기';
+
+  @override
+  String get permSkipHint =>
+      '접근성은 선택사항입니다. 없으면 Reply 결과가 클립보드로 가고 직접 붙여넣어야 합니다.';
+
+  @override
+  String get permSkipForNow => '지금은 건너뛰기';
+
+  @override
+  String get permFinishedCheck => '완료 — 확인';
 }

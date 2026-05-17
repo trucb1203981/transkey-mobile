@@ -835,4 +835,146 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get setupStep5Desc =>
       '翻訳・返信・要約・説明・推敲 — すべてAI搭載。Pro限定機能には鍵アイコンがついています。';
+
+  @override
+  String get guideTitle => '使い方';
+
+  @override
+  String get guideSubtitle => '各機能でテキストを取り込むあらゆる方法';
+
+  @override
+  String get guideIntroTitle => 'テキスト取得にアクセシビリティは不要です。';
+
+  @override
+  String get guideIntroBody =>
+      'すべての機能は明示的なユーザー操作 — コピー、OCR、領域選択、システム共有、テキスト選択メニュー — を通じて元テキストを読み取ります。アクセシビリティは1つの便利機能(Reply の結果をフォーカス中の入力欄に直接ペースト)にのみ使われます。';
+
+  @override
+  String get guideFeatureTranslate => '翻訳';
+
+  @override
+  String get guideFeatureTranslateSubtitle => 'ソース言語 → ターゲット言語';
+
+  @override
+  String get guideFeatureSummary => '要約';
+
+  @override
+  String get guideFeatureSummarySubtitle => '長い内容を数個の要点に凝縮';
+
+  @override
+  String get guideFeatureRefine => '推敲';
+
+  @override
+  String get guideFeatureRefineSubtitle => 'あなたの下書きの文法と明瞭さを改善';
+
+  @override
+  String get guideFeatureExplain => '説明';
+
+  @override
+  String get guideFeatureExplainSubtitle => '難しい文章をやさしい言葉で解説';
+
+  @override
+  String get guideFeatureReply => '返信';
+
+  @override
+  String get guideFeatureReplySubtitle => 'ターゲット言語で返信案を生成';
+
+  @override
+  String get guideInputCopyTitle => 'テキストをコピー + バブルをタップ';
+
+  @override
+  String get guideInputCopyDesc => '任意のアプリでテキストをコピーし、フローティングバブルをタップしてアクションを選択。';
+
+  @override
+  String get guideInputOcrTitle => '画面スキャン (OCR)';
+
+  @override
+  String get guideInputOcrDesc => 'バブル → 画面スキャン。スクリーンショットを1枚撮り、端末内 OCR を実行。';
+
+  @override
+  String get guideInputRegionTitle => '領域選択';
+
+  @override
+  String get guideInputRegionDesc => 'バブル → 選択範囲を翻訳。希望の領域を四角でドラッグ。';
+
+  @override
+  String get guideInputShareTitle => '共有メニュー';
+
+  @override
+  String get guideInputShareDesc => '任意のアプリ:テキストを選択 → 共有 → TransKey。';
+
+  @override
+  String guideInputMenuTitle(String feature) {
+    return '選択メニュー → TransKey: $feature';
+  }
+
+  @override
+  String guideInputMenuDesc(String feature) {
+    return 'テキストを長押し → オーバーフロー ⋮ → TransKey: $feature。';
+  }
+
+  @override
+  String get guideReplyA11yTitle => 'アクセシビリティ(任意)';
+
+  @override
+  String get guideReplyA11yBody =>
+      'アクセシビリティON:生成された結果はフォーカス中の入力欄に直接ペーストされます。\n\nアクセシビリティOFF:結果はクリップボードにコピーされます。必要な場所で手動ペーストしてください。';
+
+  @override
+  String get appPermissions => 'アプリの権限';
+
+  @override
+  String get permissionsAllSet => '設定完了 — タップで確認';
+
+  @override
+  String get permissionsNeedSetup => '必要な権限を付与するためタップ';
+
+  @override
+  String get setupTransKey => 'TransKey をセットアップ';
+
+  @override
+  String get setupTransKeyBody =>
+      'フローティングバブル権限を付与するだけで始められます。アクセシビリティは任意で、ワンタップ Reply ペーストにのみ必要です。';
+
+  @override
+  String get permFloatingBubble => 'フローティングバブル';
+
+  @override
+  String get permFloatingBubbleBody => '他のアプリの上に TransKey を表示。バブル表示に必須。';
+
+  @override
+  String get permRestrictedSettings => '制限付き設定を許可';
+
+  @override
+  String get permRestrictedSettingsBody =>
+      'Android 13+ はサイドロードアプリのアクセシビリティを既定でブロックします。右上の ⋮ → \"制限付き設定を許可\"。';
+
+  @override
+  String get permAccessibility => 'アクセシビリティ(任意)';
+
+  @override
+  String get permAccessibilityBody =>
+      'Reply 候補をフォーカス中の入力欄に直接ペースト。手動ペーストでよければスキップ可能。';
+
+  @override
+  String get permEnabled => '有効';
+
+  @override
+  String get permEnable => '有効化';
+
+  @override
+  String get permDone => '完了';
+
+  @override
+  String get permOpenAppDetails => 'アプリ詳細を開く';
+
+  @override
+  String get permSkipHint =>
+      'アクセシビリティは任意です。なしでも Reply 結果はクリップボードに入り、自分でペーストできます。';
+
+  @override
+  String get permSkipForNow => '後で';
+
+  @override
+  String get permFinishedCheck => '完了 — 確認';
 }

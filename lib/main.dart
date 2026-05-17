@@ -47,6 +47,20 @@ void main() async {
 
 void _wireBubbleChannel() {
   _bubbleChannel.setMethodCallHandler((call) async {
+    if (call.method == 'openPermissions') {
+      // BubbleService's accessibility banner tapped — surface the in-app
+      // permissions walkthrough rather than dumping the user into system
+      // settings cold. The setup screen shows all three statuses in one
+      // place (overlay / restricted / accessibility) with one-tap grant
+      // buttons per row.
+      try {
+        final router = _rootContainer.read(routerProvider);
+        router.push('/accessibility-setup');
+      } catch (e) {
+        debugPrint('[bubbleChannel] openPermissions push failed: $e');
+      }
+      return null;
+    }
     if (call.method == 'translateText') {
       final args = (call.arguments as Map?)?.cast<Object?, Object?>() ?? {};
       final text = args['text'] as String?;

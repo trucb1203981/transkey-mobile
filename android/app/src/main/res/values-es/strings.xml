@@ -3,13 +3,9 @@
     <string name="accessibility_service_description">TransKey puede pegar una respuesta directamente en el campo de texto activo de cualquier app cuando toca «Pegar respuesta» en la burbuja flotante. El texto solo se lee o escribe cuando activa una acción — sin seguimiento en segundo plano.</string>
 
     <string name="bubble_choose_action">Elegir acción</string>
-    <string name="bubble_using_selection">Usando el texto seleccionado.</string>
     <string name="bubble_need_text">Seleccione o copie texto primero, luego elija una acción.</string>
     <string name="bubble_show_last_result">Mostrar último resultado</string>
     <string name="bubble_type_text">Escribir texto propio</string>
-    <string name="bubble_read_screen">Leer esta pantalla</string>
-    <string name="bubble_read_screen_a11y_off">Active TransKey en Accesibilidad para leer texto de la pantalla</string>
-    <string name="bubble_read_screen_empty">No hay texto legible en esta pantalla</string>
     <string name="bubble_voice">Entrada por voz</string>
     <string name="bubble_voice_listening">Escuchando…</string>
     <string name="bubble_voice_speak">Hable ahora</string>

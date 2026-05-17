@@ -14,6 +14,7 @@ import '../../features/onboarding/screens/keyboard_setup_screen.dart';
 import '../../features/onboarding/screens/accessibility_setup_screen.dart';
 import '../../features/settings/screens/change_password_screen.dart';
 import '../../features/settings/screens/devices_screen.dart';
+import '../../features/settings/screens/guide_screen.dart';
 import '../../features/settings/screens/subscription_screen.dart';
 import '../../features/translate/screens/home_screen.dart';
 import '../../features/upgrade/screens/upgrade_screen.dart';
@@ -106,6 +107,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/change-password',
         builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: '/settings/guide',
+        builder: (context, state) => const GuideScreen(),
       ),
     ],
   );

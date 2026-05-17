@@ -239,6 +239,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     value: _bubbleRunning,
                     onChanged: (_) async => _toggleBubble(),
                   ),
+                  // Permission walkthrough re-entry point. Users who Skip
+                  // the post-login onboarding (especially without reading
+                  // it) have no other surface to discover the 3-step
+                  // permission setup. Status dot at the leading icon
+                  // signals at a glance whether anything still needs
+                  // attention — green when accessibility is on (which on
+                  // Android 13+ implies restricted-settings was already
+                  // unlocked too), amber otherwise.
+                  ListTile(
+                    leading: Icon(
+                      Icons.security_outlined,
+                      color: _accessibilityEnabled
+                          ? AppColors.primary
+                          : Colors.orange,
+                    ),
+                    title: Text(t.appPermissions),
+                    subtitle: Text(
+                      _accessibilityEnabled
+                          ? t.permissionsAllSet
+                          : t.permissionsNeedSetup,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _accessibilityEnabled
+                            ? AppColors.primary
+                            : Colors.orange,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () async {
+                      await context.push('/accessibility-setup');
+                      if (mounted) _refreshAndroidPermissions();
+                    },
+                  ),
                   ListTile(
                     leading: const Icon(Icons.bubble_chart_outlined),
                     title: Text(t.bubbleSetup),
@@ -253,30 +286,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                       }
                     },
                   ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.accessibility_new,
-                      color: _accessibilityEnabled
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                    ),
-                    title: Text(t.accessibilityPasteBack),
-                    subtitle: Text(
-                      _accessibilityEnabled
-                          ? t.accessibilityEnabled
-                          : t.accessibilityDisabled,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _accessibilityEnabled
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () => ref
-                        .read(bubbleManagerProvider.notifier)
-                        .requestAccessibility(),
-                  ),
                 ] else ...[
                   ListTile(
                     leading: const Icon(Icons.keyboard_outlined),
@@ -285,6 +294,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     onTap: () => context.push('/keyboard-setup?skip=false'),
                   ),
                 ],
+                ListTile(
+                  leading: const Icon(Icons.menu_book_outlined),
+                  title: Text(t.guideTitle),
+                  subtitle: Text(
+                    t.guideSubtitle,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/settings/guide'),
+                ),
                 ListTile(
                   leading: const Icon(Icons.feedback_outlined),
                   title: Text(t.sendFeedback),

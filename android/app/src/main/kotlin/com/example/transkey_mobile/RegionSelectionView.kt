@@ -40,10 +40,17 @@ class RegionSelectionView(
 
     /** Current selection in VIEW coords (not bitmap coords). */
     private val selectionView = RectF()
-    private var isDragging = false
     private var hasSelection = false
     private var anchorX = 0f
     private var anchorY = 0f
+
+    // Once a rectangle has been drawn, subsequent touches can resize from
+    // a corner, move the whole rect, or — outside the rect — start fresh.
+    private enum class DragMode { NONE, NEW, MOVE, RESIZE_TL, RESIZE_TR, RESIZE_BL, RESIZE_BR }
+    private var dragMode = DragMode.NONE
+    private var dragStartX = 0f
+    private var dragStartY = 0f
+    private val dragStartRect = RectF()
 
     // ── Paints ──
     private val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -179,7 +186,7 @@ class RegionSelectionView(
         // 1) Screenshot full-size as background
         canvas.drawBitmap(bitmap, null, bitmapDest, null)
 
-        if (!hasSelection && !isDragging) {
+        if (!hasSelection && dragMode == DragMode.NONE) {
             // No selection yet — dim the whole screen uniformly so the
             // user knows they're in selection mode.
             canvas.drawRect(viewBounds, dimPaint)
@@ -206,32 +213,36 @@ class RegionSelectionView(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                // Don't start a new drag if the user is tapping a button.
                 if (isPointInChildButton(event.x, event.y)) return false
-                anchorX = event.x.coerceIn(bitmapDest.left, bitmapDest.right)
-                anchorY = event.y.coerceIn(bitmapDest.top, bitmapDest.bottom)
-                selectionView.set(anchorX, anchorY, anchorX, anchorY)
-                isDragging = true
-                hasSelection = false
+                dragStartX = event.x
+                dragStartY = event.y
+                dragStartRect.set(selectionView)
+                dragMode = pickDragMode(event.x, event.y)
+
+                if (dragMode == DragMode.NEW) {
+                    anchorX = event.x.coerceIn(bitmapDest.left, bitmapDest.right)
+                    anchorY = event.y.coerceIn(bitmapDest.top, bitmapDest.bottom)
+                    selectionView.set(anchorX, anchorY, anchorX, anchorY)
+                    hasSelection = false
+                    hintView.visibility = VISIBLE
+                }
+                // Hide actions during any active drag — they re-appear on UP.
                 actionRow.visibility = GONE
-                hintView.visibility = VISIBLE
                 invalidate()
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (!isDragging) return false
+                if (dragMode == DragMode.NONE) return false
                 val cx = event.x.coerceIn(bitmapDest.left, bitmapDest.right)
                 val cy = event.y.coerceIn(bitmapDest.top, bitmapDest.bottom)
-                selectionView.set(
-                    min(anchorX, cx), min(anchorY, cy),
-                    max(anchorX, cx), max(anchorY, cy),
-                )
+                applyDragUpdate(cx, cy)
                 invalidate()
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (!isDragging) return false
-                isDragging = false
+                if (dragMode == DragMode.NONE) return false
+                dragMode = DragMode.NONE
+                normalizeRect()
                 val minSizeDp = context.resources.displayMetrics.density * 24f
                 hasSelection = selectionView.width() > minSizeDp &&
                     selectionView.height() > minSizeDp
@@ -239,8 +250,8 @@ class RegionSelectionView(
                     hintView.visibility = GONE
                     actionRow.visibility = VISIBLE
                 } else {
-                    // Treat tiny drags as a non-selection — keep the
-                    // instruction visible and stay in pre-selection state.
+                    // Treat tiny drags as no-selection — keep instruction
+                    // visible and stay in pre-selection state.
                     selectionView.set(0f, 0f, 0f, 0f)
                     actionRow.visibility = GONE
                     hintView.visibility = VISIBLE
@@ -250,6 +261,72 @@ class RegionSelectionView(
             }
         }
         return false
+    }
+
+    private fun pickDragMode(x: Float, y: Float): DragMode {
+        if (!hasSelection) return DragMode.NEW
+        // 28dp hit radius around each corner — generous enough for fat
+        // fingers, small enough to leave the rect interior addressable.
+        val hit = context.resources.displayMetrics.density * 28f
+        return when {
+            nearPoint(x, y, selectionView.left, selectionView.top, hit) -> DragMode.RESIZE_TL
+            nearPoint(x, y, selectionView.right, selectionView.top, hit) -> DragMode.RESIZE_TR
+            nearPoint(x, y, selectionView.left, selectionView.bottom, hit) -> DragMode.RESIZE_BL
+            nearPoint(x, y, selectionView.right, selectionView.bottom, hit) -> DragMode.RESIZE_BR
+            selectionView.contains(x, y) -> DragMode.MOVE
+            else -> DragMode.NEW
+        }
+    }
+
+    private fun applyDragUpdate(cx: Float, cy: Float) {
+        when (dragMode) {
+            DragMode.NEW -> selectionView.set(
+                min(anchorX, cx), min(anchorY, cy),
+                max(anchorX, cx), max(anchorY, cy),
+            )
+            DragMode.RESIZE_TL -> selectionView.set(
+                cx, cy, dragStartRect.right, dragStartRect.bottom,
+            )
+            DragMode.RESIZE_TR -> selectionView.set(
+                dragStartRect.left, cy, cx, dragStartRect.bottom,
+            )
+            DragMode.RESIZE_BL -> selectionView.set(
+                cx, dragStartRect.top, dragStartRect.right, cy,
+            )
+            DragMode.RESIZE_BR -> selectionView.set(
+                dragStartRect.left, dragStartRect.top, cx, cy,
+            )
+            DragMode.MOVE -> {
+                val w = dragStartRect.width()
+                val h = dragStartRect.height()
+                val rawLeft = dragStartRect.left + (cx - dragStartX)
+                val rawTop  = dragStartRect.top  + (cy - dragStartY)
+                val left = rawLeft.coerceIn(bitmapDest.left, bitmapDest.right - w)
+                val top  = rawTop.coerceIn(bitmapDest.top,  bitmapDest.bottom - h)
+                selectionView.set(left, top, left + w, top + h)
+            }
+            DragMode.NONE -> Unit
+        }
+    }
+
+    private fun nearPoint(x: Float, y: Float, px: Float, py: Float, radius: Float): Boolean {
+        val dx = x - px; val dy = y - py
+        return dx * dx + dy * dy <= radius * radius
+    }
+
+    private fun normalizeRect() {
+        // Resize drags can flip the rectangle when the user crosses past
+        // the opposite edge — restore left ≤ right and top ≤ bottom.
+        if (selectionView.left > selectionView.right) {
+            val tmp = selectionView.left
+            selectionView.left = selectionView.right
+            selectionView.right = tmp
+        }
+        if (selectionView.top > selectionView.bottom) {
+            val tmp = selectionView.top
+            selectionView.top = selectionView.bottom
+            selectionView.bottom = tmp
+        }
     }
 
     private fun isPointInChildButton(x: Float, y: Float): Boolean {
