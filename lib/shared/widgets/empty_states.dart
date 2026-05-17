@@ -68,17 +68,17 @@ class HistoryEmptyState extends StatelessWidget {
 }
 
 class GlossaryEmptyState extends StatelessWidget {
-  const GlossaryEmptyState({super.key});
+  const GlossaryEmptyState({super.key, this.onAddEntry});
+
+  final VoidCallback? onAddEntry;
 
   @override
   Widget build(BuildContext context) {
     return EmptyState(
       icon: Icons.menu_book_outlined,
       message: 'Glossary is empty',
-      actionLabel: 'Add entry',
-      onAction: () {
-        // TODO: open add glossary entry sheet
-      },
+      actionLabel: onAddEntry != null ? 'Add entry' : null,
+      onAction: onAddEntry,
     );
   }
 }

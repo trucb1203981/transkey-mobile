@@ -786,7 +786,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       localeId: localeId,
       listenFor: const Duration(seconds: 30),
       pauseFor: const Duration(seconds: 3),
-      partialResults: true,
+      listenOptions: stt.SpeechListenOptions(partialResults: true),
       onResult: (result) {
         final joined = _speechPrefix.isEmpty
             ? result.recognizedWords

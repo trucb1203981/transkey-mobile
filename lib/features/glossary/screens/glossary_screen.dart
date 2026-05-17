@@ -84,7 +84,9 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
     GlossaryState glossary,
   ) {
     if (glossary.entries.isEmpty) {
-      return const GlossaryEmptyState();
+      return GlossaryEmptyState(
+        onAddEntry: glossary.isFull ? null : () => _addEntry(context, ref),
+      );
     }
 
     return Column(
