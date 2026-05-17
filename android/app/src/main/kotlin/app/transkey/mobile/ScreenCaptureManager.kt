@@ -1,4 +1,4 @@
-package com.example.transkey_mobile
+package app.transkey.mobile
 
 import android.content.Intent
 import android.graphics.Bitmap

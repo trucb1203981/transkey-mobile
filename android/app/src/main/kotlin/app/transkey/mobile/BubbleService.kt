@@ -1,4 +1,4 @@
-package com.example.transkey_mobile
+package app.transkey.mobile
 
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -1111,21 +1111,14 @@ class BubbleService : Service() {
     }
 
     /**
-     * Mode-picker button handler. Tries ACTION_COPY first because that's
-     * the only reliable way to capture multi-node selections in Chrome
-     * WebView and other webview-based apps — our accessibility-event
-     * cache only retains the LAST text run there, so a five-word
-     * selection becomes a one-word translation. ACTION_COPY routes
-     * through the host app's own copy handler and lands the full
-     * current selection on the clipboard, where we can read it.
-     *
-     * Fallback order if copy doesn't yield new clipboard text:
-     *   1. The locally-snapshotted accessibility selection (works for
-     *      apps that DO emit text-selection events, e.g. EditText).
-     *   2. The pre-existing clipboard contents (covers the
-     *      "user already copied, then tapped" flow).
-     *   3. Open ShareActivity which will surface the
-     *      "No text in clipboard. Enable Accessibility ..." hint.
+     * Mode-picker button handler. Per the feature spec, source text
+     * always comes from explicit user actions (Copy / OCR / Region /
+     * Share / Menu) — we no longer snapshot accessibility-selection
+     * events. Routes the request to ShareActivity, which is the only
+     * component allowed to read primaryClip on Android 10+ (background
+     * services are blocked). ShareActivity reads the clipboard and
+     * forwards the text back via ACTION_TRANSLATE; if the clipboard
+     * is empty it surfaces the "Copy text first" toast.
      */
     private fun onTranslateModePicked(mode: String) {
         android.util.Log.w("TKBubble", "onTranslateModePicked: mode=$mode → ShareActivity")

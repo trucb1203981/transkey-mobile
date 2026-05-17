@@ -1,4 +1,4 @@
-package com.example.transkey_mobile
+package app.transkey.mobile
 
 import android.accessibilityservice.AccessibilityService
 import android.content.ClipData
@@ -18,11 +18,8 @@ import android.view.accessibility.AccessibilityNodeInfo
  * never via accessibility selection events. The single legitimate use of
  * accessibility is the OUTPUT side of Reply: paste the generated reply
  * straight into the currently-focused text field so the user doesn't have
- * to switch apps and long-press > paste.
- *
- * Additional capability (orthogonal to Reply): [getScreenText] reads the
- * full visible text of the active window — used by the "Read this screen"
- * input mode where neither Copy nor OCR is convenient.
+ * to switch apps and long-press > paste. [readFocusedText] is a small
+ * helper for pre-filling the reply context with the user's existing draft.
  *
  * We do NOT cache accessibility nodes between events; every action re-
  * queries `rootInActiveWindow` so a stale node doesn't crash performAction.
@@ -39,12 +36,10 @@ class TransKeyAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * No-op. We previously cached selection events here to support a
-     * "highlight → tap bubble" capture flow; per the feature spec, source
-     * text now always comes from clipboard / OCR / Share / menu, so this
-     * listener has nothing useful to do. Kept (instead of removed from
-     * `accessibilityEventTypes` in the XML config) to avoid disturbing
-     * the system's existing service binding when users update.
+     * No-op. This service is only invoked via direct calls
+     * (replaceFocusedText / readFocusedText) from the Reply flow; the
+     * XML config subscribes to the minimum event type to keep the system
+     * from waking us on every focus / scroll / text change.
      */
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
