@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../core/auth/auth_provider.dart';
@@ -58,6 +60,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   static const _maxChars = 5000;
   static const _kSourceTextKey = 'tk_last_source_text';
+
+  // Speech-to-text state. _speech is lazy-inited on first mic tap so the
+  // SpeechRecognizer plugin doesn't get attached unless the user actually
+  // wants voice input (avoids unnecessary IPC + a permission prompt at
+  // app start).
+  stt.SpeechToText? _speech;
+  bool _isListening = false;
+  // Text already in the field BEFORE we started listening — appended to
+  // recognised words so users can dictate additions instead of dictating
+  // a wholesale replacement of what they typed.
+  String _speechPrefix = '';
 
   @override
   void initState() {
@@ -205,6 +218,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _textController.removeListener(_persistSourceText);
     _textController.dispose();
     _inputFocus.dispose();
+    // Stop any in-flight recognition so the mic doesn't keep listening
+    // after the user navigates away.
+    if (_isListening) _speech?.stop();
     super.dispose();
   }
 
@@ -582,25 +598,136 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             counterStyle: const TextStyle(fontSize: 11),
           ),
         ),
-        ListenableBuilder(
-          listenable: _textController,
-          builder: (context, _) {
-            if (_textController.text.isEmpty) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: IconButton(
-                icon: const Icon(Icons.clear, size: 20),
-                onPressed: () {
-                  _textController.clear();
-                  ref.read(translateProvider.notifier).clearResult();
+        // Top-right action cluster: mic always visible, clear shown only
+        // when there's text to clear.
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.xs),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: _isListening ? l.voiceListening : l.voiceTooltip,
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  size: 22,
+                  color: _isListening ? Colors.red : null,
+                ),
+                onPressed: _toggleSpeechToText,
+              ),
+              ListenableBuilder(
+                listenable: _textController,
+                builder: (context, _) {
+                  if (_textController.text.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      _textController.clear();
+                      ref.read(translateProvider.notifier).clearResult();
+                    },
+                  );
                 },
               ),
-            );
-          },
+            ],
+          ),
         ),
       ],
     );
   }
+
+  /// Toggle voice-to-text. First tap: ask for mic permission (if not
+  /// granted), start listening with the currently-selected source
+  /// language as the recognition locale, and stream partial results
+  /// into the text field. Second tap: stop early. Auto-stops on ~3 s
+  /// of silence (the SpeechRecognizer plugin's default).
+  Future<void> _toggleSpeechToText() async {
+    final l = AppLocalizations.of(context)!;
+    if (_isListening) {
+      await _speech?.stop();
+      if (mounted) setState(() => _isListening = false);
+      return;
+    }
+    // Android SpeechRecognizer needs a concrete locale — it CAN'T
+    // auto-detect across languages. If the picker is "Auto", ask the
+    // user to pick a real source first, then open the source picker.
+    final langs = ref.read(languageSettingsProvider).valueOrNull;
+    final sourceLang = langs?.sourceLang ?? 'auto';
+    if (sourceLang == 'auto') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.voicePickSourceLang)),
+      );
+      await _pickSourceLang(sourceLang);
+      return;
+    }
+    final perm = await Permission.microphone.request();
+    if (!perm.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.voicePermDenied)),
+        );
+      }
+      return;
+    }
+    final speech = _speech ??= stt.SpeechToText();
+    final available = await speech.initialize(
+      onError: (e) {
+        if (mounted) setState(() => _isListening = false);
+      },
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          if (mounted) setState(() => _isListening = false);
+        }
+      },
+    );
+    if (!available) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.voiceUnsupported)),
+        );
+      }
+      return;
+    }
+    // Recognition locale was already validated above (auto is rejected).
+    final localeId = _bcp47ForLang(sourceLang);
+
+    _speechPrefix = _textController.text;
+    if (mounted) setState(() => _isListening = true);
+    await speech.listen(
+      localeId: localeId,
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 3),
+      partialResults: true,
+      onResult: (result) {
+        final joined = _speechPrefix.isEmpty
+            ? result.recognizedWords
+            : '$_speechPrefix ${result.recognizedWords}';
+        _textController.value = TextEditingValue(
+          text: joined,
+          selection: TextSelection.collapsed(offset: joined.length),
+        );
+      },
+    );
+  }
+
+  /// Map our 2-letter source-language code to the BCP-47 locale ID the
+  /// platform SpeechRecognizer expects. Returns null for "auto" so the
+  /// plugin uses the device-default locale.
+  String? _bcp47ForLang(String code) {
+    if (code == 'auto') return null;
+    return _localeMap[code] ?? code;
+  }
+
+  static const _localeMap = {
+    'en': 'en_US',
+    'vi': 'vi_VN',
+    'zh': 'zh_CN',
+    'ja': 'ja_JP',
+    'ko': 'ko_KR',
+    'fr': 'fr_FR',
+    'de': 'de_DE',
+    'es': 'es_ES',
+  };
 
   Widget _buildClipboardChip(ThemeData theme, bool isDark, String text) {
     final preview = text.length > 60 ? '${text.substring(0, 60)}…' : text;

@@ -842,11 +842,11 @@ class AppLocalizationsKo extends AppLocalizations {
   String get guideSubtitle => '각 기능에서 텍스트를 가져오는 모든 방법';
 
   @override
-  String get guideIntroTitle => '텍스트 캡처에 접근성 권한은 필요하지 않습니다.';
+  String get guideIntroTitle => '텍스트 캡처에 특별한 권한은 필요하지 않습니다.';
 
   @override
   String get guideIntroBody =>
-      '모든 기능은 명시적인 사용자 동작 — 복사, OCR, 영역 선택, 시스템 공유, 텍스트 선택 메뉴 — 를 통해 원본 텍스트를 읽습니다. 접근성은 한 가지 선택적 편의 기능에만 사용됩니다: Reply 결과를 현재 포커스된 입력 필드에 자동 붙여넣기.';
+      '모든 기능은 사용자가 의도적으로 동작했을 때만 텍스트를 읽습니다 — 복사, 화면 스캔, 영역 선택, 시스템 공유 사용, 또는 텍스트 선택 메뉴에서 TransKey 탭. 접근성은 Reply 결과를 입력 중인 채팅창에 바로 붙여넣기 위해서만 사용됩니다.';
 
   @override
   String get guideFeatureTranslate => '번역';
@@ -879,46 +879,46 @@ class AppLocalizationsKo extends AppLocalizations {
   String get guideFeatureReplySubtitle => '대상 언어로 답장 제안 생성';
 
   @override
-  String get guideInputCopyTitle => '텍스트 복사 + 버블 탭';
+  String get guideInputCopyTitle => '텍스트 복사 후 버블 탭';
 
   @override
   String get guideInputCopyDesc => '어떤 앱에서든 텍스트를 복사한 후 플로팅 버블을 탭하여 동작을 선택하세요.';
 
   @override
-  String get guideInputOcrTitle => '화면 스캔 (OCR)';
+  String get guideInputOcrTitle => '화면 전체 스캔';
 
   @override
   String get guideInputOcrDesc =>
-      '버블 → 화면 스캔. 한 장의 스크린샷을 캡처하고 온디바이스 OCR을 실행합니다.';
+      '버블 → 화면 스캔. TransKey가 스크린샷 한 장을 찍어 그 위의 글자를 읽습니다.';
 
   @override
-  String get guideInputRegionTitle => '영역 선택';
+  String get guideInputRegionTitle => '화면 일부만 스캔';
 
   @override
-  String get guideInputRegionDesc => '버블 → 선택 영역 번역. 원하는 영역에 박스를 드래그하세요.';
+  String get guideInputRegionDesc => '버블 → 영역 스캔. 번역할 부분만 박스로 드래그하세요.';
 
   @override
-  String get guideInputShareTitle => '공유 메뉴';
+  String get guideInputShareTitle => '공유 버튼에서';
 
   @override
-  String get guideInputShareDesc => '어떤 앱에서든: 텍스트 선택 → 공유 → TransKey.';
+  String get guideInputShareDesc => '어떤 앱에서든: 텍스트 선택 → 공유 탭 → TransKey 선택.';
 
   @override
   String guideInputMenuTitle(String feature) {
-    return '선택 메뉴 → TransKey: $feature';
+    return '텍스트 선택 메뉴에서 → TransKey: $feature';
   }
 
   @override
   String guideInputMenuDesc(String feature) {
-    return '텍스트 길게 누르기 → 오버플로 ⋮ → TransKey: $feature.';
+    return '앱에서 텍스트를 선택하면 복사/공유 팝업이 나타납니다. ⋮ 탭으로 더 보기 → TransKey: $feature 선택.';
   }
 
   @override
-  String get guideReplyA11yTitle => '접근성 (선택)';
+  String get guideReplyA11yTitle => '접근성 — 선택, 자동 붙여넣기 전용';
 
   @override
   String get guideReplyA11yBody =>
-      '접근성 ON: 생성된 결과가 현재 포커스된 입력 필드에 직접 붙여집니다.\n\n접근성 OFF: 결과가 클립보드에 복사됩니다. 필요한 곳에 직접 붙여넣으세요.';
+      'TransKey 접근성을 켜두면, 답장이 입력 중인 채팅창에 바로 붙여집니다. 추가 동작 불필요.\n\n켜고 싶지 않으면 답장이 자동 복사됩니다 — 채팅창을 길게 눌러 붙여넣기 탭.';
 
   @override
   String get appPermissions => '앱 권한';
@@ -977,4 +977,19 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get permFinishedCheck => '완료 — 확인';
+
+  @override
+  String get voiceTooltip => '음성 입력';
+
+  @override
+  String get voiceListening => '듣는 중…';
+
+  @override
+  String get voicePermDenied => '마이크 권한이 거부되었습니다';
+
+  @override
+  String get voiceUnsupported => '이 기기에서는 음성 입력을 사용할 수 없습니다';
+
+  @override
+  String get voicePickSourceLang => '먼저 원본 언어를 선택하세요 — 음성 입력은 자동 감지할 수 없습니다';
 }

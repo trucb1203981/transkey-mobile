@@ -5,6 +5,8 @@
     <string name="bubble_choose_action">Aktion auswählen</string>
     <string name="bubble_need_text">Zuerst Text auswählen oder kopieren, dann eine Aktion unten wählen.</string>
     <string name="bubble_show_last_result">Letztes Ergebnis anzeigen</string>
+    <string name="bubble_show_more">Mehr anzeigen</string>
+    <string name="bubble_show_less">Weniger anzeigen</string>
     <string name="bubble_type_text">Eigenen Text eingeben</string>
     <string name="bubble_voice">Spracheingabe</string>
     <string name="bubble_voice_listening">Hört zu…</string>
@@ -16,18 +18,18 @@
     <string name="bubble_voice_unsupported">Spracherkennung auf diesem Gerät nicht verfügbar</string>
     <string name="bubble_voice_lang_missing">Sprachpaket für diese Sprache nicht installiert. Einstellungen → Sprachen &amp; Eingabe → Sprache → Offline-Paket herunterladen.</string>
 
-    <string name="bubble_scan_screen">Bildschirm scannen (OCR)</string>
+    <string name="bubble_scan_screen">Bildschirm scannen</string>
     <string name="bubble_scan_disclosure_title">TransKey erfasst diesen Bildschirm</string>
-    <string name="bubble_scan_disclosure_body">Ein einzelnes Bild wird auf dem Gerät erfasst, mit On-Device-OCR (Google ML Kit) auf Text geprüft und dann verworfen. Nichts wird hochgeladen oder gespeichert.</string>
+    <string name="bubble_scan_disclosure_body">Ein einzelner Screenshot wird aufgenommen und der Text wird direkt auf deinem Gerät gelesen, dann wird das Bild verworfen. Nichts wird hochgeladen oder gespeichert.</string>
     <string name="bubble_scan_continue">Weiter</string>
     <string name="bubble_scan_processing">Bildschirm wird gelesen…</string>
     <string name="bubble_scan_empty">Kein Text auf diesem Bildschirm gefunden</string>
-    <string name="bubble_scan_perm_denied">Bildschirmaufnahme-Berechtigung für OCR erforderlich</string>
+    <string name="bubble_scan_perm_denied">Bildschirmaufnahme-Berechtigung zum Scannen erforderlich</string>
     <string name="bubble_scan_notification_title">Bildschirm wird für Übersetzung gelesen</string>
     <string name="bubble_scan_notification_body">Ein einzelnes Bild wird auf dem Gerät erfasst und verarbeitet</string>
     <string name="bubble_scan_stop">Bildschirmaufnahme stoppen</string>
     <string name="bubble_lens_translating">Bildschirm wird übersetzt…</string>
-    <string name="bubble_lens_region">Ausgewählten Bereich übersetzen</string>
+    <string name="bubble_lens_region">Bereich scannen</string>
     <string name="bubble_lens_region_hint">Ziehen Sie, um den zu übersetzenden Bereich auszuwählen</string>
     <string name="bubble_lens_region_confirm">Diesen Bereich übersetzen</string>
     <string name="bubble_input_hint">Text zum Übersetzen eingeben…</string>

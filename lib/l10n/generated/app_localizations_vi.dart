@@ -853,11 +853,11 @@ class AppLocalizationsVi extends AppLocalizations {
   String get guideSubtitle => 'Tất cả cách để lấy text cho mỗi tính năng';
 
   @override
-  String get guideIntroTitle => 'Không cần bật Trợ năng để lấy text.';
+  String get guideIntroTitle => 'Không cần bật quyền đặc biệt nào để lấy text.';
 
   @override
   String get guideIntroBody =>
-      'Mọi tính năng đều lấy nội dung qua hành động rõ ràng của bạn — Copy, OCR, Quét vùng, Share, hoặc menu chọn text. Trợ năng chỉ dùng cho 1 tiện ích tùy chọn: tự động dán câu trả lời (Reply) vào ô nhập đang focus.';
+      'Tính năng nào cũng chỉ đọc nội dung sau khi bạn chủ động làm gì đó — copy text, quét màn hình, chọn vùng, dùng nút Share của hệ thống, hoặc tap TransKey trong menu chọn text. Trợ năng chỉ cần để kết quả Reply tự dán thẳng vào ô chat bạn đang gõ.';
 
   @override
   String get guideFeatureTranslate => 'Dịch';
@@ -894,49 +894,49 @@ class AppLocalizationsVi extends AppLocalizations {
       'Tạo câu trả lời gợi ý theo ngôn ngữ đích';
 
   @override
-  String get guideInputCopyTitle => 'Copy text + tap bubble';
+  String get guideInputCopyTitle => 'Copy text rồi tap bubble';
 
   @override
   String get guideInputCopyDesc =>
-      'Copy text bất kỳ trong app nào, rồi tap floating bubble và chọn hành động.';
+      'Copy text bất kỳ trong app nào, rồi tap bubble nổi và chọn hành động.';
 
   @override
-  String get guideInputOcrTitle => 'Quét màn hình (OCR)';
+  String get guideInputOcrTitle => 'Quét cả màn hình';
 
   @override
   String get guideInputOcrDesc =>
-      'Tap bubble → Quét màn hình. Chụp 1 frame, chạy OCR trên máy.';
+      'Tap bubble → Quét màn hình. TransKey chụp 1 ảnh màn hình và đọc chữ trong đó.';
 
   @override
-  String get guideInputRegionTitle => 'Quét vùng';
+  String get guideInputRegionTitle => 'Quét một vùng trên màn hình';
 
   @override
   String get guideInputRegionDesc =>
-      'Tap bubble → Dịch vùng đã chọn. Kéo khung quanh vùng bạn muốn.';
+      'Tap bubble → Quét vùng. Kéo khung quanh đúng phần bạn muốn dịch.';
 
   @override
-  String get guideInputShareTitle => 'Menu Share';
+  String get guideInputShareTitle => 'Từ nút Share (chia sẻ)';
 
   @override
   String get guideInputShareDesc =>
-      'Trong app bất kỳ: chọn text → Share → TransKey.';
+      'Trong app bất kỳ: chọn text → tap Share → chọn TransKey.';
 
   @override
   String guideInputMenuTitle(String feature) {
-    return 'Menu chọn text → TransKey: $feature';
+    return 'Từ menu chọn text → TransKey: $feature';
   }
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'Long-press text → ⋮ → TransKey: $feature.';
+    return 'Khi bạn chọn text trong app, popup Copy/Share hiện ra. Tap ⋮ để xem thêm, rồi chọn TransKey: $feature.';
   }
 
   @override
-  String get guideReplyA11yTitle => 'Trợ năng (tùy chọn)';
+  String get guideReplyA11yTitle => 'Trợ năng — tùy chọn, chỉ để tự động dán';
 
   @override
   String get guideReplyA11yBody =>
-      'Bật Trợ năng: kết quả tự động dán vào ô nhập đang focus sau khi sinh xong.\n\nKhông bật Trợ năng: kết quả copy vào clipboard. Bạn dán tay vào nơi cần.';
+      'Nếu bật Trợ năng cho TransKey, câu trả lời được dán thẳng vào ô chat bạn đang gõ. Không cần thao tác thêm.\n\nNếu bạn không muốn bật, câu trả lời tự copy sẵn cho bạn — chỉ cần long-press ô chat rồi tap Dán.';
 
   @override
   String get appPermissions => 'Quyền ứng dụng';
@@ -996,4 +996,20 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get permFinishedCheck => 'Đã xong — kiểm tra';
+
+  @override
+  String get voiceTooltip => 'Nói để nhập';
+
+  @override
+  String get voiceListening => 'Đang nghe…';
+
+  @override
+  String get voicePermDenied => 'Đã từ chối quyền micro';
+
+  @override
+  String get voiceUnsupported => 'Thiết bị này không hỗ trợ nhập giọng nói';
+
+  @override
+  String get voicePickSourceLang =>
+      'Chọn ngôn ngữ nguồn trước — nhập giọng nói không tự đoán được';
 }

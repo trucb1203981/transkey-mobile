@@ -866,11 +866,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guideIntroTitle =>
-      'Keine Bedienungshilfen nötig zum Erfassen von Text.';
+      'Keine besonderen Berechtigungen zum Erfassen von Text erforderlich.';
 
   @override
   String get guideIntroBody =>
-      'Jede Funktion liest Quelltext über eine ausdrückliche Benutzeraktion — Kopieren, OCR, Bereichsauswahl, System-Teilen oder Textauswahlmenü. Bedienungshilfen werden nur für eine optionale Annehmlichkeit verwendet: Reply-Ergebnisse automatisch in das fokussierte Eingabefeld einfügen.';
+      'Jede Funktion liest Text erst, nachdem du etwas bewusst tust — Text kopieren, Bildschirm scannen, einen Bereich auswählen, die System-Teilen-Schaltfläche benutzen oder TransKey aus dem Textauswahlmenü antippen. Bedienungshilfen werden nur dazu verwendet, das Reply-Ergebnis direkt in den Chat einzufügen, in dem du gerade tippst.';
 
   @override
   String get guideFeatureTranslate => 'Übersetzen';
@@ -907,49 +907,50 @@ class AppLocalizationsDe extends AppLocalizations {
       'Antwortvorschlag in der Zielsprache erzeugen';
 
   @override
-  String get guideInputCopyTitle => 'Text kopieren + Bubble tippen';
+  String get guideInputCopyTitle => 'Text kopieren, dann die Bubble tippen';
 
   @override
   String get guideInputCopyDesc =>
       'Text in einer beliebigen App kopieren, dann die schwebende Bubble tippen und die Aktion wählen.';
 
   @override
-  String get guideInputOcrTitle => 'Bildschirmscan (OCR)';
+  String get guideInputOcrTitle => 'Ganzen Bildschirm scannen';
 
   @override
   String get guideInputOcrDesc =>
-      'Bubble → Bildschirmscan. Erfasst einen Screenshot, führt OCR auf dem Gerät aus.';
+      'Bubble tippen → Bildschirm scannen. TransKey macht einen Screenshot und liest den Text darauf.';
 
   @override
-  String get guideInputRegionTitle => 'Bereichsauswahl';
+  String get guideInputRegionTitle => 'Nur einen Teil des Bildschirms scannen';
 
   @override
   String get guideInputRegionDesc =>
-      'Bubble → Ausgewählten Bereich übersetzen. Rahmen um den gewünschten Bereich ziehen.';
+      'Bubble tippen → Bereich scannen. Rahmen um genau den Teil ziehen, den du übersetzt haben möchtest.';
 
   @override
-  String get guideInputShareTitle => 'Teilen-Menü';
+  String get guideInputShareTitle => 'Über die Teilen-Schaltfläche';
 
   @override
   String get guideInputShareDesc =>
-      'In jeder App: Text auswählen → Teilen → TransKey.';
+      'In einer beliebigen App: Text auswählen → Teilen tippen → TransKey wählen.';
 
   @override
   String guideInputMenuTitle(String feature) {
-    return 'Auswahlmenü → TransKey: $feature';
+    return 'Aus dem Textauswahlmenü → TransKey: $feature';
   }
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'Text lange drücken → Überlauf ⋮ → TransKey: $feature.';
+    return 'Text in einer beliebigen App auswählen — das Popup mit Kopieren/Teilen erscheint. ⋮ tippen für mehr Optionen, dann TransKey: $feature wählen.';
   }
 
   @override
-  String get guideReplyA11yTitle => 'Bedienungshilfen (optional)';
+  String get guideReplyA11yTitle =>
+      'Bedienungshilfen — optional, nur für automatisches Einfügen';
 
   @override
   String get guideReplyA11yBody =>
-      'Bedienungshilfen AN: Das Ergebnis wird nach der Erzeugung direkt in das fokussierte Eingabefeld eingefügt.\n\nBedienungshilfen AUS: Das Ergebnis wird in die Zwischenablage kopiert. Manuell einfügen, wo benötigt.';
+      'Wenn Bedienungshilfen für TransKey aktiviert ist, wird deine Antwort direkt in den Chat eingefügt, in dem du tippst. Kein zusätzlicher Schritt.\n\nWenn du sie lieber nicht aktivieren möchtest, wird die Antwort für dich kopiert — einfach den Chat lange drücken und Einfügen tippen.';
 
   @override
   String get appPermissions => 'App-Berechtigungen';
@@ -1010,4 +1011,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get permFinishedCheck => 'Fertig — prüfen';
+
+  @override
+  String get voiceTooltip => 'Zum Tippen sprechen';
+
+  @override
+  String get voiceListening => 'Höre zu…';
+
+  @override
+  String get voicePermDenied => 'Mikrofonberechtigung verweigert';
+
+  @override
+  String get voiceUnsupported =>
+      'Spracheingabe auf diesem Gerät nicht verfügbar';
+
+  @override
+  String get voicePickSourceLang =>
+      'Bitte zuerst Quellsprache wählen — Spracheingabe kann nicht automatisch erkennen';
 }

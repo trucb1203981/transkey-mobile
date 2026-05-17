@@ -5,6 +5,8 @@
     <string name="bubble_choose_action">选择操作</string>
     <string name="bubble_need_text">先选中或复制文本，然后选择下方操作。</string>
     <string name="bubble_show_last_result">显示最近结果</string>
+    <string name="bubble_show_more">展开</string>
+    <string name="bubble_show_less">收起</string>
     <string name="bubble_type_text">直接输入文本</string>
     <string name="bubble_voice">语音输入</string>
     <string name="bubble_voice_listening">正在聆听…</string>
@@ -16,18 +18,18 @@
     <string name="bubble_voice_unsupported">此设备不支持语音识别</string>
     <string name="bubble_voice_lang_missing">尚未安装此语言的语音包。请前往 设置 → 语言和输入 → 语音 → 下载离线包。</string>
 
-    <string name="bubble_scan_screen">扫描屏幕 (OCR)</string>
+    <string name="bubble_scan_screen">扫描屏幕</string>
     <string name="bubble_scan_disclosure_title">TransKey 将捕获此屏幕</string>
-    <string name="bubble_scan_disclosure_body">仅在本机捕获一帧画面，使用本机 OCR (Google ML Kit) 识别文本后立即丢弃。不会上传，不会保存。</string>
+    <string name="bubble_scan_disclosure_body">在本机捕获一张屏幕截图,直接在设备上识别其中的文字后立即丢弃图像。不会上传,不会保存。</string>
     <string name="bubble_scan_continue">继续</string>
     <string name="bubble_scan_processing">正在读取屏幕…</string>
-    <string name="bubble_scan_empty">此屏幕未找到文本</string>
-    <string name="bubble_scan_perm_denied">OCR 需要屏幕捕获权限</string>
+    <string name="bubble_scan_empty">此屏幕未找到文字</string>
+    <string name="bubble_scan_perm_denied">扫描屏幕需要屏幕捕获权限</string>
     <string name="bubble_scan_notification_title">正在读取屏幕用于翻译</string>
     <string name="bubble_scan_notification_body">在本机捕获并处理一帧画面</string>
     <string name="bubble_scan_stop">停止屏幕捕获</string>
     <string name="bubble_lens_translating">正在翻译屏幕…</string>
-    <string name="bubble_lens_region">翻译选定区域</string>
+    <string name="bubble_lens_region">扫描区域</string>
     <string name="bubble_lens_region_hint">拖动以选择要翻译的区域</string>
     <string name="bubble_lens_region_confirm">翻译此区域</string>
     <string name="bubble_input_hint">输入要翻译的文本…</string>

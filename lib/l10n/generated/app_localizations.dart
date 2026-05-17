@@ -1703,13 +1703,13 @@ abstract class AppLocalizations {
   /// No description provided for @guideIntroTitle.
   ///
   /// In en, this message translates to:
-  /// **'No Accessibility required for capturing text.'**
+  /// **'No special permissions needed to capture text.'**
   String get guideIntroTitle;
 
   /// No description provided for @guideIntroBody.
   ///
   /// In en, this message translates to:
-  /// **'Every feature reads source text via an explicit user action — Copy, OCR, Region select, system Share, or the text-selection menu. Accessibility is only used for one optional convenience: auto-pasting a Reply back into the focused input field.'**
+  /// **'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you\'re typing in.'**
   String get guideIntroBody;
 
   /// No description provided for @guideFeatureTranslate.
@@ -1775,7 +1775,7 @@ abstract class AppLocalizations {
   /// No description provided for @guideInputCopyTitle.
   ///
   /// In en, this message translates to:
-  /// **'Copy text + tap bubble'**
+  /// **'Copy text, then tap the bubble'**
   String get guideInputCopyTitle;
 
   /// No description provided for @guideInputCopyDesc.
@@ -1787,61 +1787,61 @@ abstract class AppLocalizations {
   /// No description provided for @guideInputOcrTitle.
   ///
   /// In en, this message translates to:
-  /// **'Scan screen (OCR)'**
+  /// **'Scan the whole screen'**
   String get guideInputOcrTitle;
 
   /// No description provided for @guideInputOcrDesc.
   ///
   /// In en, this message translates to:
-  /// **'Tap bubble → Scan screen. Captures one screenshot, runs on-device OCR.'**
+  /// **'Tap the bubble → Scan screen. TransKey takes one screenshot and reads the text on it.'**
   String get guideInputOcrDesc;
 
   /// No description provided for @guideInputRegionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Region select'**
+  /// **'Scan part of the screen'**
   String get guideInputRegionTitle;
 
   /// No description provided for @guideInputRegionDesc.
   ///
   /// In en, this message translates to:
-  /// **'Tap bubble → Translate selected area. Drag a box around the region you want.'**
+  /// **'Tap the bubble → Scan area. Drag a box around just the part you want translated.'**
   String get guideInputRegionDesc;
 
   /// No description provided for @guideInputShareTitle.
   ///
   /// In en, this message translates to:
-  /// **'Share menu'**
+  /// **'From the Share button'**
   String get guideInputShareTitle;
 
   /// No description provided for @guideInputShareDesc.
   ///
   /// In en, this message translates to:
-  /// **'In any app: select text → Share → TransKey.'**
+  /// **'Inside any app, select text → tap Share → choose TransKey.'**
   String get guideInputShareDesc;
 
   /// No description provided for @guideInputMenuTitle.
   ///
   /// In en, this message translates to:
-  /// **'Selection menu → TransKey: {feature}'**
+  /// **'From the text-selection menu → TransKey: {feature}'**
   String guideInputMenuTitle(String feature);
 
   /// No description provided for @guideInputMenuDesc.
   ///
   /// In en, this message translates to:
-  /// **'Long-press text → overflow ⋮ → TransKey: {feature}.'**
+  /// **'Select text in any app — the popup with Copy/Share appears. Tap ⋮ for more options, then pick TransKey: {feature}.'**
   String guideInputMenuDesc(String feature);
 
   /// No description provided for @guideReplyA11yTitle.
   ///
   /// In en, this message translates to:
-  /// **'Accessibility (optional)'**
+  /// **'Accessibility — optional, only for auto-paste'**
   String get guideReplyA11yTitle;
 
   /// No description provided for @guideReplyA11yBody.
   ///
   /// In en, this message translates to:
-  /// **'With Accessibility ON: the result is pasted directly into the currently-focused text field after generation.\n\nWith Accessibility OFF: the result is copied to your clipboard. Paste it manually wherever you need.'**
+  /// **'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat input you\'re typing in. No extra step.\n\nIf you\'d rather not turn it on, the reply is copied for you — just long-press the chat input and tap Paste.'**
   String get guideReplyA11yBody;
 
   /// No description provided for @appPermissions.
@@ -1951,6 +1951,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I\'ve finished — check'**
   String get permFinishedCheck;
+
+  /// No description provided for @voiceTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak to type'**
+  String get voiceTooltip;
+
+  /// No description provided for @voiceListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening…'**
+  String get voiceListening;
+
+  /// No description provided for @voicePermDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission denied'**
+  String get voicePermDenied;
+
+  /// No description provided for @voiceUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input not available on this device'**
+  String get voiceUnsupported;
+
+  /// No description provided for @voicePickSourceLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a source language first — voice input can\'t auto-detect'**
+  String get voicePickSourceLang;
 }
 
 class _AppLocalizationsDelegate

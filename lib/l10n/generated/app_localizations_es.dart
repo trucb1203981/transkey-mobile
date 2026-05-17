@@ -865,11 +865,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get guideIntroTitle =>
-      'No se requiere Accesibilidad para capturar texto.';
+      'No se necesita ningún permiso especial para capturar texto.';
 
   @override
   String get guideIntroBody =>
-      'Cada función lee el texto fuente mediante una acción explícita del usuario — Copiar, OCR, Selección de región, Compartir del sistema, o menú de selección de texto. La Accesibilidad solo se usa para una comodidad opcional: pegar automáticamente una Respuesta en el campo de entrada enfocado.';
+      'Cada función solo lee el texto cuando haces algo a propósito — copiar texto, escanear la pantalla, seleccionar un área, usar el botón Compartir del sistema, o tocar TransKey desde el menú de selección. La Accesibilidad se usa solo para que el resultado de Reply se pegue directamente en el chat en el que estás escribiendo.';
 
   @override
   String get guideFeatureTranslate => 'Traducir';
@@ -906,49 +906,50 @@ class AppLocalizationsEs extends AppLocalizations {
       'Generar una sugerencia de respuesta en el idioma destino';
 
   @override
-  String get guideInputCopyTitle => 'Copiar texto + tocar burbuja';
+  String get guideInputCopyTitle => 'Copiar texto, luego tocar la burbuja';
 
   @override
   String get guideInputCopyDesc =>
       'Copia texto en cualquier app, luego toca la burbuja flotante y elige la acción.';
 
   @override
-  String get guideInputOcrTitle => 'Escaneo de pantalla (OCR)';
+  String get guideInputOcrTitle => 'Escanear toda la pantalla';
 
   @override
   String get guideInputOcrDesc =>
-      'Burbuja → Escaneo de pantalla. Captura una imagen, ejecuta OCR en el dispositivo.';
+      'Toca la burbuja → Escanear pantalla. TransKey toma una captura y lee el texto que aparece.';
 
   @override
-  String get guideInputRegionTitle => 'Selección de región';
+  String get guideInputRegionTitle => 'Escanear parte de la pantalla';
 
   @override
   String get guideInputRegionDesc =>
-      'Burbuja → Traducir área seleccionada. Arrastra un recuadro alrededor del área deseada.';
+      'Toca la burbuja → Escanear área. Arrastra un recuadro alrededor de lo que quieras traducir.';
 
   @override
-  String get guideInputShareTitle => 'Menú Compartir';
+  String get guideInputShareTitle => 'Desde el botón Compartir';
 
   @override
   String get guideInputShareDesc =>
-      'En cualquier app: selecciona texto → Compartir → TransKey.';
+      'En cualquier app: selecciona texto → toca Compartir → elige TransKey.';
 
   @override
   String guideInputMenuTitle(String feature) {
-    return 'Menú de selección → TransKey: $feature';
+    return 'Desde el menú de selección → TransKey: $feature';
   }
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'Mantén pulsado el texto → desbordamiento ⋮ → TransKey: $feature.';
+    return 'Selecciona texto en cualquier app — aparece el menú Copiar/Compartir. Toca ⋮ para más opciones, y elige TransKey: $feature.';
   }
 
   @override
-  String get guideReplyA11yTitle => 'Accesibilidad (opcional)';
+  String get guideReplyA11yTitle =>
+      'Accesibilidad — opcional, solo para pegado automático';
 
   @override
   String get guideReplyA11yBody =>
-      'Accesibilidad activada: el resultado se pega directamente en el campo enfocado tras la generación.\n\nAccesibilidad desactivada: el resultado se copia al portapapeles. Pégalo manualmente donde necesites.';
+      'Si Accesibilidad está activada para TransKey, tu respuesta se pega directamente en el chat en el que estás escribiendo. Sin pasos extra.\n\nSi prefieres no activarla, la respuesta se copia para ti — solo mantén pulsado el chat y toca Pegar.';
 
   @override
   String get appPermissions => 'Permisos de la app';
@@ -1009,4 +1010,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get permFinishedCheck => 'He terminado — comprobar';
+
+  @override
+  String get voiceTooltip => 'Hablar para escribir';
+
+  @override
+  String get voiceListening => 'Escuchando…';
+
+  @override
+  String get voicePermDenied => 'Permiso de micrófono denegado';
+
+  @override
+  String get voiceUnsupported =>
+      'Entrada de voz no disponible en este dispositivo';
+
+  @override
+  String get voicePickSourceLang =>
+      'Selecciona primero un idioma de origen — la entrada de voz no puede auto-detectar';
 }

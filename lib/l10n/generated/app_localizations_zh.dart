@@ -832,11 +832,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get guideSubtitle => '每个功能可用的所有文本输入方式';
 
   @override
-  String get guideIntroTitle => '捕获文本无需启用辅助功能。';
+  String get guideIntroTitle => '捕获文本无需开启任何特殊权限。';
 
   @override
   String get guideIntroBody =>
-      '每个功能都通过明确的用户操作读取源文本 — 复制、OCR、区域选择、系统分享或文本选择菜单。辅助功能仅用于一项可选便利:将 Reply 结果直接粘贴到当前聚焦的输入框。';
+      '所有功能仅在你主动操作后才读取内容 — 复制文本、扫描屏幕、选取区域、使用系统分享按钮,或从文本选择菜单点 TransKey。辅助功能只用于把 Reply 结果直接粘贴到你正在输入的聊天框。';
 
   @override
   String get guideFeatureTranslate => '翻译';
@@ -869,45 +869,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get guideFeatureReplySubtitle => '用目标语言生成回复建议';
 
   @override
-  String get guideInputCopyTitle => '复制文本 + 点击气泡';
+  String get guideInputCopyTitle => '复制文本后点击气泡';
 
   @override
   String get guideInputCopyDesc => '在任意应用复制文本,然后点击悬浮气泡并选择操作。';
 
   @override
-  String get guideInputOcrTitle => '屏幕扫描 (OCR)';
+  String get guideInputOcrTitle => '扫描整个屏幕';
 
   @override
-  String get guideInputOcrDesc => '点击气泡 → 屏幕扫描。捕获一帧截图,本机运行 OCR。';
+  String get guideInputOcrDesc => '点击气泡 → 扫描屏幕。TransKey 截取一张图,读取上面的文字。';
 
   @override
-  String get guideInputRegionTitle => '区域选择';
+  String get guideInputRegionTitle => '扫描屏幕一部分';
 
   @override
-  String get guideInputRegionDesc => '点击气泡 → 翻译选定区域。拖动方框圈出你想要的区域。';
+  String get guideInputRegionDesc => '点击气泡 → 扫描区域。拖动方框圈出你想翻译的部分。';
 
   @override
-  String get guideInputShareTitle => '分享菜单';
+  String get guideInputShareTitle => '从分享按钮';
 
   @override
-  String get guideInputShareDesc => '在任意应用:选中文本 → 分享 → TransKey。';
+  String get guideInputShareDesc => '在任意应用:选中文本 → 点击分享 → 选择 TransKey。';
 
   @override
   String guideInputMenuTitle(String feature) {
-    return '选择菜单 → TransKey: $feature';
+    return '从文本选择菜单 → TransKey: $feature';
   }
 
   @override
   String guideInputMenuDesc(String feature) {
-    return '长按文本 → 溢出菜单 ⋮ → TransKey: $feature。';
+    return '在任意应用选中文本,出现 复制/分享 弹窗。点 ⋮ 查看更多,然后选 TransKey: $feature。';
   }
 
   @override
-  String get guideReplyA11yTitle => '辅助功能 (可选)';
+  String get guideReplyA11yTitle => '辅助功能 — 可选,仅用于自动粘贴';
 
   @override
   String get guideReplyA11yBody =>
-      '启用辅助功能:生成结果后直接粘贴到当前聚焦的输入框。\n\n关闭辅助功能:结果会复制到剪贴板。你需要手动粘贴到目标位置。';
+      '如果为 TransKey 开启辅助功能,你的回复会直接粘贴到正在输入的聊天框,无需额外步骤。\n\n如果不想开启,回复会自动复制好 — 长按聊天框点 粘贴 即可。';
 
   @override
   String get appPermissions => '应用权限';
@@ -964,4 +964,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get permFinishedCheck => '已完成 — 检查';
+
+  @override
+  String get voiceTooltip => '语音输入';
+
+  @override
+  String get voiceListening => '正在聆听…';
+
+  @override
+  String get voicePermDenied => '麦克风权限被拒绝';
+
+  @override
+  String get voiceUnsupported => '此设备不支持语音输入';
+
+  @override
+  String get voicePickSourceLang => '请先选择源语言 — 语音输入无法自动检测';
 }

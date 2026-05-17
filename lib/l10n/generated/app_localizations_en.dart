@@ -860,11 +860,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get guideSubtitle => 'All the ways to capture text for each feature';
 
   @override
-  String get guideIntroTitle => 'No Accessibility required for capturing text.';
+  String get guideIntroTitle =>
+      'No special permissions needed to capture text.';
 
   @override
   String get guideIntroBody =>
-      'Every feature reads source text via an explicit user action — Copy, OCR, Region select, system Share, or the text-selection menu. Accessibility is only used for one optional convenience: auto-pasting a Reply back into the focused input field.';
+      'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you\'re typing in.';
 
   @override
   String get guideFeatureTranslate => 'Translate';
@@ -902,49 +903,50 @@ class AppLocalizationsEn extends AppLocalizations {
       'Generate a reply suggestion in the target language';
 
   @override
-  String get guideInputCopyTitle => 'Copy text + tap bubble';
+  String get guideInputCopyTitle => 'Copy text, then tap the bubble';
 
   @override
   String get guideInputCopyDesc =>
       'Copy any text in any app, then tap the floating bubble and pick the action.';
 
   @override
-  String get guideInputOcrTitle => 'Scan screen (OCR)';
+  String get guideInputOcrTitle => 'Scan the whole screen';
 
   @override
   String get guideInputOcrDesc =>
-      'Tap bubble → Scan screen. Captures one screenshot, runs on-device OCR.';
+      'Tap the bubble → Scan screen. TransKey takes one screenshot and reads the text on it.';
 
   @override
-  String get guideInputRegionTitle => 'Region select';
+  String get guideInputRegionTitle => 'Scan part of the screen';
 
   @override
   String get guideInputRegionDesc =>
-      'Tap bubble → Translate selected area. Drag a box around the region you want.';
+      'Tap the bubble → Scan area. Drag a box around just the part you want translated.';
 
   @override
-  String get guideInputShareTitle => 'Share menu';
+  String get guideInputShareTitle => 'From the Share button';
 
   @override
   String get guideInputShareDesc =>
-      'In any app: select text → Share → TransKey.';
+      'Inside any app, select text → tap Share → choose TransKey.';
 
   @override
   String guideInputMenuTitle(String feature) {
-    return 'Selection menu → TransKey: $feature';
+    return 'From the text-selection menu → TransKey: $feature';
   }
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'Long-press text → overflow ⋮ → TransKey: $feature.';
+    return 'Select text in any app — the popup with Copy/Share appears. Tap ⋮ for more options, then pick TransKey: $feature.';
   }
 
   @override
-  String get guideReplyA11yTitle => 'Accessibility (optional)';
+  String get guideReplyA11yTitle =>
+      'Accessibility — optional, only for auto-paste';
 
   @override
   String get guideReplyA11yBody =>
-      'With Accessibility ON: the result is pasted directly into the currently-focused text field after generation.\n\nWith Accessibility OFF: the result is copied to your clipboard. Paste it manually wherever you need.';
+      'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat input you\'re typing in. No extra step.\n\nIf you\'d rather not turn it on, the reply is copied for you — just long-press the chat input and tap Paste.';
 
   @override
   String get appPermissions => 'App permissions';
@@ -1004,4 +1006,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get permFinishedCheck => 'I\'ve finished — check';
+
+  @override
+  String get voiceTooltip => 'Speak to type';
+
+  @override
+  String get voiceListening => 'Listening…';
+
+  @override
+  String get voicePermDenied => 'Microphone permission denied';
+
+  @override
+  String get voiceUnsupported => 'Voice input not available on this device';
+
+  @override
+  String get voicePickSourceLang =>
+      'Pick a source language first — voice input can\'t auto-detect';
 }

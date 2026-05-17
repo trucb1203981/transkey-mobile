@@ -11,6 +11,8 @@
     <string name="bubble_accessibility_guide_legacy">Find TransKey in the list → toggle \"Use TransKey\" ON → tap Allow.</string>
     <string name="bubble_accessibility_guide_a13">Android 13+ blocks sideloaded Accessibility by default:\n1. Tap ⋮ (top-right) → \"Allow restricted settings\"\n2. Go back → Accessibility → TransKey → toggle ON</string>
     <string name="bubble_show_last_result">Show last result</string>
+    <string name="bubble_show_more">Show more</string>
+    <string name="bubble_show_less">Show less</string>
     <string name="bubble_type_text">Type your own text</string>
     <string name="bubble_paste_a11y_required">Enable Accessibility to paste replies directly into the focused input field.</string>
 
@@ -42,19 +44,19 @@
     <string name="bubble_voice_unsupported">Voice recognition not available on this device</string>
     <string name="bubble_voice_lang_missing">Voice pack not installed for this language. Open Settings → Languages &amp; Input → Voice → download offline pack.</string>
 
-    <!-- "Scan screen" / OCR strings -->
-    <string name="bubble_scan_screen">Scan screen (OCR)</string>
+    <!-- Scan-screen flow (formerly labelled "OCR" — simplified for non-technical users) -->
+    <string name="bubble_scan_screen">Scan screen</string>
     <string name="bubble_scan_disclosure_title">TransKey will capture this screen</string>
-    <string name="bubble_scan_disclosure_body">A single frame is captured on-device, scanned for text with on-device OCR (Google ML Kit), then discarded. Nothing is uploaded or saved.</string>
+    <string name="bubble_scan_disclosure_body">A single screenshot is taken and text on it is read right on your device, then the image is discarded. Nothing is uploaded or saved.</string>
     <string name="bubble_scan_continue">Continue</string>
     <string name="bubble_scan_processing">Reading screen…</string>
     <string name="bubble_scan_empty">No text found on this screen</string>
-    <string name="bubble_scan_perm_denied">Screen capture permission needed for OCR</string>
+    <string name="bubble_scan_perm_denied">Screen capture permission needed to scan screen</string>
     <string name="bubble_scan_notification_title">Reading screen for translation</string>
     <string name="bubble_scan_notification_body">A single frame is being captured and processed on-device</string>
     <string name="bubble_scan_stop">Stop screen capture</string>
     <string name="bubble_lens_translating">Translating screen…</string>
-    <string name="bubble_lens_region">Translate selected area</string>
+    <string name="bubble_lens_region">Scan area</string>
     <string name="bubble_lens_region_hint">Drag to select the area to translate</string>
     <string name="bubble_lens_region_confirm">Translate this area</string>
     <string name="bubble_input_hint">Type text to translate…</string>

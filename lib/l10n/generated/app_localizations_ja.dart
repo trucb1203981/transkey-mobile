@@ -843,11 +843,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get guideSubtitle => '各機能でテキストを取り込むあらゆる方法';
 
   @override
-  String get guideIntroTitle => 'テキスト取得にアクセシビリティは不要です。';
+  String get guideIntroTitle => 'テキスト取得に特別な権限は不要です。';
 
   @override
   String get guideIntroBody =>
-      'すべての機能は明示的なユーザー操作 — コピー、OCR、領域選択、システム共有、テキスト選択メニュー — を通じて元テキストを読み取ります。アクセシビリティは1つの便利機能(Reply の結果をフォーカス中の入力欄に直接ペースト)にのみ使われます。';
+      'どの機能も、あなたが意図的に操作したときだけテキストを読み取ります — コピー、画面のスキャン、範囲選択、システムの共有、またはテキスト選択メニューから TransKey をタップ。アクセシビリティは、入力中のチャット欄に Reply の結果を直接ペーストするためにのみ使われます。';
 
   @override
   String get guideFeatureTranslate => '翻訳';
@@ -880,45 +880,46 @@ class AppLocalizationsJa extends AppLocalizations {
   String get guideFeatureReplySubtitle => 'ターゲット言語で返信案を生成';
 
   @override
-  String get guideInputCopyTitle => 'テキストをコピー + バブルをタップ';
+  String get guideInputCopyTitle => 'テキストをコピーしてバブルをタップ';
 
   @override
   String get guideInputCopyDesc => '任意のアプリでテキストをコピーし、フローティングバブルをタップしてアクションを選択。';
 
   @override
-  String get guideInputOcrTitle => '画面スキャン (OCR)';
+  String get guideInputOcrTitle => '画面全体をスキャン';
 
   @override
-  String get guideInputOcrDesc => 'バブル → 画面スキャン。スクリーンショットを1枚撮り、端末内 OCR を実行。';
+  String get guideInputOcrDesc =>
+      'バブル → 画面スキャン。TransKey がスクリーンショットを 1 枚撮り、その上の文字を読み取ります。';
 
   @override
-  String get guideInputRegionTitle => '領域選択';
+  String get guideInputRegionTitle => '画面の一部だけスキャン';
 
   @override
-  String get guideInputRegionDesc => 'バブル → 選択範囲を翻訳。希望の領域を四角でドラッグ。';
+  String get guideInputRegionDesc => 'バブル → 範囲をスキャン。翻訳したい部分だけを四角で囲んでください。';
 
   @override
-  String get guideInputShareTitle => '共有メニュー';
+  String get guideInputShareTitle => '共有ボタンから';
 
   @override
-  String get guideInputShareDesc => '任意のアプリ:テキストを選択 → 共有 → TransKey。';
+  String get guideInputShareDesc => '任意のアプリ:テキストを選択 → 共有をタップ → TransKey を選択。';
 
   @override
   String guideInputMenuTitle(String feature) {
-    return '選択メニュー → TransKey: $feature';
+    return 'テキスト選択メニューから → TransKey: $feature';
   }
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'テキストを長押し → オーバーフロー ⋮ → TransKey: $feature。';
+    return 'アプリでテキストを選択するとコピー/共有のポップアップが出ます。⋮ をタップしてその他のオプションから TransKey: $feature を選択。';
   }
 
   @override
-  String get guideReplyA11yTitle => 'アクセシビリティ(任意)';
+  String get guideReplyA11yTitle => 'アクセシビリティ — 任意、自動ペースト用のみ';
 
   @override
   String get guideReplyA11yBody =>
-      'アクセシビリティON:生成された結果はフォーカス中の入力欄に直接ペーストされます。\n\nアクセシビリティOFF:結果はクリップボードにコピーされます。必要な場所で手動ペーストしてください。';
+      'TransKey にアクセシビリティを有効にすれば、返信が入力中のチャット欄に直接ペーストされます。追加操作不要。\n\n有効にしたくなければ、返信は自動でコピーされます — チャット欄を長押しして「貼り付け」をタップしてください。';
 
   @override
   String get appPermissions => 'アプリの権限';
@@ -977,4 +978,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get permFinishedCheck => '完了 — 確認';
+
+  @override
+  String get voiceTooltip => '音声入力';
+
+  @override
+  String get voiceListening => '聞き取り中…';
+
+  @override
+  String get voicePermDenied => 'マイクの権限が拒否されました';
+
+  @override
+  String get voiceUnsupported => 'この端末では音声入力を利用できません';
+
+  @override
+  String get voicePickSourceLang => '先に元の言語を選択してください — 音声入力は自動検出できません';
 }

@@ -5,6 +5,8 @@
     <string name="bubble_choose_action">Elegir acción</string>
     <string name="bubble_need_text">Seleccione o copie texto primero, luego elija una acción.</string>
     <string name="bubble_show_last_result">Mostrar último resultado</string>
+    <string name="bubble_show_more">Mostrar más</string>
+    <string name="bubble_show_less">Mostrar menos</string>
     <string name="bubble_type_text">Escribir texto propio</string>
     <string name="bubble_voice">Entrada por voz</string>
     <string name="bubble_voice_listening">Escuchando…</string>
@@ -16,18 +18,18 @@
     <string name="bubble_voice_unsupported">Reconocimiento de voz no disponible en este dispositivo</string>
     <string name="bubble_voice_lang_missing">Paquete de voz no instalado para este idioma. Vaya a Ajustes → Idiomas y entrada → Voz → descargar paquete offline.</string>
 
-    <string name="bubble_scan_screen">Escanear pantalla (OCR)</string>
+    <string name="bubble_scan_screen">Escanear pantalla</string>
     <string name="bubble_scan_disclosure_title">TransKey capturará esta pantalla</string>
-    <string name="bubble_scan_disclosure_body">Se captura un solo fotograma en el dispositivo, se analiza el texto con OCR en el dispositivo (Google ML Kit) y luego se descarta. Nada se sube ni se guarda.</string>
+    <string name="bubble_scan_disclosure_body">Se toma una captura de pantalla y el texto se lee directamente en tu dispositivo, luego se descarta la imagen. Nada se sube ni se guarda.</string>
     <string name="bubble_scan_continue">Continuar</string>
     <string name="bubble_scan_processing">Leyendo pantalla…</string>
     <string name="bubble_scan_empty">No se encontró texto en esta pantalla</string>
-    <string name="bubble_scan_perm_denied">Se necesita permiso de captura de pantalla para OCR</string>
+    <string name="bubble_scan_perm_denied">Se necesita permiso de captura de pantalla para escanear</string>
     <string name="bubble_scan_notification_title">Leyendo pantalla para traducción</string>
     <string name="bubble_scan_notification_body">Se captura y procesa un fotograma único en el dispositivo</string>
     <string name="bubble_scan_stop">Detener captura de pantalla</string>
     <string name="bubble_lens_translating">Traduciendo pantalla…</string>
-    <string name="bubble_lens_region">Traducir área seleccionada</string>
+    <string name="bubble_lens_region">Escanear área</string>
     <string name="bubble_lens_region_hint">Arrastre para seleccionar el área a traducir</string>
     <string name="bubble_lens_region_confirm">Traducir esta área</string>
     <string name="bubble_input_hint">Escriba texto para traducir…</string>

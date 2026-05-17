@@ -30,10 +30,14 @@ dependencies:
   # Crypto & Device
   crypto: ^3.0.3
   device_info_plus: ^10.0.0
-  package_info_plus: ^6.0.0
+  package_info_plus: ^9.0.1
 
   # TTS
   flutter_tts: ^4.0.0
+
+  # Speech-to-text (mic input on home screen)
+  speech_to_text: ^7.3.0
+  permission_handler: ^11.3.0
 
   # Deep links
   app_links: ^6.3.0
