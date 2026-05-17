@@ -80,11 +80,65 @@ class LensOverlayView(
      */
     private val expandedRect = arrayOfNulls<RectF>(items.size)
 
+    /**
+     * Per-item bitmap-space upper bound on how tall the expanded white
+     * card may grow before it would crash into the next OCR block in the
+     * same column. Computed once in [computeExpansionLimits] and reused
+     * every frame; cleared when the toggle invalidates the cache.
+     *
+     * The expand-downward behaviour without this limit was painting CJK→
+     * Latin translations on top of the NEXT message's translation, so
+     * users saw two stacked lens cards in the same screen region (the
+     * lower one's text peeked out from under the upper one's bottom edge).
+     */
+    private val maxExpandPxBmp = IntArray(items.size)
+
     private val srcDrawDest = RectF()  // reused per draw call
 
     init {
         setBackgroundColor(Color.parseColor("#CC000000"))
         isClickable = true
+        computeExpansionLimits()
+    }
+
+    /**
+     * For every block, find the nearest block immediately below that
+     * shares any horizontal extent (i.e., is in the same column), then
+     * record `nextBelow.top - thisBlock.top` as the cap on how tall this
+     * block's expanded card may grow. Blocks with no neighbour below in
+     * their column fall back to MAX_EXPAND_FACTOR × original height.
+     *
+     * All work is in bitmap-pixel coordinates; the per-frame onDraw scales
+     * it together with everything else.
+     */
+    private fun computeExpansionLimits() {
+        for (i in items.indices) {
+            val a = items[i].bounds
+            var nearestTop = Int.MAX_VALUE
+            for (j in items.indices) {
+                if (j == i) continue
+                val b = items[j].bounds
+                // Same column? Require any horizontal overlap.
+                val horizontallyOverlaps = a.left < b.right && b.left < a.right
+                if (!horizontallyOverlaps) continue
+                // Strictly below the start of A so we don't constrain
+                // against A's own bounds or against a sibling that starts
+                // higher.
+                if (b.top <= a.top) continue
+                if (b.top < nearestTop) nearestTop = b.top
+            }
+            val origH = a.height()
+            val cap = if (nearestTop != Int.MAX_VALUE) {
+                // Leave the smaller of "until next block" or
+                // "MAX_EXPAND_FACTOR × original height". The latter keeps
+                // a tiny chip from blowing up just because the next block
+                // happens to be far below.
+                min(nearestTop - a.top, (origH * MAX_EXPAND_FACTOR).toInt())
+            } else {
+                (origH * MAX_EXPAND_FACTOR).toInt()
+            }
+            maxExpandPxBmp[i] = max(origH, cap)
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -134,10 +188,13 @@ class LensOverlayView(
 
             // Build layout at the "ideal" size for the original box, then
             // grow the rect downward if the translation needs more room.
-            // Cap at MAX_EXPAND_FACTOR so a tiny "OK" badge can't blow up
-            // into a card-sized overlay.
+            // Cap by (a) MAX_EXPAND_FACTOR via the precomputed neighbour-
+            // aware bound — which already stops the card from crashing
+            // into the next block in the same column — and (b) the screen
+            // bottom so we never grow past the visible area.
+            val maxAllowedFromNeighbour = (maxExpandPxBmp[i] * scale - PADDING_PX * 2f).toInt()
             val maxAllowedH = min(
-                (origBlockH * MAX_EXPAND_FACTOR).toInt(),
+                maxAllowedFromNeighbour.coerceAtLeast(origBlockH),
                 (viewH - top - PADDING_PX * 2f).toInt().coerceAtLeast(origBlockH),
             )
             val layout = buildLayout(i, item.translation, blockW, origBlockH, maxAllowedH)
