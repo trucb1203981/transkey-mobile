@@ -176,7 +176,7 @@ object OcrHelper {
                     val box = block.boundingBox ?: continue
                     blocks.add(Block(text, Rect(box)))
                 }
-                callback(blocks)
+                callback(mergeAdjacentBlocks(blocks))
                 recognizer.close()
             }
             .addOnFailureListener { error ->
@@ -184,6 +184,74 @@ object OcrHelper {
                 callback(null)
                 recognizer.close()
             }
+    }
+
+    /**
+     * Glue back together OCR blocks that ML Kit returned as separate
+     * paragraphs but really belong to one sentence wrapped across visual
+     * lines. ML Kit's TextBlock segmentation is conservative — chat
+     * bubble backgrounds, inline emojis, or just narrow text containers
+     * can split a single sentence into two adjacent blocks. Translating
+     * those independently changes the meaning ("I think it will rain" +
+     * "tomorrow." → loses the time-of-event link); the existing CONTEXT
+     * block helps the LLM, but it still has to commit one translation
+     * per OCR block.
+     *
+     * Heuristic — merge B into A when ALL hold:
+     *  - Same column: their horizontal extents overlap by at least 60%
+     *    of the narrower block (avoids merging side-by-side columns).
+     *  - Same vertical neighbourhood: B.top - A.bottom < min line
+     *    height (gap smaller than one line of text means B is the next
+     *    wrapped line, not a new paragraph).
+     *  - A doesn't end with a strong sentence terminator. "。" / "!" /
+     *    "?" / ".\n" suggest A is a complete thought, so we leave B as
+     *    a fresh block even when geometrically close.
+     */
+    private fun mergeAdjacentBlocks(blocks: List<Block>): List<Block> {
+        if (blocks.size < 2) return blocks
+        // Sort by top first (and left as tiebreaker so multi-column
+        // pages still produce a stable reading order).
+        val sorted = blocks.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+        val merged = ArrayList<Block>(sorted.size)
+        merged.add(sorted[0])
+        for (i in 1 until sorted.size) {
+            val next = sorted[i]
+            val current = merged.last()
+            if (shouldMerge(current, next)) {
+                merged[merged.lastIndex] = Block(
+                    text = current.text + "\n" + next.text,
+                    bounds = Rect(
+                        minOf(current.bounds.left, next.bounds.left),
+                        minOf(current.bounds.top, next.bounds.top),
+                        maxOf(current.bounds.right, next.bounds.right),
+                        maxOf(current.bounds.bottom, next.bounds.bottom),
+                    ),
+                )
+            } else {
+                merged.add(next)
+            }
+        }
+        return merged
+    }
+
+    private fun shouldMerge(a: Block, b: Block): Boolean {
+        // Only consider merging when B is below A (or just barely
+        // overlapping its baseline).
+        val verticalGap = b.bounds.top - a.bounds.bottom
+        val lineH = minOf(a.bounds.height(), b.bounds.height())
+        if (verticalGap > lineH) return false
+        if (verticalGap < -(lineH / 2)) return false  // B starts well above A → different paragraphs
+
+        val overlap = minOf(a.bounds.right, b.bounds.right) - maxOf(a.bounds.left, b.bounds.left)
+        if (overlap <= 0) return false
+        val narrower = minOf(a.bounds.width(), b.bounds.width())
+        if (narrower <= 0) return false
+        val overlapRatio = overlap.toFloat() / narrower
+        if (overlapRatio < 0.6f) return false  // side-by-side columns
+
+        val lastChar = a.text.trimEnd().lastOrNull() ?: return true
+        if (lastChar in PARAGRAPH_TERMINATORS) return false
+        return true
     }
 
     /**
@@ -218,6 +286,17 @@ object OcrHelper {
 
     private val PUNCT_CHARS = setOf(
         '.', '!', '?', '…', '。', '！', '？', '،', ';', '；', ':', '：',
+    )
+
+    /**
+     * Characters that indicate the end of a complete thought — when a
+     * block ends with one of these, [mergeAdjacentBlocks] leaves the
+     * next block as its own paragraph even if geometry says they're
+     * close. ":" / "：" intentionally excluded — a line ending with
+     * "Tanaka-san:" usually continues with the message body below.
+     */
+    private val PARAGRAPH_TERMINATORS = setOf(
+        '.', '!', '?', '…', '。', '！', '？',
     )
 
     private fun pickRecognizer(hintLang: String?): TextRecognizer = when (hintLang) {
