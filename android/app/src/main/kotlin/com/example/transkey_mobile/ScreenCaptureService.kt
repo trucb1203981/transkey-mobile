@@ -465,7 +465,15 @@ class ScreenCaptureService : Service() {
         return builder
             .setContentTitle(getString(R.string.bubble_scan_notification_title))
             .setContentText(getString(R.string.bubble_scan_notification_body))
-            .setSmallIcon(R.mipmap.ic_launcher)
+            // R.mipmap.ic_launcher is a colourful launcher icon — Android 11+
+            // silently filters notifications whose small icon isn't a
+            // tintable monochrome image, which made this FGS's persistent
+            // notification invisible in the panel even though it WAS being
+            // posted. Without it the user had no "casting" indicator and
+            // no manual Stop entry point, so the only way out was waiting
+            // for our code to release the projection. Use a system
+            // monochrome drawable (same approach as BubbleService).
+            .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setContentIntent(launchIntent)
             .addAction(0, getString(R.string.bubble_scan_stop), stopIntent)
             .setOngoing(true)
