@@ -356,7 +356,20 @@ class BubbleService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        // System-restart case (intent is null because START_STICKY redelivers
+        // without the original intent). The OS killed us — typically while the
+        // mediaProjection FGS was also alive and the user backgrounded the
+        // app, after which Android reclaimed memory. Re-show the bubble so
+        // the user doesn't have to manually toggle it off and on; we know
+        // they wanted it on because saveBubbleActive(true) was persisted.
+        if (intent == null) {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (prefs.getBoolean(KEY_BUBBLE_ACTIVE, false) && bubbleView == null) {
+                showBubble()
+            }
+            return START_STICKY
+        }
+        when (intent.action) {
             ACTION_STOP -> {
                 stopBubble()
                 return START_NOT_STICKY

@@ -129,11 +129,20 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Floating Bubble Service -->
+        <!-- Floating Bubble Service. specialUse subtype is mandatory on
+             Android 14+ for FOREGROUND_SERVICE_SPECIAL_USE — without the
+             PROPERTY_SPECIAL_USE_FGS_SUBTYPE property the system treats
+             the FGS as misconfigured and aggressively reclaims it when
+             the app is backgrounded (especially while another FGS like
+             mediaProjection is also active). -->
         <service
             android:name=".BubbleService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating-translation-overlay-bubble" />
+        </service>
 
         <!-- Transparent activity to request RECORD_AUDIO at runtime.
              A Service cannot request dangerous permissions directly, so the
