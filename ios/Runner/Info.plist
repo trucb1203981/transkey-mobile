@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>transkey_mobile</string>
+	<string>TransKey</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -73,6 +73,24 @@
 			</array>
 		</dict>
 	</array>
+	<!-- AdMob application ID.
+	     ACTIVE: Google public TEST app ID — works without account
+	     approval, returns fillable test creative. Must match the
+	     ad unit IDs in RewardedAdService (also test units).
+	     PRODUCTION (TransKey iOS — when AdMob account is approved):
+	       ca-app-pub-4388572340562895~XXXXXXXXXX  (replace XXXX with iOS app ID)
+	     SDK requires this key to be present at MobileAds.initialize()
+	     time or the app crashes on first ad load. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<!-- Voice input feature (transcribes spoken text into the source field).
+	     iOS shows the string verbatim in the runtime permission alert; if
+	     either key is missing the OS terminates the app with TCC violation
+	     the first time speech_to_text requests access. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>TransKey uses the microphone for voice input — speak instead of typing the text you want to translate.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>TransKey transcribes your speech on-device (or via Apple's Speech service) so you can dictate text instead of typing it.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
