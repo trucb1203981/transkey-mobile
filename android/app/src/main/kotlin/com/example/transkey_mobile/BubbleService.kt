@@ -694,6 +694,88 @@ class BubbleService : Service() {
             setPadding(0, 0, 0, (12 * dp).toInt())
         })
 
+        // Accessibility hint banner — only when the user hasn't enabled the
+        // permission yet. Without it, "highlight text → tap bubble" silently
+        // falls through to clipboard and produces a confusing "no text"
+        // error. The banner is in-context (right where users notice the
+        // failure) and the action button takes them directly to the system
+        // settings page so they don't have to hunt through Settings.
+        if (!TransKeyAccessibilityService.isAvailable()) {
+            val hintBg     = if (isDark) "#3A2E10" else "#FFF6D6"
+            val hintFg     = if (isDark) "#FFD86E" else "#7A5A00"
+            val hintBtnBg  = if (isDark) "#FFD86E" else "#7A5A00"
+            val hintBtnFg  = if (isDark) "#3A2E10" else Color.WHITE.let { "#${Integer.toHexString(it).substring(2)}" }
+            val banner = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor(hintBg))
+                    cornerRadius = 10 * dp
+                }
+                setPadding((10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = (12 * dp).toInt() }
+            }
+            banner.addView(TextView(this).apply {
+                text = localized(R.string.bubble_accessibility_hint)
+                setTextColor(Color.parseColor(hintFg))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                )
+            })
+            banner.addView(TextView(this).apply {
+                text = localized(R.string.bubble_accessibility_enable)
+                setTextColor(Color.parseColor(hintBtnFg))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                typeface = Typeface.DEFAULT_BOLD
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor(hintBtnBg))
+                    cornerRadius = 8 * dp
+                }
+                setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
+                isClickable = true
+                setOnClickListener {
+                    hideModePicker()
+                    // Android 13+ blocks toggling Accessibility on sideloaded
+                    // apps until the user explicitly unlocks "restricted
+                    // settings" from the app's details page. Route THERE
+                    // first on Android 13+ — opening Accessibility settings
+                    // directly leaves the user stuck with a greyed-out
+                    // toggle and no obvious way forward. Pre-Android-13
+                    // there's no restricted-settings gate, so go straight
+                    // to Accessibility.
+                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Intent(
+                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.parse("package:$packageName"),
+                        )
+                    } else {
+                        Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    }
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    val opened = try { startActivity(intent); true } catch (_: Exception) { false }
+                    val guideRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                        R.string.bubble_accessibility_guide_a13
+                    else
+                        R.string.bubble_accessibility_guide_legacy
+                    Toast.makeText(
+                        this@BubbleService,
+                        if (opened) localized(guideRes)
+                        else "Open Settings → Apps → TransKey, then unlock restricted settings + enable Accessibility",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginStart = (8 * dp).toInt() }
+            })
+            card.addView(banner)
+        }
+
         // 5 feature buttons — matches the in-app feature-button row in
         // home_screen.dart: icon on top, label below, first action gets a
         // "primary" purple fill so it stands out.

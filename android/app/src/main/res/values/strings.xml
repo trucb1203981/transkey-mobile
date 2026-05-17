@@ -6,6 +6,10 @@
     <string name="bubble_choose_action">Choose action</string>
     <string name="bubble_using_selection">Using your selected text.</string>
     <string name="bubble_need_text">Select or copy text first, then pick an action below.</string>
+    <string name="bubble_accessibility_hint">Highlight + tap bubble doesn\'t work yet. Enable Accessibility to skip the Copy step.</string>
+    <string name="bubble_accessibility_enable">Setup</string>
+    <string name="bubble_accessibility_guide_legacy">Find TransKey in the list → toggle \"Use TransKey\" ON → tap Allow.</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ blocks sideloaded Accessibility by default:\n1. Tap ⋮ (top-right) → \"Allow restricted settings\"\n2. Go back → Accessibility → TransKey → toggle ON</string>
     <string name="bubble_show_last_result">Show last result</string>
     <string name="bubble_type_text">Type your own text</string>
     <string name="bubble_read_screen">Read this screen</string>
