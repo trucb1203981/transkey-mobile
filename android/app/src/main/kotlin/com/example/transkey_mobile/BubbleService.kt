@@ -639,12 +639,29 @@ class BubbleService : Service() {
             null
         }
 
-        // If clipboard changed since last translation, auto-translate with last mode
-        if (hasNewClipText) {
-            hasNewClipText = false
-            autoTranslateFromClipboard()
-        } else {
-            showModePicker()
+        // Priority: fresh selection > new clipboard > picker. Earlier we
+        // jumped straight to autoTranslateFromClipboard whenever
+        // hasNewClipText was true, even if the user had just highlighted
+        // something new — that meant the old clipboard text (e.g. copied
+        // 10 minutes ago) won over the current selection, and the user
+        // got a translation of something they didn't ask for. The mode
+        // picker is the right destination when there's an active
+        // selection: it lets the user choose translate vs reply vs
+        // summarize vs ... and the Translate button onClick already
+        // prefers pendingSelectedText over clipboard.
+        when {
+            !pendingSelectedText.isNullOrBlank() -> {
+                // Mark the stale-clip flag consumed so a later tap with
+                // NO selection doesn't surprise-translate the now-old
+                // clipboard either.
+                hasNewClipText = false
+                showModePicker()
+            }
+            hasNewClipText -> {
+                hasNewClipText = false
+                autoTranslateFromClipboard()
+            }
+            else -> showModePicker()
         }
     }
 
@@ -806,6 +823,13 @@ class BubbleService : Service() {
                         // Selection captured via AccessibilityService — translate
                         // directly, no clipboard / ShareActivity round-trip needed.
                         handleTranslateRequest(selected, mode)
+                        // Burn both the cached event-driven snapshot AND our
+                        // local copy. Otherwise a second tap on the bubble a
+                        // moment later (e.g. user accidentally double-taps,
+                        // or comes back to retry with a different mode)
+                        // would re-translate the same stale highlight.
+                        pendingSelectedText = null
+                        TransKeyAccessibilityService.instance?.consumeCachedSelection()
                     } else {
                         val i = Intent(this@BubbleService, ShareActivity::class.java).apply {
                             action = ACTION_READ_CLIPBOARD

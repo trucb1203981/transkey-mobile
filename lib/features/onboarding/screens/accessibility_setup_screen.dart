@@ -22,21 +22,26 @@ import '../../../core/bubble/bubble_manager.dart';
 class AccessibilitySetupScreen extends ConsumerStatefulWidget {
   const AccessibilitySetupScreen({super.key});
 
-  static const _skipKey = 'tk_accessibility_setup_skipped';
+  // We only auto-push this screen ONCE per install. After the user has
+  // seen it (regardless of how they exit — Done / Skip / back button),
+  // we never auto-push again. The bubble's in-context Accessibility
+  // banner takes over as the long-term reminder. Re-pushing the modal
+  // on every cold start was a clear "abandon the app" signal.
+  static const _seenKey = 'tk_accessibility_setup_seen';
 
-  static Future<bool> wasSkipped() async {
+  static Future<bool> wasSeen() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_skipKey) ?? false;
+    return prefs.getBool(_seenKey) ?? false;
   }
 
-  static Future<void> markSkipped() async {
+  static Future<void> markSeen() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_skipKey, true);
+    await prefs.setBool(_seenKey, true);
   }
 
-  static Future<void> clearSkip() async {
+  static Future<void> clearSeen() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_skipKey);
+    await prefs.remove(_seenKey);
   }
 
   @override
@@ -119,15 +124,22 @@ class _AccessibilitySetupScreenState
       _hasOverlay && _hasAccessibility && _restrictedUnlocked;
 
   Future<void> _skip() async {
-    await AccessibilitySetupScreen.markSkipped();
+    await AccessibilitySetupScreen.markSeen();
     if (mounted) context.pop();
   }
 
   Future<void> _done() async {
-    // No skip flag — user actually finished. If they re-enter the screen
-    // later (e.g. accidentally disabled a permission) we want to show it
-    // again without the "skipped" stigma.
+    await AccessibilitySetupScreen.markSeen();
     if (mounted) context.pop();
+  }
+
+  @override
+  void deactivate() {
+    // Belt-and-suspenders: also mark seen if the user exits via the
+    // system back gesture without tapping Skip or Done. We don't want
+    // a hard-to-reach modal that keeps re-popping when ignored.
+    AccessibilitySetupScreen.markSeen();
+    super.deactivate();
   }
 
   @override

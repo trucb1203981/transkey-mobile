@@ -106,8 +106,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (Platform.isAndroid) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        final skipped = await AccessibilitySetupScreen.wasSkipped();
-        if (skipped) return;
+        final seen = await AccessibilitySetupScreen.wasSeen();
+        if (seen) return;
         final a11y = await ref
             .read(bubbleManagerProvider.notifier)
             .checkAccessibility();

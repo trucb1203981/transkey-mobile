@@ -549,12 +549,13 @@ class ScreenCaptureService : Service() {
          * scans, but holding the VirtualDisplay live forever means the
          * GPU keeps mirroring the screen at 60 fps the entire time the
          * bubble is on — which heats the device noticeably during a
-         * regular browsing session. 60 s comfortably covers "scan a few
-         * things in a row" without keeping the projection alive through
-         * the rest of the day. The cost: the NEXT scan after the timer
-         * fires triggers the consent dialog again.
+         * regular browsing session. 3 minutes covers the realistic
+         * "scan → read translation → scan next thing" pace (60 s was
+         * too tight; users reading a longer Lens result kept hitting
+         * a re-consent prompt on their next scan). The cost: a scan
+         * after a quiet 3 minutes triggers the consent dialog again.
          */
-        private const val IDLE_RELEASE_MS = 60_000L
+        private const val IDLE_RELEASE_MS = 180_000L
 
         /**
          * True while this service holds a live MediaProjection grant.
