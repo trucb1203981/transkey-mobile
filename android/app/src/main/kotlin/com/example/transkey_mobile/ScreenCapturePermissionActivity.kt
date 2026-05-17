@@ -53,6 +53,20 @@ class ScreenCapturePermissionActivity : Activity() {
                 getString(R.string.bubble_scan_perm_denied),
                 Toast.LENGTH_LONG,
             ).show()
+            // Tell BubbleService to put the bubble back — it was hidden
+            // in launchScanFlow before we opened the consent dialog, and
+            // without this signal the user is left staring at an empty
+            // screen wondering if the app crashed.
+            val cancelIntent = Intent(this, BubbleService::class.java).apply {
+                action = BubbleService.ACTION_SCAN_CANCELLED
+            }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(cancelIntent)
+                } else {
+                    startService(cancelIntent)
+                }
+            } catch (_: Exception) {}
         }
         finish()
         overridePendingTransition(0, 0)

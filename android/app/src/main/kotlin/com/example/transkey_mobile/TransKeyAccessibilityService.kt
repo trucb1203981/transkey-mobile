@@ -40,6 +40,13 @@ class TransKeyAccessibilityService : AccessibilityService() {
          * the session leak into a fresh translation request.
          */
         private const val CACHE_TTL_MS = 15_000L
+
+        /**
+         * Hard cap on findSelectedTextRecursive depth — each level is a
+         * Binder IPC, deep trees were the source of the ~2 s bubble-tap
+         * lag. 20 covers any real EditText / TextView nesting.
+         */
+        private const val MAX_TREE_DEPTH = 20
     }
 
     /**
@@ -339,21 +346,27 @@ class TransKeyAccessibilityService : AccessibilityService() {
      * actual selection range is present but a node is marked selected.
      */
     fun getSelectedText(): String? {
-        // 1) Try the live tree first — only authoritative source when the
-        // selection is still active in the source app.
-        val live = rootInActiveWindow?.let { findSelectedTextRecursive(it) }
-        if (!live.isNullOrEmpty()) return live
-
-        // 2) Fall back to the cached selection from the last
-        // TYPE_VIEW_TEXT_SELECTION_CHANGED event. Expire after
-        // CACHE_TTL_MS so a stale selection from minutes ago doesn't
-        // sneak into a translation the user didn't intend.
-        val cached = cachedSelectionText ?: return null
-        if (System.currentTimeMillis() - cachedSelectionTimestampMs > CACHE_TTL_MS) {
+        // Order reversed (cache first, live tree second) for latency.
+        // The live-tree walk is a recursive cross-process IPC over the
+        // entire active window's node tree — on chat apps and webviews
+        // it routinely takes 1-2 s because every node.getChild() hops
+        // the Binder. Users were reporting "bubble tap delays ~2 s
+        // before the picker opens" because we ran this synchronously on
+        // every bubble tap. The accessibility-event cache is almost
+        // always fresh (we update it the instant the user highlights
+        // anything), so it covers the common case at ~0 ms. Falling
+        // back to the live tree only when cache is empty preserves the
+        // edge-case correctness for apps whose widgets don't emit
+        // TYPE_VIEW_TEXT_SELECTION_CHANGED events.
+        val cached = cachedSelectionText
+        if (cached != null) {
+            if (System.currentTimeMillis() - cachedSelectionTimestampMs <= CACHE_TTL_MS) {
+                return cached
+            }
             cachedSelectionText = null
-            return null
         }
-        return cached
+
+        return rootInActiveWindow?.let { findSelectedTextRecursive(it, depth = 0) }
     }
 
     /**
@@ -366,8 +379,15 @@ class TransKeyAccessibilityService : AccessibilityService() {
         cachedSelectionTimestampMs = 0L
     }
 
-    private fun findSelectedTextRecursive(node: AccessibilityNodeInfo?): String? {
+    private fun findSelectedTextRecursive(node: AccessibilityNodeInfo?, depth: Int): String? {
         if (node == null) return null
+        // Depth cap: every recursion level costs at least one Binder
+        // round-trip (childCount + getChild). Real selectable widgets
+        // are well under 20 levels deep — beyond that we're usually
+        // walking scroll containers, list adapters, and webview
+        // shadows that we won't find a selection in anyway. Hard cap
+        // turns a worst-case 2 s walk into a worst-case <200 ms one.
+        if (depth > MAX_TREE_DEPTH) return null
         val text = node.text?.toString()
         if (!text.isNullOrEmpty()) {
             val start = node.textSelectionStart
@@ -378,7 +398,7 @@ class TransKeyAccessibilityService : AccessibilityService() {
             }
         }
         for (i in 0 until node.childCount) {
-            val result = findSelectedTextRecursive(node.getChild(i))
+            val result = findSelectedTextRecursive(node.getChild(i), depth + 1)
             if (result != null) return result
         }
         return null

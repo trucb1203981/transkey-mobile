@@ -57,6 +57,12 @@ class BubbleService : Service() {
         // blocks sit in ScreenCaptureManager; we just need the signal to
         // start batch-translation and render the overlay.
         const val ACTION_DELIVER_LENS = "transkey.bubble.DELIVER_LENS"
+        // Sent by ScreenCapturePermissionActivity when the user cancels
+        // the system "Start recording?" dialog. We hid the bubble in
+        // launchScanFlow before showing the dialog; without this signal
+        // the bubble would stay GONE (looking to the user like it had
+        // crashed) until they killed the service.
+        const val ACTION_SCAN_CANCELLED = "transkey.bubble.SCAN_CANCELLED"
         // Region mode: capture finished but OCR deferred — show the
         // rubber-band selector on top of the bitmap so the user can crop
         // before we OCR + translate.
@@ -423,6 +429,13 @@ class BubbleService : Service() {
             }
             ACTION_DELIVER_LENS -> handleLensReady()
             ACTION_DELIVER_REGION_READY -> handleRegionReady()
+            ACTION_SCAN_CANCELLED -> {
+                // User dismissed the system consent dialog — just put the
+                // bubble back. Manager state is also cleared so the next
+                // scan starts from scratch (no stale token reuse path).
+                ScreenCaptureManager.clearAll()
+                restoreBubbleVisibility()
+            }
         }
         return START_STICKY
     }
