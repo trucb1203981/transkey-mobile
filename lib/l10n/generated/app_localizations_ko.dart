@@ -451,6 +451,47 @@ class AppLocalizationsKo extends AppLocalizations {
   String get errorGeneric => '오류가 발생했습니다';
 
   @override
+  String get errorSessionExpired => '세션이 만료되었습니다 — 다시 로그인하세요';
+
+  @override
+  String get errorEmailNotVerified => '이메일을 인증하세요 — 받은편지함 확인';
+
+  @override
+  String get errorFeatureRequiresPaid => '이 기능은 유료 플랜이 필요합니다';
+
+  @override
+  String get errorDeviceLimit => '기기 수 한도에 도달했습니다 — 기기를 제거하거나 업그레이드하세요';
+
+  @override
+  String get errorMobilePlanDesktopBlocked => 'Mobile 플랜은 데스크톱에서 사용할 수 없습니다';
+
+  @override
+  String get errorTextTooLong => '텍스트가 너무 깁니다 (최대 5000자)';
+
+  @override
+  String get errorQuotaExceeded => '오늘 할당량에 도달했습니다 — 내일 다시 시도하거나 업그레이드하세요';
+
+  @override
+  String get errorRateLimit => '요청이 너무 많습니다 — 잠시만 기다리세요';
+
+  @override
+  String get errorMaintenance => '서비스가 점검 중입니다';
+
+  @override
+  String get errorNetwork => '인터넷 연결이 없습니다';
+
+  @override
+  String get glossaryErrSyncFailed => '용어집을 동기화할 수 없습니다 — 연결을 확인하세요';
+
+  @override
+  String glossaryErrLimitReached(int max) {
+    return '용어집이 가득 찼습니다 (최대 $max개)';
+  }
+
+  @override
+  String get glossaryErrSourceTargetRequired => '원본과 번역 모두 입력해야 합니다';
+
+  @override
   String get planFree => '무료';
 
   @override

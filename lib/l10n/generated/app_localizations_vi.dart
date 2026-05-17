@@ -454,6 +454,52 @@ class AppLocalizationsVi extends AppLocalizations {
   String get errorGeneric => 'Đã xảy ra lỗi';
 
   @override
+  String get errorSessionExpired => 'Phiên đã hết — vui lòng đăng nhập lại';
+
+  @override
+  String get errorEmailNotVerified =>
+      'Vui lòng xác nhận email — kiểm tra hộp thư';
+
+  @override
+  String get errorFeatureRequiresPaid => 'Tính năng này yêu cầu gói trả phí';
+
+  @override
+  String get errorDeviceLimit =>
+      'Đạt giới hạn thiết bị — gỡ thiết bị cũ hoặc nâng cấp';
+
+  @override
+  String get errorMobilePlanDesktopBlocked =>
+      'Gói Mobile không dùng được trên desktop';
+
+  @override
+  String get errorTextTooLong => 'Văn bản quá dài (tối đa 5000 ký tự)';
+
+  @override
+  String get errorQuotaExceeded =>
+      'Hết quota hôm nay — thử lại ngày mai hoặc nâng cấp';
+
+  @override
+  String get errorRateLimit => 'Quá nhiều yêu cầu — vui lòng đợi một chút';
+
+  @override
+  String get errorMaintenance => 'Dịch vụ đang bảo trì';
+
+  @override
+  String get errorNetwork => 'Không có kết nối internet';
+
+  @override
+  String get glossaryErrSyncFailed =>
+      'Không đồng bộ được glossary — kiểm tra kết nối';
+
+  @override
+  String glossaryErrLimitReached(int max) {
+    return 'Glossary đã đầy (tối đa $max mục)';
+  }
+
+  @override
+  String get glossaryErrSourceTargetRequired => 'Cần điền cả source và target';
+
+  @override
   String get planFree => 'Miễn phí';
 
   @override

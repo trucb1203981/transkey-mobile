@@ -451,6 +451,47 @@ class AppLocalizationsJa extends AppLocalizations {
   String get errorGeneric => 'エラーが発生しました';
 
   @override
+  String get errorSessionExpired => 'セッションが切れました — もう一度サインインしてください';
+
+  @override
+  String get errorEmailNotVerified => 'メールを認証してください — 受信トレイをご確認ください';
+
+  @override
+  String get errorFeatureRequiresPaid => 'この機能は有料プランが必要です';
+
+  @override
+  String get errorDeviceLimit => 'デバイス数の上限に達しました — 端末を削除するかアップグレードしてください';
+
+  @override
+  String get errorMobilePlanDesktopBlocked => 'Mobile プランはデスクトップでは使えません';
+
+  @override
+  String get errorTextTooLong => 'テキストが長すぎます(最大 5000 文字)';
+
+  @override
+  String get errorQuotaExceeded => '本日の上限に達しました — 明日再度お試しいただくか、アップグレードしてください';
+
+  @override
+  String get errorRateLimit => 'リクエストが多すぎます — 少し待ってください';
+
+  @override
+  String get errorMaintenance => 'サービスはメンテナンス中です';
+
+  @override
+  String get errorNetwork => 'インターネットに接続されていません';
+
+  @override
+  String get glossaryErrSyncFailed => '用語集を同期できませんでした — 接続をご確認ください';
+
+  @override
+  String glossaryErrLimitReached(int max) {
+    return '用語集が満杯です(最大 $max 件)';
+  }
+
+  @override
+  String get glossaryErrSourceTargetRequired => '原文と訳文の両方が必要です';
+
+  @override
   String get planFree => '無料';
 
   @override

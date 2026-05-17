@@ -974,6 +974,84 @@ abstract class AppLocalizations {
   /// **'Something went wrong'**
   String get errorGeneric;
 
+  /// No description provided for @errorSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired — please sign in again'**
+  String get errorSessionExpired;
+
+  /// No description provided for @errorEmailNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Please verify your email — check your inbox'**
+  String get errorEmailNotVerified;
+
+  /// No description provided for @errorFeatureRequiresPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'This feature requires a paid plan'**
+  String get errorFeatureRequiresPaid;
+
+  /// No description provided for @errorDeviceLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Device limit reached — remove a device or upgrade'**
+  String get errorDeviceLimit;
+
+  /// No description provided for @errorMobilePlanDesktopBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile plan cannot be used on desktop'**
+  String get errorMobilePlanDesktopBlocked;
+
+  /// No description provided for @errorTextTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Text too long (max 5000 characters)'**
+  String get errorTextTooLong;
+
+  /// No description provided for @errorQuotaExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily quota reached — try again tomorrow or upgrade'**
+  String get errorQuotaExceeded;
+
+  /// No description provided for @errorRateLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests — wait a moment'**
+  String get errorRateLimit;
+
+  /// No description provided for @errorMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Service is under maintenance'**
+  String get errorMaintenance;
+
+  /// No description provided for @errorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get errorNetwork;
+
+  /// No description provided for @glossaryErrSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sync glossary — check your connection'**
+  String get glossaryErrSyncFailed;
+
+  /// No description provided for @glossaryErrLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Glossary is full (max {max} entries)'**
+  String glossaryErrLimitReached(int max);
+
+  /// No description provided for @glossaryErrSourceTargetRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Source and target are both required'**
+  String get glossaryErrSourceTargetRequired;
+
   /// No description provided for @planFree.
   ///
   /// In en, this message translates to:

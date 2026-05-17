@@ -12,6 +12,12 @@ import '../models/glossary_entry.dart';
 const _kGlossaryKey = 'tk_glossary';
 const _maxEntries = 50;
 
+/// Discriminated error states. The provider stores the enum; the UI
+/// layer maps it to a localized message via [errorMessage]. Avoids
+/// hardcoding English strings inside the provider where there's no
+/// BuildContext to look up the user's locale.
+enum GlossaryError { syncFailed, limitReached, sourceTargetRequired }
+
 class GlossaryState {
   const GlossaryState({
     this.entries = const [],
@@ -23,7 +29,7 @@ class GlossaryState {
   final List<GlossaryEntry> entries;
   final bool isLoading;
   final bool isSyncing;
-  final String? error;
+  final GlossaryError? error;
 
   int get count => entries.length;
   bool get isFull => entries.length >= _maxEntries;
@@ -32,7 +38,7 @@ class GlossaryState {
     List<GlossaryEntry>? entries,
     bool? isLoading,
     bool? isSyncing,
-    String? error,
+    GlossaryError? error,
     bool clearError = false,
   }) =>
       GlossaryState(
@@ -116,7 +122,7 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
       debugPrint('[Glossary] Pull failed: $e');
       state = state.copyWith(
         isSyncing: false,
-        error: 'Failed to sync glossary',
+        error: GlossaryError.syncFailed,
       );
     }
   }
@@ -135,7 +141,7 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
       debugPrint('[Glossary] Push failed: $e');
       state = state.copyWith(
         isSyncing: false,
-        error: 'Failed to sync glossary',
+        error: GlossaryError.syncFailed,
       );
     }
   }
@@ -143,12 +149,12 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
   /// Add entry locally + push to server
   Future<bool> add(GlossaryEntry entry) async {
     if (state.isFull) {
-      state = state.copyWith(error: 'Glossary limit reached ($_maxEntries)');
+      state = state.copyWith(error: GlossaryError.limitReached);
       return false;
     }
 
     if (entry.source.trim().isEmpty || entry.target.trim().isEmpty) {
-      state = state.copyWith(error: 'Source and target are required');
+      state = state.copyWith(error: GlossaryError.sourceTargetRequired);
       return false;
     }
 
@@ -164,7 +170,7 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
   Future<bool> update(int index, GlossaryEntry entry) async {
     if (index < 0 || index >= state.entries.length) return false;
     if (entry.source.trim().isEmpty || entry.target.trim().isEmpty) {
-      state = state.copyWith(error: 'Source and target are required');
+      state = state.copyWith(error: GlossaryError.sourceTargetRequired);
       return false;
     }
 

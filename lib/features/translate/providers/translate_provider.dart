@@ -279,12 +279,12 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
       unawaited(ref.read(usageProvider.notifier).refresh());
     } catch (e) {
       if (reqId != _requestSeq) return;
-      String message;
-      ApiErrorCode? code;
-      // Dio errors aren't auto-converted to ApiException by the
-      // interceptor stack — do it inline so quota_exceeded / 429 / etc.
-      // carry the right error code into TranslateState (the paywall
-      // listener pattern-matches on errorCode == quotaExceeded).
+      // Convert to ApiException so home_screen's error banner can resolve
+      // a localized message via errorCode.localize(l); for non-DioException
+      // / non-ApiException errors we leave code = unknown and let the UI
+      // fall back to l.errorGeneric.
+      final ApiErrorCode code;
+      final String message;
       if (e is DioException) {
         final api = ApiException.fromDio(e);
         message = api.message;
@@ -294,7 +294,8 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         code = e.code;
       } else {
         debugPrint('[Translate] Error: $e');
-        message = 'Something went wrong';
+        message = e.toString();
+        code = ApiErrorCode.unknown;
       }
       state = AsyncData((state.valueOrNull ?? currentState).copyWith(
         isLoading: false,

@@ -97,7 +97,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
             padding: const EdgeInsets.all(AppSpacing.sm),
             color: AppColors.red.withValues(alpha: 0.1),
             child: Text(
-              glossary.error!,
+              _localizeError(AppLocalizations.of(context)!, glossary.error!),
               style: const TextStyle(color: AppColors.red, fontSize: 13),
               textAlign: TextAlign.center,
             ),
@@ -123,6 +123,12 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
       ],
     );
   }
+
+  String _localizeError(AppLocalizations l, GlossaryError e) => switch (e) {
+        GlossaryError.syncFailed            => l.glossaryErrSyncFailed,
+        GlossaryError.limitReached          => l.glossaryErrLimitReached(50),
+        GlossaryError.sourceTargetRequired  => l.glossaryErrSourceTargetRequired,
+      };
 
   Future<void> _addEntry(BuildContext context, WidgetRef ref) async {
     final entry = await AddGlossarySheet.show(context);

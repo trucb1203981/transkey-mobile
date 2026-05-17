@@ -566,8 +566,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 color: AppColors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
               ),
-              child: Text(state!.error!,
-                  style: const TextStyle(color: AppColors.red)),
+              child: Text(
+                // Prefer the localized text derived from errorCode so the
+                // banner respects the user's locale; fall back to the raw
+                // message field only for codes we don't have a mapping for
+                // (effectively only the catch-unknown branch).
+                state!.errorCode?.localize(l) ?? state.error ?? l.errorGeneric,
+                style: const TextStyle(color: AppColors.red),
+              ),
             ),
 
           if (result != null) _buildResultCard(theme, isDark, result, l),

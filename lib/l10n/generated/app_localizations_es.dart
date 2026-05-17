@@ -456,6 +456,54 @@ class AppLocalizationsEs extends AppLocalizations {
   String get errorGeneric => 'Algo salió mal';
 
   @override
+  String get errorSessionExpired => 'Sesión caducada — inicia sesión de nuevo';
+
+  @override
+  String get errorEmailNotVerified =>
+      'Verifica tu correo — revisa tu bandeja de entrada';
+
+  @override
+  String get errorFeatureRequiresPaid =>
+      'Esta función requiere un plan de pago';
+
+  @override
+  String get errorDeviceLimit =>
+      'Límite de dispositivos alcanzado — elimina uno o mejora tu plan';
+
+  @override
+  String get errorMobilePlanDesktopBlocked =>
+      'El plan Mobile no se puede usar en escritorio';
+
+  @override
+  String get errorTextTooLong => 'Texto demasiado largo (máx. 5000 caracteres)';
+
+  @override
+  String get errorQuotaExceeded =>
+      'Cuota diaria alcanzada — inténtalo mañana o mejora tu plan';
+
+  @override
+  String get errorRateLimit => 'Demasiadas solicitudes — espera un momento';
+
+  @override
+  String get errorMaintenance => 'Servicio en mantenimiento';
+
+  @override
+  String get errorNetwork => 'Sin conexión a internet';
+
+  @override
+  String get glossaryErrSyncFailed =>
+      'No se pudo sincronizar el glosario — comprueba la conexión';
+
+  @override
+  String glossaryErrLimitReached(int max) {
+    return 'Glosario lleno (máx. $max entradas)';
+  }
+
+  @override
+  String get glossaryErrSourceTargetRequired =>
+      'Origen y destino son obligatorios';
+
+  @override
   String get planFree => 'Gratis';
 
   @override

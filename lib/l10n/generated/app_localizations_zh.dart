@@ -448,6 +448,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorGeneric => '发生错误';
 
   @override
+  String get errorSessionExpired => '会话已过期 — 请重新登录';
+
+  @override
+  String get errorEmailNotVerified => '请验证邮箱 — 查收收件箱';
+
+  @override
+  String get errorFeatureRequiresPaid => '此功能需要付费套餐';
+
+  @override
+  String get errorDeviceLimit => '已达设备上限 — 请移除一台设备或升级';
+
+  @override
+  String get errorMobilePlanDesktopBlocked => 'Mobile 套餐不能在桌面端使用';
+
+  @override
+  String get errorTextTooLong => '文本过长(最多 5000 字符)';
+
+  @override
+  String get errorQuotaExceeded => '今日额度已用完 — 明天再试或升级';
+
+  @override
+  String get errorRateLimit => '请求过多 — 请稍候';
+
+  @override
+  String get errorMaintenance => '服务正在维护中';
+
+  @override
+  String get errorNetwork => '无网络连接';
+
+  @override
+  String get glossaryErrSyncFailed => '无法同步术语表 — 请检查网络';
+
+  @override
+  String glossaryErrLimitReached(int max) {
+    return '术语表已满(最多 $max 条)';
+  }
+
+  @override
+  String get glossaryErrSourceTargetRequired => '源和目标都不能为空';
+
+  @override
   String get planFree => '免费';
 
   @override

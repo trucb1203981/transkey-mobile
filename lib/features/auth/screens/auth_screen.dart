@@ -79,6 +79,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final l = AppLocalizations.of(context)!;
     setState(() => _errorMessage = null);
 
     try {
@@ -100,8 +101,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       if (authState.hasError) {
         final err = authState.error;
         if (err is DioException) {
-          final apiErr = ApiException.fromDio(err);
-          setState(() => _errorMessage = apiErr.message);
+          setState(() => _errorMessage = ApiException.fromDio(err).code.localize(l));
         } else {
           setState(() => _errorMessage = err.toString());
         }
@@ -110,10 +110,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
       if (mounted) context.go('/');
     } on DioException catch (e) {
-      final apiErr = ApiException.fromDio(e);
-      setState(() => _errorMessage = apiErr.message);
+      setState(() => _errorMessage = ApiException.fromDio(e).code.localize(l));
     } catch (e) {
-      setState(() => _errorMessage = AppLocalizations.of(context)!.errorGeneric);
+      setState(() => _errorMessage = l.errorGeneric);
     }
   }
 
@@ -165,7 +164,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       if (state.hasError) {
         final err = state.error;
         if (err is DioException) {
-          setState(() => _errorMessage = ApiException.fromDio(err).message);
+          setState(() => _errorMessage = ApiException.fromDio(err).code.localize(l));
         } else {
           setState(() => _errorMessage = err.toString());
         }

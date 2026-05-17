@@ -455,6 +455,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorGeneric => 'Something went wrong';
 
   @override
+  String get errorSessionExpired => 'Session expired — please sign in again';
+
+  @override
+  String get errorEmailNotVerified =>
+      'Please verify your email — check your inbox';
+
+  @override
+  String get errorFeatureRequiresPaid => 'This feature requires a paid plan';
+
+  @override
+  String get errorDeviceLimit =>
+      'Device limit reached — remove a device or upgrade';
+
+  @override
+  String get errorMobilePlanDesktopBlocked =>
+      'Mobile plan cannot be used on desktop';
+
+  @override
+  String get errorTextTooLong => 'Text too long (max 5000 characters)';
+
+  @override
+  String get errorQuotaExceeded =>
+      'Daily quota reached — try again tomorrow or upgrade';
+
+  @override
+  String get errorRateLimit => 'Too many requests — wait a moment';
+
+  @override
+  String get errorMaintenance => 'Service is under maintenance';
+
+  @override
+  String get errorNetwork => 'No internet connection';
+
+  @override
+  String get glossaryErrSyncFailed =>
+      'Couldn\'t sync glossary — check your connection';
+
+  @override
+  String glossaryErrLimitReached(int max) {
+    return 'Glossary is full (max $max entries)';
+  }
+
+  @override
+  String get glossaryErrSourceTargetRequired =>
+      'Source and target are both required';
+
+  @override
   String get planFree => 'Free';
 
   @override

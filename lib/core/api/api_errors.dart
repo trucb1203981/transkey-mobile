@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 enum ApiErrorCode {
   unauthorized,
   emailNotVerified,
@@ -126,4 +128,25 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($code): $message';
+}
+
+/// Map an [ApiErrorCode] to its localized user-facing string. The
+/// `message` field on ApiException is an English fallback (set when the
+/// exception is constructed without UI context — e.g. inside an
+/// interceptor or background isolate); UI render paths should prefer
+/// `code.localize(l)` so the string respects the user's app locale.
+extension ApiErrorCodeL on ApiErrorCode {
+  String localize(AppLocalizations l) => switch (this) {
+    ApiErrorCode.unauthorized              => l.errorSessionExpired,
+    ApiErrorCode.emailNotVerified          => l.errorEmailNotVerified,
+    ApiErrorCode.featureDisabled           => l.errorFeatureRequiresPaid,
+    ApiErrorCode.deviceLimit               => l.errorDeviceLimit,
+    ApiErrorCode.mobilePlanDesktopBlocked  => l.errorMobilePlanDesktopBlocked,
+    ApiErrorCode.textTooLong               => l.errorTextTooLong,
+    ApiErrorCode.quotaExceeded             => l.errorQuotaExceeded,
+    ApiErrorCode.rateLimit                 => l.errorRateLimit,
+    ApiErrorCode.maintenance               => l.errorMaintenance,
+    ApiErrorCode.network                   => l.errorNetwork,
+    ApiErrorCode.unknown                   => l.errorGeneric,
+  };
 }

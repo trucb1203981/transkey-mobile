@@ -455,6 +455,55 @@ class AppLocalizationsDe extends AppLocalizations {
   String get errorGeneric => 'Etwas ist schiefgelaufen';
 
   @override
+  String get errorSessionExpired =>
+      'Sitzung abgelaufen — bitte erneut anmelden';
+
+  @override
+  String get errorEmailNotVerified =>
+      'Bitte E-Mail bestätigen — Posteingang prüfen';
+
+  @override
+  String get errorFeatureRequiresPaid =>
+      'Diese Funktion erfordert einen kostenpflichtigen Plan';
+
+  @override
+  String get errorDeviceLimit =>
+      'Gerätelimit erreicht — Gerät entfernen oder upgraden';
+
+  @override
+  String get errorMobilePlanDesktopBlocked =>
+      'Mobile-Plan kann nicht auf dem Desktop verwendet werden';
+
+  @override
+  String get errorTextTooLong => 'Text zu lang (max. 5000 Zeichen)';
+
+  @override
+  String get errorQuotaExceeded =>
+      'Tageslimit erreicht — morgen erneut versuchen oder upgraden';
+
+  @override
+  String get errorRateLimit => 'Zu viele Anfragen — kurz warten';
+
+  @override
+  String get errorMaintenance => 'Dienst wird gewartet';
+
+  @override
+  String get errorNetwork => 'Keine Internetverbindung';
+
+  @override
+  String get glossaryErrSyncFailed =>
+      'Glossar konnte nicht synchronisiert werden — Verbindung prüfen';
+
+  @override
+  String glossaryErrLimitReached(int max) {
+    return 'Glossar voll (max. $max Einträge)';
+  }
+
+  @override
+  String get glossaryErrSourceTargetRequired =>
+      'Quelle und Ziel sind beide erforderlich';
+
+  @override
   String get planFree => 'Kostenlos';
 
   @override
