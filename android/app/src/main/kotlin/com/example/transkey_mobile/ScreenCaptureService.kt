@@ -197,30 +197,47 @@ class ScreenCaptureService : Service() {
         val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
         imageReader = reader
         reader.setOnImageAvailableListener({ r ->
-            if (captured) {
-                // Not in capture mode — drop the frame so the buffer
-                // can recycle for the next one.
-                r.acquireLatestImage()?.close()
-                return@setOnImageAvailableListener
-            }
-            val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
-            captured = true
-            val bitmap = try {
-                imageToBitmap(image, width, height)
-            } catch (error: Exception) {
-                Log.w(TAG, "imageToBitmap failed: ${error.message}")
-                null
-            } finally {
-                image.close()
-            }
-            // Pipeline stays alive — next scan will set captured=false and
-            // this same listener will pick up the next available frame.
+            // Defensive: the whole listener is wrapped because system-level
+            // events outside our control (screen recorder taking the
+            // projection, OEM "you weren't using this so we killed it"
+            // throttling on MIUI/OneUI, low-memory teardown) can invalidate
+            // `r` or its backing surface between when this callback was
+            // queued and when it actually runs. Throwing out of an
+            // ImageReader callback crashes the foreground service.
+            try {
+                if (captured) {
+                    // Not in capture mode — drop the frame so the buffer
+                    // can recycle for the next one.
+                    r.acquireLatestImage()?.close()
+                    return@setOnImageAvailableListener
+                }
+                val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
+                captured = true
+                val bitmap = try {
+                    imageToBitmap(image, width, height)
+                } catch (error: Exception) {
+                    Log.w(TAG, "imageToBitmap failed: ${error.message}")
+                    null
+                } finally {
+                    try { image.close() } catch (_: Exception) {}
+                }
+                // Pipeline stays alive — next scan will set captured=false and
+                // this same listener will pick up the next available frame.
 
-            if (bitmap == null) {
-                deliverEmptyToBubble()
-                return@setOnImageAvailableListener
+                if (bitmap == null) {
+                    deliverEmptyToBubble()
+                    return@setOnImageAvailableListener
+                }
+                runOcr(bitmap)
+            } catch (error: Throwable) {
+                // Throwable (not Exception) so we also catch OutOfMemoryError
+                // from Bitmap.createBitmap — the screen-recorder scenario
+                // doubles bitmap allocations because the system holds its
+                // own copy of every captured frame too.
+                Log.w(TAG, "capture listener failed: ${error.message}")
+                captured = true
+                handler.post { deliverEmptyToBubble() }
             }
-            runOcr(bitmap)
         }, handler)
 
         try {
