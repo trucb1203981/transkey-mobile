@@ -64,4 +64,30 @@
     <string name="process_text_summarize">TransKey: Zusammenfassen</string>
     <string name="process_text_explain">TransKey: Erklären</string>
     <string name="process_text_refine">TransKey: Verfeinern</string>
+
+    <string name="bubble_need_copy">Text zuerst kopieren, dann die Bubble antippen.</string>
+    <string name="bubble_accessibility_hint">Markieren + Bubble tippen funktioniert noch nicht. Aktiviere Bedienungshilfen, um den Kopier-Schritt zu sparen.</string>
+    <string name="bubble_accessibility_enable">Einrichten</string>
+    <string name="bubble_accessibility_guide_legacy">TransKey in der Liste finden → \"Use TransKey\" einschalten → Erlauben antippen.</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ blockiert sideloaded Bedienungshilfen standardmäßig:\n1. ⋮ (oben rechts) → \"Eingeschränkte Einstellungen zulassen\" antippen\n2. Zurück → Bedienungshilfen → TransKey → einschalten</string>
+    <string name="bubble_paste_a11y_required">Aktiviere Bedienungshilfen, um Antworten direkt in das fokussierte Eingabefeld einzufügen.</string>
+
+    <string name="bubble_panel_source_lang">Quellsprache</string>
+    <string name="bubble_panel_target_lang">Zielsprache</string>
+    <string name="bubble_panel_copy">Kopieren</string>
+    <string name="bubble_panel_paste">Einfügen</string>
+    <string name="bubble_panel_copied">Kopiert</string>
+    <string name="bubble_panel_pasted">Eingefügt</string>
+    <string name="bubble_panel_paste_manual_fallback">Kopiert — Feld antippen und manuell einfügen</string>
+    <string name="bubble_panel_paste_a11y_off">TransKey in Bedienungshilfen aktivieren, um Einfügen zu nutzen</string>
+    <string name="bubble_panel_clipboard_empty">Zwischenablage leer</string>
+    <string name="bubble_panel_tts_not_ready">TTS nicht bereit</string>
+    <string name="bubble_panel_translation_failed">Übersetzung fehlgeschlagen</string>
+    <string name="bubble_panel_app_not_ready">App nicht bereit — öffne TransKey einmal</string>
+    <string name="bubble_panel_detected">Erkannt: %1$s</string>
+
+    <string name="bubble_notification_channel">TransKey Bubble</string>
+    <string name="bubble_notification_active">Schwebender Übersetzer aktiv</string>
+    <string name="bubble_overlay_perm_needed">Aktiviere \'Über anderen Apps anzeigen\' für schwebende Übersetzungen</string>
+    <string name="bubble_clipboard_empty_error">Zwischenablage leer.\nText zuerst kopieren, dann die Bubble antippen.</string>
 </resources>

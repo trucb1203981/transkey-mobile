@@ -64,4 +64,30 @@
     <string name="process_text_summarize">TransKey: 总结</string>
     <string name="process_text_explain">TransKey: 解释</string>
     <string name="process_text_refine">TransKey: 润色</string>
+
+    <string name="bubble_need_copy">先复制文本,然后点击气泡。</string>
+    <string name="bubble_accessibility_hint">高亮 + 点击气泡暂时无效。启用辅助功能可省去 Copy 步骤。</string>
+    <string name="bubble_accessibility_enable">设置</string>
+    <string name="bubble_accessibility_guide_legacy">在列表中找到 TransKey → 打开 \"Use TransKey\" → 点击 允许。</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ 默认会阻止 sideload 应用的辅助功能:\n1. 点击 ⋮ (右上角) → \"允许受限设置\"\n2. 返回 → 辅助功能 → TransKey → 切换 ON</string>
+    <string name="bubble_paste_a11y_required">启用辅助功能可将回复直接粘贴到当前输入框。</string>
+
+    <string name="bubble_panel_source_lang">源语言</string>
+    <string name="bubble_panel_target_lang">目标语言</string>
+    <string name="bubble_panel_copy">复制</string>
+    <string name="bubble_panel_paste">粘贴</string>
+    <string name="bubble_panel_copied">已复制</string>
+    <string name="bubble_panel_pasted">已粘贴</string>
+    <string name="bubble_panel_paste_manual_fallback">已复制 — 点击输入框手动粘贴</string>
+    <string name="bubble_panel_paste_a11y_off">在辅助功能设置中启用 TransKey 即可使用粘贴按钮</string>
+    <string name="bubble_panel_clipboard_empty">剪贴板为空</string>
+    <string name="bubble_panel_tts_not_ready">TTS 未就绪</string>
+    <string name="bubble_panel_translation_failed">翻译失败</string>
+    <string name="bubble_panel_app_not_ready">应用未就绪 — 请先打开 TransKey 一次</string>
+    <string name="bubble_panel_detected">检测到: %1$s</string>
+
+    <string name="bubble_notification_channel">TransKey 气泡</string>
+    <string name="bubble_notification_active">悬浮翻译气泡运行中</string>
+    <string name="bubble_overlay_perm_needed">启用 \'在其他应用上层显示\' 以使用悬浮翻译</string>
+    <string name="bubble_clipboard_empty_error">剪贴板为空。\n请先复制文本,然后点击气泡。</string>
 </resources>

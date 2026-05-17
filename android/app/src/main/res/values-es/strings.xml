@@ -64,4 +64,30 @@
     <string name="process_text_summarize">TransKey: Resumir</string>
     <string name="process_text_explain">TransKey: Explicar</string>
     <string name="process_text_refine">TransKey: Refinar</string>
+
+    <string name="bubble_need_copy">Copia primero el texto y luego toca la burbuja.</string>
+    <string name="bubble_accessibility_hint">Resaltar + tocar la burbuja todavía no funciona. Activa Accesibilidad para saltarte el paso de Copiar.</string>
+    <string name="bubble_accessibility_enable">Configurar</string>
+    <string name="bubble_accessibility_guide_legacy">Encuentra TransKey en la lista → activa \"Use TransKey\" → toca Permitir.</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ bloquea Accesibilidad para apps sideload por defecto:\n1. Toca ⋮ (arriba a la derecha) → \"Permitir ajustes restringidos\"\n2. Atrás → Accesibilidad → TransKey → activa ON</string>
+    <string name="bubble_paste_a11y_required">Activa Accesibilidad para pegar las respuestas directamente en el campo enfocado.</string>
+
+    <string name="bubble_panel_source_lang">Idioma origen</string>
+    <string name="bubble_panel_target_lang">Idioma destino</string>
+    <string name="bubble_panel_copy">Copiar</string>
+    <string name="bubble_panel_paste">Pegar</string>
+    <string name="bubble_panel_copied">Copiado</string>
+    <string name="bubble_panel_pasted">Pegado</string>
+    <string name="bubble_panel_paste_manual_fallback">Copiado — toca el campo y pega manualmente</string>
+    <string name="bubble_panel_paste_a11y_off">Activa TransKey en Accesibilidad para usar el botón Pegar</string>
+    <string name="bubble_panel_clipboard_empty">Portapapeles vacío</string>
+    <string name="bubble_panel_tts_not_ready">TTS no listo</string>
+    <string name="bubble_panel_translation_failed">Traducción fallida</string>
+    <string name="bubble_panel_app_not_ready">App no lista — abre TransKey una vez</string>
+    <string name="bubble_panel_detected">Detectado: %1$s</string>
+
+    <string name="bubble_notification_channel">Burbuja TransKey</string>
+    <string name="bubble_notification_active">Traductor flotante activo</string>
+    <string name="bubble_overlay_perm_needed">Activa \'Mostrar sobre otras apps\' para usar traducciones flotantes</string>
+    <string name="bubble_clipboard_empty_error">Portapapeles vacío.\nCopia primero el texto, luego toca la burbuja.</string>
 </resources>

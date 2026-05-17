@@ -64,4 +64,30 @@
     <string name="process_text_summarize">TransKey: 요약</string>
     <string name="process_text_explain">TransKey: 설명</string>
     <string name="process_text_refine">TransKey: 다듬기</string>
+
+    <string name="bubble_need_copy">먼저 텍스트를 복사한 다음 버블을 탭하세요.</string>
+    <string name="bubble_accessibility_hint">하이라이트 + 버블 탭은 아직 작동하지 않습니다. 접근성을 활성화하면 복사 단계를 건너뛸 수 있습니다.</string>
+    <string name="bubble_accessibility_enable">설정</string>
+    <string name="bubble_accessibility_guide_legacy">목록에서 TransKey 찾기 → \"Use TransKey\" 토글 ON → 허용 탭.</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ 는 사이드로드된 접근성을 기본적으로 차단합니다:\n1. ⋮ (오른쪽 상단) 탭 → \"제한된 설정 허용\"\n2. 뒤로 → 접근성 → TransKey → ON 으로 전환</string>
+    <string name="bubble_paste_a11y_required">접근성을 활성화하면 생성된 답장을 포커스된 입력란에 바로 붙여넣을 수 있습니다.</string>
+
+    <string name="bubble_panel_source_lang">원본 언어</string>
+    <string name="bubble_panel_target_lang">번역 언어</string>
+    <string name="bubble_panel_copy">복사</string>
+    <string name="bubble_panel_paste">붙여넣기</string>
+    <string name="bubble_panel_copied">복사됨</string>
+    <string name="bubble_panel_pasted">붙여넣음</string>
+    <string name="bubble_panel_paste_manual_fallback">복사됨 — 입력란을 탭하고 수동으로 붙여넣으세요</string>
+    <string name="bubble_panel_paste_a11y_off">붙여넣기 버튼을 사용하려면 접근성 설정에서 TransKey 를 활성화하세요</string>
+    <string name="bubble_panel_clipboard_empty">클립보드가 비어 있습니다</string>
+    <string name="bubble_panel_tts_not_ready">TTS 준비되지 않음</string>
+    <string name="bubble_panel_translation_failed">번역 실패</string>
+    <string name="bubble_panel_app_not_ready">앱이 준비되지 않았습니다 — TransKey 를 한 번 열어 주세요</string>
+    <string name="bubble_panel_detected">감지됨: %1$s</string>
+
+    <string name="bubble_notification_channel">TransKey 버블</string>
+    <string name="bubble_notification_active">플로팅 번역 버블 활성화됨</string>
+    <string name="bubble_overlay_perm_needed">플로팅 번역을 사용하려면 \'다른 앱 위에 표시\' 권한을 활성화하세요</string>
+    <string name="bubble_clipboard_empty_error">클립보드가 비어 있습니다.\n먼저 텍스트를 복사한 다음 버블을 탭하세요.</string>
 </resources>

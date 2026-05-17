@@ -64,4 +64,30 @@
     <string name="process_text_summarize">TransKey : Résumer</string>
     <string name="process_text_explain">TransKey : Expliquer</string>
     <string name="process_text_refine">TransKey : Affiner</string>
+
+    <string name="bubble_need_copy">Copiez d\'abord le texte, puis touchez la bulle.</string>
+    <string name="bubble_accessibility_hint">Surligner + toucher la bulle ne fonctionne pas encore. Activez l\'Accessibilité pour éviter l\'étape Copier.</string>
+    <string name="bubble_accessibility_enable">Configurer</string>
+    <string name="bubble_accessibility_guide_legacy">Trouvez TransKey dans la liste → activez \"Use TransKey\" → touchez Autoriser.</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ bloque l\'Accessibilité par défaut pour les apps sideloadées :\n1. Touchez ⋮ (en haut à droite) → \"Autoriser les paramètres restreints\"\n2. Retour → Accessibilité → TransKey → ON</string>
+    <string name="bubble_paste_a11y_required">Activez l\'Accessibilité pour coller les réponses directement dans le champ texte ayant le focus.</string>
+
+    <string name="bubble_panel_source_lang">Langue source</string>
+    <string name="bubble_panel_target_lang">Langue cible</string>
+    <string name="bubble_panel_copy">Copier</string>
+    <string name="bubble_panel_paste">Coller</string>
+    <string name="bubble_panel_copied">Copié</string>
+    <string name="bubble_panel_pasted">Collé</string>
+    <string name="bubble_panel_paste_manual_fallback">Copié — touchez le champ et collez manuellement</string>
+    <string name="bubble_panel_paste_a11y_off">Activez TransKey dans les paramètres d\'Accessibilité pour coller</string>
+    <string name="bubble_panel_clipboard_empty">Presse-papiers vide</string>
+    <string name="bubble_panel_tts_not_ready">TTS pas prêt</string>
+    <string name="bubble_panel_translation_failed">Échec de la traduction</string>
+    <string name="bubble_panel_app_not_ready">App pas prête — ouvrez TransKey une fois</string>
+    <string name="bubble_panel_detected">Détecté : %1$s</string>
+
+    <string name="bubble_notification_channel">Bulle TransKey</string>
+    <string name="bubble_notification_active">Traducteur flottant actif</string>
+    <string name="bubble_overlay_perm_needed">Activez \'Afficher par-dessus les autres apps\' pour les traductions flottantes</string>
+    <string name="bubble_clipboard_empty_error">Aucun texte dans le presse-papiers.\nCopiez le texte d\'abord, puis touchez la bulle.</string>
 </resources>
