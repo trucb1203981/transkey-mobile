@@ -20,6 +20,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import android.view.WindowManager
 
 /**
  * Foreground service that owns the user's MediaProjection grant.
@@ -89,9 +90,13 @@ class ScreenCaptureService : Service() {
 
     private fun startCapture() {
         // Reuse path: pipeline (VirtualDisplay + ImageReader) is already
-        // mirroring the screen. Re-arm `captured = false` and the existing
-        // listener will pick up the next frame the system pushes through
-        // — typically within one display refresh (~16 ms).
+        // mirroring the screen. We DON'T just flip `captured = false`
+        // immediately because the bubble's `WindowManager.removeView`
+        // call (from the caller) is async — the next frame the system
+        // pushes through VirtualDisplay can still contain the bubble for
+        // up to 1-2 display refreshes after the view was "removed".
+        // Wait CAPTURE_SETTLE_MS, drain stale buffered frames, THEN arm
+        // the gate so the captured frame is guaranteed to be post-bubble-hide.
         //
         // Why we DON'T tear down VirtualDisplay between scans: on Android
         // 14+ the MediaProjection grant is invalidated as soon as its
@@ -99,7 +104,18 @@ class ScreenCaptureService : Service() {
         // "Start recording?" prompt for every scan, which defeats the
         // whole point of caching the grant.
         if (mediaProjection != null && imageReader != null && virtualDisplay != null) {
-            captured = false
+            captured = true  // close the gate so stale frames get dropped
+            handler.postDelayed({
+                // Drain any frames buffered during the settle window so
+                // acquireLatestImage doesn't hand us a bubble-visible frame.
+                try {
+                    while (true) {
+                        val img = imageReader?.acquireLatestImage() ?: break
+                        img.close()
+                    }
+                } catch (_: Exception) {}
+                captured = false
+            }, CAPTURE_SETTLE_MS)
             return
         }
 
@@ -162,10 +178,13 @@ class ScreenCaptureService : Service() {
     private fun setupPipeline(projection: MediaProjection) {
         captured = false
 
-        val metrics = resources.displayMetrics
-        val width = metrics.widthPixels
-        val height = metrics.heightPixels
-        val density = metrics.densityDpi
+        // Use the FULL physical display bounds (incl. system bars). The
+        // app-context resources.displayMetrics on some devices/orientations
+        // returns the in-app available area, which excludes status / nav
+        // bars — that caused the captured bitmap to be smaller than the
+        // actual screen, so the LensOverlayView showed a letterboxed mini
+        // version of the source app instead of full-screen translation.
+        val (width, height, density) = readDisplaySize()
 
         val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
         imageReader = reader
@@ -207,6 +226,28 @@ class ScreenCaptureService : Service() {
             Log.w(TAG, "createVirtualDisplay failed: ${error.message}")
             deliverEmptyToBubble()
             teardownCapturePipeline()
+        }
+    }
+
+    /**
+     * Returns (widthPx, heightPx, densityDpi) for the full physical display
+     * — equivalent to what MediaProjection actually mirrors. On API 30+
+     * we read `maximumWindowMetrics.bounds`; older releases fall back to
+     * Display.getRealMetrics, which is the documented way to get the
+     * physical size including any system insets.
+     */
+    private fun readDisplaySize(): Triple<Int, Int, Int> {
+        val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.maximumWindowMetrics.bounds
+            Triple(bounds.width(), bounds.height(), resources.displayMetrics.densityDpi)
+        } else {
+            @Suppress("DEPRECATION")
+            val display = wm.defaultDisplay
+            val real = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION")
+            display.getRealMetrics(real)
+            Triple(real.widthPixels, real.heightPixels, real.densityDpi)
         }
     }
 
@@ -397,6 +438,15 @@ class ScreenCaptureService : Service() {
         const val ACTION_STOP_PROJECTION = "transkey.screen.STOP_PROJECTION"
         private const val CHANNEL_ID = "transkey_screen_capture"
         private const val NOTIFICATION_ID = 1002
+
+        /**
+         * Settle delay (ms) between bubble removal and arming the capture
+         * gate. WindowManager removal is async — the next 1-2 display
+         * refreshes can still contain the bubble. 200 ms = ~12 frames at
+         * 60 Hz, safely past any compositor lag without making the user
+         * notice the wait.
+         */
+        private const val CAPTURE_SETTLE_MS = 200L
 
         /**
          * True while this service holds a live MediaProjection grant.
