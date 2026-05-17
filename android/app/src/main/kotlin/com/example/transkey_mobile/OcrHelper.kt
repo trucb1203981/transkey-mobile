@@ -11,6 +11,7 @@ import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Thin wrapper over ML Kit Text Recognition v2. Picks the right script
@@ -50,14 +51,13 @@ object OcrHelper {
         hintLang: String?,
         callback: (String?) -> Unit,
     ) {
-        runRecognize(bitmap, hintLang) { blocks ->
+        recognizeFiltered(bitmap, hintLang) { blocks ->
             if (blocks == null) {
                 callback(null)
-                return@runRecognize
+                return@recognizeFiltered
             }
             val merged = blocks
                 .map { it.text.trim() }
-                .filter(::looksLikeContent)
                 .joinToString("\n")
                 .trim()
                 .take(MAX_CHARS)
@@ -79,13 +79,77 @@ object OcrHelper {
         hintLang: String?,
         callback: (List<Block>?) -> Unit,
     ) {
-        runRecognize(bitmap, hintLang) { blocks ->
-            if (blocks == null) {
-                callback(null)
-                return@runRecognize
+        recognizeFiltered(bitmap, hintLang, callback)
+    }
+
+    /**
+     * Run OCR with [hintLang], apply the content heuristic, and hand back
+     * a filtered block list. When [hintLang] is null we DON'T know which
+     * script the user is pointing the lens at, so the Latin-only fallback
+     * would mangle Japanese / Korean / Chinese pages into Latin garbage
+     * ("返信が遅く" → "Xyt-6ɔ2t"). Run all four recognizers in parallel
+     * and keep the result with the most meaningful captured characters
+     * — Google Lens uses the same heuristic.
+     */
+    private fun recognizeFiltered(
+        bitmap: Bitmap,
+        hintLang: String?,
+        callback: (List<Block>?) -> Unit,
+    ) {
+        if (hintLang != null) {
+            // User picked a specific source lang — trust the hint, use a
+            // single recognizer to keep memory + latency low.
+            runRecognize(bitmap, hintLang) { blocks ->
+                callback(blocks?.filter { looksLikeContent(it.text) })
             }
-            val filtered = blocks.filter { looksLikeContent(it.text) }
-            callback(filtered)
+            return
+        }
+        recognizeAuto(bitmap, callback)
+    }
+
+    /**
+     * Auto-detect script by running Latin + Japanese + Korean + Chinese
+     * recognizers in parallel and picking whichever returned the most
+     * "meaningful" text (post content-heuristic, char count). ML Kit
+     * recognizers are async + thread-safe so this fans out without any
+     * scheduling — slowest-of-four wallclock is roughly 200-500 ms.
+     *
+     * Tradeoff: ~12 MB peak memory across the four loaded models.
+     * Acceptable for one-shot scans; recognizers close after each run.
+     */
+    private fun recognizeAuto(
+        bitmap: Bitmap,
+        callback: (List<Block>?) -> Unit,
+    ) {
+        val scripts = listOf<String?>(null, "ja", "ko", "zh")
+        val results = arrayOfNulls<List<Block>>(scripts.size)
+        val remaining = AtomicInteger(scripts.size)
+        val lock = Any()
+
+        fun finishIfDone() {
+            if (remaining.decrementAndGet() != 0) return
+            val best = synchronized(lock) {
+                results
+                    .filterNotNull()
+                    .maxByOrNull { list -> list.sumOf { b -> b.text.length } }
+                    ?: emptyList()
+            }
+            Log.d(
+                TAG,
+                "auto-OCR picked: ${scripts.zip(results.toList())
+                    .map { (s, r) -> "${s ?: "latin"}=${r?.sumOf { it.text.length } ?: 0}" }
+                    .joinToString(",")
+                }",
+            )
+            callback(best)
+        }
+
+        scripts.forEachIndexed { idx, hint ->
+            runRecognize(bitmap, hint) { blocks ->
+                val filtered = blocks?.filter { looksLikeContent(it.text) } ?: emptyList()
+                synchronized(lock) { results[idx] = filtered }
+                finishIfDone()
+            }
         }
     }
 
