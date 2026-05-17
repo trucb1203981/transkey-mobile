@@ -36,7 +36,10 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       appBar: AppBar(title: Text(l.manageDevices)),
       body: devicesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) {
+          debugPrint('[Devices] load error: $e');
+          return Center(child: Text(l.errorGeneric));
+        },
         data: (devices) {
           if (devices.isEmpty) {
             return Center(

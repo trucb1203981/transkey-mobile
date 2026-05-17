@@ -201,7 +201,7 @@ class _RetryInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     final status = err.response?.statusCode;
-    if (!_isRetryable(status)) {
+    if (!_isRetryable(status, err.response?.data)) {
       handler.next(err);
       return;
     }
@@ -234,9 +234,18 @@ class _RetryInterceptor extends Interceptor {
     }
   }
 
-  bool _isRetryable(int? status) {
+  bool _isRetryable(int? status, dynamic body) {
     if (status == null) return false;
-    return status == 408 || status == 429 || (status >= 500 && status < 600);
+    if (status == 408 || (status >= 500 && status < 600)) return true;
+    if (status == 429) {
+      // 429 covers both quota_exceeded (daily limit — reset at midnight,
+      // retry is pure waste and adds ~6s before the paywall appears) and
+      // rate_limit (short burst — back-off retry can succeed). Only retry
+      // the latter.
+      final code = body is Map ? (body['code'] ?? body['error']) as String? : null;
+      return code != 'quota_exceeded';
+    }
+    return false;
   }
 }
 

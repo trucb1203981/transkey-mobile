@@ -199,7 +199,6 @@ class BubbleService : Service() {
     private var lastLocaleCode: String? = null
 
     private fun refreshLocale() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         // Match Flutter's LocaleNotifier default ('en') when the user hasn't
         // picked a UI language yet. Falling back to the *device* locale here
         // would put the popup in e.g. Vietnamese on a Vietnamese phone while
@@ -374,6 +373,12 @@ class BubbleService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
 
+    // Lazy so the first access creates it (after the service Context is
+    // attached); subsequent reads return the same instance. Replaces 30+
+    // inline `getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)` calls
+    // scattered through read*/write* settings helpers.
+    private val prefs by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -391,7 +396,7 @@ class BubbleService : Service() {
         // the user doesn't have to manually toggle it off and on; we know
         // they wanted it on because saveBubbleActive(true) was persisted.
         if (intent == null) {
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val prefs = prefs
             if (prefs.getBoolean(KEY_BUBBLE_ACTIVE, false) && bubbleView == null) {
                 showBubble()
             }
@@ -463,6 +468,12 @@ class BubbleService : Service() {
     }
 
     override fun onDestroy() {
+        // Drop every queued postDelayed before we tear views down — the
+        // pending Flutter-translate retry, the IME-show kick, the voice
+        // pulse, the final-result safety net, etc. would otherwise fire
+        // after the service is dead and either touch nulled views or
+        // re-enter a torn-down MethodChannel.
+        handler.removeCallbacksAndMessages(null)
         hideModePicker()
         hideLangPicker()
         hideSourceLangPicker()
@@ -1249,12 +1260,11 @@ class BubbleService : Service() {
     }
 
     private fun readTargetLang(): String {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_TARGET_LANG, "en") ?: "en"
     }
 
     private fun writeTargetLang(lang: String) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs
             .edit()
             .putString(KEY_TARGET_LANG, lang)
             .apply()
@@ -2265,7 +2275,6 @@ class BubbleService : Service() {
     }
 
     private fun readTtsRate(): Double {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         // shared_preferences's encoding for doubles has changed across
         // plugin versions — sometimes Float, sometimes a String-encoded
         // Double, sometimes prefixed via the legacy codec. Read through
@@ -2296,32 +2305,29 @@ class BubbleService : Service() {
     // ── Prefs helpers ──
 
     private fun saveBubbleActive(active: Boolean) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putBoolean(KEY_BUBBLE_ACTIVE, active).apply()
     }
 
     private fun readSourceLang(): String {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_SOURCE_LANG, "auto") ?: "auto"
     }
 
     private fun writeSourceLang(lang: String) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putString(KEY_SOURCE_LANG, lang).apply()
     }
 
     private fun readTone(): String {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_TONE_OVERRIDE, "") ?: ""
     }
 
     private fun readReplyLang(): String {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_REPLY_LANG, "") ?: ""
     }
 
     private fun writeReplyLang(lang: String) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putString(KEY_REPLY_LANG, lang).apply()
     }
 
@@ -2334,7 +2340,6 @@ class BubbleService : Service() {
      *   4. "en" — universal fallback
      */
     private fun readVoiceLang(): String {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val stored = prefs.getString(KEY_VOICE_LANG, null)
         if (!stored.isNullOrEmpty() && stored in VOICE_LANGS) return stored
 
@@ -2348,12 +2353,12 @@ class BubbleService : Service() {
     }
 
     private fun writeVoiceLang(lang: String) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putString(KEY_VOICE_LANG, lang).apply()
     }
 
     private fun writeTone(tone: String) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putString(KEY_TONE_OVERRIDE, tone).apply()
     }
 
@@ -2364,32 +2369,29 @@ class BubbleService : Service() {
     // and ttsProvider._loadPersistedPrefs().
 
     private fun readReplyTone(): String {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_REPLY_TONE_OVERRIDE, "") ?: ""
     }
 
     private fun writeReplyTone(tone: String) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putString(KEY_REPLY_TONE_OVERRIDE, tone).apply()
     }
 
     private fun readRomanization(): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(KEY_ROMANIZATION, false)
     }
 
     private fun writeRomanization(value: Boolean) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putBoolean(KEY_ROMANIZATION, value).apply()
     }
 
     private fun readReplySuggestions(): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(KEY_REPLY_SUGGESTIONS, false)
     }
 
     private fun writeReplySuggestions(value: Boolean) {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putBoolean(KEY_REPLY_SUGGESTIONS, value).apply()
     }
 
@@ -2400,7 +2402,7 @@ class BubbleService : Service() {
         // Flutter stores doubles natively under SharedPreferences via Float
         // wrapper — but reading on the Flutter side uses getDouble which
         // accepts both. Writing as Double keeps full precision.
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        prefs.edit()
             .putFloat(KEY_TTS_RATE, rate.toFloat()).apply()
     }
 
@@ -3216,7 +3218,6 @@ class BubbleService : Service() {
 
     private fun handleScanRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = false
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
             launchScanFlow(mode)
         } else {
@@ -3232,7 +3233,6 @@ class BubbleService : Service() {
      */
     private fun handleLensRegionRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = true
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
             launchScanFlow(mode)
         } else {
@@ -3369,7 +3369,7 @@ class BubbleService : Service() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { marginStart = (8 * dp).toInt() }
             setOnClickListener {
-                getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                prefs.edit()
                     .putBoolean(KEY_SCAN_DISCLOSED, true).apply()
                 hideScanDisclosure()
                 launchScanFlow(mode)

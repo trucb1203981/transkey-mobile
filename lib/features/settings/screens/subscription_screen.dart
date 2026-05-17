@@ -20,7 +20,10 @@ class SubscriptionScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(l.subscriptionTitle)),
       body: subAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) {
+          debugPrint('[Subscription] load error: $e');
+          return Center(child: Text(l.errorGeneric));
+        },
         data: (sub) {
           if (!sub.active && sub.status == null) {
             // Empty subscription on a paid plan = admin-granted (no LemonSqueezy
