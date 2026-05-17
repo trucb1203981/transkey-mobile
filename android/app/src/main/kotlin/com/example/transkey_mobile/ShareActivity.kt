@@ -147,10 +147,20 @@ class ShareActivity : Activity() {
         if (!text.isNullOrBlank()) {
             svc.putExtra(BubbleService.EXTRA_TEXT, text)
         } else {
-            svc.putExtra(
-                BubbleService.EXTRA_ERROR,
-                "No text in clipboard.\nCopy the selected text first, then tap the bubble.",
-            )
+            // Differentiate the message based on whether Accessibility is
+            // already on. The common confusing case is: user highlights
+            // text (no copy), taps bubble, falls through to clipboard
+            // (empty), and gets a "copy first" message — but with
+            // Accessibility enabled they wouldn't need to copy at all.
+            // Spelling that out cuts the support loop where users think
+            // "select text → translate" should just work like in
+            // Google Translate (which depends on the same permission).
+            val errorMsg = if (TransKeyAccessibilityService.isAvailable()) {
+                "No text in clipboard.\nCopy the selected text first, then tap the bubble."
+            } else {
+                "No text in clipboard.\n\nTip: Enable Accessibility for TransKey (Settings → Accessibility → TransKey) to translate highlighted text without copying first."
+            }
+            svc.putExtra(BubbleService.EXTRA_ERROR, errorMsg)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc)
         else startService(svc)
