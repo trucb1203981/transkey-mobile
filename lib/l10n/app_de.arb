@@ -349,5 +349,18 @@
   "voiceListening": "Höre zu…",
   "voicePermDenied": "Mikrofonberechtigung verweigert",
   "voiceUnsupported": "Spracheingabe auf diesem Gerät nicht verfügbar",
-  "voicePickSourceLang": "Bitte zuerst Quellsprache wählen — Spracheingabe kann nicht automatisch erkennen"
+  "voicePickSourceLang": "Bitte zuerst Quellsprache wählen — Spracheingabe kann nicht automatisch erkennen",
+
+  "paywallTitle": "Tageslimit erreicht",
+  "paywallBody": "Du hast dein heutiges Gratis-Kontingent von 20 Anfragen / 2.000 Zeichen aufgebraucht. Schau dir einen kurzen Werbespot an, um weiterzumachen, oder rüste auf für unbegrenzte Nutzung. Dein Gratis-Kontingent wird um Mitternacht zurückgesetzt.",
+  "paywallWatchAdCta": "Werbung ansehen, um fortzufahren",
+  "paywallWatchAdSub": "Verdiene mit jeder Werbung zusätzliche Anfragen und Zeichen. Kein tägliches Limit für Werbung.",
+  "paywallUpgradeCta": "Upgrade — unbegrenzt, ohne Werbung",
+  "paywallUpgradeSub": "Ab 3 $/Monat. Jederzeit kündbar.",
+  "paywallDismiss": "Später",
+  "paywallLoading": "Lädt…",
+  "paywallAdNotComplete": "Werbung nicht zu Ende angesehen — versuche es erneut, um die Belohnung zu erhalten.",
+  "paywallCreditFailed": "Belohnung konnte nicht gutgeschrieben werden. Versuche es gleich noch einmal.",
+  "quotaWatchAd": "+ Werbung ansehen",
+  "quotaRewardGranted": "Belohnung dem heutigen Kontingent gutgeschrieben"
 }

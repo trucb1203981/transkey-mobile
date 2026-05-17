@@ -349,5 +349,18 @@
   "voiceListening": "正在聆听…",
   "voicePermDenied": "麦克风权限被拒绝",
   "voiceUnsupported": "此设备不支持语音输入",
-  "voicePickSourceLang": "请先选择源语言 — 语音输入无法自动检测"
+  "voicePickSourceLang": "请先选择源语言 — 语音输入无法自动检测",
+
+  "paywallTitle": "今日额度已用完",
+  "paywallBody": "您今日的免费额度 20 次请求 / 2,000 字符已用完。观看一个短广告即可继续使用,或升级享受无限制使用。免费额度将在午夜重置。",
+  "paywallWatchAdCta": "观看广告以继续",
+  "paywallWatchAdSub": "每个广告可获得额外的请求次数和字符数。每日观看广告次数无限制。",
+  "paywallUpgradeCta": "升级 — 无限制、无广告",
+  "paywallUpgradeSub": "$3/月起。可随时取消。",
+  "paywallDismiss": "稍后再说",
+  "paywallLoading": "加载中…",
+  "paywallAdNotComplete": "广告未看完 — 请再试一次以获得奖励。",
+  "paywallCreditFailed": "无法发放奖励。请稍后再试。",
+  "quotaWatchAd": "+ 看广告",
+  "quotaRewardGranted": "奖励已加入今日额度"
 }

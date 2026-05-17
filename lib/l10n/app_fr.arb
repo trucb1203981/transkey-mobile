@@ -349,5 +349,18 @@
   "voiceListening": "Écoute…",
   "voicePermDenied": "Autorisation du microphone refusée",
   "voiceUnsupported": "Saisie vocale non disponible sur cet appareil",
-  "voicePickSourceLang": "Choisissez d'abord une langue source — la saisie vocale ne peut pas auto-détecter"
+  "voicePickSourceLang": "Choisissez d'abord une langue source — la saisie vocale ne peut pas auto-détecter",
+
+  "paywallTitle": "Limite quotidienne atteinte",
+  "paywallBody": "Vous avez utilisé votre quota gratuit d'aujourd'hui : 20 requêtes / 2 000 caractères. Regardez une courte publicité pour continuer, ou passez à la version supérieure pour un usage illimité. Votre quota gratuit se réinitialise à minuit.",
+  "paywallWatchAdCta": "Regarder une pub pour continuer",
+  "paywallWatchAdSub": "Gagnez des requêtes et caractères supplémentaires à chaque pub. Aucune limite quotidienne.",
+  "paywallUpgradeCta": "Mettre à niveau — illimité, sans pub",
+  "paywallUpgradeSub": "À partir de 3 $/mois. Annulable à tout moment.",
+  "paywallDismiss": "Plus tard",
+  "paywallLoading": "Chargement…",
+  "paywallAdNotComplete": "La pub n'a pas été terminée — réessayez pour gagner la récompense.",
+  "paywallCreditFailed": "Impossible de créditer la récompense. Réessayez dans un instant.",
+  "quotaWatchAd": "+ Voir une pub",
+  "quotaRewardGranted": "Récompense créditée sur le quota du jour"
 }

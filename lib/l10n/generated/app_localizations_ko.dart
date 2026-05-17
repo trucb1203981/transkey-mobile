@@ -994,42 +994,40 @@ class AppLocalizationsKo extends AppLocalizations {
   String get voicePickSourceLang => '먼저 원본 언어를 선택하세요 — 음성 입력은 자동 감지할 수 없습니다';
 
   @override
-  String get paywallTitle => 'Daily limit reached';
+  String get paywallTitle => '오늘 사용 한도에 도달했습니다';
 
   @override
   String get paywallBody =>
-      'You\'ve used today\'s free quota of 20 requests / 2,000 characters. Watch a short ad to keep going, or upgrade for unlimited use. Your free quota resets at midnight.';
+      '오늘의 무료 할당량 20회 요청 / 2,000자를 모두 사용했습니다. 짧은 광고를 보고 계속 이용하거나, 업그레이드하여 무제한으로 사용하세요. 무료 할당량은 자정에 초기화됩니다.';
 
   @override
-  String get paywallWatchAdCta => 'Watch ad to continue';
+  String get paywallWatchAdCta => '광고 보고 계속하기';
 
   @override
   String get paywallWatchAdSub =>
-      'Earn extra requests and characters each ad. No limit on ads per day.';
+      '광고당 추가 요청 횟수와 글자 수를 얻을 수 있습니다. 하루 광고 시청 횟수에 제한이 없습니다.';
 
   @override
-  String get paywallUpgradeCta => 'Upgrade — unlimited, no ads';
+  String get paywallUpgradeCta => '업그레이드 — 무제한, 광고 없음';
 
   @override
-  String get paywallUpgradeSub => 'From \$3/month. Cancel anytime.';
+  String get paywallUpgradeSub => '월 \$3부터. 언제든지 취소 가능.';
 
   @override
-  String get paywallDismiss => 'Maybe later';
+  String get paywallDismiss => '나중에';
 
   @override
-  String get paywallLoading => 'Loading…';
+  String get paywallLoading => '로딩 중…';
 
   @override
-  String get paywallAdNotComplete =>
-      'Ad wasn\'t completed — try again to earn the reward.';
+  String get paywallAdNotComplete => '광고가 완료되지 않았습니다 — 다시 시도하여 보상을 받으세요.';
 
   @override
-  String get paywallCreditFailed =>
-      'Couldn\'t credit reward. Try again in a moment.';
+  String get paywallCreditFailed => '보상을 지급할 수 없습니다. 잠시 후 다시 시도하세요.';
 
   @override
-  String get quotaWatchAd => '+ Watch ad';
+  String get quotaWatchAd => '+ 광고 보기';
 
   @override
-  String get quotaRewardGranted => 'Reward credited to today\'s quota';
+  String get quotaRewardGranted => '오늘 할당량에 보상이 추가되었습니다';
 }

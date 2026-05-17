@@ -981,42 +981,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get voicePickSourceLang => '请先选择源语言 — 语音输入无法自动检测';
 
   @override
-  String get paywallTitle => 'Daily limit reached';
+  String get paywallTitle => '今日额度已用完';
 
   @override
   String get paywallBody =>
-      'You\'ve used today\'s free quota of 20 requests / 2,000 characters. Watch a short ad to keep going, or upgrade for unlimited use. Your free quota resets at midnight.';
+      '您今日的免费额度 20 次请求 / 2,000 字符已用完。观看一个短广告即可继续使用,或升级享受无限制使用。免费额度将在午夜重置。';
 
   @override
-  String get paywallWatchAdCta => 'Watch ad to continue';
+  String get paywallWatchAdCta => '观看广告以继续';
 
   @override
-  String get paywallWatchAdSub =>
-      'Earn extra requests and characters each ad. No limit on ads per day.';
+  String get paywallWatchAdSub => '每个广告可获得额外的请求次数和字符数。每日观看广告次数无限制。';
 
   @override
-  String get paywallUpgradeCta => 'Upgrade — unlimited, no ads';
+  String get paywallUpgradeCta => '升级 — 无限制、无广告';
 
   @override
-  String get paywallUpgradeSub => 'From \$3/month. Cancel anytime.';
+  String get paywallUpgradeSub => '\$3/月起。可随时取消。';
 
   @override
-  String get paywallDismiss => 'Maybe later';
+  String get paywallDismiss => '稍后再说';
 
   @override
-  String get paywallLoading => 'Loading…';
+  String get paywallLoading => '加载中…';
 
   @override
-  String get paywallAdNotComplete =>
-      'Ad wasn\'t completed — try again to earn the reward.';
+  String get paywallAdNotComplete => '广告未看完 — 请再试一次以获得奖励。';
 
   @override
-  String get paywallCreditFailed =>
-      'Couldn\'t credit reward. Try again in a moment.';
+  String get paywallCreditFailed => '无法发放奖励。请稍后再试。';
 
   @override
-  String get quotaWatchAd => '+ Watch ad';
+  String get quotaWatchAd => '+ 看广告';
 
   @override
-  String get quotaRewardGranted => 'Reward credited to today\'s quota';
+  String get quotaRewardGranted => '奖励已加入今日额度';
 }

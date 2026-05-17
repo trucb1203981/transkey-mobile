@@ -1030,42 +1030,43 @@ class AppLocalizationsDe extends AppLocalizations {
       'Bitte zuerst Quellsprache wählen — Spracheingabe kann nicht automatisch erkennen';
 
   @override
-  String get paywallTitle => 'Daily limit reached';
+  String get paywallTitle => 'Tageslimit erreicht';
 
   @override
   String get paywallBody =>
-      'You\'ve used today\'s free quota of 20 requests / 2,000 characters. Watch a short ad to keep going, or upgrade for unlimited use. Your free quota resets at midnight.';
+      'Du hast dein heutiges Gratis-Kontingent von 20 Anfragen / 2.000 Zeichen aufgebraucht. Schau dir einen kurzen Werbespot an, um weiterzumachen, oder rüste auf für unbegrenzte Nutzung. Dein Gratis-Kontingent wird um Mitternacht zurückgesetzt.';
 
   @override
-  String get paywallWatchAdCta => 'Watch ad to continue';
+  String get paywallWatchAdCta => 'Werbung ansehen, um fortzufahren';
 
   @override
   String get paywallWatchAdSub =>
-      'Earn extra requests and characters each ad. No limit on ads per day.';
+      'Verdiene mit jeder Werbung zusätzliche Anfragen und Zeichen. Kein tägliches Limit für Werbung.';
 
   @override
-  String get paywallUpgradeCta => 'Upgrade — unlimited, no ads';
+  String get paywallUpgradeCta => 'Upgrade — unbegrenzt, ohne Werbung';
 
   @override
-  String get paywallUpgradeSub => 'From \$3/month. Cancel anytime.';
+  String get paywallUpgradeSub => 'Ab 3 \$/Monat. Jederzeit kündbar.';
 
   @override
-  String get paywallDismiss => 'Maybe later';
+  String get paywallDismiss => 'Später';
 
   @override
-  String get paywallLoading => 'Loading…';
+  String get paywallLoading => 'Lädt…';
 
   @override
   String get paywallAdNotComplete =>
-      'Ad wasn\'t completed — try again to earn the reward.';
+      'Werbung nicht zu Ende angesehen — versuche es erneut, um die Belohnung zu erhalten.';
 
   @override
   String get paywallCreditFailed =>
-      'Couldn\'t credit reward. Try again in a moment.';
+      'Belohnung konnte nicht gutgeschrieben werden. Versuche es gleich noch einmal.';
 
   @override
-  String get quotaWatchAd => '+ Watch ad';
+  String get quotaWatchAd => '+ Werbung ansehen';
 
   @override
-  String get quotaRewardGranted => 'Reward credited to today\'s quota';
+  String get quotaRewardGranted =>
+      'Belohnung dem heutigen Kontingent gutgeschrieben';
 }

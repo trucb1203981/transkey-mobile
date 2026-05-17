@@ -349,5 +349,18 @@
   "voiceListening": "Escuchando…",
   "voicePermDenied": "Permiso de micrófono denegado",
   "voiceUnsupported": "Entrada de voz no disponible en este dispositivo",
-  "voicePickSourceLang": "Selecciona primero un idioma de origen — la entrada de voz no puede auto-detectar"
+  "voicePickSourceLang": "Selecciona primero un idioma de origen — la entrada de voz no puede auto-detectar",
+
+  "paywallTitle": "Límite diario alcanzado",
+  "paywallBody": "Has usado tu cuota gratuita de hoy: 20 solicitudes / 2.000 caracteres. Mira un anuncio corto para seguir, o mejora tu plan para uso ilimitado. Tu cuota gratuita se restablece a medianoche.",
+  "paywallWatchAdCta": "Ver anuncio para continuar",
+  "paywallWatchAdSub": "Gana solicitudes y caracteres adicionales con cada anuncio. Sin límite de anuncios al día.",
+  "paywallUpgradeCta": "Mejorar — ilimitado, sin anuncios",
+  "paywallUpgradeSub": "Desde $3/mes. Cancela cuando quieras.",
+  "paywallDismiss": "Quizá más tarde",
+  "paywallLoading": "Cargando…",
+  "paywallAdNotComplete": "No completaste el anuncio — vuelve a intentarlo para ganar la recompensa.",
+  "paywallCreditFailed": "No se pudo acreditar la recompensa. Inténtalo en un momento.",
+  "quotaWatchAd": "+ Ver anuncio",
+  "quotaRewardGranted": "Recompensa acreditada a la cuota de hoy"
 }

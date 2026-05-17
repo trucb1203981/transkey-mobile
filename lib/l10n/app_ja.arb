@@ -349,5 +349,18 @@
   "voiceListening": "聞き取り中…",
   "voicePermDenied": "マイクの権限が拒否されました",
   "voiceUnsupported": "この端末では音声入力を利用できません",
-  "voicePickSourceLang": "先に元の言語を選択してください — 音声入力は自動検出できません"
+  "voicePickSourceLang": "先に元の言語を選択してください — 音声入力は自動検出できません",
+
+  "paywallTitle": "本日の上限に達しました",
+  "paywallBody": "本日の無料枠 20 リクエスト / 2,000 文字を使い切りました。短い広告を視聴して続けるか、アップグレードして無制限にご利用ください。無料枠は深夜にリセットされます。",
+  "paywallWatchAdCta": "広告を見て続ける",
+  "paywallWatchAdSub": "広告ごとに追加のリクエスト数と文字数を獲得できます。1日の視聴回数に制限はありません。",
+  "paywallUpgradeCta": "アップグレード — 無制限、広告なし",
+  "paywallUpgradeSub": "$3/月から。いつでもキャンセル可能。",
+  "paywallDismiss": "あとで",
+  "paywallLoading": "読み込み中…",
+  "paywallAdNotComplete": "広告が完了しませんでした — もう一度試して報酬を獲得してください。",
+  "paywallCreditFailed": "報酬を付与できませんでした。少し時間をおいて再試行してください。",
+  "quotaWatchAd": "+ 広告を見る",
+  "quotaRewardGranted": "本日の枠に報酬が追加されました"
 }
