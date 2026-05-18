@@ -8,12 +8,31 @@ import android.provider.Settings
 import android.text.TextUtils
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
 
     private val shareChannel = "transkey/share"
     private val bubbleChannel = "transkey/bubble"
+
+    /**
+     * Reuse the engine that [TransKeyApp] pre-warms in `onCreate`. Default
+     * behaviour creates a SEPARATE engine for the Activity, which means
+     * BubbleService (talking to the cached engine) and the UI (talking to
+     * the fresh engine) live in two isolates with two Riverpod containers.
+     * That breaks cross-process state updates: bubble writes a pref +
+     * fires `invokeMethod("langChanged")` → only the cached-engine
+     * provider invalidates → UI stays stale until app cold-restart.
+     *
+     * Sharing the engine collapses everything into one Dart isolate / one
+     * provider container, so any push from BubbleService is immediately
+     * visible in the UI.
+     */
+    override fun provideFlutterEngine(context: android.content.Context): FlutterEngine? {
+        return FlutterEngineCache.getInstance().get(TransKeyApp.ENGINE_ID)
+            ?: super.provideFlutterEngine(context)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -119,6 +138,44 @@ class MainActivity : FlutterActivity() {
                         val text = call.argument<String>("text") ?: ""
                         val svc = TransKeyAccessibilityService.instance
                         result.success(svc?.replaceFocusedText(text) ?: false)
+                    }
+                    // Forward to BubbleService via Intent — same body as the
+                    // handler TransKeyApp.onCreate originally installed. We
+                    // need it here too because MainActivity's
+                    // setMethodCallHandler REPLACES TransKeyApp's (same
+                    // channel, same engine after the engine-share fix), so
+                    // without this case `result.notImplemented()` kills the
+                    // entire bubble translateBatch / translateText pipeline
+                    // whenever the user has the app foregrounded.
+                    "deliverResult" -> {
+                        val args = call.arguments as? Map<*, *>
+                        val translation = args?.get("translation") as? String
+                        val romanization = args?.get("romanization") as? String
+                        val detectedLang = args?.get("detectedLang") as? String
+                        val error = args?.get("error") as? String
+                        val reqId = (args?.get("requestId") as? Number)?.toLong() ?: -1L
+                        val sources = (args?.get("suggestionSources") as? List<*>)
+                            ?.map { (it as? String).orEmpty() }
+                            ?.toTypedArray()
+                        val targets = (args?.get("suggestionTargets") as? List<*>)
+                            ?.map { (it as? String).orEmpty() }
+                            ?.toTypedArray()
+                        val i = Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_SHOW_RESULT
+                            putExtra(BubbleService.EXTRA_TRANSLATION, translation)
+                            putExtra(BubbleService.EXTRA_ROMANIZATION, romanization)
+                            putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
+                            putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
+                            putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
+                            putExtra(BubbleService.EXTRA_ERROR, error)
+                            putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(i)
+                        } else {
+                            startService(i)
+                        }
+                        result.success(null)
                     }
                     else -> result.notImplemented()
                 }

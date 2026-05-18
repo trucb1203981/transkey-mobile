@@ -15,6 +15,7 @@ import 'core/bubble/bubble_manager.dart';
 import 'core/locale/locale_provider.dart';
 import 'core/router/app_router.dart';
 import 'features/history/providers/history_provider.dart';
+import 'features/translate/providers/language_settings_provider.dart';
 import 'features/translate/models/translate_models.dart';
 import 'shared/theme/app_theme.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -57,6 +58,22 @@ void main() async {
 
 void _wireBubbleChannel() {
   _bubbleChannel.setMethodCallHandler((call) async {
+    if (call.method == 'langChanged') {
+      // Native bubble service just wrote a new source / target / reply
+      // language to SharedPreferences. Reload the Dart-side cache so the
+      // home tab's language bar reflects the change WITHOUT requiring a
+      // background+resume cycle — otherwise the user picks a lang in the
+      // bubble, opens the app, and sees the OLD value until they swipe
+      // away and back.
+      try {
+        await _rootContainer
+            .read(languageSettingsProvider.notifier)
+            .reload();
+      } catch (e) {
+        debugPrint('[bubbleChannel] langChanged reload failed: $e');
+      }
+      return null;
+    }
     if (call.method == 'openPermissions') {
       // BubbleService's accessibility banner tapped — surface the in-app
       // permissions walkthrough rather than dumping the user into system

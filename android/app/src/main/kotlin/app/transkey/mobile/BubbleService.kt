@@ -707,44 +707,55 @@ class BubbleService : Service() {
             setPadding(0, 0, 0, (8 * dp).toInt())
         })
 
-        // Source → Target language chip. Tap to switch either side.
-        // Without this users couldn't tell what direction the bubble
-        // would translate in (their app-level setting is invisible from
-        // the floating bubble) and ended up scanning Japanese with
-        // source=vi, getting garbage OCR output.
+        // Source → Target language chips. Each side is independently
+        // tappable so the user can change either direction without first
+        // opening the result panel. Without this the user could only see
+        // the source-lang setting from inside the bubble; the target was
+        // hidden behind a translate-first workflow.
         val pickedSource = readSourceLang()
         val pickedTarget = readTargetLang()
         val sourceLabel = if (pickedSource == "auto") "Auto"
             else (LANG_LABELS[pickedSource] ?: pickedSource.uppercase())
         val targetLabel = LANG_LABELS[pickedTarget] ?: pickedTarget.uppercase()
-        card.addView(TextView(this).apply {
-            text = "$sourceLabel  →  $targetLabel"
+        val chipBgColor = Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF")
+        fun langChip(label: String, onTap: () -> Unit): TextView = TextView(this).apply {
+            text = label
             setTextColor(accent)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setPadding(
-                (10 * dp).toInt(), (6 * dp).toInt(),
-                (10 * dp).toInt(), (6 * dp).toInt(),
+                (12 * dp).toInt(), (6 * dp).toInt(),
+                (12 * dp).toInt(), (6 * dp).toInt(),
             )
             background = GradientDrawable().apply {
-                setColor(Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF"))
+                setColor(chipBgColor)
                 cornerRadius = 12 * dp
             }
             isClickable = true
             isFocusable = true
             setOnClickListener {
-                // Open source-language picker first; once the user dismisses
-                // it the target picker is one tap away on the result panel
-                // anyway, so we don't chain to it automatically.
                 hideModePicker()
-                showSourceLangPicker()
+                onTap()
             }
+        }
+        val langRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = (12 * dp).toInt() }
+        }
+        langRow.addView(langChip(sourceLabel) { showSourceLangPicker() })
+        langRow.addView(TextView(this).apply {
+            text = "  →  "
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            gravity = Gravity.CENTER
         })
+        langRow.addView(langChip(targetLabel) { showLangPicker() })
+        card.addView(langRow)
 
         // 5 feature buttons — matches the in-app feature-button row in
         // home_screen.dart: icon on top, label below, first action gets a
@@ -1276,6 +1287,29 @@ class BubbleService : Service() {
             .edit()
             .putString(KEY_TARGET_LANG, lang)
             .apply()
+        notifyFlutterLangChanged()
+    }
+
+    /**
+     * Push a "langChanged" notification down the bubble MethodChannel so the
+     * Flutter side's languageSettingsProvider re-reads SharedPreferences
+     * immediately instead of waiting for the next `didChangeAppLifecycleState
+     * .resumed` cycle. Without this, the in-app language bar stays stale
+     * while the user is actively switching between the bubble overlay and
+     * the home tab — they'd think the change didn't take effect.
+     *
+     * No-op if Flutter engine isn't up yet (cold start). The Dart-side
+     * pref-reload on resume is the safety net for that case.
+     */
+    private fun notifyFlutterLangChanged() {
+        val engine = TransKeyApp.engine ?: return
+        try {
+            io.flutter.plugin.common.MethodChannel(
+                engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+            ).invokeMethod("langChanged", null)
+        } catch (e: Exception) {
+            android.util.Log.w("TKBubble", "notifyFlutterLangChanged failed: ${e.message}")
+        }
     }
 
     /**
@@ -1386,6 +1420,7 @@ class BubbleService : Service() {
     private fun writeSourceLang(lang: String) {
         prefs.edit()
             .putString(KEY_SOURCE_LANG, lang).apply()
+        notifyFlutterLangChanged()
     }
 
     private fun readTone(): String {
@@ -1399,6 +1434,7 @@ class BubbleService : Service() {
     private fun writeReplyLang(lang: String) {
         prefs.edit()
             .putString(KEY_REPLY_LANG, lang).apply()
+        notifyFlutterLangChanged()
     }
 
     /**
