@@ -144,7 +144,7 @@ class BubbleService : Service() {
         // Languages offered as pills in the voice picker. Kept short on
         // purpose — every entry needs an offline pack downloaded on the
         // device's Google Speech Services for non-network use.
-        private val VOICE_LANGS = listOf(
+        internal val VOICE_LANGS = listOf(
             "en", "vi", "ja", "ko", "zh", "fr", "de", "es", "pt", "ru", "th", "id",
         )
 
@@ -155,7 +155,7 @@ class BubbleService : Service() {
         // a tone picked in the bubble shows up correctly in the in-app
         // Settings screen (and vice versa). Labels are resolved per-locale
         // via `toneLabel()` below.
-        private val TONE_CODES = listOf(
+        internal val TONE_CODES = listOf(
             "", "business", "casual", "formal", "polite", "technical", "neutral",
         )
         private val TONE_STRING_IDS = mapOf(
@@ -171,7 +171,7 @@ class BubbleService : Service() {
         // Speech rates — MUST match Flutter `speeds` list in tts_button.dart
         // so a rate set in the bubble is reflected when the in-app speak
         // button opens. Same set as desktop popup.ts RATE_OPTIONS.
-        private val TTS_RATES = listOf(0.25, 0.5, 0.75, 1.0, 1.25, 1.5)
+        internal val TTS_RATES = listOf(0.25, 0.5, 0.75, 1.0, 1.25, 1.5)
 
         private const val BUBBLE_SIZE_DP = 48
 
@@ -268,7 +268,7 @@ class BubbleService : Service() {
 
     // Per-translation settings (read from SharedPreferences)
     internal var currentSourceLang: String = "auto"
-    private var currentTone: String = ""
+    internal var currentTone: String = ""
 
     // Translation in-progress guard (prevents spam clicks)
     internal var isTranslating = false
@@ -284,8 +284,8 @@ class BubbleService : Service() {
     // tone, TTS rate, romanization, suggestions).
 
     // Mode picker overlay (shown when bubble tapped)
-    private var modePickerView: View? = null
-    private var pendingPickerText: String? = null
+    internal var modePickerView: View? = null
+    internal var pendingPickerText: String? = null
 
     // Language picker overlays
     internal var langPickerView: View? = null
@@ -297,16 +297,16 @@ class BubbleService : Service() {
     // Text-input picker overlay (lets user type text without opening the app)
     // This window is FOCUSABLE — unlike the other pickers — so the soft
     // keyboard can attach to its EditText.
-    private var inputPickerView: View? = null
+    internal var inputPickerView: View? = null
 
     // Voice-input picker overlay. Active SpeechRecognizer session and the
     // TextView we stream partial results into. Held here so onDestroy /
     // stopBubble can release the recognizer's audio focus.
-    private var voicePickerView: View? = null
-    private var voiceHelper: VoiceRecognitionHelper? = null
-    private var voiceTranscriptView: TextView? = null
-    private var voiceStatusView: TextView? = null
-    private var voiceMicIcon: TextView? = null
+    internal var voicePickerView: View? = null
+    internal var voiceHelper: VoiceRecognitionHelper? = null
+    internal var voiceTranscriptView: TextView? = null
+    internal var voiceStatusView: TextView? = null
+    internal var voiceMicIcon: TextView? = null
 
     // First-run disclosure overlay shown before the "Scan screen" / OCR flow
     // (MediaProjection) — explains what gets captured and where it goes.
@@ -331,7 +331,7 @@ class BubbleService : Service() {
     // from prefs (KEY_VOICE_LANG) each time the picker opens; mutated when
     // the user taps a different lang pill, which also persists + restarts
     // the recognizer with the new BCP-47 tag.
-    private var currentVoiceLang: String = "en"
+    internal var currentVoiceLang: String = "en"
 
     // Text-to-Speech
     private var tts: TextToSpeech? = null
@@ -659,290 +659,6 @@ class BubbleService : Service() {
         showModePicker()
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun showModePicker() {
-        ensureWindowManager()
-        // Pick up any recent in-app UI language change so the picker labels
-        // are rendered in the locale the user actually wants.
-        refreshLocale()
-
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val mutedCol = style.muted
-        val accent = style.accent
-
-        // Semi-transparent backdrop — tap outside card to dismiss
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Palette.BACKDROP_DIM)
-            setOnClickListener { hideModePicker() }
-        }
-
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 20 * dp }
-            elevation = 20 * dp
-            setPadding((18 * dp).toInt(), (16 * dp).toInt(), (18 * dp).toInt(), (18 * dp).toInt())
-            isClickable = true
-        }
-
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_choose_action)
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, (8 * dp).toInt())
-        })
-        card.addView(TextView(this).apply {
-            // Single subtitle: the picker's action rows translate the
-            // clipboard; the alternative-input rows (OCR / Region / etc)
-            // are explicit. We no longer try to second-guess what the
-            // user has captured because source text always comes from an
-            // explicit action.
-            text = localized(R.string.bubble_need_text)
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            setPadding(0, 0, 0, (8 * dp).toInt())
-        })
-
-        // Source → Target language chips. Each side is independently
-        // tappable so the user can change either direction without first
-        // opening the result panel. Without this the user could only see
-        // the source-lang setting from inside the bubble; the target was
-        // hidden behind a translate-first workflow.
-        val pickedSource = readSourceLang()
-        val pickedTarget = readTargetLang()
-        val sourceLabel = if (pickedSource == "auto") "Auto"
-            else (LANG_LABELS[pickedSource] ?: pickedSource.uppercase())
-        val targetLabel = LANG_LABELS[pickedTarget] ?: pickedTarget.uppercase()
-        val chipBgColor = Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF")
-        fun langChip(label: String, onTap: () -> Unit): TextView = TextView(this).apply {
-            text = label
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(
-                (12 * dp).toInt(), (6 * dp).toInt(),
-                (12 * dp).toInt(), (6 * dp).toInt(),
-            )
-            background = GradientDrawable().apply {
-                setColor(chipBgColor)
-                cornerRadius = 12 * dp
-            }
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                hideModePicker()
-                onTap()
-            }
-        }
-        val langRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = (12 * dp).toInt() }
-        }
-        langRow.addView(langChip(sourceLabel) { showSourceLangPicker() })
-        langRow.addView(TextView(this).apply {
-            text = "  →  "
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            gravity = Gravity.CENTER
-        })
-        langRow.addView(langChip(targetLabel) { showLangPicker() })
-        card.addView(langRow)
-
-        // 5 feature buttons — matches the in-app feature-button row in
-        // home_screen.dart: icon on top, label below, first action gets a
-        // "primary" purple fill so it stands out.
-        val modesRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-        ALL_MODES.forEachIndexed { index, mode ->
-            val isPrimary = mode == MODE_TRANSLATE
-            val primaryBg = "#7C6EFA"
-            val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
-            val fgColor = if (isPrimary) Color.WHITE else accent
-
-            val column = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding((4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt())
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor(if (isPrimary) primaryBg else subduedBg))
-                    cornerRadius = 14 * dp
-                }
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    hideModePicker()
-                    onTranslateModePicked(mode)
-                }
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    .apply { marginEnd = if (index < ALL_MODES.size - 1) (6 * dp).toInt() else 0 }
-            }
-            // Icon on top
-            column.addView(ImageView(this).apply {
-                setImageResource(modeIcon(mode))
-                setColorFilter(fgColor)
-                layoutParams = LinearLayout.LayoutParams((18 * dp).toInt(), (18 * dp).toInt())
-            })
-            // Label below — tiny enough to fit one line for all known
-            // locales (Vietnamese "Tinh chỉnh" being the longest)
-            column.addView(TextView(this).apply {
-                text = modeLabel(mode)
-                setTextColor(fgColor)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                gravity = Gravity.CENTER
-                maxLines = 1
-                setSingleLine(true)
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                typeface = Typeface.DEFAULT_BOLD
-                setPadding(0, (4 * dp).toInt(), 0, 0)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                )
-            })
-            modesRow.addView(column)
-        }
-        card.addView(modesRow)
-
-        // Divider + secondary actions row ("Type text" / "Show last result")
-        val dividerBg = if (isDark) "#3A3A50" else "#E0DFF8"
-        card.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, (1 * dp).toInt(),
-            ).apply { topMargin = (12 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
-            setBackgroundColor(Color.parseColor(dividerBg))
-        })
-
-        // Always-available "Type your own text" entry — for when the user
-        // wants to translate something they haven't selected/copied (e.g.
-        // composing a message from scratch). Opens a focusable input window
-        // so the soft keyboard can attach.
-        card.addView(TextView(this).apply {
-            text = "✎  ${localized(R.string.bubble_type_text)}"
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                hideModePicker()
-                showInputPicker(MODE_TRANSLATE)
-            }
-        })
-
-        // "Voice input" — dictation for users who'd rather speak than type.
-        // Routes through MicPermissionActivity the first time to request
-        // RECORD_AUDIO; subsequent uses skip straight to the voice picker.
-        card.addView(TextView(this).apply {
-            text = "🎤  ${localized(R.string.bubble_voice)}"
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                hideModePicker()
-                handleVoiceRequest()
-            }
-        })
-
-        // "Scan screen (OCR)" — full-screen Lens flow. Captures the
-        // whole frame, OCRs everything that passes the content heuristic,
-        // and renders translated blocks at their original positions.
-        card.addView(TextView(this).apply {
-            text = "📷  ${localized(R.string.bubble_scan_screen)}"
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                hideModePicker()
-                showScanModeChooser(isRegion = false)
-            }
-        })
-
-        // "Translate selected area" — same Lens pipeline but with a
-        // rubber-band step between capture and OCR so the user can crop
-        // out the rest of the screen (chat header, ads, app chrome).
-        // Cheaper to translate AND avoids translating things the user
-        // doesn't care about.
-        card.addView(TextView(this).apply {
-            text = "🎯  ${localized(R.string.bubble_lens_region)}"
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                hideModePicker()
-                showScanModeChooser(isRegion = true)
-            }
-        })
-
-        // "Last result" shortcut if we have a cached output
-        if (currentOutput != null) {
-            card.addView(TextView(this).apply {
-                text = localized(R.string.bubble_show_last_result)
-                setTextColor(mutedCol)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                gravity = Gravity.CENTER
-                setPadding(0, (6 * dp).toInt(), 0, (4 * dp).toInt())
-                setOnClickListener {
-                    hideModePicker()
-                    showResultPanel(loading = false, error = null, output = currentOutput)
-                }
-            })
-        }
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (48 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
-
-        modePickerView = backdrop
-        windowManager?.addView(backdrop, buildPickerLayoutParams())
-    }
-
-    internal fun buildPickerLayoutParams(): WindowManager.LayoutParams {
-        return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT,
-        )
-    }
-
-    private fun hideModePicker() {
-        modePickerView?.let {
-            try { windowManager?.removeView(it) } catch (_: Exception) {}
-        }
-        modePickerView = null
-        pendingPickerText = null
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-
     private fun buildBubbleLayoutParams(): WindowManager.LayoutParams {
         val dp = resources.displayMetrics.density
         val bubbleSize = (BUBBLE_SIZE_DP * dp).toInt()
@@ -1044,28 +760,6 @@ class BubbleService : Service() {
      * forwards the text back via ACTION_TRANSLATE; if the clipboard
      * is empty it surfaces the "Copy text first" toast.
      */
-    private fun onTranslateModePicked(mode: String) {
-        android.util.Log.w("TKBubble", "onTranslateModePicked: mode=$mode → ShareActivity")
-        // Always route via ShareActivity — that's the only component that
-        // can read primaryClip on Android 10+ (background services are
-        // blocked). ShareActivity reads the clipboard and forwards the
-        // result back via ACTION_TRANSLATE.
-        currentMode = mode
-        val i = Intent(this, ShareActivity::class.java).apply {
-            action = ACTION_READ_CLIPBOARD
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
-                    Intent.FLAG_ACTIVITY_NO_HISTORY or
-                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-            putExtra(EXTRA_MODE, mode)
-        }
-        try {
-            startActivity(i)
-        } catch (e: Exception) {
-            android.util.Log.w("TKBubble", "ShareActivity launch failed: ${e.message}")
-            Toast.makeText(this, localized(R.string.bubble_need_copy), Toast.LENGTH_LONG).show()
-        }
-    }
 
     private fun readClipboardText(): String? {
         return try {
@@ -1272,7 +966,7 @@ class BubbleService : Service() {
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null)
     }
 
-    private fun readTtsRate(): Double {
+    internal fun readTtsRate(): Double {
         // shared_preferences's encoding for doubles has changed across
         // plugin versions — sometimes Float, sometimes a String-encoded
         // Double, sometimes prefixed via the legacy codec. Read through
@@ -1339,7 +1033,7 @@ class BubbleService : Service() {
      *   3. Translate source-lang (when not "auto")
      *   4. "en" — universal fallback
      */
-    private fun readVoiceLang(): String {
+    internal fun readVoiceLang(): String {
         val stored = prefs.getString(KEY_VOICE_LANG, null)
         if (!stored.isNullOrEmpty() && stored in VOICE_LANGS) return stored
 
@@ -1352,7 +1046,7 @@ class BubbleService : Service() {
         return "en"
     }
 
-    private fun writeVoiceLang(lang: String) {
+    internal fun writeVoiceLang(lang: String) {
         prefs.edit()
             .putString(KEY_VOICE_LANG, lang).apply()
     }
@@ -1377,20 +1071,20 @@ class BubbleService : Service() {
             .putString(KEY_REPLY_TONE_OVERRIDE, tone).apply()
     }
 
-    private fun readRomanization(): Boolean {
+    internal fun readRomanization(): Boolean {
         return prefs.getBoolean(KEY_ROMANIZATION, false)
     }
 
-    private fun writeRomanization(value: Boolean) {
+    internal fun writeRomanization(value: Boolean) {
         prefs.edit()
             .putBoolean(KEY_ROMANIZATION, value).apply()
     }
 
-    private fun readReplySuggestions(): Boolean {
+    internal fun readReplySuggestions(): Boolean {
         return prefs.getBoolean(KEY_REPLY_SUGGESTIONS, false)
     }
 
-    private fun writeReplySuggestions(value: Boolean) {
+    internal fun writeReplySuggestions(value: Boolean) {
         prefs.edit()
             .putBoolean(KEY_REPLY_SUGGESTIONS, value).apply()
     }
@@ -1398,7 +1092,7 @@ class BubbleService : Service() {
     // readTtsRate() is defined above (with broader plugin-version handling) —
     // single source of truth for both the speakOutput path and settings sheet.
 
-    private fun writeTtsRate(rate: Double) {
+    internal fun writeTtsRate(rate: Double) {
         // Flutter stores doubles natively under SharedPreferences via Float
         // wrapper — but reading on the Flutter side uses getDouble which
         // accepts both. Writing as Double keeps full precision.
@@ -1435,617 +1129,10 @@ class BubbleService : Service() {
      * (touch-only); this one explicitly does NOT set that flag and asks the
      * IME to appear and resize the window when it does.
      */
-    private fun buildInputPickerLayoutParams(): WindowManager.LayoutParams {
-        return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            // FLAG_DIM_BEHIND for the backdrop dim; no FLAG_NOT_FOCUSABLE so
-            // taps on the EditText raise the soft keyboard.
-            WindowManager.LayoutParams.FLAG_DIM_BEHIND,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE
-            dimAmount = 0.4f
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    internal fun showInputPicker(initialMode: String, prefillText: String? = null) {
-        if (inputPickerView != null) { hideInputPicker(); return }
-        ensureWindowManager()
-        refreshLocale()
-
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val mutedCol = style.muted
-        val accent = style.accent
-        val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
-        val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
-
-        // Selected mode reference — closure-captured by tabs + Translate button.
-        // Reply mode requires a captured conversation; typed-from-scratch
-        // text has no original to reply to, so we hide Reply from this picker.
-        val typeableModes = ALL_MODES.filter { it != MODE_REPLY }
-        val selectedMode = arrayOf(
-            if (typeableModes.contains(initialMode)) initialMode else MODE_TRANSLATE,
-        )
-
-        val backdrop = FrameLayout(this).apply {
-            // Tap outside card to dismiss. The card itself swallows touches.
-            setOnClickListener { hideInputPicker() }
-        }
-
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
-            elevation = 22 * dp
-            setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
-            isClickable = true
-        }
-
-        // Header row: title (left) + Paste / Clear actions (right). The
-        // floating text-selection toolbar (which normally exposes Paste via
-        // long-press) does NOT attach to TYPE_APPLICATION_OVERLAY windows on
-        // any Android version — its popup expects a regular activity window
-        // token. So we surface Paste + Clear as explicit, always-visible
-        // buttons; long-press has no equivalent here.
-        val headerRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, (10 * dp).toInt())
-        }
-        headerRow.addView(TextView(this).apply {
-            text = localized(R.string.bubble_type_text)
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            typeface = Typeface.DEFAULT_BOLD
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        // Reference declared up front so the Paste / Clear closures can
-        // mutate it. The actual EditText is constructed just below.
-        var inputRef: EditText? = null
-        headerRow.addView(TextView(this).apply {
-            text = "📋 ${localized(R.string.bubble_input_paste)}"
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            background = GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
-                setStroke(1, borderCol)
-                cornerRadius = 10 * dp
-            }
-            setOnClickListener {
-                val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = cm.primaryClip
-                val pasted = if (clip != null && clip.itemCount > 0) {
-                    clip.getItemAt(0).coerceToText(this@BubbleService)?.toString().orEmpty()
-                } else ""
-                if (pasted.isEmpty()) {
-                    Toast.makeText(this@BubbleService, localized(R.string.bubble_panel_clipboard_empty), Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                inputRef?.let { editText ->
-                    // Replace current selection with the pasted text, or
-                    // append at the cursor if there's no selection — matches
-                    // standard Paste menu behaviour.
-                    val start = editText.selectionStart.coerceAtLeast(0)
-                    val end = editText.selectionEnd.coerceAtLeast(start)
-                    editText.text.replace(start, end, pasted)
-                    editText.setSelection(start + pasted.length)
-                }
-            }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = (8 * dp).toInt() }
-        })
-        headerRow.addView(TextView(this).apply {
-            text = "✕"
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            contentDescription = localized(R.string.bubble_input_clear)
-            background = GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
-                setStroke(1, borderCol)
-                cornerRadius = 10 * dp
-            }
-            setOnClickListener {
-                inputRef?.text?.clear()
-                inputRef?.requestFocus()
-            }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = (6 * dp).toInt() }
-        })
-        card.addView(headerRow)
-
-        // ── Input field ──
-        val input = EditText(this).apply {
-            hint = localized(R.string.bubble_input_hint)
-            setHintTextColor(mutedCol)
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            background = GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
-                setStroke(1, borderCol)
-                cornerRadius = 12 * dp
-            }
-            setPadding(
-                (12 * dp).toInt(), (10 * dp).toInt(),
-                (12 * dp).toInt(), (10 * dp).toInt(),
-            )
-            minLines = 3
-            maxLines = 6
-            gravity = Gravity.TOP or Gravity.START
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
-                android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or
-                android.view.inputmethod.EditorInfo.IME_ACTION_DONE
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
-        }
-        // Wire the Paste / Clear buttons (declared before EditText) to the
-        // freshly-constructed input now that the reference exists.
-        inputRef = input
-        // Pre-fill if caller supplied text (e.g. from Read-screen a11y flow).
-        // Cursor at end so user can keep typing or trim.
-        if (!prefillText.isNullOrBlank()) {
-            input.setText(prefillText)
-            input.setSelection(input.text?.length ?: 0)
-        }
-        card.addView(input)
-
-        // ── Mode tabs ──
-        val tabsRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = (10 * dp).toInt() }
-        }
-        val tabRefs = mutableListOf<Pair<String, TextView>>()
-        fun renderTabSelection() {
-            for ((mode, tab) in tabRefs) {
-                val selected = mode == selectedMode[0]
-                tab.background = GradientDrawable().apply {
-                    setColor(Color.parseColor(if (selected) "#7C6EFA" else subduedBg))
-                    cornerRadius = 12 * dp
-                }
-                tab.setTextColor(if (selected) Color.WHITE else accent)
-            }
-        }
-        typeableModes.forEachIndexed { index, mode ->
-            val tab = TextView(this).apply {
-                text = modeLabel(mode)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-                maxLines = 1
-                setSingleLine(true)
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    selectedMode[0] = mode
-                    renderTabSelection()
-                }
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    .apply { marginEnd = if (index < typeableModes.size - 1) (4 * dp).toInt() else 0 }
-            }
-            tabRefs.add(mode to tab)
-            tabsRow.addView(tab)
-        }
-        renderTabSelection()
-        card.addView(tabsRow)
-
-        // ── Action buttons (Cancel + Translate) ──
-        val actionsRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = (12 * dp).toInt() }
-        }
-        actionsRow.addView(TextView(this).apply {
-            text = localized(R.string.bubble_cancel)
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { hideInputPicker() }
-        })
-        actionsRow.addView(TextView(this).apply {
-            text = localized(R.string.bubble_action_translate)
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            background = GradientDrawable().apply {
-                setColor(accent)
-                cornerRadius = 12 * dp
-            }
-            setPadding((18 * dp).toInt(), (10 * dp).toInt(), (18 * dp).toInt(), (10 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = (8 * dp).toInt() }
-            setOnClickListener {
-                val text = input.text?.toString()?.trim().orEmpty()
-                if (text.isEmpty()) {
-                    input.requestFocus()
-                    return@setOnClickListener
-                }
-                hideInputPicker()
-                handleTranslateRequest(text, selectedMode[0])
-            }
-        })
-        card.addView(actionsRow)
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((380 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(
-            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
-        ))
-
-        inputPickerView = backdrop
-        windowManager?.addView(backdrop, buildInputPickerLayoutParams())
-
-        // Pop the keyboard up as soon as the window is attached. Without
-        // requestFocus + showSoftInput, Android sometimes leaves the IME
-        // hidden until the user taps the field a second time.
-        input.requestFocus()
-        handler.postDelayed({
-            val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-            imm?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-        }, 80)
-    }
-
-    private fun hideInputPicker() {
-        // Drop the keyboard explicitly — the window is FOCUSABLE so the IME
-        // doesn't always animate out when we just remove the view.
-        val view = inputPickerView
-        if (view != null) {
-            val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-            imm?.hideSoftInputFromWindow(view.windowToken, 0)
-            try { windowManager?.removeView(view) } catch (_: Exception) {}
-        }
-        inputPickerView = null
-    }
-
-    // ── Voice input picker ──
 
     /** Pulse animation runnable so we can cancel it on hide. */
-    private var voicePulseRunnable: Runnable? = null
+    internal var voicePulseRunnable: Runnable? = null
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun showVoicePicker(initialMode: String) {
-        if (voicePickerView != null) { hideVoicePicker(); return }
-        ensureWindowManager()
-        refreshLocale()
-
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val mutedCol = style.muted
-        val accent = style.accent
-        val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
-
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Palette.BACKDROP_DIM)
-            setOnClickListener { cancelVoice() }
-        }
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
-            elevation = 22 * dp
-            setPadding((20 * dp).toInt(), (20 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt())
-            isClickable = true
-            gravity = Gravity.CENTER_HORIZONTAL
-        }
-
-        // Title
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_voice)
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, (12 * dp).toInt())
-        })
-
-        // Big mic icon — using a TextView with 🎤 so we don't need to ship
-        // a vector drawable just for this. Pulses alpha while listening.
-        val mic = TextView(this).apply {
-            text = "🎤"
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 48f)
-            gravity = Gravity.CENTER
-            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
-        }
-        voiceMicIcon = mic
-        card.addView(mic)
-
-        // Language pills: which language the user is SPEAKING in. Decoupled
-        // from translate source-lang because dictation language often
-        // differs (you might dictate JP, translate JP → EN). User taps a
-        // pill → we persist the choice, cancel the active recognizer, and
-        // restart it with the new BCP-47 tag.
-        currentVoiceLang = readVoiceLang()
-        val langScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = (4 * dp).toInt() }
-        }
-        val langRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-        val pillsByCode = mutableMapOf<String, TextView>()
-        fun renderLangPills() {
-            for ((code, pill) in pillsByCode) {
-                val selected = code == currentVoiceLang
-                pill.background = GradientDrawable().apply {
-                    setColor(if (selected) accent else Color.TRANSPARENT)
-                    if (!selected) setStroke(1, borderCol)
-                    cornerRadius = 12 * dp
-                }
-                pill.setTextColor(if (selected) Color.WHITE else textCol)
-            }
-        }
-        VOICE_LANGS.forEachIndexed { idx, code ->
-            val label = LANG_LABELS[code] ?: code.uppercase()
-            val pill = TextView(this).apply {
-                text = label
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-                maxLines = 1
-                setSingleLine(true)
-                setPadding((12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt())
-                isClickable = true
-                isFocusable = true
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { marginEnd = if (idx < VOICE_LANGS.size - 1) (6 * dp).toInt() else 0 }
-                setOnClickListener {
-                    if (currentVoiceLang == code) return@setOnClickListener
-                    currentVoiceLang = code
-                    writeVoiceLang(code)
-                    renderLangPills()
-                    // Wipe stale transcript + restart recognizer with the
-                    // newly-picked language. Note: voiceHelper?.cancel()
-                    // ALSO calls destroy() under the hood — start a new one.
-                    voiceHelper?.cancel()
-                    voiceHelper = null
-                    voiceTranscriptView?.text = ""
-                    voiceStatusView?.text = localized(R.string.bubble_voice_speak)
-                    startVoiceRecognizer(initialMode)
-                }
-            }
-            pillsByCode[code] = pill
-            langRow.addView(pill)
-        }
-        renderLangPills()
-        langScroll.addView(langRow)
-        card.addView(langScroll)
-
-        // Status line ("Listening…" / "Speak now" / error)
-        val status = TextView(this).apply {
-            text = localized(R.string.bubble_voice_speak)
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            gravity = Gravity.CENTER
-            setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
-        }
-        voiceStatusView = status
-        card.addView(status)
-
-        // Live transcript — fills out as the engine emits partials. Bordered
-        // so empty state still reads as "a place where your words appear".
-        val transcript = TextView(this).apply {
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            setPadding(
-                (12 * dp).toInt(), (10 * dp).toInt(),
-                (12 * dp).toInt(), (10 * dp).toInt(),
-            )
-            background = GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
-                setStroke(1, borderCol)
-                cornerRadius = 12 * dp
-            }
-            minLines = 2
-            maxLines = 4
-            gravity = Gravity.TOP or Gravity.START
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = (8 * dp).toInt() }
-        }
-        voiceTranscriptView = transcript
-        card.addView(transcript)
-
-        // Action row: Cancel + Stop. Stop commits whatever partial we have
-        // and routes the final text into the input picker for review.
-        val actions = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = (12 * dp).toInt() }
-        }
-        actions.addView(TextView(this).apply {
-            text = localized(R.string.bubble_cancel)
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { cancelVoice() }
-        })
-        actions.addView(TextView(this).apply {
-            text = localized(R.string.bubble_voice_stop)
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            background = GradientDrawable().apply {
-                setColor(accent)
-                cornerRadius = 12 * dp
-            }
-            setPadding((18 * dp).toInt(), (10 * dp).toInt(), (18 * dp).toInt(), (10 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = (8 * dp).toInt() }
-            setOnClickListener { voiceHelper?.stop() }
-        })
-        card.addView(actions)
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(
-            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
-        ))
-        voicePickerView = backdrop
-        windowManager?.addView(backdrop, buildPickerLayoutParams())
-
-        startMicPulse()
-        startVoiceRecognizer(initialMode)
-    }
-
-    /**
-     * (Re-)spin up the SpeechRecognizer using whatever language the user
-     * currently has picked in the voice picker. Called when the picker
-     * first opens and again every time the user taps a different lang pill.
-     */
-    private fun startVoiceRecognizer(initialMode: String) {
-        val tag = VoiceRecognitionHelper.resolveLanguageTag(currentVoiceLang)
-        val helper = VoiceRecognitionHelper(
-            context = this,
-            languageTag = tag,
-            callbacks = object : VoiceRecognitionHelper.Callbacks {
-                override fun onReady() {
-                    handler.post {
-                        voiceStatusView?.text = localized(R.string.bubble_voice_listening)
-                    }
-                }
-                override fun onPartialResult(text: String) {
-                    handler.post {
-                        voiceTranscriptView?.text = text
-                    }
-                }
-                override fun onFinalResult(text: String) {
-                    handler.post {
-                        hideVoicePicker()
-                        // Open the input picker with the recognized text so
-                        // the user can correct mis-hearings before sending.
-                        showInputPicker(initialMode, prefillText = text)
-                    }
-                }
-                override fun onError(message: String) {
-                    handler.post {
-                        voiceStatusView?.text = message
-                        voiceTranscriptView?.text = ""
-                        stopMicPulse()
-                        // Auto-dismiss after a moment so the user isn't stuck
-                        // on the error card — UNLESS they're likely to retry
-                        // with a different language (CJK packs often missing).
-                        handler.postDelayed({ hideVoicePicker() }, 2400)
-                    }
-                }
-            },
-        )
-        voiceHelper = helper
-        helper.start()
-    }
-
-    private fun startMicPulse() {
-        stopMicPulse()
-        val runnable = object : Runnable {
-            override fun run() {
-                val mic = voiceMicIcon ?: return
-                val target = if (mic.alpha > 0.7f) 0.35f else 1f
-                mic.animate().alpha(target).setDuration(550).start()
-                handler.postDelayed(this, 550)
-            }
-        }
-        voicePulseRunnable = runnable
-        handler.post(runnable)
-    }
-
-    private fun stopMicPulse() {
-        voicePulseRunnable?.let { handler.removeCallbacks(it) }
-        voicePulseRunnable = null
-        voiceMicIcon?.animate()?.cancel()
-        voiceMicIcon?.alpha = 1f
-    }
-
-    private fun cancelVoice() {
-        voiceHelper?.cancel()
-        voiceHelper = null
-        hideVoicePicker()
-    }
-
-    private fun hideVoicePicker() {
-        stopMicPulse()
-        voiceHelper?.destroy()
-        voiceHelper = null
-        voicePickerView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        voicePickerView = null
-        voiceMicIcon = null
-        voiceStatusView = null
-        voiceTranscriptView = null
-    }
-
-    // ── Scan screen (MediaProjection + ML Kit OCR) ──
-
-    /**
-     * Entry from the mode picker. First tap shows a one-time disclosure
-     * explaining that a single frame is captured on-device and discarded
-     * after OCR. Subsequent taps go straight to the MediaProjection consent
-     * prompt — that prompt itself is non-skippable per Android policy and
-     * appears every session because we deliberately don't persist the
-     * projection token.
-     */
-    /**
-     * Mode chooser shown right after the user taps "Scan screen" or
-     * "Region select" in the bubble picker. Translate runs the Lens
-     * visual overlay; Summarize routes OCR text into the input picker
-     * (then result panel). Other modes (Refine/Explain/Reply) aren't
-     * exposed here per the feature spec — they only accept text the
-     * user has already drafted/copied, not images of arbitrary screens.
-     */
     @SuppressLint("ClickableViewAccessibility")
 
     internal fun handleScanRequest(mode: String = MODE_TRANSLATE) {
@@ -2365,311 +1452,7 @@ class BubbleService : Service() {
      * transparent activity since a Service can't show a runtime prompt.
      * The activity calls back via ACTION_START_VOICE.
      */
-    private fun handleVoiceRequest() {
-        val granted = checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            showVoicePicker(MODE_TRANSLATE)
-            return
-        }
-        val intent = Intent(this, MicPermissionActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_NO_HISTORY or
-                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-        }
-        try { startActivity(intent) } catch (_: Exception) {}
-    }
 
-    internal fun showSettingsSheet() {
-        if (tonePickerView != null) { hideTonePicker(); return }
-        ensureWindowManager()
-        refreshLocale()
-        // Re-read every setting in case they changed via the in-app Settings.
-        currentTone = readTone()
-        val replyTone = readReplyTone()
-        val romanizationOn = readRomanization()
-        val replySuggestionsOn = readReplySuggestions()
-        val ttsRate = readTtsRate()
-
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val mutedCol = style.muted
-        val accent = style.accent
-        val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
-
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Palette.BACKDROP_LIGHT)
-            setOnClickListener { hideTonePicker() }
-        }
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
-            elevation = 22 * dp
-            setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
-            isClickable = true
-        }
-        // Scrollable content so the sheet fits even on short screens.
-        val scroll = ScrollView(this).apply {
-            isFillViewport = false
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
-        }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        scroll.addView(content)
-
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_settings)
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, (12 * dp).toInt())
-        })
-        card.addView(scroll)
-
-        // ── Section: Translate tone ─────────────────────────────────────
-        content.addView(sectionLabel(localized(R.string.bubble_translate_tone), mutedCol, dp))
-        content.addView(toneRow(
-            currentTone, accent, textCol, borderCol, mutedCol, isDark, dp,
-            includeAuto = true,
-        ) { code ->
-            currentTone = code
-            writeTone(code)
-            updateLangChip()
-            // Refresh the currently visible bottom sheet to reflect the new
-            // selection without closing it.
-            hideTonePicker()
-            showSettingsSheet()
-            // Re-translate if a result is already showing so the user sees
-            // the new tone applied immediately.
-            currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-        })
-
-        // ── Section: Reply tone ─────────────────────────────────────────
-        content.addView(sectionLabel(localized(R.string.bubble_reply_tone), mutedCol, dp).apply {
-            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (14 * dp).toInt()
-        })
-        // Use empty string code "" to mean "same as translate tone" — the
-        // app's settings UI uses the same convention via toneReplySameAsTranslate.
-        val replyToneLabel = if (replyTone.isEmpty()) {
-            localized(R.string.bubble_reply_tone_same)
-        } else {
-            toneLabel(replyTone)
-        }
-        content.addView(toneRow(
-            replyTone, accent, textCol, borderCol, mutedCol, isDark, dp,
-            includeAuto = true,
-            autoLabel = localized(R.string.bubble_reply_tone_same),
-        ) { code ->
-            writeReplyTone(code)
-            hideTonePicker()
-            showSettingsSheet()
-            // Reply-tone only changes output in Reply mode; re-translate so the
-            // user sees the new tone applied without manually re-triggering.
-            if (currentMode == MODE_REPLY) {
-                currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-            }
-        })
-        // Tone hint label — show the current effective reply tone.
-        content.addView(TextView(this).apply {
-            text = "→ $replyToneLabel"
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-            setPadding(0, (4 * dp).toInt(), 0, 0)
-        })
-
-        // ── Section: TTS speed ─────────────────────────────────────────
-        content.addView(sectionLabel(localized(R.string.bubble_speech_rate), mutedCol, dp).apply {
-            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (16 * dp).toInt()
-        })
-        content.addView(rateRow(ttsRate, accent, textCol, borderCol, isDark, dp) { rate ->
-            writeTtsRate(rate)
-            hideTonePicker()
-            showSettingsSheet()
-        })
-
-        // ── Section: Toggles (romanization, reply suggestions) ─────────
-        content.addView(toggleRow(
-            localized(R.string.bubble_romanization),
-            romanizationOn, accent, textCol, borderCol, dp,
-        ) { newValue ->
-            writeRomanization(newValue)
-            // Romanization affects every translate mode — re-run so the user
-            // sees the romanization line appear/disappear immediately.
-            currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-        }.apply {
-            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (16 * dp).toInt()
-        })
-        content.addView(toggleRow(
-            localized(R.string.bubble_reply_suggestions),
-            replySuggestionsOn, accent, textCol, borderCol, dp,
-        ) { newValue ->
-            writeReplySuggestions(newValue)
-            // Suggestions are only generated in Reply mode — only re-translate
-            // when the new value would actually change the output.
-            if (currentMode == MODE_REPLY) {
-                currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-            }
-        }.apply {
-            (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (8 * dp).toInt()
-        })
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((340 * dp).toInt())
-        // Cap height so very long sheets remain scrollable instead of pushing
-        // beyond the screen on small phones.
-        val maxHeight = (resources.displayMetrics.heightPixels * 0.75).toInt()
-        backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
-            scroll.layoutParams = (scroll.layoutParams as LinearLayout.LayoutParams).apply {
-                @Suppress("UNUSED_VARIABLE") val _h = maxHeight  // referenced via constraint below
-            }
-        })
-        tonePickerView = backdrop
-        windowManager?.addView(backdrop, buildPickerLayoutParams())
-    }
-
-    private fun sectionLabel(text: String, mutedCol: Int, dp: Float): TextView =
-        TextView(this).apply {
-            this.text = text.uppercase()
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-            typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.08f
-            setPadding(0, 0, 0, (6 * dp).toInt())
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
-        }
-
-    // Horizontal wrap of pill buttons — used for both tone pickers and rates.
-    private fun toneRow(
-        currentCode: String,
-        accent: Int, textCol: Int, borderCol: Int, mutedCol: Int,
-        isDark: Boolean, dp: Float,
-        includeAuto: Boolean,
-        autoLabel: String? = null,
-        onPick: (String) -> Unit,
-    ): View {
-        @Suppress("UNUSED_PARAMETER") val _isDark = isDark
-        @Suppress("UNUSED_PARAMETER") val _mutedCol = mutedCol
-        val codes = if (includeAuto) TONE_CODES else TONE_CODES.drop(1)
-        return wrapRow(codes.map { code ->
-            val label = if (code.isEmpty() && autoLabel != null) autoLabel else toneLabel(code)
-            pillButton(label, code == currentCode, accent, textCol, borderCol, dp) { onPick(code) }
-        }, dp)
-    }
-
-    private fun rateRow(
-        currentRate: Double, accent: Int, textCol: Int, borderCol: Int,
-        isDark: Boolean, dp: Float, onPick: (Double) -> Unit,
-    ): View {
-        @Suppress("UNUSED_PARAMETER") val _isDark = isDark
-        return wrapRow(TTS_RATES.map { r ->
-            pillButton(formatRate(r), r == currentRate, accent, textCol, borderCol, dp) { onPick(r) }
-        }, dp)
-    }
-
-    private fun wrapRow(children: List<View>, dp: Float): View {
-        // Flow horizontally; if too wide for the card, wrap to a new line.
-        // Android has no FlowLayout in the SDK, so we build it manually with
-        // two LinearLayouts when needed. For our 6-7 short pills it almost
-        // always fits one row.
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
-        }
-        val scroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
-            addView(row)
-        }
-        children.forEachIndexed { i, v ->
-            v.layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginEnd = if (i < children.size - 1) (6 * dp).toInt() else 0 }
-            row.addView(v)
-        }
-        return scroll
-    }
-
-    private fun pillButton(
-        label: String, selected: Boolean, accent: Int, textCol: Int, borderCol: Int,
-        dp: Float, onClick: () -> Unit,
-    ): TextView = TextView(this).apply {
-        text = label
-        setTextColor(if (selected) Color.WHITE else textCol)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-        typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-        gravity = Gravity.CENTER
-        maxLines = 1
-        setSingleLine(true)
-        setPadding((14 * dp).toInt(), (8 * dp).toInt(), (14 * dp).toInt(), (8 * dp).toInt())
-        background = GradientDrawable().apply {
-            setColor(if (selected) accent else Color.TRANSPARENT)
-            if (!selected) setStroke(1, borderCol)
-            cornerRadius = 12 * dp
-        }
-        setOnClickListener { onClick() }
-    }
-
-    private fun toggleRow(
-        label: String, current: Boolean, accent: Int, textCol: Int, borderCol: Int,
-        dp: Float, onChange: (Boolean) -> Unit,
-    ): View {
-        val state = booleanArrayOf(current)
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
-            isClickable = true
-        }
-        val labelTv = TextView(this).apply {
-            text = label
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        // Custom on/off pill as a stand-in for Switch (no Material theme here)
-        val pill = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding((12 * dp).toInt(), (4 * dp).toInt(), (12 * dp).toInt(), (4 * dp).toInt())
-        }
-        fun render() {
-            pill.text = if (state[0]) "ON" else "OFF"
-            pill.background = GradientDrawable().apply {
-                setColor(if (state[0]) accent else Color.TRANSPARENT)
-                if (!state[0]) setStroke(1, borderCol)
-                cornerRadius = 12 * dp
-            }
-            pill.setTextColor(if (state[0]) Color.WHITE else textCol)
-        }
-        render()
-        row.setOnClickListener {
-            state[0] = !state[0]
-            render()
-            onChange(state[0])
-        }
-        row.addView(labelTv)
-        row.addView(pill)
-        return row
-    }
 
     // ── Lifecycle ──
 
