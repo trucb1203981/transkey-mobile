@@ -704,12 +704,47 @@ class BubbleService : Service() {
             text = localized(R.string.bubble_need_text)
             setTextColor(mutedCol)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            setPadding(0, 0, 0, (12 * dp).toInt())
+            setPadding(0, 0, 0, (8 * dp).toInt())
         })
 
-        // (Accessibility banner moved to Reply result panel — it's only
-        // relevant when the user is about to use auto-paste, not for the
-        // generic clipboard-based action flow this picker drives.)
+        // Source → Target language chip. Tap to switch either side.
+        // Without this users couldn't tell what direction the bubble
+        // would translate in (their app-level setting is invisible from
+        // the floating bubble) and ended up scanning Japanese with
+        // source=vi, getting garbage OCR output.
+        val pickedSource = readSourceLang()
+        val pickedTarget = readTargetLang()
+        val sourceLabel = if (pickedSource == "auto") "Auto"
+            else (LANG_LABELS[pickedSource] ?: pickedSource.uppercase())
+        val targetLabel = LANG_LABELS[pickedTarget] ?: pickedTarget.uppercase()
+        card.addView(TextView(this).apply {
+            text = "$sourceLabel  →  $targetLabel"
+            setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(
+                (10 * dp).toInt(), (6 * dp).toInt(),
+                (10 * dp).toInt(), (6 * dp).toInt(),
+            )
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF"))
+                cornerRadius = 12 * dp
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                // Open source-language picker first; once the user dismisses
+                // it the target picker is one tap away on the result panel
+                // anyway, so we don't chain to it automatically.
+                hideModePicker()
+                showSourceLangPicker()
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = (12 * dp).toInt() }
+        })
 
         // 5 feature buttons — matches the in-app feature-button row in
         // home_screen.dart: icon on top, label below, first action gets a
@@ -3100,7 +3135,22 @@ class BubbleService : Service() {
             ScreenCaptureManager.Flow.LENS
         else
             ScreenCaptureManager.Flow.TEXT_INTO_INPUT
-        ScreenCaptureManager.languageHint = readSourceLang().takeIf { it != "auto" }
+        // For Lens (full-screen visual translate) the screen content is
+        // whatever app the user is on — could be ANY script regardless of
+        // the app-level source-lang setting (which is the user's translate
+        // *intent*, not a hint about what's on screen). Force auto-detect
+        // so OcrHelper runs all 4 recognizers in parallel and picks the
+        // best one — without this, scanning a Japanese chat with source
+        // set to "vi" runs Latin-only recognition and garbles the kana
+        // into things like "01ROTIxyCO20)ET Lt".
+        //
+        // For TEXT_INTO_INPUT (Summarize / Refine / Explain) we trust the
+        // user's source-lang hint — they typed source=vi because they
+        // mean Vietnamese, and the single-recognizer path is cheaper.
+        ScreenCaptureManager.languageHint = when (ScreenCaptureManager.flow) {
+            ScreenCaptureManager.Flow.LENS              -> null
+            ScreenCaptureManager.Flow.TEXT_INTO_INPUT   -> readSourceLang().takeIf { it != "auto" }
+        }
         ScreenCaptureManager.targetLang = readTargetLang()
         ScreenCaptureManager.pendingMode = mode
         // Hide everything we'd otherwise be painting OVER the source app
