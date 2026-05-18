@@ -123,6 +123,13 @@
   "accessibilityEnabled": "Activé",
   "accessibilityDisabled": "Non activé — appuyez pour ouvrir les paramètres",
 
+  "feedbackCatBug": "Signaler un bug",
+  "feedbackCatFeature": "Suggestion",
+  "feedbackCatOther": "Autre",
+  "feedbackHintBug": "Qu'attendiez-vous et que s'est-il passé à la place ?",
+  "feedbackHintFeature": "Que souhaiteriez-vous que TransKey fasse ?",
+  "feedbackHintOther": "Partagez votre avis...",
+  "feedbackEmailLabel": "E-mail (facultatif, pour vous répondre)",
   "feedbackTitle": "Envoyer un retour",
   "feedbackHint": "Dites-nous ce que vous en pensez...",
   "feedbackSend": "Envoyer",

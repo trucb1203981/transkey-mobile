@@ -368,6 +368,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get feedbackFailed => '发送反馈失败';
 
   @override
+  String get feedbackCatBug => '报告问题';
+
+  @override
+  String get feedbackCatFeature => '功能建议';
+
+  @override
+  String get feedbackCatOther => '其他';
+
+  @override
+  String get feedbackHintBug => '您期望发生什么,实际发生了什么?';
+
+  @override
+  String get feedbackHintFeature => '您希望 TransKey 做什么?';
+
+  @override
+  String get feedbackHintOther => '分享您的想法...';
+
+  @override
+  String get feedbackEmailLabel => '邮箱(可选,用于回复)';
+
+  @override
   String get selectLanguage => '选择语言';
 
   @override

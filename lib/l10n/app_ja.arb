@@ -123,6 +123,13 @@
   "accessibilityEnabled": "有効",
   "accessibilityDisabled": "未有効 — タップして設定を開く",
 
+  "feedbackCatBug": "バグ報告",
+  "feedbackCatFeature": "機能リクエスト",
+  "feedbackCatOther": "その他",
+  "feedbackHintBug": "期待した動作と実際の動作を教えてください。",
+  "feedbackHintFeature": "TransKey にどんな機能があると便利ですか？",
+  "feedbackHintOther": "ご意見をお聞かせください...",
+  "feedbackEmailLabel": "メール(任意、返信用)",
   "feedbackTitle": "フィードバックを送信",
   "feedbackHint": "ご意見をお聞かせください...",
   "feedbackSend": "送信",

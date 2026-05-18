@@ -373,6 +373,27 @@ class AppLocalizationsEs extends AppLocalizations {
   String get feedbackFailed => 'Error al enviar comentarios';
 
   @override
+  String get feedbackCatBug => 'Reportar un error';
+
+  @override
+  String get feedbackCatFeature => 'Sugerencia de función';
+
+  @override
+  String get feedbackCatOther => 'Otro';
+
+  @override
+  String get feedbackHintBug => '¿Qué esperabas y qué pasó en su lugar?';
+
+  @override
+  String get feedbackHintFeature => '¿Qué te gustaría que TransKey haga?';
+
+  @override
+  String get feedbackHintOther => 'Comparte tu opinión...';
+
+  @override
+  String get feedbackEmailLabel => 'Correo (opcional, para responderte)';
+
+  @override
   String get selectLanguage => 'Seleccionar idioma';
 
   @override

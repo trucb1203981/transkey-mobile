@@ -370,6 +370,27 @@ class AppLocalizationsKo extends AppLocalizations {
   String get feedbackFailed => '피드백 전송 실패';
 
   @override
+  String get feedbackCatBug => '버그 신고';
+
+  @override
+  String get feedbackCatFeature => '기능 요청';
+
+  @override
+  String get feedbackCatOther => '기타';
+
+  @override
+  String get feedbackHintBug => '어떤 동작을 기대했고, 실제로는 어떻게 됐나요?';
+
+  @override
+  String get feedbackHintFeature => 'TransKey 가 어떻게 해주면 좋을까요?';
+
+  @override
+  String get feedbackHintOther => '의견을 들려주세요...';
+
+  @override
+  String get feedbackEmailLabel => '이메일 (선택, 답변 받기용)';
+
+  @override
   String get selectLanguage => '언어 선택';
 
   @override

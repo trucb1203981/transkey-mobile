@@ -374,6 +374,29 @@ class AppLocalizationsFr extends AppLocalizations {
   String get feedbackFailed => 'Échec de l’envoi du retour';
 
   @override
+  String get feedbackCatBug => 'Signaler un bug';
+
+  @override
+  String get feedbackCatFeature => 'Suggestion';
+
+  @override
+  String get feedbackCatOther => 'Autre';
+
+  @override
+  String get feedbackHintBug =>
+      'Qu\'attendiez-vous et que s\'est-il passé à la place ?';
+
+  @override
+  String get feedbackHintFeature =>
+      'Que souhaiteriez-vous que TransKey fasse ?';
+
+  @override
+  String get feedbackHintOther => 'Partagez votre avis...';
+
+  @override
+  String get feedbackEmailLabel => 'E-mail (facultatif, pour vous répondre)';
+
+  @override
   String get selectLanguage => 'Sélectionner la langue';
 
   @override

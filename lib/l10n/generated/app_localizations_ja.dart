@@ -370,6 +370,27 @@ class AppLocalizationsJa extends AppLocalizations {
   String get feedbackFailed => 'フィードバックを送信できませんでした';
 
   @override
+  String get feedbackCatBug => 'バグ報告';
+
+  @override
+  String get feedbackCatFeature => '機能リクエスト';
+
+  @override
+  String get feedbackCatOther => 'その他';
+
+  @override
+  String get feedbackHintBug => '期待した動作と実際の動作を教えてください。';
+
+  @override
+  String get feedbackHintFeature => 'TransKey にどんな機能があると便利ですか？';
+
+  @override
+  String get feedbackHintOther => 'ご意見をお聞かせください...';
+
+  @override
+  String get feedbackEmailLabel => 'メール(任意、返信用)';
+
+  @override
   String get selectLanguage => '言語を選択';
 
   @override

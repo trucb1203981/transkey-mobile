@@ -128,6 +128,13 @@
   "feedbackSend": "Send",
   "feedbackThanks": "Thank you for your feedback!",
   "feedbackFailed": "Failed to send feedback",
+  "feedbackCatBug": "Report a bug",
+  "feedbackCatFeature": "Feature request",
+  "feedbackCatOther": "Other",
+  "feedbackHintBug": "What did you expect to happen, and what happened instead?",
+  "feedbackHintFeature": "What would you like TransKey to do?",
+  "feedbackHintOther": "Share your thoughts...",
+  "feedbackEmailLabel": "Email (optional, for a reply)",
 
   "selectLanguage": "Select Language",
   "searchLanguages": "Search languages...",

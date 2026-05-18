@@ -371,6 +371,28 @@ class AppLocalizationsVi extends AppLocalizations {
   String get feedbackFailed => 'Không thể gửi phản hồi';
 
   @override
+  String get feedbackCatBug => 'Báo lỗi';
+
+  @override
+  String get feedbackCatFeature => 'Đề xuất tính năng';
+
+  @override
+  String get feedbackCatOther => 'Khác';
+
+  @override
+  String get feedbackHintBug =>
+      'Bạn mong điều gì sẽ xảy ra, và thực tế xảy ra gì?';
+
+  @override
+  String get feedbackHintFeature => 'Bạn muốn TransKey có tính năng gì?';
+
+  @override
+  String get feedbackHintOther => 'Chia sẻ ý kiến của bạn...';
+
+  @override
+  String get feedbackEmailLabel => 'Email (tùy chọn, để được phản hồi)';
+
+  @override
   String get selectLanguage => 'Chọn ngôn ngữ';
 
   @override

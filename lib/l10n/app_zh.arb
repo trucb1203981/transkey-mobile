@@ -123,6 +123,13 @@
   "accessibilityEnabled": "已启用",
   "accessibilityDisabled": "未启用 — 点击打开设置",
 
+  "feedbackCatBug": "报告问题",
+  "feedbackCatFeature": "功能建议",
+  "feedbackCatOther": "其他",
+  "feedbackHintBug": "您期望发生什么,实际发生了什么?",
+  "feedbackHintFeature": "您希望 TransKey 做什么?",
+  "feedbackHintOther": "分享您的想法...",
+  "feedbackEmailLabel": "邮箱(可选,用于回复)",
   "feedbackTitle": "发送反馈",
   "feedbackHint": "告诉我们您的想法...",
   "feedbackSend": "发送",

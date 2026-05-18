@@ -123,6 +123,13 @@
   "accessibilityEnabled": "Đã bật",
   "accessibilityDisabled": "Chưa bật — chạm để mở cài đặt",
 
+  "feedbackCatBug": "Báo lỗi",
+  "feedbackCatFeature": "Đề xuất tính năng",
+  "feedbackCatOther": "Khác",
+  "feedbackHintBug": "Bạn mong điều gì sẽ xảy ra, và thực tế xảy ra gì?",
+  "feedbackHintFeature": "Bạn muốn TransKey có tính năng gì?",
+  "feedbackHintOther": "Chia sẻ ý kiến của bạn...",
+  "feedbackEmailLabel": "Email (tùy chọn, để được phản hồi)",
   "feedbackTitle": "Gửi phản hồi",
   "feedbackHint": "Cho chúng tôi biết ý kiến của bạn...",
   "feedbackSend": "Gửi",

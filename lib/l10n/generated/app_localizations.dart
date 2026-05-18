@@ -818,6 +818,48 @@ abstract class AppLocalizations {
   /// **'Failed to send feedback'**
   String get feedbackFailed;
 
+  /// No description provided for @feedbackCatBug.
+  ///
+  /// In en, this message translates to:
+  /// **'Report a bug'**
+  String get feedbackCatBug;
+
+  /// No description provided for @feedbackCatFeature.
+  ///
+  /// In en, this message translates to:
+  /// **'Feature request'**
+  String get feedbackCatFeature;
+
+  /// No description provided for @feedbackCatOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get feedbackCatOther;
+
+  /// No description provided for @feedbackHintBug.
+  ///
+  /// In en, this message translates to:
+  /// **'What did you expect to happen, and what happened instead?'**
+  String get feedbackHintBug;
+
+  /// No description provided for @feedbackHintFeature.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like TransKey to do?'**
+  String get feedbackHintFeature;
+
+  /// No description provided for @feedbackHintOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your thoughts...'**
+  String get feedbackHintOther;
+
+  /// No description provided for @feedbackEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email (optional, for a reply)'**
+  String get feedbackEmailLabel;
+
   /// No description provided for @selectLanguage.
   ///
   /// In en, this message translates to:

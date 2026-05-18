@@ -123,6 +123,13 @@
   "accessibilityEnabled": "활성화됨",
   "accessibilityDisabled": "비활성화됨 — 탭하여 설정 열기",
 
+  "feedbackCatBug": "버그 신고",
+  "feedbackCatFeature": "기능 요청",
+  "feedbackCatOther": "기타",
+  "feedbackHintBug": "어떤 동작을 기대했고, 실제로는 어떻게 됐나요?",
+  "feedbackHintFeature": "TransKey 가 어떻게 해주면 좋을까요?",
+  "feedbackHintOther": "의견을 들려주세요...",
+  "feedbackEmailLabel": "이메일 (선택, 답변 받기용)",
   "feedbackTitle": "피드백 보내기",
   "feedbackHint": "의견을 알려주세요...",
   "feedbackSend": "보내기",

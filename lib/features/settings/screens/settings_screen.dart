@@ -7,7 +7,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
-import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/session_store.dart';
 import '../../../core/bubble/bubble_manager.dart';
@@ -22,6 +21,7 @@ import '../../translate/services/tts_service.dart';
 import '../../translate/widgets/language_picker_sheet.dart';
 import '../../upgrade/providers/usage_provider.dart';
 import '../providers/app_settings_provider.dart';
+import '../widgets/feedback_sheet.dart';
 import '../widgets/plan_badge.dart';
 
 const _appLangOptions = [
@@ -308,7 +308,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   leading: const Icon(Icons.feedback_outlined),
                   title: Text(t.sendFeedback),
                   trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () => _showFeedbackSheet(context, t),
+                  onTap: () => FeedbackSheet.show(context),
                 ),
                 ListTile(
                   leading: const Icon(Icons.description_outlined),
@@ -911,66 +911,5 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
-  void _showFeedbackSheet(BuildContext context, AppLocalizations t) {
-    final controller = TextEditingController();
-    showModalBottomSheet(
-      // Dispose the controller when the sheet is fully gone, otherwise
-      // each open of the feedback sheet leaks a TextEditingController
-      // (and its internal listeners) for the rest of the app session.
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(t.feedbackTitle, style: Theme.of(ctx).textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: controller,
-                maxLines: 5,
-                decoration: InputDecoration(hintText: t.feedbackHint),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              ElevatedButton(
-                onPressed: () async {
-                  final text = controller.text.trim();
-                  if (text.isEmpty) return;
-                  try {
-                    final api = ref.read(apiClientProvider);
-                    await api.dio.post('/feedback', data: {
-                      'category': 'general',
-                      'message': text,
-                      'source': 'mobile',
-                    });
-                    if (ctx.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(t.feedbackThanks)),
-                      );
-                    }
-                  } catch (_) {
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(t.feedbackFailed),
-                          backgroundColor: AppColors.red,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Text(t.feedbackSend),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-          ),
-        ),
-      ),
-    ).whenComplete(controller.dispose);
-  }
 }
 

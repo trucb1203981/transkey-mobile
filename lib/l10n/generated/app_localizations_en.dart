@@ -372,6 +372,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedbackFailed => 'Failed to send feedback';
 
   @override
+  String get feedbackCatBug => 'Report a bug';
+
+  @override
+  String get feedbackCatFeature => 'Feature request';
+
+  @override
+  String get feedbackCatOther => 'Other';
+
+  @override
+  String get feedbackHintBug =>
+      'What did you expect to happen, and what happened instead?';
+
+  @override
+  String get feedbackHintFeature => 'What would you like TransKey to do?';
+
+  @override
+  String get feedbackHintOther => 'Share your thoughts...';
+
+  @override
+  String get feedbackEmailLabel => 'Email (optional, for a reply)';
+
+  @override
   String get selectLanguage => 'Select Language';
 
   @override
