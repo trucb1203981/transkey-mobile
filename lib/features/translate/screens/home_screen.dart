@@ -33,10 +33,12 @@ import '../providers/features_provider.dart';
 import '../providers/language_settings_provider.dart';
 import '../providers/translate_provider.dart';
 import '../services/tts_service.dart';
+import '../widgets/clipboard_chip.dart';
 import '../widgets/feature_buttons.dart';
 import '../widgets/language_bar.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/result_card.dart';
+import '../widgets/source_field.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -490,12 +492,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildTranslateTab() {
     final l = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final translateState = ref.watch(translateProvider);
     final state = translateState.valueOrNull;
     final isLoading = state?.isLoading ?? false;
     final result = state?.result;
-    final theme = Theme.of(context);
 
     // When a reply finishes, auto-copy and offer to replace the input —
     // mirrors the desktop Cmd+Shift+R flow inside the app.
@@ -545,7 +547,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // be shown, so no awkward spacing on the common case.
           const PlanStatusBanner(),
           if (_clipboardSuggestion != null) ...[
-            _buildClipboardChip(theme, isDark, _clipboardSuggestion!),
+            ClipboardChip(
+              text: _clipboardSuggestion!,
+              onUse: _useClipboardSuggestion,
+              onDismiss: _dismissClipboardSuggestion,
+            ),
             const SizedBox(height: AppSpacing.sm),
           ],
           Consumer(builder: (_, ref, __) {
@@ -564,7 +570,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           }),
           const SizedBox(height: AppSpacing.md),
 
-          _buildSourceField(theme, isDark, l),
+          SourceField(
+            controller: _textController,
+            focusNode: _inputFocus,
+            maxChars: _maxChars,
+            hintText: l.hintEnterText,
+            isListening: _isListening,
+            voiceTooltip: _isListening ? l.voiceListening : l.voiceTooltip,
+            onVoicePressed: _toggleSpeechToText,
+            onClear: () {
+              _textController.clear();
+              ref.read(translateProvider.notifier).clearResult();
+            },
+          ),
           const SizedBox(height: AppSpacing.md),
 
           FeatureButtons(
@@ -606,61 +624,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSourceField(ThemeData theme, bool isDark, AppLocalizations l) {
-    return Stack(
-      alignment: Alignment.topRight,
-      children: [
-        TextFormField(
-          controller: _textController,
-          focusNode: _inputFocus,
-          maxLines: 6,
-          maxLength: _maxChars,
-          // No onChanged here — the clear button below subscribes to the
-          // controller directly via ListenableBuilder, so the surrounding
-          // widget tree no longer rebuilds on every keystroke.
-          decoration: InputDecoration(
-            hintText: l.hintEnterText,
-            counterStyle: const TextStyle(fontSize: 11),
-          ),
-        ),
-        // Top-right action cluster: mic always visible, clear shown only
-        // when there's text to clear.
-        Padding(
-          padding: const EdgeInsets.all(AppSpacing.xs),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: _isListening ? l.voiceListening : l.voiceTooltip,
-                icon: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  size: 22,
-                  color: _isListening ? Colors.red : null,
-                ),
-                onPressed: _toggleSpeechToText,
-              ),
-              ListenableBuilder(
-                listenable: _textController,
-                builder: (context, _) {
-                  if (_textController.text.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    onPressed: () {
-                      _textController.clear();
-                      ref.read(translateProvider.notifier).clearResult();
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -756,49 +719,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     'de': 'de_DE',
     'es': 'es_ES',
   };
-
-  Widget _buildClipboardChip(ThemeData theme, bool isDark, String text) {
-    final preview = text.length > 60 ? '${text.substring(0, 60)}…' : text;
-    return Material(
-      color: AppColors.primary.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-        onTap: _useClipboardSuggestion,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.xs, AppSpacing.sm,
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.content_paste,
-                  size: 18, color: AppColors.primary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  preview,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Dismiss',
-                icon: const Icon(Icons.close, size: 16),
-                color: AppColors.primary,
-                onPressed: _dismissClipboardSuggestion,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                padding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
 }
 
