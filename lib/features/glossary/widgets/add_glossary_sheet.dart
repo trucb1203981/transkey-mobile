@@ -34,6 +34,7 @@ class AddGlossarySheet extends StatefulWidget {
 class _AddGlossarySheetState extends State<AddGlossarySheet> {
   late final _sourceController = TextEditingController(text: widget.entry?.source ?? '');
   late final _targetController = TextEditingController(text: widget.entry?.target ?? '');
+  late bool _isName = widget.entry?.isName ?? false;
   final _formKey = GlobalKey<FormState>();
 
   bool get _isEditing => widget.entry != null;
@@ -116,6 +117,22 @@ class _AddGlossarySheetState extends State<AddGlossarySheet> {
                   return null;
                 },
               ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Mark as name — drives both ASR biasing on the voice picker
+              // and the AI "preserve exactly" hint server-side.
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _isName,
+                onChanged: (v) => setState(() => _isName = v),
+                title: Text(l.glossaryIsNameLabel),
+                subtitle: Text(
+                  l.glossaryIsNameHint,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isDark ? AppColors.textSecondary : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.md),
 
               // Buttons
@@ -147,10 +164,19 @@ class _AddGlossarySheetState extends State<AddGlossarySheet> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    final entry = GlossaryEntry(
-      source: _sourceController.text.trim(),
-      target: _targetController.text.trim(),
-    );
+    // Preserve the original id when editing so the entry's identity (and
+    // any references the UI is holding to it, e.g. dismissible keys) stays
+    // stable across the save.
+    final entry = widget.entry?.copyWith(
+          source: _sourceController.text.trim(),
+          target: _targetController.text.trim(),
+          isName: _isName,
+        ) ??
+        GlossaryEntry(
+          source: _sourceController.text.trim(),
+          target: _targetController.text.trim(),
+          isName: _isName,
+        );
     Navigator.pop(context, entry);
   }
 }

@@ -6,6 +6,7 @@ import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import 'drag_handle.dart';
 
 class UpgradeNudgeSheet extends ConsumerStatefulWidget {
   const UpgradeNudgeSheet({
@@ -264,20 +265,3 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
   }
 }
 
-class DragHandle extends StatelessWidget {
-  const DragHandle({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: 40,
-      height: 4,
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.border : AppColors.borderLight,
-        borderRadius: BorderRadius.circular(2),
-      ),
-    );
-  }
-}

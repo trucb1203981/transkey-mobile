@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">يستطيع TransKey لصق الرد مباشرة في حقل النص النشط في أي تطبيق عند الضغط على "لصق الرد" في زر TransKey. تتم قراءة النص أو كتابته فقط عند تنفيذك لإجراء — بدون أي تتبع في الخلفية.</string>
+
+    <!-- Floating bubble action picker -->
+    <string name="bubble_choose_action">اختر إجراءً</string>
+    <string name="bubble_need_text">حدّد أو انسخ النص أولاً، ثم اختر إجراءً بالأسفل.</string>
+    <string name="bubble_need_copy">انسخ النص أولاً، ثم اضغط زر TransKey.</string>
+    <string name="bubble_accessibility_hint">التحديد + الضغط على زر TransKey لا يعمل بعد. فعّل إمكانية الوصول لتخطي خطوة النسخ.</string>
+    <string name="bubble_accessibility_enable">إعداد</string>
+    <string name="bubble_accessibility_guide_legacy">ابحث عن TransKey في القائمة → فعّل \"استخدام TransKey\" → اضغط سماح.</string>
+    <string name="bubble_accessibility_guide_a13">يحظر Android 13+ إمكانية الوصول للتطبيقات المثبّتة يدويًا افتراضيًا:\n1. اضغط ⋮ (أعلى اليمين) → \"السماح بالإعدادات المقيدة\"\n2. ارجع → إمكانية الوصول → TransKey → فعّل</string>
+    <string name="bubble_show_last_result">عرض آخر نتيجة</string>
+    <string name="bubble_show_more">عرض المزيد</string>
+    <string name="bubble_show_less">عرض أقل</string>
+    <string name="bubble_type_text">اكتب نصك</string>
+    <string name="bubble_paste_a11y_required">فعّل إمكانية الوصول للصق الردود مباشرة في الحقل النشط.</string>
+
+    <!-- Result panel: action button labels, toasts, status lines -->
+    <string name="bubble_panel_source_lang">لغة المصدر</string>
+    <string name="bubble_panel_target_lang">لغة الهدف</string>
+    <string name="bubble_panel_copy">نسخ</string>
+    <string name="bubble_panel_paste">لصق</string>
+    <string name="bubble_panel_copied">تم النسخ</string>
+    <string name="bubble_panel_pasted">تم اللصق</string>
+    <string name="bubble_panel_paste_manual_fallback">تم النسخ — اضغط على الحقل والصق يدويًا</string>
+    <string name="bubble_panel_paste_a11y_off">فعّل TransKey في إمكانية الوصول للصق</string>
+    <string name="bubble_panel_clipboard_empty">الحافظة فارغة</string>
+    <string name="bubble_panel_tts_not_ready">قراءة النص الصوتية ليست جاهزة</string>
+    <string name="bubble_panel_translation_failed">فشلت الترجمة</string>
+    <string name="bubble_panel_app_not_ready">التطبيق غير جاهز — افتح TransKey مرة واحدة</string>
+    <string name="bubble_panel_detected">تم اكتشاف: %1$s</string>
+    <string name="bubble_notification_channel">زر TransKey</string>
+    <string name="bubble_notification_active">المترجم العائم يعمل</string>
+    <string name="bubble_notification_turn_off">إيقاف</string>
+    <string name="bubble_overlay_perm_needed">فعّل \'العرض فوق التطبيقات الأخرى\' للحصول على ترجمة عائمة</string>
+    <string name="bubble_clipboard_empty_error">لا يوجد نص في الحافظة.\nانسخ النص أولاً، ثم اضغط زر TransKey.</string>
+    <string name="bubble_voice">إدخال صوتي</string>
+    <string name="bubble_voice_listening">يستمع…</string>
+    <string name="bubble_voice_speak">تكلّم الآن</string>
+    <string name="bubble_voice_stop">إيقاف</string>
+    <string name="bubble_voice_no_match">لم أسمع جيدًا. حاول مرة أخرى.</string>
+    <string name="bubble_voice_network">الإدخال الصوتي يحتاج إنترنت</string>
+    <string name="bubble_voice_perm_denied">يلزم إذن الميكروفون للإدخال الصوتي</string>
+    <string name="bubble_voice_unsupported">التعرف الصوتي غير متاح على هذا الجهاز</string>
+    <string name="bubble_voice_lang_missing">حزمة الصوت غير مثبّتة لهذه اللغة. افتح الإعدادات → اللغات والإدخال → الصوت → نزّل الحزمة دون اتصال.</string>
+
+    <!-- Scan-screen flow (formerly labelled "OCR" — simplified for non-technical users) -->
+    <string name="bubble_scan_screen">ترجمة الشاشة</string>
+    <string name="bubble_scan_disclosure_title">سيلتقط TransKey صورة لهذه الشاشة</string>
+    <string name="bubble_scan_disclosure_body">يتم التقاط صورة واحدة وقراءة النص فيها على جهازك مباشرة، ثم يتم حذف الصورة. لا يتم رفع أو حفظ أي شيء.</string>
+    <string name="bubble_scan_continue">متابعة</string>
+    <string name="bubble_scan_processing">قراءة الشاشة…</string>
+    <string name="bubble_scan_empty">لم يتم العثور على نص في هذه الشاشة</string>
+    <string name="bubble_scan_perm_denied">يلزم إذن التقاط الشاشة لمسحها</string>
+    <string name="bubble_scan_notification_title">قراءة الشاشة للترجمة</string>
+    <string name="bubble_scan_notification_body">يتم التقاط لقطة واحدة ومعالجتها على الجهاز</string>
+    <string name="bubble_scan_stop">إيقاف التقاط الشاشة</string>
+    <string name="bubble_lens_translating">جارٍ ترجمة الشاشة…</string>
+    <string name="bubble_lens_region">منطقة المسح</string>
+    <string name="bubble_lens_region_hint">اسحب لتحديد المنطقة المراد ترجمتها</string>
+    <string name="bubble_lens_region_confirm">ترجمة هذه المنطقة</string>
+    <string name="bubble_input_hint">اكتب النص للترجمة…</string>
+    <string name="bubble_input_paste">لصق</string>
+    <string name="bubble_input_clear">مسح</string>
+    <string name="bubble_action_translate">ترجمة</string>
+    <string name="bubble_cancel">إلغاء</string>
+    <string name="bubble_mode_translate">ترجمة</string>
+    <string name="bubble_mode_reply">رد</string>
+    <string name="bubble_mode_summarize">تلخيص</string>
+    <string name="bubble_mode_explain">شرح</string>
+    <string name="bubble_mode_refine">تحسين</string>
+
+    <!-- Settings sheet -->
+    <string name="bubble_settings">الإعدادات</string>
+    <string name="bubble_translate_tone">نبرة الترجمة</string>
+    <string name="bubble_reply_tone">نبرة الرد</string>
+    <string name="bubble_speech_rate">سرعة النطق</string>
+    <string name="bubble_romanization">الكتابة اللاتينية (النطق)</string>
+    <string name="bubble_reply_suggestions">اقتراحات الرد</string>
+
+    <!-- Tone options — must match Flutter `toneOptions` in app_settings_provider.dart -->
+    <string name="bubble_tone_auto">تلقائي</string>
+    <string name="bubble_tone_business">عمل</string>
+    <string name="bubble_tone_casual">ودّي</string>
+    <string name="bubble_tone_formal">رسمي</string>
+    <string name="bubble_tone_polite">مهذّب</string>
+    <string name="bubble_tone_technical">تقني</string>
+    <string name="bubble_tone_neutral">محايد</string>
+    <string name="bubble_reply_tone_same">مثل نبرة الترجمة</string>
+
+    <!-- PROCESS_TEXT activity labels — appear in the system text-selection
+         floating toolbar (or overflow ⋮) of any app when user selects text.
+         "TransKey:" prefix makes them recognizable as our actions vs system. -->
+    <string name="process_text_translate">TransKey: ترجمة</string>
+    <string name="process_text_reply">TransKey: رد</string>
+    <string name="process_text_summarize">TransKey: تلخيص</string>
+    <string name="process_text_explain">TransKey: شرح</string>
+    <string name="process_text_refine">TransKey: تحسين</string>
+</resources>

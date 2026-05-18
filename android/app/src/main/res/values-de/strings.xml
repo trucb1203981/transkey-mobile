@@ -88,6 +88,7 @@
 
     <string name="bubble_notification_channel">TransKey Bubble</string>
     <string name="bubble_notification_active">Schwebender Übersetzer aktiv</string>
+    <string name="bubble_notification_turn_off">Ausschalten</string>
     <string name="bubble_overlay_perm_needed">Aktiviere \'Über anderen Apps anzeigen\' für schwebende Übersetzungen</string>
     <string name="bubble_clipboard_empty_error">Zwischenablage leer.\nText zuerst kopieren, dann die Bubble antippen.</string>
 </resources>

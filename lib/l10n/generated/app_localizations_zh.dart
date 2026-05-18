@@ -472,6 +472,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorSessionExpired => '会话已过期 — 请重新登录';
 
   @override
+  String get errorInvalidCredentials => '邮箱或密码错误';
+
+  @override
   String get errorEmailNotVerified => '请验证邮箱 — 查收收件箱';
 
   @override
@@ -690,6 +693,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => '译文';
+
+  @override
+  String get glossaryNamesLabel => '术语表中的名字 — 点击插入';
+
+  @override
+  String get glossaryIsNameLabel => '这是人名';
+
+  @override
+  String get glossaryIsNameHint => '帮助语音输入识别该名字，并让 AI 完整保留。';
 
   @override
   String get upgradeScreenTitle => '升级 TransKey';
@@ -1034,6 +1046,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get voiceListening => '正在聆听…';
 
   @override
+  String get voiceNeedsLang => '请先设置具体的源语言以使用语音输入';
+
+  @override
   String get voicePermDenied => '麦克风权限被拒绝';
 
   @override
@@ -1087,4 +1102,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get glossaryEmptyAddCta => '添加词条';
+
+  @override
+  String get captureKeepaliveTitle => '快速再次截图保留时长';
+
+  @override
+  String get captureKeepaliveHint => '双击悬浮按钮即可再扫';
+
+  @override
+  String get captureKeepaliveExplain =>
+      '扫屏后在此时段内保留屏幕录制权限，下次双击悬浮按钮（或再次选择 Lens）时无需重新弹出系统授权。保留越久操作越少，但投屏指示器会持续显示，设备会略微发热。';
+
+  @override
+  String get captureKeepaliveOff => '关闭';
+
+  @override
+  String get captureKeepaliveOffHint => '每次扫屏都需重新授权。最省电、最注重隐私。';
+
+  @override
+  String get captureKeepaliveDefaultHint => '推荐 — 平衡再扫速度与电池消耗。';
+
+  @override
+  String get captureKeepaliveShortHint => '投屏显示时间更短，但授权弹窗更频繁。';
+
+  @override
+  String get captureKeepaliveLongHint => '再扫速度最快，投屏指示器会显示更久。';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count 分钟';
+  }
 }

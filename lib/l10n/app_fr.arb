@@ -166,6 +166,7 @@
   "noTextToTranslate": "Saisissez d’abord du texte",
   "errorGeneric": "Une erreur s’est produite",
   "errorSessionExpired": "Session expirée — reconnectez-vous",
+  "errorInvalidCredentials": "E-mail ou mot de passe incorrect",
   "errorEmailNotVerified": "Veuillez vérifier votre e-mail — consultez votre boîte de réception",
   "errorFeatureRequiresPaid": "Cette fonctionnalité nécessite un forfait payant",
   "errorDeviceLimit": "Limite d'appareils atteinte — retirez un appareil ou passez à la version supérieure",
@@ -247,6 +248,9 @@
   "glossarySourceHint": "Mot ou expression",
   "glossaryTargetLabel": "Cible",
   "glossaryTargetHint": "Traduction",
+  "glossaryNamesLabel": "Noms du glossaire — appuyez pour insérer",
+  "glossaryIsNameLabel": "C'est un nom de personne",
+  "glossaryIsNameHint": "Aide la saisie vocale à reconnaître le nom et demande à l'IA de le conserver tel quel.",
 
   "upgradeScreenTitle": "Mettre TransKey à niveau",
   "upgradeChooseYourPlan": "Choisissez votre forfait",
@@ -368,6 +372,7 @@
 
   "voiceTooltip": "Parler pour saisir",
   "voiceListening": "Écoute…",
+  "voiceNeedsLang": "Définissez une langue source précise pour utiliser la voix",
   "voicePermDenied": "Autorisation du microphone refusée",
   "voiceUnsupported": "Saisie vocale non disponible sur cet appareil",
   "voicePickSourceLang": "Choisissez d'abord une langue source — la saisie vocale ne peut pas auto-détecter",
@@ -387,5 +392,16 @@
 
   "historyEmpty": "Aucun historique de traduction",
   "glossaryEmpty": "Le glossaire est vide",
-  "glossaryEmptyAddCta": "Ajouter une entrée"
+  "glossaryEmptyAddCta": "Ajouter une entrée",
+
+  "captureKeepaliveTitle": "Fenêtre de re-capture rapide",
+  "captureKeepaliveHint": "double tap = re-scanner",
+  "captureKeepaliveExplain": "Après une capture d’écran, conserve l’autorisation pendant cette durée pour qu’un double tap (ou re-sélection de Lens) n’affiche plus l’invite système. Plus long = moins d’interactions, mais l’indicateur de diffusion reste visible et l’appareil chauffe légèrement.",
+  "captureKeepaliveOff": "Désactivé",
+  "captureKeepaliveOffHint": "Chaque capture redemande la permission. Idéal pour la vie privée / batterie.",
+  "captureKeepaliveDefaultHint": "Recommandé — équilibre vitesse et autonomie.",
+  "captureKeepaliveShortHint": "Moins de temps de diffusion, mais davantage d’invites.",
+  "captureKeepaliveLongHint": "Re-capture la plus rapide. L’indicateur reste affiché plus longtemps.",
+  "captureKeepaliveMinutes": "{count} min",
+  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
 }

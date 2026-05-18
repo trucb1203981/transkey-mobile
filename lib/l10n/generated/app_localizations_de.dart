@@ -481,6 +481,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Sitzung abgelaufen — bitte erneut anmelden';
 
   @override
+  String get errorInvalidCredentials => 'E-Mail oder Passwort ist falsch';
+
+  @override
   String get errorEmailNotVerified =>
       'Bitte E-Mail bestätigen — Posteingang prüfen';
 
@@ -717,6 +720,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => 'Übersetzung';
+
+  @override
+  String get glossaryNamesLabel => 'Glossar-Namen — tippen zum Einfügen';
+
+  @override
+  String get glossaryIsNameLabel => 'Das ist ein Personenname';
+
+  @override
+  String get glossaryIsNameHint =>
+      'Hilft der Spracheingabe, den Namen zu erkennen, und weist die KI an, ihn unverändert zu lassen.';
 
   @override
   String get upgradeScreenTitle => 'TransKey upgraden';
@@ -1090,6 +1103,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get voiceListening => 'Höre zu…';
 
   @override
+  String get voiceNeedsLang =>
+      'Lege eine konkrete Quellsprache fest, um die Spracheingabe zu nutzen';
+
+  @override
   String get voicePermDenied => 'Mikrofonberechtigung verweigert';
 
   @override
@@ -1149,4 +1166,38 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get glossaryEmptyAddCta => 'Eintrag hinzufügen';
+
+  @override
+  String get captureKeepaliveTitle => 'Fenster für schnellen Re-Scan';
+
+  @override
+  String get captureKeepaliveHint => 'Doppeltipp = erneut scannen';
+
+  @override
+  String get captureKeepaliveExplain =>
+      'Behält nach einem Screen-Scan die Bildschirmaufnahme-Berechtigung für diese Dauer, damit ein Doppeltipp (oder erneutes Lens) keine System-Berechtigung mehr verlangt. Länger = weniger Taps, aber die Casting-Anzeige bleibt sichtbar und das Gerät erwärmt sich leicht.';
+
+  @override
+  String get captureKeepaliveOff => 'Aus';
+
+  @override
+  String get captureKeepaliveOffHint =>
+      'Jeder Scan fragt erneut nach Berechtigung. Ideal für Privatsphäre/Akku.';
+
+  @override
+  String get captureKeepaliveDefaultHint =>
+      'Empfohlen — balanciert Geschwindigkeit und Akku.';
+
+  @override
+  String get captureKeepaliveShortHint =>
+      'Weniger Casting-Zeit, aber häufigere Berechtigungs-Dialoge.';
+
+  @override
+  String get captureKeepaliveLongHint =>
+      'Schnellster Re-Scan. Casting-Anzeige bleibt länger sichtbar.';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count Min.';
+  }
 }

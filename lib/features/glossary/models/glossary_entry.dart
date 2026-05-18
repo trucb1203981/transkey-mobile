@@ -5,36 +5,39 @@ class GlossaryEntry {
     String? id,
     required this.source,
     required this.target,
+    this.isName = false,
   }) : id = id ?? const Uuid().v4();
 
   final String id;
   final String source;
   final String target;
+  final bool isName;
 
   Map<String, dynamic> toMap() => {
         'id': id,
         'source': source,
         'target': target,
+        'is_name': isName,
       };
 
   factory GlossaryEntry.fromMap(Map<String, dynamic> map) => GlossaryEntry(
-        // Older payloads (and the server, which keys on source/target) don't
-        // include an id. Fall back to a deterministic synthesis so the same
-        // entry retains the same id across reloads.
         id: (map['id'] as String?) ??
             'legacy_${map['source']}_${map['target']}',
         source: map['source'] as String? ?? '',
         target: map['target'] as String? ?? '',
+        isName: (map['is_name'] as bool?) ?? false,
       );
 
   GlossaryEntry copyWith({
     String? source,
     String? target,
+    bool? isName,
   }) =>
       GlossaryEntry(
         id: id,
         source: source ?? this.source,
         target: target ?? this.target,
+        isName: isName ?? this.isName,
       );
 
   @override
@@ -42,8 +45,9 @@ class GlossaryEntry {
       identical(this, other) ||
       other is GlossaryEntry &&
           source == other.source &&
-          target == other.target;
+          target == other.target &&
+          isName == other.isName;
 
   @override
-  int get hashCode => Object.hash(source, target);
+  int get hashCode => Object.hash(source, target, isName);
 }

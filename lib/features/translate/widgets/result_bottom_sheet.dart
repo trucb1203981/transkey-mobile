@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/drag_handle.dart';
 import '../../../shared/widgets/selectable_with_actions.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';

@@ -166,6 +166,7 @@
   "noTextToTranslate": "Enter some text first",
   "errorGeneric": "Something went wrong",
   "errorSessionExpired": "Session expired — please sign in again",
+  "errorInvalidCredentials": "Wrong email or password",
   "errorEmailNotVerified": "Please verify your email — check your inbox",
   "errorFeatureRequiresPaid": "This feature requires a paid plan",
   "errorDeviceLimit": "Device limit reached — remove a device or upgrade",
@@ -247,6 +248,9 @@
   "glossarySourceHint": "Word or phrase",
   "glossaryTargetLabel": "Target",
   "glossaryTargetHint": "Translation",
+  "glossaryNamesLabel": "Glossary names — tap to insert",
+  "glossaryIsNameLabel": "This is a person's name",
+  "glossaryIsNameHint": "Helps voice input recognize the name and tells the AI to preserve it exactly.",
 
   "upgradeScreenTitle": "Upgrade TransKey",
   "upgradeChooseYourPlan": "Choose your plan",
@@ -368,9 +372,10 @@
 
   "voiceTooltip": "Speak to type",
   "voiceListening": "Listening…",
+  "voiceNeedsLang": "Set a specific source language to use voice",
   "voicePermDenied": "Microphone permission denied",
   "voiceUnsupported": "Voice input not available on this device",
-  "voicePickSourceLang": "Pick a source language first — voice input can't auto-detect",
+  "voicePickSourceLang": "Voice needs a specific language. Pick a source language, then tap the mic again.",
 
   "paywallTitle": "Daily limit reached",
   "paywallBody": "You've used today's free quota of 20 requests / 2,000 characters. Watch a short ad to keep going, or upgrade for unlimited use. Your free quota resets at midnight.",
@@ -387,5 +392,16 @@
 
   "historyEmpty": "No translation history yet",
   "glossaryEmpty": "Glossary is empty",
-  "glossaryEmptyAddCta": "Add entry"
+  "glossaryEmptyAddCta": "Add entry",
+
+  "captureKeepaliveTitle": "Quick re-scan window",
+  "captureKeepaliveHint": "double-tap bubble = re-scan",
+  "captureKeepaliveExplain": "After a screen scan, keep screen-capture permission ready so you can double-tap the bubble (or pick Lens again) without the system permission prompt. Longer windows save taps but keep the casting indicator visible and slightly warm the device.",
+  "captureKeepaliveOff": "Off",
+  "captureKeepaliveOffHint": "Each scan asks for permission again. Best for privacy / battery.",
+  "captureKeepaliveDefaultHint": "Recommended — balances re-scan speed with battery.",
+  "captureKeepaliveShortHint": "Less casting time, but more frequent permission prompts.",
+  "captureKeepaliveLongHint": "Maximum re-scan speed. Casting indicator stays on longer.",
+  "captureKeepaliveMinutes": "{count} min",
+  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
 }

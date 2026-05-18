@@ -1,10 +1,6 @@
 package app.transkey.mobile
 
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -19,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.util.TypedValue
 import android.view.Gravity
@@ -173,12 +170,17 @@ class BubbleService : Service() {
         // button opens. Same set as desktop popup.ts RATE_OPTIONS.
         internal val TTS_RATES = listOf(0.25, 0.5, 0.75, 1.0, 1.25, 1.5)
 
-        private const val BUBBLE_SIZE_DP = 48
+        internal const val BUBBLE_SIZE_DP = 48
 
         // Drag-to-close target
-        private const val CLOSE_ZONE_SIZE_DP = 64
-        private const val CLOSE_ZONE_BOTTOM_MARGIN_DP = 80
-        private const val CLOSE_ZONE_HIT_RADIUS_DP = 80
+        internal const val CLOSE_ZONE_SIZE_DP = 64
+        internal const val CLOSE_ZONE_BOTTOM_MARGIN_DP = 80
+        internal const val CLOSE_ZONE_HIT_RADIUS_DP = 80
+
+        // Two taps within this window repeat the last lens action — chosen
+        // to be short enough that an accidental "tap, then deliberate second
+        // tap a half-second later" isn't misread as a double-tap.
+        private const val DOUBLE_TAP_WINDOW_MS = 280L
 
         @Volatile private var nextRequestId: Long = 0
     }
@@ -224,15 +226,15 @@ class BubbleService : Service() {
     internal var windowManager: WindowManager? = null
 
     // Bubble icon (small floating button)
-    private var bubbleView: View? = null
+    internal var bubbleView: View? = null
     private var bubbleIcon: ImageView? = null
     private var badgeText: TextView? = null
     private var currentState: String = STATE_IDLE
 
     // Drag-to-close target shown while dragging the bubble
-    private var closeZoneView: View? = null
-    private var closeZoneIcon: TextView? = null
-    private var isOverCloseZone: Boolean = false
+    internal var closeZoneView: View? = null
+    internal var closeZoneIcon: TextView? = null
+    internal var isOverCloseZone: Boolean = false
 
     // Floating result panel — see ResultPanel for field doc. When
     // `panel.fullscreen` is true, layout params switch to
@@ -338,11 +340,17 @@ class BubbleService : Service() {
     private var ttsReady = false
 
     // Bubble drag state
-    private var initialX = 0
-    private var initialY = 0
-    private var initialTouchX = 0f
-    private var initialTouchY = 0f
-    private var isDragging = false
+    internal var initialX = 0
+    internal var initialY = 0
+    internal var initialTouchX = 0f
+    internal var initialTouchY = 0f
+    internal var isDragging = false
+
+    // Double-tap → repeat last lens action (skip menu). Remembered for the
+    // lifetime of the bubble session; cleared when the bubble stops.
+    private data class LastLensAction(val regionMode: Boolean, val mode: String)
+    private var lastLensAction: LastLensAction? = null
+    private var lastBubbleTapTime: Long = 0L
 
     internal val handler = Handler(Looper.getMainLooper())
 
@@ -356,8 +364,8 @@ class BubbleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        createBubbleNotificationChannel()
+        startForeground(NOTIFICATION_ID, buildBubbleNotification())
         tts = TextToSpeech(this) { status -> ttsReady = (status == TextToSpeech.SUCCESS) }
     }
 
@@ -468,48 +476,6 @@ class BubbleService : Service() {
 
     // ── Notification ──
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, getString(R.string.bubble_notification_channel),
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = getString(R.string.bubble_notification_active)
-                setShowBadge(false)
-            }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-        }
-    }
-
-    private fun buildNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pending = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
-        // "Turn off" action
-        val stopIntent = Intent(this, BubbleService::class.java).apply { action = ACTION_STOP }
-        val stopPending = PendingIntent.getService(
-            this, 1, stopIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            Notification.Builder(this, CHANNEL_ID)
-        else @Suppress("DEPRECATION") Notification.Builder(this)
-        return builder
-            .setContentTitle("TransKey")
-            .setContentText(getString(R.string.bubble_notification_active))
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentIntent(pending)
-            .setOngoing(true)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Turn off", stopPending)
-            .build()
-    }
-
     // ── Bubble (small floating button) ──
 
     @SuppressLint("ClickableViewAccessibility")
@@ -575,63 +541,9 @@ class BubbleService : Service() {
         saveBubbleActive(true)
     }
 
-    private fun handleBubbleTouch(event: MotionEvent, dp: Float): Boolean {
-        val params = bubbleView?.layoutParams as? WindowManager.LayoutParams ?: return false
-
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                initialX = params.x
-                initialY = params.y
-                initialTouchX = event.rawX
-                initialTouchY = event.rawY
-                isDragging = false
-                isOverCloseZone = false
-                return true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = event.rawX - initialTouchX
-                val dy = event.rawY - initialTouchY
-                if (!isDragging && dx * dx + dy * dy > 25 * dp * dp) {
-                    isDragging = true
-                    showCloseZone(dp)
-                }
-                params.x = initialX + dx.toInt()
-                params.y = initialY + dy.toInt()
-                windowManager?.updateViewLayout(bubbleView!!, params)
-                if (isDragging) {
-                    val bubbleSize = (BUBBLE_SIZE_DP * dp).toInt()
-                    val bubbleCenterX = params.x + bubbleSize / 2
-                    val bubbleCenterY = params.y + bubbleSize / 2
-                    val over = isBubbleOverCloseZone(bubbleCenterX, bubbleCenterY, dp)
-                    if (over != isOverCloseZone) {
-                        isOverCloseZone = over
-                        updateCloseZoneVisual(over)
-                    }
-                }
-                return true
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (isDragging) {
-                    hideCloseZone()
-                    if (isOverCloseZone) {
-                        isOverCloseZone = false
-                        stopBubble()
-                        return true
-                    }
-                    val sw = resources.displayMetrics.widthPixels
-                    val sh = resources.displayMetrics.heightPixels
-                    val centerX = params.x + (BUBBLE_SIZE_DP * dp / 2).toInt()
-                    params.x = if (centerX < sw / 2) 0 else sw - (BUBBLE_SIZE_DP * dp).toInt()
-                    params.y = params.y.coerceIn(0, sh - (BUBBLE_SIZE_DP * dp).toInt())
-                    windowManager?.updateViewLayout(bubbleView!!, params)
-                } else if (event.action == MotionEvent.ACTION_UP) {
-                    onBubbleTapped()
-                }
-                return true
-            }
-        }
-        return false
-    }
+    // Bubble touch + drag-to-close logic lives in BubbleDragHandling.kt
+    // (extension on BubbleService) so this file stays focused on lifecycle
+    // and intent routing.
 
     /**
      * Bubble tap:
@@ -643,7 +555,29 @@ class BubbleService : Service() {
      * NOTE: Android 10+ blocks clipboard reads from background services.
      * Clipboard is read inside ShareActivity (foreground) when user picks a mode.
      */
-    private fun onBubbleTapped() {
+    internal fun onBubbleTapped() {
+        // Double-tap detect: two taps within DOUBLE_TAP_WINDOW_MS repeat the
+        // last lens (screenshot-translate / region-translate) action so the
+        // user doesn't have to walk Menu → Lens → Translate every time when
+        // scanning a chat thread back-to-back. Only fires when a lens action
+        // has been used this bubble session — otherwise there's nothing to
+        // repeat and the tap falls through to normal menu/panel behaviour.
+        val now = SystemClock.uptimeMillis()
+        val sinceLastTap = now - lastBubbleTapTime
+        val cached = lastLensAction
+        if (sinceLastTap < DOUBLE_TAP_WINDOW_MS && cached != null) {
+            lastBubbleTapTime = 0L
+            // The first tap may have opened/closed something; clean up so the
+            // capture pipeline doesn't paint into a stale overlay.
+            if (modePickerView != null) hideModePicker()
+            if (panel.view != null) hideResultPanel()
+            android.util.Log.w("TKBubble", "bubble double-tap: repeating lens region=${cached.regionMode} mode=${cached.mode}")
+            if (cached.regionMode) handleLensRegionRequest(cached.mode)
+            else handleScanRequest(cached.mode)
+            return
+        }
+        lastBubbleTapTime = now
+
         when {
             modePickerView != null -> { hideModePicker(); return }
             panel.view != null      -> { hideResultPanel(); return }
@@ -676,79 +610,7 @@ class BubbleService : Service() {
         }
     }
 
-    // ── Drag-to-close target ──
-
-    private fun showCloseZone(dp: Float) {
-        if (closeZoneView != null) return
-        ensureWindowManager()
-        val size = (CLOSE_ZONE_SIZE_DP * dp).toInt()
-        val container = FrameLayout(this).apply {
-            layoutParams = FrameLayout.LayoutParams(size, size)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#CC222230"))
-            }
-            alpha = 0f
-            animate().alpha(1f).setDuration(150).start()
-        }
-        val icon = TextView(this).apply {
-            text = "✕"
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            )
-        }
-        container.addView(icon)
-        closeZoneIcon = icon
-        closeZoneView = container
-
-        val params = WindowManager.LayoutParams(
-            size, size,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            y = (CLOSE_ZONE_BOTTOM_MARGIN_DP * dp).toInt()
-        }
-        try { windowManager?.addView(container, params) } catch (_: Exception) {}
-    }
-
-    private fun hideCloseZone() {
-        closeZoneView?.let { v ->
-            try { windowManager?.removeView(v) } catch (_: Exception) {}
-        }
-        closeZoneView = null
-        closeZoneIcon = null
-    }
-
-    private fun updateCloseZoneVisual(over: Boolean) {
-        val container = closeZoneView ?: return
-        val scale = if (over) 1.25f else 1.0f
-        container.animate().scaleX(scale).scaleY(scale).setDuration(120).start()
-        (container.background as? GradientDrawable)?.setColor(
-            Color.parseColor(if (over) "#E63946" else "#CC222230"),
-        )
-    }
-
-    private fun isBubbleOverCloseZone(bubbleCenterX: Int, bubbleCenterY: Int, dp: Float): Boolean {
-        val sw = resources.displayMetrics.widthPixels
-        val sh = resources.displayMetrics.heightPixels
-        val zoneSize = (CLOSE_ZONE_SIZE_DP * dp).toInt()
-        val zoneCenterX = sw / 2
-        val zoneCenterY = sh - (CLOSE_ZONE_BOTTOM_MARGIN_DP * dp).toInt() - zoneSize / 2
-        val radius = (CLOSE_ZONE_HIT_RADIUS_DP * dp).toInt()
-        val dx = bubbleCenterX - zoneCenterX
-        val dy = bubbleCenterY - zoneCenterY
-        return dx * dx + dy * dy <= radius * radius
-    }
+    // Drag-to-close target lives in BubbleDragHandling.kt.
 
     /**
      * Mode-picker button handler. Per the feature spec, source text
@@ -1137,6 +999,7 @@ class BubbleService : Service() {
 
     internal fun handleScanRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = false
+        lastLensAction = LastLensAction(regionMode = false, mode = mode)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
             launchScanFlow(mode)
         } else {
@@ -1152,6 +1015,7 @@ class BubbleService : Service() {
      */
     internal fun handleLensRegionRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = true
+        lastLensAction = LastLensAction(regionMode = true, mode = mode)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
             launchScanFlow(mode)
         } else {
@@ -1198,6 +1062,12 @@ class BubbleService : Service() {
         // notification (+ system casting indicator) keeps the user aware
         // that we still have screen-capture access.
         if (ScreenCaptureService.isProjectionActive) {
+            // NB: do NOT show the progress overlay here, even with FLAG_SECURE.
+            // On MIUI (and likely other OEMs) MediaProjection responds to any
+            // FLAG_SECURE window in the layer stack by blanking the entire
+            // captured frame to black — so users on Slack/etc would get a
+            // pitch-black "Lens result". Progress is shown later in
+            // handleLensReady once the bitmap is safely in hand.
             val captureIntent = Intent(this, ScreenCaptureService::class.java).apply {
                 action = ScreenCaptureService.ACTION_CAPTURE
             }
@@ -1469,6 +1339,10 @@ class BubbleService : Service() {
         releaseScreenCapture()
         removeResultPanel()
         removeBubble()
+        // Forget the double-tap cache between sessions — the user's "last
+        // action" doesn't survive a manual bubble stop.
+        lastLensAction = null
+        lastBubbleTapTime = 0L
         saveBubbleActive(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

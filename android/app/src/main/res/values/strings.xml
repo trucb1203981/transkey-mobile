@@ -32,6 +32,7 @@
     <string name="bubble_panel_detected">Detected: %1$s</string>
     <string name="bubble_notification_channel">TransKey Bubble</string>
     <string name="bubble_notification_active">Floating translator active</string>
+    <string name="bubble_notification_turn_off">Turn off</string>
     <string name="bubble_overlay_perm_needed">Enable \'Display over other apps\' to get floating translations</string>
     <string name="bubble_clipboard_empty_error">No text in clipboard.\nCopy the text first, then tap the bubble.</string>
     <string name="bubble_voice">Voice input</string>

@@ -88,6 +88,7 @@
 
     <string name="bubble_notification_channel">TransKey 气泡</string>
     <string name="bubble_notification_active">悬浮翻译气泡运行中</string>
+    <string name="bubble_notification_turn_off">关闭</string>
     <string name="bubble_overlay_perm_needed">启用 \'在其他应用上层显示\' 以使用悬浮翻译</string>
     <string name="bubble_clipboard_empty_error">剪贴板为空。\n请先复制文本,然后点击气泡。</string>
 </resources>

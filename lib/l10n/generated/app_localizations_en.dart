@@ -480,6 +480,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorSessionExpired => 'Session expired — please sign in again';
 
   @override
+  String get errorInvalidCredentials => 'Wrong email or password';
+
+  @override
   String get errorEmailNotVerified =>
       'Please verify your email — check your inbox';
 
@@ -713,6 +716,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => 'Translation';
+
+  @override
+  String get glossaryNamesLabel => 'Glossary names — tap to insert';
+
+  @override
+  String get glossaryIsNameLabel => 'This is a person\'s name';
+
+  @override
+  String get glossaryIsNameHint =>
+      'Helps voice input recognize the name and tells the AI to preserve it exactly.';
 
   @override
   String get upgradeScreenTitle => 'Upgrade TransKey';
@@ -1083,6 +1096,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceListening => 'Listening…';
 
   @override
+  String get voiceNeedsLang => 'Set a specific source language to use voice';
+
+  @override
   String get voicePermDenied => 'Microphone permission denied';
 
   @override
@@ -1090,7 +1106,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voicePickSourceLang =>
-      'Pick a source language first — voice input can\'t auto-detect';
+      'Voice needs a specific language. Pick a source language, then tap the mic again.';
 
   @override
   String get paywallTitle => 'Daily limit reached';
@@ -1140,4 +1156,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get glossaryEmptyAddCta => 'Add entry';
+
+  @override
+  String get captureKeepaliveTitle => 'Quick re-scan window';
+
+  @override
+  String get captureKeepaliveHint => 'double-tap bubble = re-scan';
+
+  @override
+  String get captureKeepaliveExplain =>
+      'After a screen scan, keep screen-capture permission ready so you can double-tap the bubble (or pick Lens again) without the system permission prompt. Longer windows save taps but keep the casting indicator visible and slightly warm the device.';
+
+  @override
+  String get captureKeepaliveOff => 'Off';
+
+  @override
+  String get captureKeepaliveOffHint =>
+      'Each scan asks for permission again. Best for privacy / battery.';
+
+  @override
+  String get captureKeepaliveDefaultHint =>
+      'Recommended — balances re-scan speed with battery.';
+
+  @override
+  String get captureKeepaliveShortHint =>
+      'Less casting time, but more frequent permission prompts.';
+
+  @override
+  String get captureKeepaliveLongHint =>
+      'Maximum re-scan speed. Casting indicator stays on longer.';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count min';
+  }
 }

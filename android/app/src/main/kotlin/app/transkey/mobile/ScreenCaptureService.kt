@@ -69,7 +69,7 @@ class ScreenCaptureService : Service() {
      * consent dialog again.
      */
     private val idleReleaseRunnable = Runnable {
-        Log.d(TAG, "idle release: no capture in ${IDLE_RELEASE_MS}ms, dropping projection")
+        Log.d(TAG, "idle release: capture window expired, dropping projection")
         stopProjectionAndSelf()
     }
 
@@ -318,11 +318,28 @@ class ScreenCaptureService : Service() {
     /**
      * Reset (or start) the idle-release timer. Call after every capture
      * completes — the timer fires only if no new capture comes in during
-     * [IDLE_RELEASE_MS], in which case we drop the projection entirely.
+     * the user-configured window, in which case we drop the projection.
+     *
+     * Window comes from the Flutter setting `tk_capture_keepalive_s`
+     * (seconds). 0 means "release immediately after each scan" — handled
+     * by posting at delay 0, which fires on the next handler tick.
      */
     private fun armIdleRelease() {
         handler.removeCallbacks(idleReleaseRunnable)
-        handler.postDelayed(idleReleaseRunnable, IDLE_RELEASE_MS)
+        handler.postDelayed(idleReleaseRunnable, readIdleReleaseMs())
+    }
+
+    private fun readIdleReleaseMs(): Long {
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        // Flutter int-typed prefs land as Long under the hood; read defensively
+        // so a corrupted/legacy value just falls back to the default.
+        val seconds = try {
+            prefs.getLong("flutter.tk_capture_keepalive_s", IDLE_RELEASE_DEFAULT_S)
+        } catch (_: ClassCastException) {
+            IDLE_RELEASE_DEFAULT_S
+        }
+        val clamped = seconds.coerceIn(0L, IDLE_RELEASE_MAX_S)
+        return clamped * 1000L
     }
 
     /** Release VirtualDisplay + ImageReader. Called only on full session stop. */
@@ -546,18 +563,17 @@ class ScreenCaptureService : Service() {
         private const val FIRST_CAPTURE_ARM_MS = 500L
 
         /**
-         * Auto-release the MediaProjection when no capture happens for this
-         * long. The grant-reuse optimisation is great for back-to-back
-         * scans, but holding the VirtualDisplay live forever means the
-         * GPU keeps mirroring the screen at 60 fps the entire time the
-         * bubble is on — which heats the device noticeably during a
-         * regular browsing session. 3 minutes covers the realistic
-         * "scan → read translation → scan next thing" pace (60 s was
-         * too tight; users reading a longer Lens result kept hitting
-         * a re-consent prompt on their next scan). The cost: a scan
-         * after a quiet 3 minutes triggers the consent dialog again.
+         * Default + max for the idle-release window. The actual window is
+         * user-configurable via the Flutter setting `tk_capture_keepalive_s`
+         * (capped to [0, IDLE_RELEASE_MAX_S]) and read each time we arm the
+         * timer via [readIdleReleaseMs]. Default 180s = 3 min covers the
+         * realistic "scan → read → scan next" pace; max 300s = 5 min is the
+         * UX ceiling chosen so the casting indicator + GPU mirroring don't
+         * sit hot indefinitely. Setting it to 0 means "release immediately
+         * after each scan" — privacy/battery-conservative mode.
          */
-        private const val IDLE_RELEASE_MS = 180_000L
+        private const val IDLE_RELEASE_DEFAULT_S = 180L
+        private const val IDLE_RELEASE_MAX_S = 300L
 
         /**
          * True while this service holds a live MediaProjection grant.

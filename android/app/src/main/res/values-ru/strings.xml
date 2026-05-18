@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey может вставить ответ прямо в активное текстовое поле любого приложения, когда вы нажимаете «Вставить ответ» на Кнопке TransKey. Текст читается или записывается только при вашем действии — никакого фонового отслеживания.</string>
+
+    <!-- Floating bubble action picker -->
+    <string name="bubble_choose_action">Выберите действие</string>
+    <string name="bubble_need_text">Сначала выделите или скопируйте текст, затем выберите действие ниже.</string>
+    <string name="bubble_need_copy">Сначала скопируйте текст, затем нажмите Кнопку TransKey.</string>
+    <string name="bubble_accessibility_hint">Выделение + нажатие Кнопки TransKey пока не работает. Включите Спец. возможности, чтобы пропустить шаг копирования.</string>
+    <string name="bubble_accessibility_enable">Настроить</string>
+    <string name="bubble_accessibility_guide_legacy">Найдите TransKey в списке → включите \"Использовать TransKey\" → нажмите Разрешить.</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ по умолчанию блокирует Спец. возможности для приложений, установленных вручную:\n1. Нажмите ⋮ (вверху справа) → «Разрешить ограниченные настройки»\n2. Вернитесь → Спец. возможности → TransKey → включите</string>
+    <string name="bubble_show_last_result">Показать последний результат</string>
+    <string name="bubble_show_more">Показать ещё</string>
+    <string name="bubble_show_less">Свернуть</string>
+    <string name="bubble_type_text">Ввести свой текст</string>
+    <string name="bubble_paste_a11y_required">Включите Спец. возможности, чтобы вставлять ответы прямо в активное поле.</string>
+
+    <!-- Result panel: action button labels, toasts, status lines -->
+    <string name="bubble_panel_source_lang">Исходный язык</string>
+    <string name="bubble_panel_target_lang">Язык перевода</string>
+    <string name="bubble_panel_copy">Копировать</string>
+    <string name="bubble_panel_paste">Вставить</string>
+    <string name="bubble_panel_copied">Скопировано</string>
+    <string name="bubble_panel_pasted">Вставлено</string>
+    <string name="bubble_panel_paste_manual_fallback">Скопировано — нажмите на поле и вставьте вручную</string>
+    <string name="bubble_panel_paste_a11y_off">Включите TransKey в Спец. возможностях, чтобы вставлять</string>
+    <string name="bubble_panel_clipboard_empty">Буфер обмена пуст</string>
+    <string name="bubble_panel_tts_not_ready">TTS не готов</string>
+    <string name="bubble_panel_translation_failed">Не удалось перевести</string>
+    <string name="bubble_panel_app_not_ready">Приложение не готово — откройте TransKey один раз</string>
+    <string name="bubble_panel_detected">Определено: %1$s</string>
+    <string name="bubble_notification_channel">Кнопка TransKey</string>
+    <string name="bubble_notification_active">Плавающий переводчик активен</string>
+    <string name="bubble_notification_turn_off">Выключить</string>
+    <string name="bubble_overlay_perm_needed">Включите «Поверх других приложений» для плавающего перевода</string>
+    <string name="bubble_clipboard_empty_error">В буфере обмена ничего нет.\nСначала скопируйте текст, затем нажмите Кнопку TransKey.</string>
+    <string name="bubble_voice">Голосовой ввод</string>
+    <string name="bubble_voice_listening">Слушаю…</string>
+    <string name="bubble_voice_speak">Говорите</string>
+    <string name="bubble_voice_stop">Стоп</string>
+    <string name="bubble_voice_no_match">Не расслышал. Попробуйте ещё раз.</string>
+    <string name="bubble_voice_network">Голосовому вводу нужен интернет</string>
+    <string name="bubble_voice_perm_denied">Для голосового ввода нужен доступ к микрофону</string>
+    <string name="bubble_voice_unsupported">Распознавание речи недоступно на этом устройстве</string>
+    <string name="bubble_voice_lang_missing">Голосовой пакет для этого языка не установлен. Откройте Настройки → Языки и ввод → Голос → скачайте офлайн-пакет.</string>
+
+    <!-- Scan-screen flow (formerly labelled "OCR" — simplified for non-technical users) -->
+    <string name="bubble_scan_screen">Перевод экрана</string>
+    <string name="bubble_scan_disclosure_title">TransKey сделает снимок этого экрана</string>
+    <string name="bubble_scan_disclosure_body">Делается один снимок, текст распознаётся прямо на вашем устройстве, затем изображение удаляется. Ничего не загружается и не сохраняется.</string>
+    <string name="bubble_scan_continue">Продолжить</string>
+    <string name="bubble_scan_processing">Читаю экран…</string>
+    <string name="bubble_scan_empty">На этом экране текст не найден</string>
+    <string name="bubble_scan_perm_denied">Для перевода экрана нужно разрешение на запись экрана</string>
+    <string name="bubble_scan_notification_title">Чтение экрана для перевода</string>
+    <string name="bubble_scan_notification_body">Один кадр захватывается и обрабатывается на устройстве</string>
+    <string name="bubble_scan_stop">Остановить запись экрана</string>
+    <string name="bubble_lens_translating">Перевожу экран…</string>
+    <string name="bubble_lens_region">Область сканирования</string>
+    <string name="bubble_lens_region_hint">Потяните, чтобы выбрать область для перевода</string>
+    <string name="bubble_lens_region_confirm">Перевести эту область</string>
+    <string name="bubble_input_hint">Введите текст для перевода…</string>
+    <string name="bubble_input_paste">Вставить</string>
+    <string name="bubble_input_clear">Очистить</string>
+    <string name="bubble_action_translate">Перевести</string>
+    <string name="bubble_cancel">Отмена</string>
+    <string name="bubble_mode_translate">Перевести</string>
+    <string name="bubble_mode_reply">Ответить</string>
+    <string name="bubble_mode_summarize">Кратко</string>
+    <string name="bubble_mode_explain">Объяснить</string>
+    <string name="bubble_mode_refine">Улучшить</string>
+
+    <!-- Settings sheet -->
+    <string name="bubble_settings">Настройки</string>
+    <string name="bubble_translate_tone">Тон перевода</string>
+    <string name="bubble_reply_tone">Тон ответа</string>
+    <string name="bubble_speech_rate">Скорость речи</string>
+    <string name="bubble_romanization">Транслитерация (фонетика)</string>
+    <string name="bubble_reply_suggestions">Варианты ответа</string>
+
+    <!-- Tone options — must match Flutter `toneOptions` in app_settings_provider.dart -->
+    <string name="bubble_tone_auto">Авто</string>
+    <string name="bubble_tone_business">Деловой</string>
+    <string name="bubble_tone_casual">Дружеский</string>
+    <string name="bubble_tone_formal">Формальный</string>
+    <string name="bubble_tone_polite">Вежливый</string>
+    <string name="bubble_tone_technical">Технический</string>
+    <string name="bubble_tone_neutral">Нейтральный</string>
+    <string name="bubble_reply_tone_same">Как тон перевода</string>
+
+    <!-- PROCESS_TEXT activity labels — appear in the system text-selection
+         floating toolbar (or overflow ⋮) of any app when user selects text.
+         "TransKey:" prefix makes them recognizable as our actions vs system. -->
+    <string name="process_text_translate">TransKey: Перевести</string>
+    <string name="process_text_reply">TransKey: Ответить</string>
+    <string name="process_text_summarize">TransKey: Кратко</string>
+    <string name="process_text_explain">TransKey: Объяснить</string>
+    <string name="process_text_refine">TransKey: Улучшить</string>
+</resources>

@@ -732,6 +732,12 @@ internal fun BubbleService.handleVoiceRequest() {
  * SharedPreferences. Used by the input picker's "name palette" — tap
  * a chip to one-shot replace a mis-recognized word in the EditText
  * with the correct foreign-name spelling (faster than re-typing).
+ *
+ * Filters to entries flagged `is_name=true` so the palette stays usable
+ * — a pro user can have ~500 glossary terms; rendering all of them as
+ * chips made the picker unscrollable and irrelevant to the use case
+ * (the user only needs *names* they're about to speak, not technical
+ * vocabulary).
  */
 internal fun BubbleService.readGlossaryNames(): List<String> {
     return try {
@@ -740,6 +746,7 @@ internal fun BubbleService.readGlossaryNames(): List<String> {
         val out = mutableListOf<String>()
         for (i in 0 until arr.length()) {
             val obj = arr.optJSONObject(i) ?: continue
+            if (!obj.optBoolean("is_name", false)) continue
             val source = obj.optString("source", "").trim()
             if (source.isNotEmpty() && source.length <= 100) {
                 out.add(source)

@@ -19,6 +19,7 @@ class SourceField extends StatelessWidget {
     required this.maxChars,
     required this.hintText,
     required this.isListening,
+    required this.voiceReady,
     required this.voiceTooltip,
     required this.onVoicePressed,
     required this.onClear,
@@ -30,8 +31,12 @@ class SourceField extends StatelessWidget {
   final String hintText;
   /// Drives the mic icon (filled red while recording) + tooltip text.
   final bool isListening;
+  /// `false` when voice can't actually start (e.g., source-lang = auto).
+  /// Mic stays interactive — tap opens the source picker — but renders
+  /// muted to signal "not ready" so users don't think the button is dead.
+  final bool voiceReady;
   /// Resolved text for the tooltip — host swaps between voiceTooltip /
-  /// voiceListening per its current state.
+  /// voiceListening / voiceNeedsLang per its current state.
   final String voiceTooltip;
   final VoidCallback onVoicePressed;
   /// Invoked when the user taps the clear-X. Host typically clears the
@@ -59,14 +64,17 @@ class SourceField extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                tooltip: voiceTooltip,
-                icon: Icon(
-                  isListening ? Icons.mic : Icons.mic_none,
-                  size: 22,
-                  color: isListening ? Colors.red : null,
+              Opacity(
+                opacity: voiceReady || isListening ? 1.0 : 0.45,
+                child: IconButton(
+                  tooltip: voiceTooltip,
+                  icon: Icon(
+                    isListening ? Icons.mic : Icons.mic_none,
+                    size: 22,
+                    color: isListening ? Colors.red : null,
+                  ),
+                  onPressed: onVoicePressed,
                 ),
-                onPressed: onVoicePressed,
               ),
               ListenableBuilder(
                 listenable: controller,

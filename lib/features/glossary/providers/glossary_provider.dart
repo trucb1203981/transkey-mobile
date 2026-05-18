@@ -94,7 +94,11 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
           .map((e) => GlossaryEntry.fromMap(e as Map<String, dynamic>))
           .toList();
       state = state.copyWith(entries: entries);
-    } catch (_) {}
+    } catch (e) {
+      // Corrupt JSON — fall back to empty glossary. Next push() will
+      // overwrite the bad blob with the in-memory state.
+      debugPrint('[Glossary] _loadLocal failed (corrupt JSON?): $e');
+    }
   }
 
   Future<void> _saveLocal(List<GlossaryEntry> entries) async {

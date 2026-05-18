@@ -251,6 +251,24 @@ object OcrHelper {
 
         val lastChar = a.text.trimEnd().lastOrNull() ?: return true
         if (lastChar in PARAGRAPH_TERMINATORS) return false
+
+        // Don't glue a new bullet onto a previous one — bulleted/numbered
+        // lists are semantically distinct items and merging them produces
+        // a giant single "paragraph" that the batch translator may truncate
+        // (LinkedIn job posts with 8-12 bullet requirements were getting
+        // cut off mid-list with an "…" ellipsis). Detect by checking the
+        // first non-whitespace character of B against common bullet markers.
+        val bFirst = b.text.trimStart().firstOrNull()
+        if (bFirst != null && bFirst in BULLET_STARTERS) return false
+        // Also catch numbered lists: "1. ", "(1)", "1)".
+        if (b.text.trimStart().take(4).matches(NUMBERED_LIST_REGEX)) return false
+
+        // Cap merged size so even when individual blocks look like wrapped
+        // continuation, we don't accumulate them into a multi-paragraph
+        // monster. ~400 chars is the empirically-safe ceiling: Haiku 3.5
+        // reliably translates strings up to this length without invented
+        // "…" truncation markers.
+        if (a.text.length + b.text.length > MERGE_CHAR_CAP) return false
         return true
     }
 
@@ -298,6 +316,24 @@ object OcrHelper {
     private val PARAGRAPH_TERMINATORS = setOf(
         '.', '!', '?', '…', '。', '！', '？',
     )
+
+    /** First characters that mark the start of a bullet item — used to
+     *  stop [mergeAdjacentBlocks] from gluing successive bullets together. */
+    private val BULLET_STARTERS = setOf(
+        '•', '·', '◦', '▪', '▫', '►', '▶', '■', '★', '☆',
+        '-', '–', '—', '*', '+',
+    )
+
+    /** Matches "1.", "12)", "(3)" etc at the start of a string. */
+    private val NUMBERED_LIST_REGEX = Regex("""^\(?\d{1,3}[.)]\s?.*""")
+
+    /** Hard cap on merged-block size in chars. Above this the LLM batch
+     *  translator becomes unreliable (truncates the tail with "…" even
+     *  with explicit "no truncation" rules in the prompt). Picked from
+     *  the LinkedIn-job-post regression where ~600-char merged bullets
+     *  reliably truncated; 400 leaves headroom for the merge that adds
+     *  one final wrapped line. */
+    private const val MERGE_CHAR_CAP = 400
 
     private fun pickRecognizer(hintLang: String?): TextRecognizer = when (hintLang) {
         "ja" -> TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build())

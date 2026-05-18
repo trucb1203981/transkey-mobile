@@ -8,6 +8,14 @@ const _kToneOverride = 'tk_tone_override';
 const _kReplyToneOverride = 'tk_reply_tone_override';
 const _kReplyLang = 'tk_reply_lang';
 const _kAutoCloseSeconds = 'tk_auto_close_seconds';
+const _kCaptureKeepaliveSeconds = 'tk_capture_keepalive_s';
+
+/// How long the native screen-capture grant stays alive after a scan so
+/// the next scan (double-tap repeat, or another menu pick) can reuse the
+/// grant without re-prompting. Native reads this same key from prefs.
+/// 0 = release immediately. Max 300s (5 min) enforced both sides.
+const captureKeepaliveOptions = <int>[0, 60, 180, 300];
+const captureKeepaliveDefault = 180;
 
 class AppSettings {
   const AppSettings({
@@ -18,6 +26,7 @@ class AppSettings {
     this.replyToneOverride = '',
     this.replyLang = '',
     this.autoCloseSeconds = 0,
+    this.captureKeepaliveSeconds = captureKeepaliveDefault,
   });
 
   final bool historySave;
@@ -27,6 +36,7 @@ class AppSettings {
   final String replyToneOverride;
   final String replyLang;
   final int autoCloseSeconds;
+  final int captureKeepaliveSeconds;
 
   AppSettings copyWith({
     bool? historySave,
@@ -36,6 +46,7 @@ class AppSettings {
     String? replyToneOverride,
     String? replyLang,
     int? autoCloseSeconds,
+    int? captureKeepaliveSeconds,
   }) =>
       AppSettings(
         historySave: historySave ?? this.historySave,
@@ -45,6 +56,8 @@ class AppSettings {
         replyToneOverride: replyToneOverride ?? this.replyToneOverride,
         replyLang: replyLang ?? this.replyLang,
         autoCloseSeconds: autoCloseSeconds ?? this.autoCloseSeconds,
+        captureKeepaliveSeconds:
+            captureKeepaliveSeconds ?? this.captureKeepaliveSeconds,
       );
 }
 
@@ -68,6 +81,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       replyToneOverride: prefs.getString(_kReplyToneOverride) ?? '',
       replyLang: prefs.getString(_kReplyLang) ?? '',
       autoCloseSeconds: prefs.getInt(_kAutoCloseSeconds) ?? 0,
+      captureKeepaliveSeconds:
+          prefs.getInt(_kCaptureKeepaliveSeconds) ?? captureKeepaliveDefault,
     );
   }
 
@@ -85,7 +100,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         current.toneOverride == fresh.toneOverride &&
         current.replyToneOverride == fresh.replyToneOverride &&
         current.replyLang == fresh.replyLang &&
-        current.autoCloseSeconds == fresh.autoCloseSeconds) {
+        current.autoCloseSeconds == fresh.autoCloseSeconds &&
+        current.captureKeepaliveSeconds == fresh.captureKeepaliveSeconds) {
       return;
     }
     state = AsyncData(fresh);
@@ -138,6 +154,14 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setInt(_kAutoCloseSeconds, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(autoCloseSeconds: value));
+  }
+
+  Future<void> setCaptureKeepaliveSeconds(int value) async {
+    final clamped = value.clamp(0, 300);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kCaptureKeepaliveSeconds, clamped);
+    final current = state.valueOrNull ?? const AppSettings();
+    state = AsyncData(current.copyWith(captureKeepaliveSeconds: clamped));
   }
 }
 

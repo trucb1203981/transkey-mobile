@@ -166,6 +166,7 @@
   "noTextToTranslate": "Zuerst Text eingeben",
   "errorGeneric": "Etwas ist schiefgelaufen",
   "errorSessionExpired": "Sitzung abgelaufen — bitte erneut anmelden",
+  "errorInvalidCredentials": "E-Mail oder Passwort ist falsch",
   "errorEmailNotVerified": "Bitte E-Mail bestätigen — Posteingang prüfen",
   "errorFeatureRequiresPaid": "Diese Funktion erfordert einen kostenpflichtigen Plan",
   "errorDeviceLimit": "Gerätelimit erreicht — Gerät entfernen oder upgraden",
@@ -247,6 +248,9 @@
   "glossarySourceHint": "Wort oder Ausdruck",
   "glossaryTargetLabel": "Ziel",
   "glossaryTargetHint": "Übersetzung",
+  "glossaryNamesLabel": "Glossar-Namen — tippen zum Einfügen",
+  "glossaryIsNameLabel": "Das ist ein Personenname",
+  "glossaryIsNameHint": "Hilft der Spracheingabe, den Namen zu erkennen, und weist die KI an, ihn unverändert zu lassen.",
 
   "upgradeScreenTitle": "TransKey upgraden",
   "upgradeChooseYourPlan": "Wählen Sie Ihren Tarif",
@@ -368,6 +372,7 @@
 
   "voiceTooltip": "Zum Tippen sprechen",
   "voiceListening": "Höre zu…",
+  "voiceNeedsLang": "Lege eine konkrete Quellsprache fest, um die Spracheingabe zu nutzen",
   "voicePermDenied": "Mikrofonberechtigung verweigert",
   "voiceUnsupported": "Spracheingabe auf diesem Gerät nicht verfügbar",
   "voicePickSourceLang": "Bitte zuerst Quellsprache wählen — Spracheingabe kann nicht automatisch erkennen",
@@ -387,5 +392,16 @@
 
   "historyEmpty": "Noch kein Übersetzungsverlauf",
   "glossaryEmpty": "Glossar ist leer",
-  "glossaryEmptyAddCta": "Eintrag hinzufügen"
+  "glossaryEmptyAddCta": "Eintrag hinzufügen",
+
+  "captureKeepaliveTitle": "Fenster für schnellen Re-Scan",
+  "captureKeepaliveHint": "Doppeltipp = erneut scannen",
+  "captureKeepaliveExplain": "Behält nach einem Screen-Scan die Bildschirmaufnahme-Berechtigung für diese Dauer, damit ein Doppeltipp (oder erneutes Lens) keine System-Berechtigung mehr verlangt. Länger = weniger Taps, aber die Casting-Anzeige bleibt sichtbar und das Gerät erwärmt sich leicht.",
+  "captureKeepaliveOff": "Aus",
+  "captureKeepaliveOffHint": "Jeder Scan fragt erneut nach Berechtigung. Ideal für Privatsphäre/Akku.",
+  "captureKeepaliveDefaultHint": "Empfohlen — balanciert Geschwindigkeit und Akku.",
+  "captureKeepaliveShortHint": "Weniger Casting-Zeit, aber häufigere Berechtigungs-Dialoge.",
+  "captureKeepaliveLongHint": "Schnellster Re-Scan. Casting-Anzeige bleibt länger sichtbar.",
+  "captureKeepaliveMinutes": "{count} Min.",
+  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
 }

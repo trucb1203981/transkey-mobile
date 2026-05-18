@@ -480,6 +480,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get errorSessionExpired => 'Sesión caducada — inicia sesión de nuevo';
 
   @override
+  String get errorInvalidCredentials => 'Correo o contraseña incorrectos';
+
+  @override
   String get errorEmailNotVerified =>
       'Verifica tu correo — revisa tu bandeja de entrada';
 
@@ -715,6 +718,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => 'Traducción';
+
+  @override
+  String get glossaryNamesLabel => 'Nombres del glosario — toca para insertar';
+
+  @override
+  String get glossaryIsNameLabel => 'Es el nombre de una persona';
+
+  @override
+  String get glossaryIsNameHint =>
+      'Mejora el reconocimiento de voz y pide a la IA que lo conserve tal cual.';
 
   @override
   String get upgradeScreenTitle => 'Actualizar TransKey';
@@ -1087,6 +1100,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get voiceListening => 'Escuchando…';
 
   @override
+  String get voiceNeedsLang =>
+      'Establece un idioma de origen específico para usar la voz';
+
+  @override
   String get voicePermDenied => 'Permiso de micrófono denegado';
 
   @override
@@ -1145,4 +1162,38 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get glossaryEmptyAddCta => 'Añadir entrada';
+
+  @override
+  String get captureKeepaliveTitle => 'Ventana de re-captura rápida';
+
+  @override
+  String get captureKeepaliveHint => 'doble toque = re-escanear';
+
+  @override
+  String get captureKeepaliveExplain =>
+      'Tras una captura, conserva el permiso de captura de pantalla durante este tiempo para que un doble toque (o seleccionar Lens otra vez) no pida permiso al sistema de nuevo. Más tiempo = menos toques, pero el indicador de transmisión queda visible y el dispositivo se calienta un poco.';
+
+  @override
+  String get captureKeepaliveOff => 'Desactivado';
+
+  @override
+  String get captureKeepaliveOffHint =>
+      'Cada captura pide permiso de nuevo. Mejor para privacidad y batería.';
+
+  @override
+  String get captureKeepaliveDefaultHint =>
+      'Recomendado — equilibra velocidad y batería.';
+
+  @override
+  String get captureKeepaliveShortHint =>
+      'Menos tiempo de transmisión, pero más solicitudes de permiso.';
+
+  @override
+  String get captureKeepaliveLongHint =>
+      'Re-captura más rápida. El indicador queda visible más tiempo.';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count min';
+  }
 }

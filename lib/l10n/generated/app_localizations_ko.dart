@@ -475,6 +475,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get errorSessionExpired => '세션이 만료되었습니다 — 다시 로그인하세요';
 
   @override
+  String get errorInvalidCredentials => '이메일 또는 비밀번호가 올바르지 않습니다';
+
+  @override
   String get errorEmailNotVerified => '이메일을 인증하세요 — 받은편지함 확인';
 
   @override
@@ -693,6 +696,15 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => '번역어';
+
+  @override
+  String get glossaryNamesLabel => '용어집의 이름 — 탭하여 삽입';
+
+  @override
+  String get glossaryIsNameLabel => '사람 이름입니다';
+
+  @override
+  String get glossaryIsNameHint => '음성 입력 인식을 돕고 AI가 그대로 유지하도록 합니다.';
 
   @override
   String get upgradeScreenTitle => 'TransKey 업그레이드';
@@ -1047,6 +1059,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get voiceListening => '듣는 중…';
 
   @override
+  String get voiceNeedsLang => '음성 입력을 사용하려면 원본 언어를 지정하세요';
+
+  @override
   String get voicePermDenied => '마이크 권한이 거부되었습니다';
 
   @override
@@ -1101,4 +1116,34 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get glossaryEmptyAddCta => '항목 추가';
+
+  @override
+  String get captureKeepaliveTitle => '빠른 재스캔 권한 유지';
+
+  @override
+  String get captureKeepaliveHint => '더블탭으로 재스캔';
+
+  @override
+  String get captureKeepaliveExplain =>
+      '화면 스캔 후 이 시간 동안 화면 캡처 권한을 유지하여 다음에 더블탭(또는 Lens 재선택) 시 시스템 권한 창이 다시 뜨지 않게 합니다. 길게 유지하면 조작이 줄지만, 캐스팅 표시가 오래 보이고 기기가 약간 더 따뜻해집니다.';
+
+  @override
+  String get captureKeepaliveOff => '끄기';
+
+  @override
+  String get captureKeepaliveOffHint => '매 스캔마다 권한을 다시 요청합니다. 개인정보·배터리 우선.';
+
+  @override
+  String get captureKeepaliveDefaultHint => '권장 — 재스캔 속도와 배터리의 균형.';
+
+  @override
+  String get captureKeepaliveShortHint => '캐스팅 시간은 짧지만, 권한 요청이 잦아집니다.';
+
+  @override
+  String get captureKeepaliveLongHint => '재스캔이 가장 빠릅니다. 캐스팅 표시가 오래 유지됩니다.';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count 분';
+  }
 }

@@ -5,12 +5,18 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_ar.dart';
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
 import 'app_localizations_fr.dart';
+import 'app_localizations_id.dart';
+import 'app_localizations_it.dart';
 import 'app_localizations_ja.dart';
 import 'app_localizations_ko.dart';
+import 'app_localizations_pt.dart';
+import 'app_localizations_ru.dart';
+import 'app_localizations_th.dart';
 import 'app_localizations_vi.dart';
 import 'app_localizations_zh.dart';
 
@@ -100,12 +106,18 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('ar'),
     Locale('de'),
     Locale('en'),
     Locale('es'),
     Locale('fr'),
+    Locale('id'),
+    Locale('it'),
     Locale('ja'),
     Locale('ko'),
+    Locale('pt'),
+    Locale('ru'),
+    Locale('th'),
     Locale('vi'),
     Locale('zh')
   ];
@@ -1022,6 +1034,12 @@ abstract class AppLocalizations {
   /// **'Session expired — please sign in again'**
   String get errorSessionExpired;
 
+  /// No description provided for @errorInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong email or password'**
+  String get errorInvalidCredentials;
+
   /// No description provided for @errorEmailNotVerified.
   ///
   /// In en, this message translates to:
@@ -1429,6 +1447,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Translation'**
   String get glossaryTargetHint;
+
+  /// No description provided for @glossaryNamesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Glossary names — tap to insert'**
+  String get glossaryNamesLabel;
+
+  /// No description provided for @glossaryIsNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a person\'s name'**
+  String get glossaryIsNameLabel;
+
+  /// No description provided for @glossaryIsNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Helps voice input recognize the name and tells the AI to preserve it exactly.'**
+  String get glossaryIsNameHint;
 
   /// No description provided for @upgradeScreenTitle.
   ///
@@ -2084,6 +2120,12 @@ abstract class AppLocalizations {
   /// **'Listening…'**
   String get voiceListening;
 
+  /// No description provided for @voiceNeedsLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a specific source language to use voice'**
+  String get voiceNeedsLang;
+
   /// No description provided for @voicePermDenied.
   ///
   /// In en, this message translates to:
@@ -2099,7 +2141,7 @@ abstract class AppLocalizations {
   /// No description provided for @voicePickSourceLang.
   ///
   /// In en, this message translates to:
-  /// **'Pick a source language first — voice input can\'t auto-detect'**
+  /// **'Voice needs a specific language. Pick a source language, then tap the mic again.'**
   String get voicePickSourceLang;
 
   /// No description provided for @paywallTitle.
@@ -2191,6 +2233,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add entry'**
   String get glossaryEmptyAddCta;
+
+  /// No description provided for @captureKeepaliveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick re-scan window'**
+  String get captureKeepaliveTitle;
+
+  /// No description provided for @captureKeepaliveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'double-tap bubble = re-scan'**
+  String get captureKeepaliveHint;
+
+  /// No description provided for @captureKeepaliveExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'After a screen scan, keep screen-capture permission ready so you can double-tap the bubble (or pick Lens again) without the system permission prompt. Longer windows save taps but keep the casting indicator visible and slightly warm the device.'**
+  String get captureKeepaliveExplain;
+
+  /// No description provided for @captureKeepaliveOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get captureKeepaliveOff;
+
+  /// No description provided for @captureKeepaliveOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each scan asks for permission again. Best for privacy / battery.'**
+  String get captureKeepaliveOffHint;
+
+  /// No description provided for @captureKeepaliveDefaultHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended — balances re-scan speed with battery.'**
+  String get captureKeepaliveDefaultHint;
+
+  /// No description provided for @captureKeepaliveShortHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Less casting time, but more frequent permission prompts.'**
+  String get captureKeepaliveShortHint;
+
+  /// No description provided for @captureKeepaliveLongHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum re-scan speed. Casting indicator stays on longer.'**
+  String get captureKeepaliveLongHint;
+
+  /// No description provided for @captureKeepaliveMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String captureKeepaliveMinutes(int count);
 }
 
 class _AppLocalizationsDelegate
@@ -2204,12 +2300,18 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) => <String>[
+        'ar',
         'de',
         'en',
         'es',
         'fr',
+        'id',
+        'it',
         'ja',
         'ko',
+        'pt',
+        'ru',
+        'th',
         'vi',
         'zh'
       ].contains(locale.languageCode);
@@ -2221,6 +2323,8 @@ class _AppLocalizationsDelegate
 AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'ar':
+      return AppLocalizationsAr();
     case 'de':
       return AppLocalizationsDe();
     case 'en':
@@ -2229,10 +2333,20 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEs();
     case 'fr':
       return AppLocalizationsFr();
+    case 'id':
+      return AppLocalizationsId();
+    case 'it':
+      return AppLocalizationsIt();
     case 'ja':
       return AppLocalizationsJa();
     case 'ko':
       return AppLocalizationsKo();
+    case 'pt':
+      return AppLocalizationsPt();
+    case 'ru':
+      return AppLocalizationsRu();
+    case 'th':
+      return AppLocalizationsTh();
     case 'vi':
       return AppLocalizationsVi();
     case 'zh':

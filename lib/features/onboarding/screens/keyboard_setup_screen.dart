@@ -30,17 +30,27 @@ class KeyboardSetupScreen extends StatefulWidget {
       try {
         await const MethodChannel('transkey/appgroup')
             .invokeMethod('openKeyboardSettings');
-      } catch (_) {
+      } catch (e) {
+        // Primary native shortcut failed (likely the channel handler isn't
+        // registered in the iOS build the user is on). Fall back to the
+        // settings:// deep link.
+        debugPrint('[Onboarding] openKeyboardSettings primary failed: $e');
         try {
           await const MethodChannel('transkey/deeplink')
               .invokeMethod('open', {'url': url});
-        } catch (_) {}
+        } catch (e2) {
+          // Both paths failed; user will have to navigate Settings manually.
+          // We can't recover here — surface this in logs so support sees it.
+          debugPrint('[Onboarding] openKeyboardSettings fallback failed: $e2');
+        }
       }
     } else if (Platform.isAndroid) {
       try {
         await const MethodChannel('transkey/bubble')
             .invokeMethod('requestPermission');
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[Onboarding] requestPermission failed: $e');
+      }
     }
   }
 
@@ -49,7 +59,8 @@ class KeyboardSetupScreen extends StatefulWidget {
     try {
       return await const MethodChannel('transkey/bubble')
           .invokeMethod<bool>('checkPermission') ?? false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Onboarding] hasBubblePermission failed: $e');
       return false;
     }
   }
@@ -96,7 +107,9 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
         // Auto-advance to next step
         if (_currentStep < 2) _nextStep();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Onboarding] _checkAndStartBubble failed: $e');
+    }
   }
 
   void _nextStep() {

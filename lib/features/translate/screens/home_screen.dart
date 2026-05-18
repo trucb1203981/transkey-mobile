@@ -6,9 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../core/api/api_errors.dart';
@@ -37,8 +35,10 @@ import '../widgets/clipboard_chip.dart';
 import '../widgets/feature_buttons.dart';
 import '../widgets/language_bar.dart';
 import '../widgets/language_picker_sheet.dart';
+import '../widgets/name_chip_palette.dart';
 import '../widgets/result_card.dart';
 import '../widgets/source_field.dart';
+import 'home_voice_mixin.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -48,7 +48,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, HomeVoiceMixin<HomeScreen> {
+  @override
+  TextEditingController get voiceTextController => _textController;
+
   int _currentTab = 0;
   // Track which tabs have been opened so IndexedStack can keep them in the
   // tree (preserving state), but the heavy History / Glossary / Settings
@@ -67,16 +70,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   static const _maxChars = 5000;
   static const _kSourceTextKey = 'tk_last_source_text';
 
-  // Speech-to-text state. _speech is lazy-inited on first mic tap so the
-  // SpeechRecognizer plugin doesn't get attached unless the user actually
-  // wants voice input (avoids unnecessary IPC + a permission prompt at
-  // app start).
-  stt.SpeechToText? _speech;
-  bool _isListening = false;
-  // Text already in the field BEFORE we started listening — appended to
-  // recognised words so users can dictate additions instead of dictating
-  // a wholesale replacement of what they typed.
-  String _speechPrefix = '';
+  // Speech-to-text state + toggleSpeechToText() live in [HomeVoiceMixin].
 
   @override
   void initState() {
@@ -226,7 +220,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _inputFocus.dispose();
     // Stop any in-flight recognition so the mic doesn't keep listening
     // after the user navigates away.
-    if (_isListening) _speech?.stop();
+    stopVoiceIfListening();
     super.dispose();
   }
 
@@ -570,19 +564,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           }),
           const SizedBox(height: AppSpacing.md),
 
-          SourceField(
-            controller: _textController,
-            focusNode: _inputFocus,
-            maxChars: _maxChars,
-            hintText: l.hintEnterText,
-            isListening: _isListening,
-            voiceTooltip: _isListening ? l.voiceListening : l.voiceTooltip,
-            onVoicePressed: _toggleSpeechToText,
-            onClear: () {
-              _textController.clear();
-              ref.read(translateProvider.notifier).clearResult();
-            },
-          ),
+          Consumer(builder: (_, ref, __) {
+            // Voice can't auto-detect language on Android, so when source
+            // is "auto" we surface a muted mic + a tooltip that explains
+            // the next step instead of letting the user wonder why the
+            // button "doesn't work" (tap still works — it opens the picker).
+            final src = ref.watch(languageSettingsProvider).valueOrNull?.sourceLang ?? 'auto';
+            final ready = src != 'auto';
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SourceField(
+                  controller: _textController,
+                  focusNode: _inputFocus,
+                  maxChars: _maxChars,
+                  hintText: l.hintEnterText,
+                  isListening: isListening,
+                  voiceReady: ready,
+                  voiceTooltip: isListening
+                      ? l.voiceListening
+                      : (ready ? l.voiceTooltip : l.voiceNeedsLang),
+                  onVoicePressed: toggleSpeechToText,
+                  onClear: () {
+                    _textController.clear();
+                    ref.read(translateProvider.notifier).clearResult();
+                  },
+                ),
+                // Glossary name chips — tap to insert into the input. Speech
+                // recognizers reliably mangle foreign names ("Shinzato" →
+                // "sinh nhật" on vi-VN); the chips make the recovery one tap
+                // instead of retyping the whole name. Empty/no-name glossary
+                // → palette returns SizedBox.shrink() so this costs nothing.
+                NameChipPalette(
+                  controller: _textController,
+                  focusNode: _inputFocus,
+                ),
+              ],
+            );
+          }),
           const SizedBox(height: AppSpacing.md),
 
           FeatureButtons(
@@ -626,99 +645,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
-
-  /// Toggle voice-to-text. First tap: ask for mic permission (if not
-  /// granted), start listening with the currently-selected source
-  /// language as the recognition locale, and stream partial results
-  /// into the text field. Second tap: stop early. Auto-stops on ~3 s
-  /// of silence (the SpeechRecognizer plugin's default).
-  Future<void> _toggleSpeechToText() async {
-    final l = AppLocalizations.of(context)!;
-    if (_isListening) {
-      await _speech?.stop();
-      if (mounted) setState(() => _isListening = false);
-      return;
-    }
-    // Android SpeechRecognizer needs a concrete locale — it CAN'T
-    // auto-detect across languages. If the picker is "Auto", ask the
-    // user to pick a real source first, then open the source picker.
-    final langs = ref.read(languageSettingsProvider).valueOrNull;
-    final sourceLang = langs?.sourceLang ?? 'auto';
-    if (sourceLang == 'auto') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.voicePickSourceLang)),
-      );
-      await _pickSourceLang(sourceLang);
-      return;
-    }
-    final perm = await Permission.microphone.request();
-    if (!perm.isGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.voicePermDenied)),
-        );
-      }
-      return;
-    }
-    final speech = _speech ??= stt.SpeechToText();
-    final available = await speech.initialize(
-      onError: (e) {
-        if (mounted) setState(() => _isListening = false);
-      },
-      onStatus: (status) {
-        if (status == 'done' || status == 'notListening') {
-          if (mounted) setState(() => _isListening = false);
-        }
-      },
-    );
-    if (!available) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.voiceUnsupported)),
-        );
-      }
-      return;
-    }
-    // Recognition locale was already validated above (auto is rejected).
-    final localeId = _bcp47ForLang(sourceLang);
-
-    _speechPrefix = _textController.text;
-    if (mounted) setState(() => _isListening = true);
-    await speech.listen(
-      localeId: localeId,
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-      listenOptions: stt.SpeechListenOptions(partialResults: true),
-      onResult: (result) {
-        final joined = _speechPrefix.isEmpty
-            ? result.recognizedWords
-            : '$_speechPrefix ${result.recognizedWords}';
-        _textController.value = TextEditingValue(
-          text: joined,
-          selection: TextSelection.collapsed(offset: joined.length),
-        );
-      },
-    );
-  }
-
-  /// Map our 2-letter source-language code to the BCP-47 locale ID the
-  /// platform SpeechRecognizer expects. Returns null for "auto" so the
-  /// plugin uses the device-default locale.
-  String? _bcp47ForLang(String code) {
-    if (code == 'auto') return null;
-    return _localeMap[code] ?? code;
-  }
-
-  static const _localeMap = {
-    'en': 'en_US',
-    'vi': 'vi_VN',
-    'zh': 'zh_CN',
-    'ja': 'ja_JP',
-    'ko': 'ko_KR',
-    'fr': 'fr_FR',
-    'de': 'de_DE',
-    'es': 'es_ES',
-  };
 
 }
 

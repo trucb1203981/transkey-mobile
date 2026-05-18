@@ -166,6 +166,7 @@
   "noTextToTranslate": "请先输入文本",
   "errorGeneric": "发生错误",
   "errorSessionExpired": "会话已过期 — 请重新登录",
+  "errorInvalidCredentials": "邮箱或密码错误",
   "errorEmailNotVerified": "请验证邮箱 — 查收收件箱",
   "errorFeatureRequiresPaid": "此功能需要付费套餐",
   "errorDeviceLimit": "已达设备上限 — 请移除一台设备或升级",
@@ -247,6 +248,9 @@
   "glossarySourceHint": "单词或短语",
   "glossaryTargetLabel": "翻译",
   "glossaryTargetHint": "译文",
+  "glossaryNamesLabel": "术语表中的名字 — 点击插入",
+  "glossaryIsNameLabel": "这是人名",
+  "glossaryIsNameHint": "帮助语音输入识别该名字，并让 AI 完整保留。",
 
   "upgradeScreenTitle": "升级 TransKey",
   "upgradeChooseYourPlan": "选择套餐",
@@ -368,6 +372,7 @@
 
   "voiceTooltip": "语音输入",
   "voiceListening": "正在聆听…",
+  "voiceNeedsLang": "请先设置具体的源语言以使用语音输入",
   "voicePermDenied": "麦克风权限被拒绝",
   "voiceUnsupported": "此设备不支持语音输入",
   "voicePickSourceLang": "请先选择源语言 — 语音输入无法自动检测",
@@ -387,5 +392,16 @@
 
   "historyEmpty": "暂无翻译历史",
   "glossaryEmpty": "术语表为空",
-  "glossaryEmptyAddCta": "添加词条"
+  "glossaryEmptyAddCta": "添加词条",
+
+  "captureKeepaliveTitle": "快速再次截图保留时长",
+  "captureKeepaliveHint": "双击悬浮按钮即可再扫",
+  "captureKeepaliveExplain": "扫屏后在此时段内保留屏幕录制权限，下次双击悬浮按钮（或再次选择 Lens）时无需重新弹出系统授权。保留越久操作越少，但投屏指示器会持续显示，设备会略微发热。",
+  "captureKeepaliveOff": "关闭",
+  "captureKeepaliveOffHint": "每次扫屏都需重新授权。最省电、最注重隐私。",
+  "captureKeepaliveDefaultHint": "推荐 — 平衡再扫速度与电池消耗。",
+  "captureKeepaliveShortHint": "投屏显示时间更短，但授权弹窗更频繁。",
+  "captureKeepaliveLongHint": "再扫速度最快，投屏指示器会显示更久。",
+  "captureKeepaliveMinutes": "{count} 分钟",
+  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
 }

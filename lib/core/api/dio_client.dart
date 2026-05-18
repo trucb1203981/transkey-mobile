@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../auth/auth_provider.dart';
 import '../auth/session_store.dart';
 import '../device/device_id.dart';
+import '../diagnostics/app_log.dart';
 
 String get kBaseUrl =>
     dotenv.env['TRANSKEY_API_URL'] ?? 'https://api.transkey.app';
@@ -125,6 +127,21 @@ class _AuthRefreshInterceptor extends Interceptor {
   final void Function() onAuthFailed;
   final void Function() onSessionChanged;
 
+  /// Single in-flight refresh shared by every 401 that arrives while it's
+  /// running. Without this, N concurrent 401s (typical first-foreground
+  /// burst: /usage + /features + /subscription all firing together) each
+  /// fire their own POST /auth/refresh. The server rotates the token on
+  /// the first call so the others race a rejected stale token — second
+  /// refresh 401s → forceLogout fires even though the first refresh
+  /// actually succeeded, and the user gets kicked back to the login
+  /// screen for no reason.
+  ///
+  /// The Completer resolves with the new access-token on success or null
+  /// on failure (caller treats null as "refresh failed → forward original
+  /// 401"). All concurrent callers await the same Completer, then retry
+  /// their own request with the shared new token.
+  Completer<String?>? _inFlightRefresh;
+
   @override
   Future<void> onError(
     DioException err,
@@ -142,44 +159,76 @@ class _AuthRefreshInterceptor extends Interceptor {
       return;
     }
 
+    final newToken = await _refreshOnce();
+    if (newToken == null) {
+      handler.next(err);
+      return;
+    }
+
+    // Retry the original request with the (shared) new token.
     try {
-      final session = await sessionStore.load();
-      if (session == null) {
-        onAuthFailed();
-        handler.next(err);
-        return;
-      }
-
-      debugPrint('[AuthRefresh] Attempting token refresh...');
-      final refreshResponse = await dio.post(
-        '/auth/refresh',
-        options: Options(headers: {
-          'Authorization': 'Bearer ${session.accessToken}',
-        }),
-      );
-
-      final newToken = refreshResponse.data['accessToken'] as String;
-      final expiresAt = refreshResponse.data['expiresAt'] as String?;
-
-      await sessionStore.save(
-        session.copyWith(accessToken: newToken, expiresAt: expiresAt),
-      );
-      onSessionChanged();
-
-      // Retry the original request with new token
       final retryOptions = err.requestOptions.copyWith(
         headers: {
           ...err.requestOptions.headers,
           'Authorization': 'Bearer $newToken',
         },
       );
-
       final retryResponse = await dio.fetch(retryOptions);
       handler.resolve(retryResponse);
+    } catch (retryError) {
+      // Retry itself bombed (e.g. another non-401 error from the server).
+      // Surface the retry error, not the original 401, so the upstream
+      // handler knows the cause.
+      if (retryError is DioException) {
+        handler.next(retryError);
+      } else {
+        handler.next(err);
+      }
+    }
+  }
+
+  /// Returns the new access token, or null if the refresh failed. Callers
+  /// that arrive while a refresh is already in flight await that same
+  /// promise rather than firing their own.
+  Future<String?> _refreshOnce() async {
+    final existing = _inFlightRefresh;
+    if (existing != null) {
+      AppLog.d('AuthRefresh', 'Joining in-flight refresh');
+      return existing.future;
+    }
+    final completer = Completer<String?>();
+    _inFlightRefresh = completer;
+    try {
+      final session = await sessionStore.load();
+      if (session == null) {
+        onAuthFailed();
+        completer.complete(null);
+        return null;
+      }
+      AppLog.d('AuthRefresh', 'Attempting token refresh...');
+      final refreshResponse = await dio.post(
+        '/auth/refresh',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${session.accessToken}',
+        }),
+      );
+      final newToken = refreshResponse.data['accessToken'] as String;
+      final expiresAt = refreshResponse.data['expiresAt'] as String?;
+      await sessionStore.save(
+        session.copyWith(accessToken: newToken, expiresAt: expiresAt),
+      );
+      onSessionChanged();
+      completer.complete(newToken);
+      return newToken;
     } catch (e) {
-      debugPrint('[AuthRefresh] Refresh failed: $e');
+      AppLog.w('AuthRefresh', 'Refresh failed', e);
       onAuthFailed();
-      handler.next(err);
+      completer.complete(null);
+      return null;
+    } finally {
+      // Clear the slot so the NEXT refresh cycle (after the current token
+      // expires hours from now) starts fresh.
+      _inFlightRefresh = null;
     }
   }
 }
@@ -213,7 +262,7 @@ class _RetryInterceptor extends Interceptor {
     }
 
     final delay = Duration(seconds: retryCount + 1);
-    debugPrint('[Retry] Attempt ${retryCount + 1}/$_maxRetries after ${delay.inSeconds}s');
+    AppLog.d('Retry', 'Attempt ${retryCount + 1}/$_maxRetries after ${delay.inSeconds}s');
 
     await Future<void>.delayed(delay);
 

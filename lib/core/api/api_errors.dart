@@ -3,7 +3,8 @@ import 'package:dio/dio.dart';
 import '../../l10n/generated/app_localizations.dart';
 
 enum ApiErrorCode {
-  unauthorized,
+  unauthorized,        // valid session expired or rejected mid-app
+  invalidCredentials,  // login/register/google-mobile rejected at the door
   emailNotVerified,
   featureDisabled,
   deviceLimit,
@@ -51,8 +52,28 @@ class ApiException implements Exception {
         ? (body['code'] as String? ?? body['error'] as String?)
         : null;
 
+    // 401 on the auth-entry endpoints means "we don't believe these
+    // credentials" — NOT "your session expired" (the user doesn't have
+    // one yet). Surface the server's specific message ("Email hoặc mật
+    // khẩu không đúng") so the user knows to retry their password rather
+    // than thinking they need to re-login.
+    final path = err.requestOptions.path;
+    final isCredentialAttempt = status == 401 && (
+      path == '/auth/login' ||
+      path == '/auth/register' ||
+      path == '/auth/google/mobile'
+    );
+
     switch (status) {
       case 401:
+        if (isCredentialAttempt) {
+          return ApiException(
+            code: ApiErrorCode.invalidCredentials,
+            message: (body is Map ? body['message'] as String? : null)
+                ?? 'Email hoặc mật khẩu không đúng',
+            statusCode: status,
+          );
+        }
         return const ApiException(
           code: ApiErrorCode.unauthorized,
           message: 'Session expired',
@@ -138,6 +159,7 @@ class ApiException implements Exception {
 extension ApiErrorCodeL on ApiErrorCode {
   String localize(AppLocalizations l) => switch (this) {
     ApiErrorCode.unauthorized              => l.errorSessionExpired,
+    ApiErrorCode.invalidCredentials        => l.errorInvalidCredentials,
     ApiErrorCode.emailNotVerified          => l.errorEmailNotVerified,
     ApiErrorCode.featureDisabled           => l.errorFeatureRequiresPaid,
     ApiErrorCode.deviceLimit               => l.errorDeviceLimit,

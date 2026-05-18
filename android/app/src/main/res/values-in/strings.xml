@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey dapat menempelkan balasan langsung ke kolom teks aktif di aplikasi mana pun saat Anda mengetuk "Tempel balasan" pada Tombol TransKey. Teks hanya dibaca atau ditulis ketika Anda memicu sebuah tindakan — tanpa pelacakan latar belakang.</string>
+
+    <!-- Floating bubble action picker -->
+    <string name="bubble_choose_action">Pilih tindakan</string>
+    <string name="bubble_need_text">Pilih atau salin teks dulu, lalu pilih tindakan di bawah.</string>
+    <string name="bubble_need_copy">Salin teks dulu, lalu ketuk Tombol TransKey.</string>
+    <string name="bubble_accessibility_hint">Sorot + ketuk Tombol TransKey belum berfungsi. Aktifkan Aksesibilitas untuk melewati langkah Salin.</string>
+    <string name="bubble_accessibility_enable">Atur</string>
+    <string name="bubble_accessibility_guide_legacy">Cari TransKey di daftar → aktifkan \"Gunakan TransKey\" → ketuk Izinkan.</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ memblokir Aksesibilitas untuk aplikasi sideload secara default:\n1. Ketuk ⋮ (kanan atas) → \"Izinkan setelan dibatasi\"\n2. Kembali → Aksesibilitas → TransKey → aktifkan</string>
+    <string name="bubble_show_last_result">Lihat hasil terakhir</string>
+    <string name="bubble_show_more">Lihat lainnya</string>
+    <string name="bubble_show_less">Lihat lebih sedikit</string>
+    <string name="bubble_type_text">Ketik teks sendiri</string>
+    <string name="bubble_paste_a11y_required">Aktifkan Aksesibilitas untuk menempelkan balasan langsung ke kolom aktif.</string>
+
+    <!-- Result panel: action button labels, toasts, status lines -->
+    <string name="bubble_panel_source_lang">Bahasa sumber</string>
+    <string name="bubble_panel_target_lang">Bahasa tujuan</string>
+    <string name="bubble_panel_copy">Salin</string>
+    <string name="bubble_panel_paste">Tempel</string>
+    <string name="bubble_panel_copied">Tersalin</string>
+    <string name="bubble_panel_pasted">Tertempel</string>
+    <string name="bubble_panel_paste_manual_fallback">Tersalin — ketuk kolom lalu tempel manual</string>
+    <string name="bubble_panel_paste_a11y_off">Aktifkan TransKey di Aksesibilitas untuk menempel</string>
+    <string name="bubble_panel_clipboard_empty">Papan klip kosong</string>
+    <string name="bubble_panel_tts_not_ready">TTS belum siap</string>
+    <string name="bubble_panel_translation_failed">Terjemahan gagal</string>
+    <string name="bubble_panel_app_not_ready">Aplikasi belum siap — buka TransKey sekali</string>
+    <string name="bubble_panel_detected">Terdeteksi: %1$s</string>
+    <string name="bubble_notification_channel">Tombol TransKey</string>
+    <string name="bubble_notification_active">Penerjemah mengambang aktif</string>
+    <string name="bubble_notification_turn_off">Matikan</string>
+    <string name="bubble_overlay_perm_needed">Aktifkan \'Tampilkan di atas aplikasi lain\' untuk terjemahan mengambang</string>
+    <string name="bubble_clipboard_empty_error">Tidak ada teks di papan klip.\nSalin teks dulu, lalu ketuk Tombol TransKey.</string>
+    <string name="bubble_voice">Masukan suara</string>
+    <string name="bubble_voice_listening">Mendengarkan…</string>
+    <string name="bubble_voice_speak">Silakan bicara</string>
+    <string name="bubble_voice_stop">Berhenti</string>
+    <string name="bubble_voice_no_match">Tidak terdengar jelas. Coba lagi.</string>
+    <string name="bubble_voice_network">Masukan suara perlu internet</string>
+    <string name="bubble_voice_perm_denied">Perlu izin mikrofon untuk masukan suara</string>
+    <string name="bubble_voice_unsupported">Pengenalan suara tidak tersedia di perangkat ini</string>
+    <string name="bubble_voice_lang_missing">Paket suara belum dipasang untuk bahasa ini. Buka Setelan → Bahasa &amp; Masukan → Suara → unduh paket offline.</string>
+
+    <!-- Scan-screen flow (formerly labelled "OCR" — simplified for non-technical users) -->
+    <string name="bubble_scan_screen">Terjemahkan layar</string>
+    <string name="bubble_scan_disclosure_title">TransKey akan menangkap layar ini</string>
+    <string name="bubble_scan_disclosure_body">Satu tangkapan layar diambil dan teksnya dibaca langsung di perangkat Anda, lalu gambar dibuang. Tidak ada yang diunggah atau disimpan.</string>
+    <string name="bubble_scan_continue">Lanjutkan</string>
+    <string name="bubble_scan_processing">Membaca layar…</string>
+    <string name="bubble_scan_empty">Tidak ada teks ditemukan di layar ini</string>
+    <string name="bubble_scan_perm_denied">Perlu izin tangkap layar untuk memindai</string>
+    <string name="bubble_scan_notification_title">Membaca layar untuk terjemahan</string>
+    <string name="bubble_scan_notification_body">Satu frame ditangkap dan diproses di perangkat</string>
+    <string name="bubble_scan_stop">Hentikan tangkap layar</string>
+    <string name="bubble_lens_translating">Menerjemahkan layar…</string>
+    <string name="bubble_lens_region">Area pindai</string>
+    <string name="bubble_lens_region_hint">Seret untuk memilih area yang akan diterjemahkan</string>
+    <string name="bubble_lens_region_confirm">Terjemahkan area ini</string>
+    <string name="bubble_input_hint">Ketik teks untuk diterjemahkan…</string>
+    <string name="bubble_input_paste">Tempel</string>
+    <string name="bubble_input_clear">Hapus</string>
+    <string name="bubble_action_translate">Terjemahkan</string>
+    <string name="bubble_cancel">Batal</string>
+    <string name="bubble_mode_translate">Terjemahkan</string>
+    <string name="bubble_mode_reply">Balas</string>
+    <string name="bubble_mode_summarize">Ringkas</string>
+    <string name="bubble_mode_explain">Jelaskan</string>
+    <string name="bubble_mode_refine">Perbaiki</string>
+
+    <!-- Settings sheet -->
+    <string name="bubble_settings">Setelan</string>
+    <string name="bubble_translate_tone">Nada terjemahan</string>
+    <string name="bubble_reply_tone">Nada balasan</string>
+    <string name="bubble_speech_rate">Kecepatan suara</string>
+    <string name="bubble_romanization">Romanisasi (fonetik)</string>
+    <string name="bubble_reply_suggestions">Saran balasan</string>
+
+    <!-- Tone options — must match Flutter `toneOptions` in app_settings_provider.dart -->
+    <string name="bubble_tone_auto">Otomatis</string>
+    <string name="bubble_tone_business">Bisnis</string>
+    <string name="bubble_tone_casual">Santai</string>
+    <string name="bubble_tone_formal">Formal</string>
+    <string name="bubble_tone_polite">Sopan</string>
+    <string name="bubble_tone_technical">Teknis</string>
+    <string name="bubble_tone_neutral">Netral</string>
+    <string name="bubble_reply_tone_same">Sama dengan nada terjemahan</string>
+
+    <!-- PROCESS_TEXT activity labels — appear in the system text-selection
+         floating toolbar (or overflow ⋮) of any app when user selects text.
+         "TransKey:" prefix makes them recognizable as our actions vs system. -->
+    <string name="process_text_translate">TransKey: Terjemahkan</string>
+    <string name="process_text_reply">TransKey: Balas</string>
+    <string name="process_text_summarize">TransKey: Ringkas</string>
+    <string name="process_text_explain">TransKey: Jelaskan</string>
+    <string name="process_text_refine">TransKey: Perbaiki</string>
+</resources>

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
 import '../../../shared/theme/app_theme.dart';
-import '../../../shared/widgets/upgrade_nudge_sheet.dart';
+import '../../../shared/widgets/drag_handle.dart';
 import '../models/language.dart';
 import '../providers/features_provider.dart';
 import '../providers/language_settings_provider.dart';
@@ -12,23 +12,41 @@ import '../providers/language_settings_provider.dart';
 /// per-field restrictions in /system-config are respected here.
 enum LanguagePickerField { target, source, reply }
 
+/// Optional hint banner shown at the top of [LanguagePickerSheet]. Use
+/// this when the caller is opening the picker in response to a *condition*
+/// the user needs to resolve (e.g. voice input requires a concrete source
+/// language) so the explanation is in the picker itself — a snackbar shown
+/// alongside the modal would be hidden behind it.
+class LanguagePickerHint {
+  const LanguagePickerHint({required this.text, this.icon = Icons.info_outline});
+  final String text;
+  final IconData icon;
+}
+
 class LanguagePickerSheet extends ConsumerStatefulWidget {
   const LanguagePickerSheet({
     super.key,
     required this.selectedCode,
     this.showAuto = true,
     this.field = LanguagePickerField.target,
+    this.hint,
   });
 
   final String selectedCode;
   final bool showAuto;
   final LanguagePickerField field;
+  /// Optional banner shown above the search box. Used by callers that
+  /// opened the picker in response to a condition the user needs to
+  /// resolve (e.g. voice-input mic in auto mode); without it the user
+  /// has no idea why the picker popped up.
+  final LanguagePickerHint? hint;
 
   static Future<String?> show(
     BuildContext context, {
     required String selectedCode,
     bool showAuto = true,
     LanguagePickerField field = LanguagePickerField.target,
+    LanguagePickerHint? hint,
   }) {
     return showModalBottomSheet<String>(
       context: context,
@@ -42,6 +60,7 @@ class LanguagePickerSheet extends ConsumerStatefulWidget {
         selectedCode: selectedCode,
         showAuto: showAuto,
         field: field,
+        hint: hint,
       ),
     );
   }
@@ -142,6 +161,42 @@ class _LanguagePickerSheetState extends ConsumerState<LanguagePickerSheet> {
               style: theme.textTheme.titleLarge,
             ),
           ),
+          if (widget.hint != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(widget.hint!.icon, size: 18, color: AppColors.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        widget.hint!.text,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: TextField(
@@ -158,6 +213,13 @@ class _LanguagePickerSheetState extends ConsumerState<LanguagePickerSheet> {
             child: CustomScrollView(
               shrinkWrap: true,
               slivers: [
+                // For the reply-language picker, surface "From conversation"
+                // (code = "") as a pinned synthetic option above the catalog.
+                // Reply lang has a special meaning at code="" — pick per-
+                // message based on the original — so it's a first-class
+                // option, not a normal language.
+                if (widget.field == LanguagePickerField.reply && _query.isEmpty)
+                  SliverToBoxAdapter(child: _buildFromConversationTile(theme)),
                 // Only show recents when the user isn't actively searching —
                 // otherwise the search results pull from the full list.
                 if (visibleRecents.isNotEmpty && _query.isEmpty) ...[
@@ -228,6 +290,21 @@ class _LanguagePickerSheetState extends ConsumerState<LanguagePickerSheet> {
           ? const Icon(Icons.check, color: AppColors.primary)
           : null,
       onTap: () => Navigator.pop(context, lang.code),
+    );
+  }
+
+  Widget _buildFromConversationTile(ThemeData theme) {
+    final isSelected = widget.selectedCode.isEmpty;
+    final l = AppLocalizations.of(context)!;
+    return ListTile(
+      selected: isSelected,
+      selectedTileColor: AppColors.primary.withValues(alpha: 0.08),
+      leading: const Icon(Icons.auto_awesome_outlined, size: 22),
+      title: Text(l.replyLanguageFromConversation),
+      trailing: isSelected
+          ? const Icon(Icons.check, color: AppColors.primary)
+          : null,
+      onTap: () => Navigator.pop(context, ''),
     );
   }
 }

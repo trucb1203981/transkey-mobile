@@ -18,7 +18,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get explain => 'Giải thích';
 
   @override
-  String get refine => 'Tinh chỉnh';
+  String get refine => 'Cải thiện văn bản';
 
   @override
   String get reply => 'Phản hồi';
@@ -200,16 +200,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tabExplain => 'Giải thích';
 
   @override
-  String get tabRefine => 'Tinh chỉnh';
+  String get tabRefine => 'Cải thiện';
 
   @override
   String get keyboardSetup => 'Cài đặt bàn phím';
 
   @override
-  String get bubbleSetup => 'Cài đặt bong bóng';
+  String get bubbleSetup => 'Cài đặt Nút TransKey';
 
   @override
-  String get floatingBubble => 'Bong bóng nổi';
+  String get floatingBubble => 'Nút TransKey';
 
   @override
   String get bubbleActive => 'Đang bật';
@@ -479,6 +479,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get errorSessionExpired => 'Phiên đã hết — vui lòng đăng nhập lại';
 
   @override
+  String get errorInvalidCredentials => 'Email hoặc mật khẩu không đúng';
+
+  @override
   String get errorEmailNotVerified =>
       'Vui lòng xác nhận email — kiểm tra hộp thư';
 
@@ -498,7 +501,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get errorQuotaExceeded =>
-      'Hết quota hôm nay — thử lại ngày mai hoặc nâng cấp';
+      'Hết lượt dùng hôm nay — thử lại ngày mai hoặc nâng cấp';
 
   @override
   String get errorRateLimit => 'Quá nhiều yêu cầu — vui lòng đợi một chút';
@@ -511,15 +514,16 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get glossaryErrSyncFailed =>
-      'Không đồng bộ được glossary — kiểm tra kết nối';
+      'Không đồng bộ được từ điển — kiểm tra kết nối';
 
   @override
   String glossaryErrLimitReached(int max) {
-    return 'Glossary đã đầy (tối đa $max mục)';
+    return 'Từ điển đã đầy (tối đa $max mục)';
   }
 
   @override
-  String get glossaryErrSourceTargetRequired => 'Cần điền cả source và target';
+  String get glossaryErrSourceTargetRequired =>
+      'Cần điền cả từ gốc và bản dịch';
 
   @override
   String get planFree => 'Miễn phí';
@@ -705,6 +709,16 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => 'Bản dịch';
+
+  @override
+  String get glossaryNamesLabel => 'Tên trong từ điển — chạm để chèn';
+
+  @override
+  String get glossaryIsNameLabel => 'Đây là tên người';
+
+  @override
+  String get glossaryIsNameHint =>
+      'Giúp nhập giọng nói nhận diện tên và yêu cầu AI giữ nguyên.';
 
   @override
   String get upgradeScreenTitle => 'Nâng cấp TransKey';
@@ -941,7 +955,7 @@ class AppLocalizationsVi extends AppLocalizations {
       'Rút gọn nội dung dài thành vài gạch đầu dòng';
 
   @override
-  String get guideFeatureRefine => 'Tinh chỉnh';
+  String get guideFeatureRefine => 'Cải thiện văn bản';
 
   @override
   String get guideFeatureRefineSubtitle =>
@@ -962,25 +976,25 @@ class AppLocalizationsVi extends AppLocalizations {
       'Tạo câu trả lời gợi ý theo ngôn ngữ đích';
 
   @override
-  String get guideInputCopyTitle => 'Copy text rồi tap bubble';
+  String get guideInputCopyTitle => 'Copy text rồi chạm Nút TransKey';
 
   @override
   String get guideInputCopyDesc =>
-      'Copy text bất kỳ trong app nào, rồi tap bubble nổi và chọn hành động.';
+      'Copy text bất kỳ trong app nào, rồi chạm Nút TransKey và chọn hành động.';
 
   @override
-  String get guideInputOcrTitle => 'Quét cả màn hình';
+  String get guideInputOcrTitle => 'Dịch cả màn hình';
 
   @override
   String get guideInputOcrDesc =>
-      'Tap bubble → Quét màn hình. TransKey chụp 1 ảnh màn hình và đọc chữ trong đó.';
+      'Chạm Nút TransKey → Dịch màn hình. TransKey chụp 1 ảnh và đọc chữ trong đó.';
 
   @override
-  String get guideInputRegionTitle => 'Quét một vùng trên màn hình';
+  String get guideInputRegionTitle => 'Dịch một vùng trên màn hình';
 
   @override
   String get guideInputRegionDesc =>
-      'Tap bubble → Quét vùng. Kéo khung quanh đúng phần bạn muốn dịch.';
+      'Chạm Nút TransKey → Quét vùng. Kéo khung quanh đúng phần bạn muốn dịch.';
 
   @override
   String get guideInputShareTitle => 'Từ nút Share (chia sẻ)';
@@ -1020,14 +1034,14 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Cấp quyền floating bubble để bắt đầu. Trợ năng là tùy chọn, chỉ cần cho tính năng dán Reply một chạm.';
+      'Cấp quyền hiển thị Nút TransKey để bắt đầu. Trợ năng là tùy chọn, chỉ cần cho tính năng dán câu trả lời một chạm.';
 
   @override
-  String get permFloatingBubble => 'Floating bubble';
+  String get permFloatingBubble => 'Nút TransKey nổi';
 
   @override
   String get permFloatingBubbleBody =>
-      'Hiển thị TransKey trên các app khác. Cần để bubble nổi xuất hiện.';
+      'Hiển thị TransKey trên các app khác. Cần để nút TransKey xuất hiện.';
 
   @override
   String get permRestrictedSettings => 'Cho phép cài đặt giới hạn';
@@ -1072,6 +1086,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get voiceListening => 'Đang nghe…';
 
   @override
+  String get voiceNeedsLang => 'Đặt ngôn ngữ nguồn cụ thể để dùng giọng nói';
+
+  @override
   String get voicePermDenied => 'Đã từ chối quyền micro';
 
   @override
@@ -1079,14 +1096,14 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get voicePickSourceLang =>
-      'Chọn ngôn ngữ nguồn trước — nhập giọng nói không tự đoán được';
+      'Giọng nói cần ngôn ngữ cụ thể. Chọn ngôn ngữ nguồn rồi chạm mic lại.';
 
   @override
   String get paywallTitle => 'Hết lượt dùng hôm nay';
 
   @override
   String get paywallBody =>
-      'Bạn đã dùng hết 20 lượt / 2.000 ký tự miễn phí hôm nay. Xem 1 quảng cáo ngắn để dùng tiếp, hoặc nâng cấp để dùng không giới hạn. Quota miễn phí reset lúc nửa đêm.';
+      'Bạn đã dùng hết 20 lượt / 2.000 ký tự miễn phí hôm nay. Xem 1 quảng cáo ngắn để dùng tiếp, hoặc nâng cấp để dùng không giới hạn. Lượt miễn phí được làm mới mỗi nửa đêm.';
 
   @override
   String get paywallWatchAdCta => 'Xem quảng cáo để dùng tiếp';
@@ -1119,14 +1136,48 @@ class AppLocalizationsVi extends AppLocalizations {
   String get quotaWatchAd => '+ Xem QC';
 
   @override
-  String get quotaRewardGranted => 'Đã cộng thưởng vào quota hôm nay';
+  String get quotaRewardGranted => 'Đã cộng thưởng vào lượt dùng hôm nay';
 
   @override
   String get historyEmpty => 'Chưa có lịch sử dịch nào';
 
   @override
-  String get glossaryEmpty => 'Glossary trống';
+  String get glossaryEmpty => 'Từ điển trống';
 
   @override
   String get glossaryEmptyAddCta => 'Thêm từ';
+
+  @override
+  String get captureKeepaliveTitle => 'Giữ quyền chụp lại nhanh';
+
+  @override
+  String get captureKeepaliveHint => 'chạm 2 lần Nút TransKey = chụp lại';
+
+  @override
+  String get captureKeepaliveExplain =>
+      'Sau khi chụp màn hình, app giữ quyền chụp trong khoảng thời gian này để lần sau bạn chạm 2 lần Nút TransKey (hoặc chọn Dịch màn hình) không bị hỏi quyền hệ thống lại. Giữ lâu = ít thao tác hơn nhưng biểu tượng đang quay màn hình hiển thị lâu và máy hơi nóng thêm.';
+
+  @override
+  String get captureKeepaliveOff => 'Tắt';
+
+  @override
+  String get captureKeepaliveOffHint =>
+      'Mỗi lần chụp đều hỏi quyền lại. Tiết kiệm pin / riêng tư nhất.';
+
+  @override
+  String get captureKeepaliveDefaultHint =>
+      'Khuyến nghị — cân bằng tốc độ chụp lại với pin.';
+
+  @override
+  String get captureKeepaliveShortHint =>
+      'Thời gian quay màn hình ngắn hơn, nhưng phải duyệt quyền nhiều lần hơn.';
+
+  @override
+  String get captureKeepaliveLongHint =>
+      'Chụp lại nhanh nhất. Biểu tượng quay màn hình hiển thị lâu hơn.';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count phút';
+  }
 }

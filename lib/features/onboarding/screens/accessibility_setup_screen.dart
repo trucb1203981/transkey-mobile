@@ -102,7 +102,11 @@ class _AccessibilitySetupScreenState
           _restrictedUnlocked = !_androidThirteenPlus;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      // androidApiLevel channel missing or platform info call failed —
+      // defaults (Android-12-style flow) stay applied.
+      debugPrint('[Onboarding] api-level check failed: $e');
+    }
   }
 
   Future<void> _refreshStatuses() async {

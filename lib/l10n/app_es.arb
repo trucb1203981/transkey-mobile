@@ -166,6 +166,7 @@
   "noTextToTranslate": "Introduzca texto primero",
   "errorGeneric": "Algo salió mal",
   "errorSessionExpired": "Sesión caducada — inicia sesión de nuevo",
+  "errorInvalidCredentials": "Correo o contraseña incorrectos",
   "errorEmailNotVerified": "Verifica tu correo — revisa tu bandeja de entrada",
   "errorFeatureRequiresPaid": "Esta función requiere un plan de pago",
   "errorDeviceLimit": "Límite de dispositivos alcanzado — elimina uno o mejora tu plan",
@@ -247,6 +248,9 @@
   "glossarySourceHint": "Palabra o frase",
   "glossaryTargetLabel": "Destino",
   "glossaryTargetHint": "Traducción",
+  "glossaryNamesLabel": "Nombres del glosario — toca para insertar",
+  "glossaryIsNameLabel": "Es el nombre de una persona",
+  "glossaryIsNameHint": "Mejora el reconocimiento de voz y pide a la IA que lo conserve tal cual.",
 
   "upgradeScreenTitle": "Actualizar TransKey",
   "upgradeChooseYourPlan": "Elija su plan",
@@ -368,6 +372,7 @@
 
   "voiceTooltip": "Hablar para escribir",
   "voiceListening": "Escuchando…",
+  "voiceNeedsLang": "Establece un idioma de origen específico para usar la voz",
   "voicePermDenied": "Permiso de micrófono denegado",
   "voiceUnsupported": "Entrada de voz no disponible en este dispositivo",
   "voicePickSourceLang": "Selecciona primero un idioma de origen — la entrada de voz no puede auto-detectar",
@@ -387,5 +392,16 @@
 
   "historyEmpty": "Aún no hay historial de traducciones",
   "glossaryEmpty": "El glosario está vacío",
-  "glossaryEmptyAddCta": "Añadir entrada"
+  "glossaryEmptyAddCta": "Añadir entrada",
+
+  "captureKeepaliveTitle": "Ventana de re-captura rápida",
+  "captureKeepaliveHint": "doble toque = re-escanear",
+  "captureKeepaliveExplain": "Tras una captura, conserva el permiso de captura de pantalla durante este tiempo para que un doble toque (o seleccionar Lens otra vez) no pida permiso al sistema de nuevo. Más tiempo = menos toques, pero el indicador de transmisión queda visible y el dispositivo se calienta un poco.",
+  "captureKeepaliveOff": "Desactivado",
+  "captureKeepaliveOffHint": "Cada captura pide permiso de nuevo. Mejor para privacidad y batería.",
+  "captureKeepaliveDefaultHint": "Recomendado — equilibra velocidad y batería.",
+  "captureKeepaliveShortHint": "Menos tiempo de transmisión, pero más solicitudes de permiso.",
+  "captureKeepaliveLongHint": "Re-captura más rápida. El indicador queda visible más tiempo.",
+  "captureKeepaliveMinutes": "{count} min",
+  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
 }

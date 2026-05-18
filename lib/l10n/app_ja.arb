@@ -166,6 +166,7 @@
   "noTextToTranslate": "先にテキストを入力してください",
   "errorGeneric": "エラーが発生しました",
   "errorSessionExpired": "セッションが切れました — もう一度サインインしてください",
+  "errorInvalidCredentials": "メールアドレスまたはパスワードが正しくありません",
   "errorEmailNotVerified": "メールを認証してください — 受信トレイをご確認ください",
   "errorFeatureRequiresPaid": "この機能は有料プランが必要です",
   "errorDeviceLimit": "デバイス数の上限に達しました — 端末を削除するかアップグレードしてください",
@@ -247,6 +248,9 @@
   "glossarySourceHint": "単語またはフレーズ",
   "glossaryTargetLabel": "翻訳",
   "glossaryTargetHint": "訳語",
+  "glossaryNamesLabel": "用語集の名前 — タップで挿入",
+  "glossaryIsNameLabel": "これは人名です",
+  "glossaryIsNameHint": "音声入力での認識精度を上げ、AIにそのまま残すよう指示します。",
 
   "upgradeScreenTitle": "TransKeyをアップグレード",
   "upgradeChooseYourPlan": "プランを選択",
@@ -368,6 +372,7 @@
 
   "voiceTooltip": "音声入力",
   "voiceListening": "聞き取り中…",
+  "voiceNeedsLang": "音声入力には元の言語を指定してください",
   "voicePermDenied": "マイクの権限が拒否されました",
   "voiceUnsupported": "この端末では音声入力を利用できません",
   "voicePickSourceLang": "先に元の言語を選択してください — 音声入力は自動検出できません",
@@ -387,5 +392,16 @@
 
   "historyEmpty": "翻訳履歴はまだありません",
   "glossaryEmpty": "用語集は空です",
-  "glossaryEmptyAddCta": "用語を追加"
+  "glossaryEmptyAddCta": "用語を追加",
+
+  "captureKeepaliveTitle": "再スキャン許可の保持時間",
+  "captureKeepaliveHint": "ダブルタップで再スキャン",
+  "captureKeepaliveExplain": "スキャン後、画面キャプチャ許可をこの時間だけ保持し、次回ダブルタップ（または再度Lens選択）でシステム許可を再要求せずに済むようにします。長く保持するほど操作が減りますが、画面録画インジケーターが表示され続け、端末がわずかに発熱します。",
+  "captureKeepaliveOff": "オフ",
+  "captureKeepaliveOffHint": "毎回許可を要求します。プライバシー・省電力重視。",
+  "captureKeepaliveDefaultHint": "推奨 — 再スキャン速度とバッテリーのバランス。",
+  "captureKeepaliveShortHint": "録画表示は短めですが、許可ダイアログが頻繁に出ます。",
+  "captureKeepaliveLongHint": "最速の再スキャン。録画インジケーターが長く表示されます。",
+  "captureKeepaliveMinutes": "{count} 分",
+  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
 }

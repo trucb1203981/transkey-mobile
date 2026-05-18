@@ -144,9 +144,18 @@ class VoiceRecognitionHelper(
             // silence before commit, with a 1.5s warning window before
             // that. Min length 1s so a single short utterance still ends
             // promptly when the user genuinely stops talking.
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1000L)
+            // NB: do NOT set EXTRA_SPEECH_INPUT_*_LENGTH_MILLIS here. Two
+            // failure modes were observed:
+            //  1. As `1000L` (Long): Bundle.getInt() rejects the Long, falls
+            //     back to 0, recognizer hangs.
+            //  2. As `1000` (Int): honoured — but Google's Soda recognizer
+            //     interprets a non-zero MINIMUM_LENGTH_MILLIS as a hint that
+            //     the caller wants AMBIENT_CONTINUOUS mode, which never
+            //     finalises (the log shows
+            //     "applicationDomain: AMBIENT_CONTINUOUS"). Either way the
+            //     user sees "đang nghe" with no result.
+            // Letting Google use its built-in defaults (≈1500 ms silence)
+            // keeps Soda in AMBIENT_ONESHOT and returns finals reliably.
             // Force online recognition when available — the online model is
             // an order of magnitude larger than the offline pack and has a
             // much broader proper-noun vocabulary (foreign names like
@@ -236,9 +245,15 @@ class VoiceRecognitionHelper(
             )
             val raw = prefs.getString("flutter.tk_glossary", null) ?: return emptyList()
             val arr = org.json.JSONArray(raw)
+            // Bias only entries flagged as proper names. Sending the whole
+            // glossary (up to 50 entries on free, 500 on pro) crowds the
+            // recognizer's hint list — Google's ASR weights drop off fast
+            // past ~10 strings, so non-name terminology was diluting the
+            // signal for the names that actually need it.
             val out = mutableListOf<String>()
             for (i in 0 until arr.length()) {
                 val obj = arr.optJSONObject(i) ?: continue
+                if (!obj.optBoolean("is_name", false)) continue
                 val source = obj.optString("source", "").trim()
                 if (source.isNotEmpty() && source.length <= 100) {
                     out.add(source)

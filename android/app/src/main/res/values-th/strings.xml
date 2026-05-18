@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">TransKey สามารถวางคำตอบลงในช่องข้อความที่กำลังใช้งานของแอปใดก็ได้ เมื่อคุณแตะ "วางคำตอบ" บนปุ่ม TransKey ข้อความจะถูกอ่านหรือเขียนเฉพาะเมื่อคุณสั่งการเท่านั้น — ไม่มีการติดตามเบื้องหลัง</string>
+
+    <!-- Floating bubble action picker -->
+    <string name="bubble_choose_action">เลือกการทำงาน</string>
+    <string name="bubble_need_text">เลือกหรือคัดลอกข้อความก่อน แล้วเลือกการทำงานด้านล่าง</string>
+    <string name="bubble_need_copy">คัดลอกข้อความก่อน แล้วแตะปุ่ม TransKey</string>
+    <string name="bubble_accessibility_hint">ไฮไลต์ + แตะปุ่ม TransKey ยังไม่ทำงาน เปิดการช่วยเหลือพิเศษเพื่อข้ามขั้นตอนคัดลอก</string>
+    <string name="bubble_accessibility_enable">ตั้งค่า</string>
+    <string name="bubble_accessibility_guide_legacy">หา TransKey ในรายการ → เปิด \"ใช้ TransKey\" → แตะ อนุญาต</string>
+    <string name="bubble_accessibility_guide_a13">Android 13+ บล็อกการช่วยเหลือพิเศษสำหรับแอปติดตั้งภายนอกโดยอัตโนมัติ:\n1. แตะ ⋮ (มุมขวาบน) → \"อนุญาตการตั้งค่าที่ถูกจำกัด\"\n2. กลับ → การช่วยเหลือพิเศษ → TransKey → เปิด</string>
+    <string name="bubble_show_last_result">ดูผลลัพธ์ล่าสุด</string>
+    <string name="bubble_show_more">ดูเพิ่มเติม</string>
+    <string name="bubble_show_less">ย่อ</string>
+    <string name="bubble_type_text">พิมพ์ข้อความเอง</string>
+    <string name="bubble_paste_a11y_required">เปิดการช่วยเหลือพิเศษเพื่อวางคำตอบลงในช่องที่กำลังใช้งาน</string>
+
+    <!-- Result panel: action button labels, toasts, status lines -->
+    <string name="bubble_panel_source_lang">ภาษาต้นทาง</string>
+    <string name="bubble_panel_target_lang">ภาษาปลายทาง</string>
+    <string name="bubble_panel_copy">คัดลอก</string>
+    <string name="bubble_panel_paste">วาง</string>
+    <string name="bubble_panel_copied">คัดลอกแล้ว</string>
+    <string name="bubble_panel_pasted">วางแล้ว</string>
+    <string name="bubble_panel_paste_manual_fallback">คัดลอกแล้ว — แตะที่ช่องแล้ววางเอง</string>
+    <string name="bubble_panel_paste_a11y_off">เปิด TransKey ในการช่วยเหลือพิเศษเพื่อวาง</string>
+    <string name="bubble_panel_clipboard_empty">คลิปบอร์ดว่าง</string>
+    <string name="bubble_panel_tts_not_ready">TTS ยังไม่พร้อม</string>
+    <string name="bubble_panel_translation_failed">แปลไม่สำเร็จ</string>
+    <string name="bubble_panel_app_not_ready">แอปยังไม่พร้อม — โปรดเปิด TransKey หนึ่งครั้ง</string>
+    <string name="bubble_panel_detected">ตรวจพบ: %1$s</string>
+    <string name="bubble_notification_channel">ปุ่ม TransKey</string>
+    <string name="bubble_notification_active">ตัวแปลแบบลอยกำลังทำงาน</string>
+    <string name="bubble_notification_turn_off">ปิด</string>
+    <string name="bubble_overlay_perm_needed">เปิด \'แสดงทับแอปอื่น\' เพื่อใช้การแปลแบบลอย</string>
+    <string name="bubble_clipboard_empty_error">ไม่มีข้อความในคลิปบอร์ด\nคัดลอกข้อความก่อน แล้วแตะปุ่ม TransKey</string>
+    <string name="bubble_voice">ป้อนด้วยเสียง</string>
+    <string name="bubble_voice_listening">กำลังฟัง…</string>
+    <string name="bubble_voice_speak">พูดได้เลย</string>
+    <string name="bubble_voice_stop">หยุด</string>
+    <string name="bubble_voice_no_match">ฟังไม่ชัด ลองอีกครั้ง</string>
+    <string name="bubble_voice_network">การป้อนด้วยเสียงต้องใช้อินเทอร์เน็ต</string>
+    <string name="bubble_voice_perm_denied">ต้องการสิทธิ์ไมโครโฟนสำหรับป้อนด้วยเสียง</string>
+    <string name="bubble_voice_unsupported">อุปกรณ์นี้ไม่รองรับการรู้จำเสียง</string>
+    <string name="bubble_voice_lang_missing">ยังไม่ได้ติดตั้งชุดเสียงสำหรับภาษานี้ ไปที่ การตั้งค่า → ภาษาและการป้อนข้อมูล → เสียง → ดาวน์โหลดชุดออฟไลน์</string>
+
+    <!-- Scan-screen flow (formerly labelled "OCR" — simplified for non-technical users) -->
+    <string name="bubble_scan_screen">แปลหน้าจอ</string>
+    <string name="bubble_scan_disclosure_title">TransKey จะจับภาพหน้าจอนี้</string>
+    <string name="bubble_scan_disclosure_body">จับภาพหน้าจอเพียงครั้งเดียว แล้วอ่านข้อความบนเครื่องของคุณโดยตรง จากนั้นลบภาพทิ้ง ไม่มีการอัปโหลดหรือบันทึก</string>
+    <string name="bubble_scan_continue">ดำเนินการต่อ</string>
+    <string name="bubble_scan_processing">กำลังอ่านหน้าจอ…</string>
+    <string name="bubble_scan_empty">ไม่พบข้อความบนหน้าจอนี้</string>
+    <string name="bubble_scan_perm_denied">ต้องการสิทธิ์จับภาพหน้าจอเพื่อสแกน</string>
+    <string name="bubble_scan_notification_title">กำลังอ่านหน้าจอเพื่อแปล</string>
+    <string name="bubble_scan_notification_body">กำลังจับภาพหนึ่งเฟรมและประมวลผลบนเครื่อง</string>
+    <string name="bubble_scan_stop">หยุดจับภาพหน้าจอ</string>
+    <string name="bubble_lens_translating">กำลังแปลหน้าจอ…</string>
+    <string name="bubble_lens_region">เลือกพื้นที่</string>
+    <string name="bubble_lens_region_hint">ลากเพื่อเลือกพื้นที่ที่ต้องการแปล</string>
+    <string name="bubble_lens_region_confirm">แปลพื้นที่นี้</string>
+    <string name="bubble_input_hint">พิมพ์ข้อความที่ต้องการแปล…</string>
+    <string name="bubble_input_paste">วาง</string>
+    <string name="bubble_input_clear">ล้าง</string>
+    <string name="bubble_action_translate">แปล</string>
+    <string name="bubble_cancel">ยกเลิก</string>
+    <string name="bubble_mode_translate">แปล</string>
+    <string name="bubble_mode_reply">ตอบกลับ</string>
+    <string name="bubble_mode_summarize">สรุป</string>
+    <string name="bubble_mode_explain">อธิบาย</string>
+    <string name="bubble_mode_refine">ปรับปรุง</string>
+
+    <!-- Settings sheet -->
+    <string name="bubble_settings">การตั้งค่า</string>
+    <string name="bubble_translate_tone">โทนการแปล</string>
+    <string name="bubble_reply_tone">โทนการตอบ</string>
+    <string name="bubble_speech_rate">ความเร็วเสียง</string>
+    <string name="bubble_romanization">การถอดเสียง (โรมาจิ/พินอิน)</string>
+    <string name="bubble_reply_suggestions">คำแนะนำในการตอบ</string>
+
+    <!-- Tone options — must match Flutter `toneOptions` in app_settings_provider.dart -->
+    <string name="bubble_tone_auto">อัตโนมัติ</string>
+    <string name="bubble_tone_business">ธุรกิจ</string>
+    <string name="bubble_tone_casual">เป็นกันเอง</string>
+    <string name="bubble_tone_formal">ทางการ</string>
+    <string name="bubble_tone_polite">สุภาพ</string>
+    <string name="bubble_tone_technical">เทคนิค</string>
+    <string name="bubble_tone_neutral">เป็นกลาง</string>
+    <string name="bubble_reply_tone_same">เหมือนโทนการแปล</string>
+
+    <!-- PROCESS_TEXT activity labels — appear in the system text-selection
+         floating toolbar (or overflow ⋮) of any app when user selects text.
+         "TransKey:" prefix makes them recognizable as our actions vs system. -->
+    <string name="process_text_translate">TransKey: แปล</string>
+    <string name="process_text_reply">TransKey: ตอบกลับ</string>
+    <string name="process_text_summarize">TransKey: สรุป</string>
+    <string name="process_text_explain">TransKey: อธิบาย</string>
+    <string name="process_text_refine">TransKey: ปรับปรุง</string>
+</resources>

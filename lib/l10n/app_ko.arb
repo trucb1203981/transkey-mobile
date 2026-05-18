@@ -166,6 +166,7 @@
   "noTextToTranslate": "먼저 텍스트를 입력하세요",
   "errorGeneric": "오류가 발생했습니다",
   "errorSessionExpired": "세션이 만료되었습니다 — 다시 로그인하세요",
+  "errorInvalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다",
   "errorEmailNotVerified": "이메일을 인증하세요 — 받은편지함 확인",
   "errorFeatureRequiresPaid": "이 기능은 유료 플랜이 필요합니다",
   "errorDeviceLimit": "기기 수 한도에 도달했습니다 — 기기를 제거하거나 업그레이드하세요",
@@ -247,6 +248,9 @@
   "glossarySourceHint": "단어 또는 구문",
   "glossaryTargetLabel": "번역",
   "glossaryTargetHint": "번역어",
+  "glossaryNamesLabel": "용어집의 이름 — 탭하여 삽입",
+  "glossaryIsNameLabel": "사람 이름입니다",
+  "glossaryIsNameHint": "음성 입력 인식을 돕고 AI가 그대로 유지하도록 합니다.",
 
   "upgradeScreenTitle": "TransKey 업그레이드",
   "upgradeChooseYourPlan": "플랜 선택",
@@ -368,6 +372,7 @@
 
   "voiceTooltip": "음성 입력",
   "voiceListening": "듣는 중…",
+  "voiceNeedsLang": "음성 입력을 사용하려면 원본 언어를 지정하세요",
   "voicePermDenied": "마이크 권한이 거부되었습니다",
   "voiceUnsupported": "이 기기에서는 음성 입력을 사용할 수 없습니다",
   "voicePickSourceLang": "먼저 원본 언어를 선택하세요 — 음성 입력은 자동 감지할 수 없습니다",
@@ -387,5 +392,16 @@
 
   "historyEmpty": "아직 번역 기록이 없습니다",
   "glossaryEmpty": "용어집이 비어 있습니다",
-  "glossaryEmptyAddCta": "항목 추가"
+  "glossaryEmptyAddCta": "항목 추가",
+
+  "captureKeepaliveTitle": "빠른 재스캔 권한 유지",
+  "captureKeepaliveHint": "더블탭으로 재스캔",
+  "captureKeepaliveExplain": "화면 스캔 후 이 시간 동안 화면 캡처 권한을 유지하여 다음에 더블탭(또는 Lens 재선택) 시 시스템 권한 창이 다시 뜨지 않게 합니다. 길게 유지하면 조작이 줄지만, 캐스팅 표시가 오래 보이고 기기가 약간 더 따뜻해집니다.",
+  "captureKeepaliveOff": "끄기",
+  "captureKeepaliveOffHint": "매 스캔마다 권한을 다시 요청합니다. 개인정보·배터리 우선.",
+  "captureKeepaliveDefaultHint": "권장 — 재스캔 속도와 배터리의 균형.",
+  "captureKeepaliveShortHint": "캐스팅 시간은 짧지만, 권한 요청이 잦아집니다.",
+  "captureKeepaliveLongHint": "재스캔이 가장 빠릅니다. 캐스팅 표시가 오래 유지됩니다.",
+  "captureKeepaliveMinutes": "{count} 분",
+  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
 }

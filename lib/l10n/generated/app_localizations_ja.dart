@@ -475,6 +475,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get errorSessionExpired => 'セッションが切れました — もう一度サインインしてください';
 
   @override
+  String get errorInvalidCredentials => 'メールアドレスまたはパスワードが正しくありません';
+
+  @override
   String get errorEmailNotVerified => 'メールを認証してください — 受信トレイをご確認ください';
 
   @override
@@ -694,6 +697,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => '訳語';
+
+  @override
+  String get glossaryNamesLabel => '用語集の名前 — タップで挿入';
+
+  @override
+  String get glossaryIsNameLabel => 'これは人名です';
+
+  @override
+  String get glossaryIsNameHint => '音声入力での認識精度を上げ、AIにそのまま残すよう指示します。';
 
   @override
   String get upgradeScreenTitle => 'TransKeyをアップグレード';
@@ -1048,6 +1060,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get voiceListening => '聞き取り中…';
 
   @override
+  String get voiceNeedsLang => '音声入力には元の言語を指定してください';
+
+  @override
   String get voicePermDenied => 'マイクの権限が拒否されました';
 
   @override
@@ -1101,4 +1116,34 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get glossaryEmptyAddCta => '用語を追加';
+
+  @override
+  String get captureKeepaliveTitle => '再スキャン許可の保持時間';
+
+  @override
+  String get captureKeepaliveHint => 'ダブルタップで再スキャン';
+
+  @override
+  String get captureKeepaliveExplain =>
+      'スキャン後、画面キャプチャ許可をこの時間だけ保持し、次回ダブルタップ（または再度Lens選択）でシステム許可を再要求せずに済むようにします。長く保持するほど操作が減りますが、画面録画インジケーターが表示され続け、端末がわずかに発熱します。';
+
+  @override
+  String get captureKeepaliveOff => 'オフ';
+
+  @override
+  String get captureKeepaliveOffHint => '毎回許可を要求します。プライバシー・省電力重視。';
+
+  @override
+  String get captureKeepaliveDefaultHint => '推奨 — 再スキャン速度とバッテリーのバランス。';
+
+  @override
+  String get captureKeepaliveShortHint => '録画表示は短めですが、許可ダイアログが頻繁に出ます。';
+
+  @override
+  String get captureKeepaliveLongHint => '最速の再スキャン。録画インジケーターが長く表示されます。';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count 分';
+  }
 }

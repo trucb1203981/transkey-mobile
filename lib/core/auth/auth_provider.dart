@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../diagnostics/app_log.dart';
 import '../../features/glossary/providers/glossary_provider.dart';
 import '../../features/history/providers/history_provider.dart';
 import '../../features/settings/providers/devices_provider.dart';
@@ -212,7 +212,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       await _syncToAppGroup(updated);
       state = AsyncData(AuthState(isLoggedIn: true, session: updated));
     } catch (e) {
-      debugPrint('[Auth] refreshUser failed: $e');
+      AppLog.w('Auth', 'refreshUser failed', e);
     }
   }
 
@@ -245,13 +245,13 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       // No invalidate — token refresh keeps the same user identity.
       state = AsyncData(AuthState(isLoggedIn: true, session: updated));
     } catch (e) {
-      debugPrint('[Auth] Proactive refresh failed: $e');
+      AppLog.w('Auth', 'Proactive refresh failed', e);
     }
   }
 
   /// Called by the API client when refresh also fails — force logout.
   Future<void> forceLogout() async {
-    debugPrint('[Auth] Force logout — session expired');
+    AppLog.w('Auth', 'Force logout — session expired');
     await logout();
   }
 
@@ -311,7 +311,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         baseURL: baseUrl,
       );
     } catch (e) {
-      debugPrint('[Auth] AppGroup sync failed: $e');
+      AppLog.w('Auth', 'AppGroup sync failed', e);
     }
   }
 }

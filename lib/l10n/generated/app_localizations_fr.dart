@@ -483,6 +483,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get errorSessionExpired => 'Session expirée — reconnectez-vous';
 
   @override
+  String get errorInvalidCredentials => 'E-mail ou mot de passe incorrect';
+
+  @override
   String get errorEmailNotVerified =>
       'Veuillez vérifier votre e-mail — consultez votre boîte de réception';
 
@@ -716,6 +719,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get glossaryTargetHint => 'Traduction';
+
+  @override
+  String get glossaryNamesLabel => 'Noms du glossaire — appuyez pour insérer';
+
+  @override
+  String get glossaryIsNameLabel => 'C\'est un nom de personne';
+
+  @override
+  String get glossaryIsNameHint =>
+      'Aide la saisie vocale à reconnaître le nom et demande à l\'IA de le conserver tel quel.';
 
   @override
   String get upgradeScreenTitle => 'Mettre TransKey à niveau';
@@ -1090,6 +1103,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get voiceListening => 'Écoute…';
 
   @override
+  String get voiceNeedsLang =>
+      'Définissez une langue source précise pour utiliser la voix';
+
+  @override
   String get voicePermDenied => 'Autorisation du microphone refusée';
 
   @override
@@ -1149,4 +1166,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get glossaryEmptyAddCta => 'Ajouter une entrée';
+
+  @override
+  String get captureKeepaliveTitle => 'Fenêtre de re-capture rapide';
+
+  @override
+  String get captureKeepaliveHint => 'double tap = re-scanner';
+
+  @override
+  String get captureKeepaliveExplain =>
+      'Après une capture d’écran, conserve l’autorisation pendant cette durée pour qu’un double tap (ou re-sélection de Lens) n’affiche plus l’invite système. Plus long = moins d’interactions, mais l’indicateur de diffusion reste visible et l’appareil chauffe légèrement.';
+
+  @override
+  String get captureKeepaliveOff => 'Désactivé';
+
+  @override
+  String get captureKeepaliveOffHint =>
+      'Chaque capture redemande la permission. Idéal pour la vie privée / batterie.';
+
+  @override
+  String get captureKeepaliveDefaultHint =>
+      'Recommandé — équilibre vitesse et autonomie.';
+
+  @override
+  String get captureKeepaliveShortHint =>
+      'Moins de temps de diffusion, mais davantage d’invites.';
+
+  @override
+  String get captureKeepaliveLongHint =>
+      'Re-capture la plus rapide. L’indicateur reste affiché plus longtemps.';
+
+  @override
+  String captureKeepaliveMinutes(int count) {
+    return '$count min';
+  }
 }

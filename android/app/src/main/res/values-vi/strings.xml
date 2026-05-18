@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">TransKey có thể dán câu trả lời thẳng vào ô nhập đang được focus của bất kỳ app nào khi bạn nhấn "Dán trả lời" trên bubble. Văn bản chỉ được đọc hoặc ghi khi bạn kích hoạt — không theo dõi nền.</string>
+    <string name="accessibility_service_description">TransKey có thể dán câu trả lời thẳng vào ô nhập đang được focus của bất kỳ app nào khi bạn nhấn "Dán trả lời" trên Nút TransKey. Văn bản chỉ được đọc hoặc ghi khi bạn kích hoạt — không theo dõi nền.</string>
 
     <string name="bubble_choose_action">Chọn hành động</string>
     <string name="bubble_need_text">Chọn hoặc copy văn bản trước, rồi chọn hành động bên dưới.</string>
-    <string name="bubble_need_copy">Copy text trước, rồi tap bubble.</string>
-    <string name="bubble_accessibility_hint">Bôi đen + tap bubble chưa hoạt động. Bật Trợ năng (Accessibility) để dịch không cần Copy.</string>
+    <string name="bubble_need_copy">Copy text trước, rồi chạm Nút TransKey.</string>
+    <string name="bubble_accessibility_hint">Bôi đen + chạm Nút TransKey chưa hoạt động. Bật Trợ năng (Accessibility) để dịch không cần Copy.</string>
     <string name="bubble_accessibility_enable">Thiết lập</string>
     <string name="bubble_accessibility_guide_legacy">Tìm TransKey trong danh sách → bật \"Use TransKey\" → tap Cho phép.</string>
     <string name="bubble_accessibility_guide_a13">Android 13+ chặn Accessibility cho app sideload mặc định:\n1. Tap ⋮ (góc trên phải) → \"Cho phép cài đặt giới hạn\"\n2. Quay lại → Trợ năng → TransKey → bật ON</string>
@@ -28,10 +28,11 @@
     <string name="bubble_panel_translation_failed">Dịch thất bại</string>
     <string name="bubble_panel_app_not_ready">App chưa sẵn sàng — mở TransKey một lần để khởi tạo</string>
     <string name="bubble_panel_detected">Phát hiện: %1$s</string>
-    <string name="bubble_notification_channel">TransKey Bubble</string>
-    <string name="bubble_notification_active">Bubble dịch đang hoạt động</string>
-    <string name="bubble_overlay_perm_needed">Bật \'Hiển thị trên ứng dụng khác\' để dùng bubble dịch nổi</string>
-    <string name="bubble_clipboard_empty_error">Clipboard rỗng.\nCopy text trước, rồi tap bubble.</string>
+    <string name="bubble_notification_channel">Nút TransKey</string>
+    <string name="bubble_notification_active">Nút TransKey đang hoạt động</string>
+    <string name="bubble_notification_turn_off">Tắt</string>
+    <string name="bubble_overlay_perm_needed">Bật \'Hiển thị trên ứng dụng khác\' để Nút TransKey hiện trên các app khác</string>
+    <string name="bubble_clipboard_empty_error">Clipboard rỗng.\nCopy text trước, rồi chạm Nút TransKey.</string>
     <string name="bubble_voice">Nhập bằng giọng nói</string>
     <string name="bubble_voice_listening">Đang nghe…</string>
     <string name="bubble_voice_speak">Hãy nói</string>
@@ -42,7 +43,7 @@
     <string name="bubble_voice_unsupported">Thiết bị không hỗ trợ nhập giọng nói</string>
     <string name="bubble_voice_lang_missing">Chưa cài gói giọng nói cho ngôn ngữ này. Vào Cài đặt → Ngôn ngữ &amp; Nhập → Giọng nói → tải gói offline.</string>
 
-    <string name="bubble_scan_screen">Quét màn hình</string>
+    <string name="bubble_scan_screen">Dịch màn hình</string>
     <string name="bubble_scan_disclosure_title">TransKey sẽ chụp màn hình này</string>
     <string name="bubble_scan_disclosure_body">Chụp 1 ảnh màn hình rồi đọc chữ trong ảnh ngay trên máy, sau đó xoá ảnh đi. Không upload, không lưu trữ.</string>
     <string name="bubble_scan_continue">Tiếp tục</string>
@@ -53,7 +54,7 @@
     <string name="bubble_scan_notification_body">Một khung hình được chụp và xử lý ngay trên thiết bị</string>
     <string name="bubble_scan_stop">Dừng chụp màn hình</string>
     <string name="bubble_lens_translating">Đang dịch màn hình…</string>
-    <string name="bubble_lens_region">Quét vùng</string>
+    <string name="bubble_lens_region">Dịch một vùng</string>
     <string name="bubble_lens_region_hint">Kéo để chọn vùng cần dịch</string>
     <string name="bubble_lens_region_confirm">Dịch vùng này</string>
     <string name="bubble_input_hint">Nhập nội dung cần dịch…</string>
@@ -65,7 +66,7 @@
     <string name="bubble_mode_reply">Trả lời</string>
     <string name="bubble_mode_summarize">Tóm tắt</string>
     <string name="bubble_mode_explain">Giải thích</string>
-    <string name="bubble_mode_refine">Tinh chỉnh</string>
+    <string name="bubble_mode_refine">Cải thiện</string>
 
     <string name="bubble_settings">Cài đặt</string>
     <string name="bubble_translate_tone">Tone dịch</string>
@@ -87,5 +88,5 @@
     <string name="process_text_reply">TransKey: Trả lời</string>
     <string name="process_text_summarize">TransKey: Tóm tắt</string>
     <string name="process_text_explain">TransKey: Giải thích</string>
-    <string name="process_text_refine">TransKey: Tinh chỉnh</string>
+    <string name="process_text_refine">TransKey: Cải thiện</string>
 </resources>
