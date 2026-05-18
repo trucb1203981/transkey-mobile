@@ -212,7 +212,7 @@ class BubbleService : Service() {
         localizedContext = createConfigurationContext(config)
     }
 
-    private fun localized(@androidx.annotation.StringRes resId: Int): String =
+    internal fun localized(@androidx.annotation.StringRes resId: Int): String =
         (localizedContext ?: this).getString(resId)
 
     private fun modeLabel(mode: String): String =
@@ -221,7 +221,7 @@ class BubbleService : Service() {
     private fun modeIcon(mode: String): Int =
         MODE_ICON_IDS[mode] ?: R.drawable.ic_bubble_translate
 
-    private var windowManager: WindowManager? = null
+    internal var windowManager: WindowManager? = null
 
     // Bubble icon (small floating button)
     private var bubbleView: View? = null
@@ -245,7 +245,7 @@ class BubbleService : Service() {
     // button is greyed out. `panel.sourceExpanded` toggles between
     // collapsed (3 lines + ellipsis) and full text so the user can
     // line up source ↔ translation side by side.
-    private val panel = ResultPanel()
+    internal val panel = ResultPanel()
     // panel.langChip / panel.detectedLangTv / panel.sourceLangChip / panel.toneChip /
     // panel.loadingSpinner moved into ResultPanel (header chips + spinner).
     /**
@@ -271,7 +271,7 @@ class BubbleService : Service() {
     private var currentTone: String = ""
 
     // Translation in-progress guard (prevents spam clicks)
-    private var isTranslating = false
+    internal var isTranslating = false
 
     // Last translation context (used by Reply mode to determine target language + original message)
     private var lastOriginalText: String? = null
@@ -2089,41 +2089,7 @@ class BubbleService : Service() {
         }
     }
 
-    private fun buildPanelLayoutParams(): WindowManager.LayoutParams {
-        val dp = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
-
-        val width: Int
-        val height: Int
-        val yOffset: Int
-        if (panel.fullscreen) {
-            // Fullscreen: side-to-side, top to ~24dp from bottom (leave room
-            // for system nav). Don't go absolutely edge-to-edge — corners
-            // and status bar look better with a tiny margin.
-            width = screenWidth - (8 * dp).toInt()
-            height = screenHeight - (24 * dp).toInt()
-            yOffset = (4 * dp).toInt()
-        } else {
-            width = (screenWidth - (32 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-            height = if (panel.heightPx > 0) panel.heightPx
-                else WindowManager.LayoutParams.WRAP_CONTENT
-            yOffset = (80 * dp).toInt()
-        }
-
-        return WindowManager.LayoutParams(
-            width,
-            height,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = yOffset
-        }
-    }
+    // buildPanelLayoutParams moved to ResultPanelExtensions.kt
 
     private fun hideResultPanel() {
         isTranslating = false
@@ -2140,96 +2106,9 @@ class BubbleService : Service() {
         setState(STATE_IDLE)
     }
 
-    /**
-     * Flip the source text between collapsed (3 lines + ellipsis) and
-     * expanded (full text). Used so the user can line up the original
-     * against the translation when the source is longer than 3 lines.
-     */
-    private fun togglePanelSourceExpanded() {
-        panel.sourceExpanded = !panel.sourceExpanded
-        applyPanelSourceExpansion()
-    }
-
-    private fun applyPanelSourceExpansion() {
-        val src = panel.source ?: return
-        if (panel.sourceExpanded) {
-            src.maxLines = Int.MAX_VALUE
-            src.ellipsize = null
-        } else {
-            src.maxLines = 3
-            src.ellipsize = android.text.TextUtils.TruncateAt.END
-        }
-        refreshPanelSourceToggle()
-    }
-
-    /**
-     * Show / hide the "Show more / Show less" affordance. Hidden when
-     * the source fits in 3 lines (no toggle needed); otherwise shows
-     * the inverse label (expanded → "Show less", collapsed → "Show more").
-     */
-    private fun refreshPanelSourceToggle() {
-        val src = panel.source ?: return
-        val toggle = panel.sourceToggle ?: return
-        // Defer to a post() so getLineCount() reads the laid-out value
-        // rather than the pre-measure 0.
-        src.post {
-            val text = src.text?.toString().orEmpty()
-            // Cheap pre-check: if the raw text has fewer than 3 newlines
-            // AND is short, skip the layout-based check.
-            val needsToggle = text.length > 120 ||
-                text.count { it == '\n' } >= 2 ||
-                (src.lineCount > 3 || (src.layout?.let { it.lineCount > 3 } == true))
-            if (!needsToggle) {
-                toggle.visibility = View.GONE
-                return@post
-            }
-            toggle.visibility = View.VISIBLE
-            toggle.text = if (panel.sourceExpanded) "▴ ${localized(R.string.bubble_show_less)}"
-                          else                     "▾ ${localized(R.string.bubble_show_more)}"
-        }
-    }
-
-    /**
-     * Switch the panel content scroll between WRAP_CONTENT (default
-     * sizing, capped at ~220dp via onMeasure) and weight=1 (fills the
-     * remaining space inside a parent that has a fixed height). Called
-     * after fullscreen toggle and drag-resize so the body grows / shrinks
-     * with the panel instead of leaving white space below the actions row.
-     */
-    private fun applyPanelLayoutMode() {
-        val scroll = panel.contentScroll ?: return
-        val lp = scroll.layoutParams as LinearLayout.LayoutParams
-        if (panel.fullscreen || panel.heightPx > 0) {
-            lp.height = 0
-            lp.weight = 1f
-        } else {
-            lp.height = LinearLayout.LayoutParams.WRAP_CONTENT
-            lp.weight = 0f
-        }
-        scroll.layoutParams = lp
-    }
-
-    private fun removeResultPanel() {
-        panel.view?.let {
-            try { windowManager?.removeView(it) } catch (_: Exception) {}
-        }
-        panel.view = null
-        panel.source = null
-        panel.output = null
-        panel.romanization = null
-        panel.status = null
-        panel.copyBtn = null
-        panel.pasteBtn = null
-        panel.ttsBtn = null
-        panel.langChip = null
-        panel.sourceLangChip = null
-        panel.toneChip = null
-        panel.loadingSpinner = null
-        panel.detectedLangTv = null
-        panel.suggestionsLabel = null
-        panel.suggestionsContainer = null
-        panel.modeButtons.clear()
-    }
+    // togglePanelSourceExpanded / applyPanelSourceExpansion /
+    // refreshPanelSourceToggle / applyPanelLayoutMode / removeResultPanel
+    // moved to ResultPanelExtensions.kt
 
     private fun speakOutput() {
         val text = currentOutput?.takeIf { it.isNotEmpty() } ?: return
