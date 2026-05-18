@@ -127,14 +127,22 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
     }
   }
 
-  /// Push full glossary to server (PUT /glossary)
+  /// Push full glossary to server (PUT /glossary).
+  ///
+  /// Body shape MUST be `{ entries: [...] }` — server's `@Body()` DTO
+  /// validates `Array.isArray(body.entries)` and 400s with `invalid_body`
+  /// if you send the bare array. (Mobile previously sent the bare array
+  /// and every save silently failed → next pull() wiped local entries
+  /// because the server still had the pre-sync state.)
   Future<void> push() async {
     state = state.copyWith(isSyncing: true, clearError: true);
     try {
       final api = ref.read(apiClientProvider);
       await api.dio.put(
         '/glossary',
-        data: state.entries.map((e) => e.toMap()).toList(),
+        data: {
+          'entries': state.entries.map((e) => e.toMap()).toList(),
+        },
       );
       state = state.copyWith(isSyncing: false);
     } catch (e) {

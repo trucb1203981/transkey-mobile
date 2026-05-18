@@ -220,6 +220,64 @@ internal fun BubbleService.showInputPicker(initialMode: String, prefillText: Str
     }
     card.addView(input)
 
+    // Name palette: tap a chip to one-shot replace the current selection
+    // (or insert at cursor) with that foreign-name spelling. Reads from
+    // the user's glossary so they pre-add the people they're talking to
+    // → after voice ASR mis-recognizes a name ("Shinzato" → "sinh nhật"),
+    // user selects the wrong text + taps the chip = fixed in <1s instead
+    // of typing the name by hand (~5s + risk of typo).
+    val nameOptions = readGlossaryNames()
+    if (nameOptions.isNotEmpty()) {
+        val nameScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = (8 * dp).toInt() }
+        }
+        val nameRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        nameRow.addView(TextView(this).apply {
+            text = "👤"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setPadding(0, 0, (8 * dp).toInt(), 0)
+        })
+        for (name in nameOptions) {
+            nameRow.addView(TextView(this).apply {
+                text = name
+                setTextColor(accent)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                typeface = Typeface.DEFAULT_BOLD
+                maxLines = 1
+                setSingleLine(true)
+                setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
+                background = GradientDrawable().apply {
+                    setColor(Color.TRANSPARENT)
+                    setStroke(1, accent)
+                    cornerRadius = 12 * dp
+                }
+                isClickable = true
+                isFocusable = true
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginEnd = (6 * dp).toInt() }
+                setOnClickListener {
+                    val editText = input
+                    val start = editText.selectionStart.coerceAtLeast(0)
+                    val end = editText.selectionEnd.coerceAtLeast(start)
+                    editText.text.replace(start, end, name)
+                    editText.setSelection(start + name.length)
+                    editText.requestFocus()
+                }
+            })
+        }
+        nameScroll.addView(nameRow)
+        card.addView(nameScroll)
+    }
+
     // ── Mode tabs ──
     val tabsRow = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -583,9 +641,11 @@ internal fun BubbleService.startVoiceRecognizer(initialMode: String) {
                     voiceTranscriptView?.text = ""
                     stopMicPulse()
                     // Auto-dismiss after a moment so the user isn't stuck
-                    // on the error card — UNLESS they're likely to retry
-                    // with a different language (CJK packs often missing).
-                    handler.postDelayed({ hideVoicePicker() }, 2400)
+                    // on the error card — 4s gives them time to actually
+                    // READ the error before it disappears (especially the
+                    // "language pack not installed" hint which suggests a
+                    // system download action).
+                    handler.postDelayed({ hideVoicePicker() }, 4000)
                 }
             }
         },
@@ -665,4 +725,29 @@ internal fun BubbleService.handleVoiceRequest() {
                 Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
     }
     try { startActivity(intent) } catch (_: Exception) {}
+}
+
+/**
+ * Pull the user's glossary `source` terms from the shared Flutter
+ * SharedPreferences. Used by the input picker's "name palette" — tap
+ * a chip to one-shot replace a mis-recognized word in the EditText
+ * with the correct foreign-name spelling (faster than re-typing).
+ */
+internal fun BubbleService.readGlossaryNames(): List<String> {
+    return try {
+        val raw = prefs.getString("flutter.tk_glossary", null) ?: return emptyList()
+        val arr = org.json.JSONArray(raw)
+        val out = mutableListOf<String>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            val source = obj.optString("source", "").trim()
+            if (source.isNotEmpty() && source.length <= 100) {
+                out.add(source)
+            }
+        }
+        out
+    } catch (e: Exception) {
+        android.util.Log.w("TKBubble", "readGlossaryNames failed: ${e.message}")
+        emptyList()
+    }
 }

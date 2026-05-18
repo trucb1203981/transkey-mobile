@@ -2,6 +2,7 @@ package app.transkey.mobile
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -42,28 +43,57 @@ class VoiceRecognitionHelper(
     @Volatile private var finalDelivered = false
 
     fun start() {
+        // Reset disposal flags so the same helper instance can be
+        // re-`start()`ed in place (used by the picker's tap-mic-to-retry
+        // path after an error). Each start() spawns a fresh
+        // SpeechRecognizer so prior state from a failed attempt doesn't
+        // bleed into the new one.
+        disposed = false
+        finalDelivered = false
+        lastPartial = ""
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             callbacks.onError(context.getString(R.string.bubble_voice_unsupported))
             return
         }
         val sr = SpeechRecognizer.createSpeechRecognizer(context)
         recognizer = sr
+        Log.w(TAG, "start() lang=$languageTag available=true")
         sr.setRecognitionListener(object : RecognitionListener {
+            private var maxRms = Float.NEGATIVE_INFINITY
+            private var rmsSamples = 0
+            private var rmsSum = 0f
             override fun onReadyForSpeech(params: Bundle?) {
+                Log.w(TAG, "onReadyForSpeech")
                 if (!disposed) callbacks.onReady()
             }
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
+            override fun onBeginningOfSpeech() {
+                Log.w(TAG, "onBeginningOfSpeech")
+            }
+            override fun onRmsChanged(rmsdB: Float) {
+                if (rmsdB > maxRms) maxRms = rmsdB
+                rmsSamples++; rmsSum += rmsdB
+                // Log periodically — every ~25 samples (RMS fires ~10/s
+                // so this is ~2.5s) so logcat doesn't drown in noise.
+                if (rmsSamples % 25 == 0) {
+                    Log.w(TAG, "rms samples=$rmsSamples max=$maxRms avg=${rmsSum / rmsSamples}")
+                }
+            }
+            override fun onBufferReceived(buffer: ByteArray?) {
+                Log.w(TAG, "onBufferReceived size=${buffer?.size}")
+            }
+            override fun onEndOfSpeech() {
+                Log.w(TAG, "onEndOfSpeech (samples=$rmsSamples max=$maxRms)")
+            }
             override fun onPartialResults(partialResults: Bundle?) {
                 val text = pickBest(partialResults)
+                Log.w(TAG, "onPartialResults='${text ?: "(null)"}'")
                 if (!disposed && !text.isNullOrBlank()) {
                     callbacks.onPartialResult(text)
                 }
             }
             override fun onResults(results: Bundle?) {
                 val text = pickBest(results)
+                Log.w(TAG, "onResults='${text ?: "(null)"}'")
                 deliverFinal(text)
             }
             override fun onError(error: Int) {
@@ -79,9 +109,17 @@ class VoiceRecognitionHelper(
                         return
                     }
                 }
+                // Surface every other failure explicitly — silent retry
+                // hides the failure from the user, who then sees "Listening…"
+                // forever and has no idea recognition died. The picker UI
+                // turns the mic icon tappable when error fires so a single
+                // tap restarts a fresh session in place.
+                Log.w(TAG, "onError code=$error msg='$msg' (samples=$rmsSamples max=$maxRms lastPartial='$lastPartial')")
                 if (!disposed) callbacks.onError(msg)
             }
-            override fun onEvent(eventType: Int, params: Bundle?) {}
+            override fun onEvent(eventType: Int, params: Bundle?) {
+                Log.w(TAG, "onEvent type=$eventType")
+            }
         })
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -98,9 +136,49 @@ class VoiceRecognitionHelper(
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             // Some OEMs require the calling package extra to surface partials.
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+            // Generous silence thresholds — Android default (~500-1500ms)
+            // ends recognition the moment the user pauses to think mid-
+            // sentence, triggering premature ERROR_NO_MATCH that forces
+            // the user to re-tap and re-speak. The values below give a
+            // natural "speak a full sentence" feel: up to 2.5s of complete
+            // silence before commit, with a 1.5s warning window before
+            // that. Min length 1s so a single short utterance still ends
+            // promptly when the user genuinely stops talking.
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1000L)
+            // Force online recognition when available — the online model is
+            // an order of magnitude larger than the offline pack and has a
+            // much broader proper-noun vocabulary (foreign names like
+            // "Shinzato", brand names, place names). Offline-only is fine
+            // for common Vietnamese words but turns proper nouns into
+            // phonetic approximations ("Shinzato" → "xin cho tôi").
+            // Falls back to offline automatically if no network.
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
+            // Android 13+ (API 33): enable on-device formatting +
+            // glossary-based name biasing. Compiled by numeric literal so
+            // we still build on platform targets below 33.
+            if (Build.VERSION.SDK_INT >= 33) {
+                putExtra("android.speech.extra.ENABLE_FORMATTING", "quality")
+                // EXTRA_BIASING_STRINGS: hint specific phrases to the
+                // recognizer so proper nouns the user typed into their
+                // glossary (foreign names like "Shinzato", brand names,
+                // place names) actually get recognized instead of being
+                // phonetically mangled into common Vietnamese words. The
+                // glossary the in-app translate flow uses already
+                // contains exactly the vocabulary the user cares about
+                // for THIS conversation — reuse it for ASR with zero
+                // extra UI.
+                val biasing = readGlossaryBiasingStrings()
+                if (biasing.isNotEmpty()) {
+                    putExtra("android.speech.extra.BIASING_STRINGS", biasing.toTypedArray())
+                    Log.w(TAG, "biasing strings (${biasing.size}): ${biasing.take(5)}…")
+                }
+            }
         }
         try {
             sr.startListening(intent)
+            Log.w(TAG, "startListening dispatched (lang=$languageTag)")
         } catch (error: Exception) {
             Log.w(TAG, "startListening failed: ${error.message}")
             callbacks.onError(context.getString(R.string.bubble_voice_unsupported))
@@ -143,6 +221,36 @@ class VoiceRecognitionHelper(
         }
     }
 
+    /**
+     * Pull the user's glossary `source` terms from the shared Flutter
+     * SharedPreferences (the same JSON-encoded list the Dart side reads
+     * via the glossary tab) and use them as recognizer biasing strings.
+     * Falls back to empty list silently if the prefs are missing,
+     * malformed, or the glossary is empty — none of those are user-
+     * visible failures, just means no name boosting that session.
+     */
+    private fun readGlossaryBiasingStrings(): List<String> {
+        return try {
+            val prefs = context.getSharedPreferences(
+                "FlutterSharedPreferences", Context.MODE_PRIVATE,
+            )
+            val raw = prefs.getString("flutter.tk_glossary", null) ?: return emptyList()
+            val arr = org.json.JSONArray(raw)
+            val out = mutableListOf<String>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i) ?: continue
+                val source = obj.optString("source", "").trim()
+                if (source.isNotEmpty() && source.length <= 100) {
+                    out.add(source)
+                }
+            }
+            out
+        } catch (e: Exception) {
+            Log.w(TAG, "readGlossaryBiasingStrings failed: ${e.message}")
+            emptyList()
+        }
+    }
+
     private fun pickBest(bundle: Bundle?): String? {
         val list = bundle?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
         val text = list?.firstOrNull()?.trim()
@@ -160,6 +268,13 @@ class VoiceRecognitionHelper(
         SpeechRecognizer.ERROR_NO_MATCH,
         SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
             context.getString(R.string.bubble_voice_no_match)
+        // ERROR_SERVER_DISCONNECTED (11) commonly fires when the user
+        // changes language pills mid-session — the online recognizer
+        // session for the previous lang is dropped before the new one
+        // is ready. Same surface as a transient network glitch from
+        // the user's perspective.
+        SpeechRecognizer.ERROR_SERVER_DISCONNECTED ->
+            context.getString(R.string.bubble_voice_network)
         // ERROR_LANGUAGE_NOT_SUPPORTED (12) + ERROR_LANGUAGE_UNAVAILABLE (13)
         // are API 31+ constants — refer to them by numeric literal so we
         // compile on older platform targets too. These fire when the user's
@@ -173,6 +288,8 @@ class VoiceRecognitionHelper(
 
     companion object {
         private const val TAG = "VoiceHelper"
+        /** How many silent-listen cycles to retry before giving up. */
+        private const val MAX_RESTART = 2
 
         /** Resolve an ISO-639-1 lang code to a BCP-47 tag the recognizer accepts. */
         fun resolveLanguageTag(lang: String?): String? = when (lang) {
