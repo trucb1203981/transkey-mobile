@@ -17,7 +17,6 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/plan_status_banner.dart';
 import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
-import '../../history/providers/history_provider.dart';
 import '../../history/screens/history_screen.dart';
 import '../../glossary/screens/glossary_screen.dart';
 import '../../onboarding/screens/accessibility_setup_screen.dart';
@@ -29,15 +28,15 @@ import '../../../core/api/dio_client.dart';
 import '../../upgrade/providers/usage_provider.dart';
 import '../../upgrade/services/rewarded_ad_service.dart';
 import '../../upgrade/widgets/paywall_sheet.dart';
-import '../models/language.dart';
 import '../models/translate_models.dart';
 import '../providers/features_provider.dart';
 import '../providers/language_settings_provider.dart';
 import '../providers/translate_provider.dart';
 import '../services/tts_service.dart';
+import '../widgets/feature_buttons.dart';
+import '../widgets/language_bar.dart';
 import '../widgets/language_picker_sheet.dart';
-import '../widgets/tts_button.dart';
-import '../../../shared/widgets/selectable_with_actions.dart';
+import '../widgets/result_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -549,13 +548,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             _buildClipboardChip(theme, isDark, _clipboardSuggestion!),
             const SizedBox(height: AppSpacing.sm),
           ],
-          _buildLanguageBar(theme, isDark, result),
+          Consumer(builder: (_, ref, __) {
+            final langs = ref.watch(languageSettingsProvider).valueOrNull;
+            final sourceLang = langs?.sourceLang ?? 'auto';
+            final targetLang = langs?.targetLang ?? 'en';
+            return LanguageBar(
+              sourceLang: sourceLang,
+              targetLang: targetLang,
+              detectedLang: sourceLang == 'auto' ? result?.detectedLang : null,
+              isDark: isDark,
+              onPickSource: () => _pickSourceLang(sourceLang),
+              onPickTarget: () => _pickTargetLang(targetLang),
+              onSwap: _swapLanguages,
+            );
+          }),
           const SizedBox(height: AppSpacing.md),
 
           _buildSourceField(theme, isDark, l),
           const SizedBox(height: AppSpacing.md),
 
-          _buildFeatureButtons(isDark, l),
+          FeatureButtons(
+            isDark: isDark,
+            isPro: _isProUser,
+            onAction: _handleAction,
+          ),
           const SizedBox(height: AppSpacing.md),
 
           if (state?.error != null)
@@ -576,7 +592,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
 
-          if (result != null) _buildResultCard(theme, isDark, result, l),
+          if (result != null)
+            ResultCard(
+              result: result,
+              isDark: isDark,
+              onCopy: _copyToClipboard,
+            ),
 
           if (isLoading)
             const Padding(
@@ -584,94 +605,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: Center(child: CircularProgressIndicator()),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLanguageBar(ThemeData theme, bool isDark, TranslateResult? result) {
-    final langs = ref.watch(languageSettingsProvider).valueOrNull;
-    final sourceLang = langs?.sourceLang ?? 'auto';
-    final targetLang = langs?.targetLang ?? 'en';
-    // When source is auto and we have a detection, show detected name in chip
-    final detectedCode = (sourceLang == 'auto') ? result?.detectedLang : null;
-    final sourceLabel = detectedCode != null
-        ? languageByCode(detectedCode).nativeName
-        : languageByCode(sourceLang).nativeName;
-    final targetLabel = languageByCode(targetLang).nativeName;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _langChip(
-            sourceLabel,
-            subtitle: detectedCode != null ? 'Auto' : null,
-            onTap: () => _pickSourceLang(sourceLang),
-            isDark: isDark,
-          ),
-        ),
-        IconButton(
-          onPressed: sourceLang == 'auto' ? null : _swapLanguages,
-          icon: Icon(
-            Icons.swap_horiz,
-            color: sourceLang == 'auto'
-                ? AppColors.textSecondary
-                : AppColors.primary,
-          ),
-        ),
-        Expanded(
-          child: _langChip(
-            targetLabel,
-            onTap: () => _pickTargetLang(targetLang),
-            isDark: isDark,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _langChip(String label,
-      {String? subtitle,
-      required VoidCallback onTap,
-      required bool isDark}) {
-    return Material(
-      color: isDark ? AppColors.surface : const Color(0xFFF0EDE8),
-      borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm + 2,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      label,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_drop_down, size: 20),
-                ],
-              ),
-              if (subtitle != null)
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.primary.withValues(alpha: 0.7),
-                  ),
-                ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -867,286 +800,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildFeatureButtons(bool isDark, AppLocalizations l) {
-    return Row(
-      children: [
-        _featureBtn(
-          icon: Icons.translate,
-          label: l.translate,
-          onTap: () => _handleAction(TranslateMode.translate),
-          isDark: isDark,
-          isPrimary: true,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _featureBtn(
-          icon: Icons.reply_outlined,
-          label: l.reply,
-          onTap: () => _handleAction(TranslateMode.reply),
-          isDark: isDark,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _featureBtn(
-          icon: Icons.summarize_outlined,
-          label: l.summarize,
-          locked: !_isProUser,
-          onTap: () => _handleAction(TranslateMode.summarize),
-          isDark: isDark,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _featureBtn(
-          icon: Icons.lightbulb_outline,
-          label: l.explain,
-          locked: !_isProUser,
-          onTap: () => _handleAction(TranslateMode.explain),
-          isDark: isDark,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _featureBtn(
-          icon: Icons.auto_fix_high,
-          label: l.refine,
-          locked: !_isProUser,
-          onTap: () => _handleAction(TranslateMode.refine),
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _featureBtn({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required bool isDark,
-    bool isPrimary = false,
-    bool locked = false,
-  }) {
-    return Expanded(
-      child: Material(
-        color: isPrimary
-            ? AppColors.primary
-            : (isDark ? AppColors.surface : AppColors.surfaceLight),
-        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-              border: isPrimary
-                  ? null
-                  : Border.all(
-                      color:
-                          isDark ? AppColors.border : AppColors.borderLight),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  locked ? Icons.lock_outline : icon,
-                  size: 18,
-                  color: isPrimary
-                      ? Colors.white
-                      : (isDark
-                          ? AppColors.textSecondary
-                          : AppColors.textSecondaryLight),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: isPrimary
-                        ? Colors.white
-                        : (isDark
-                            ? AppColors.textSecondary
-                            : AppColors.textSecondaryLight),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResultCard(
-    ThemeData theme,
-    bool isDark,
-    TranslateResult result,
-    AppLocalizations l,
-  ) {
-    final langs = ref.watch(languageSettingsProvider).valueOrNull;
-    final sourceLang = langs?.sourceLang ?? 'auto';
-    final targetLang = langs?.targetLang ?? 'en';
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(
-            color: isDark ? AppColors.border : AppColors.borderLight),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Detected source language (only when auto-detect)
-          if (result.detectedLang != null && sourceLang == 'auto') ...[
-            Text(
-              l.detectedLang(languageByCode(result.detectedLang!).nativeName),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.primary.withValues(alpha: 0.75),
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-
-          // Tap-anywhere-on-result copies. SelectableText still handles
-          // long-press selection + the custom "TransKey" context menu.
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _copyToClipboard(result.translation),
-            child: SelectableWithActions(
-              result.translation,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontSize: 16,
-                height: 1.5,
-              ),
-              targetLang: targetLang,
-            ),
-          ),
-
-          if (result.romanization != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              result.romanization!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-
-          if (result.suggestions.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            const Divider(),
-            const SizedBox(height: AppSpacing.sm),
-            Text(l.suggestions, style: theme.textTheme.labelLarge),
-            const SizedBox(height: AppSpacing.sm),
-            // Bilingual chips (matches desktop popup): each card shows the
-            // reply in the partner's language on top, the user's language
-            // hint below, and tap copies the SOURCE (what the user would
-            // actually send back).
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: result.suggestions.map((s) {
-                final source = s.source.trim();
-                final target = s.target.trim();
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: InkWell(
-                    onTap: () => _copyToClipboard(
-                      source.isNotEmpty ? source : target,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: isDark
-                              ? AppColors.border
-                              : AppColors.borderLight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (source.isNotEmpty)
-                            Text(
-                              source,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          if (target.isNotEmpty && target != source) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              target,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _actionIcon(Icons.copy_outlined, l.copy, () {
-                _copyToClipboard(result.translation);
-              }),
-              const SizedBox(width: AppSpacing.sm),
-              TtsButton(text: result.translation, lang: targetLang),
-              const SizedBox(width: AppSpacing.sm),
-              _buildSaveIcon(l),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSaveIcon(AppLocalizations l) {
-    final historyId = ref.watch(
-      translateProvider.select((s) => s.valueOrNull?.lastHistoryId),
-    );
-    // Subscribe only to *this* entry's favorite flag. Without select, every
-    // new translation / search query / filter change rebuilds the icon even
-    // though the displayed state hasn't changed. With select Riverpod
-    // short-circuits when the resolved bool is identical to the previous one.
-    final isFavorite = ref.watch(
-      historyProvider.select((s) {
-        if (historyId == null) return false;
-        for (final e in s.entries) {
-          if (e.id == historyId) return e.isFavorite;
-        }
-        return false;
-      }),
-    );
-    return _actionIcon(
-      isFavorite ? Icons.star : Icons.star_outline,
-      l.save,
-      historyId == null
-          ? null
-          : () => ref.read(historyProvider.notifier).toggleFavorite(historyId),
-    );
-  }
-
-  Widget _actionIcon(IconData icon, String tooltip, VoidCallback? onTap) {
-    return IconButton(
-      icon: Icon(icon, size: 20),
-      tooltip: tooltip,
-      onPressed: onTap,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      padding: EdgeInsets.zero,
-    );
-  }
 }
 
 /// Holds a slot in IndexedStack but defers building its child until the tab
