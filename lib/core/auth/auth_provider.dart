@@ -3,6 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/glossary/providers/glossary_provider.dart';
+import '../../features/history/providers/history_provider.dart';
+import '../../features/settings/providers/devices_provider.dart';
+import '../../features/settings/providers/subscription_provider.dart';
+import '../../features/translate/providers/translate_provider.dart';
+import '../../features/upgrade/providers/usage_provider.dart';
 import '../api/dio_client.dart';
 import 'app_group_bridge.dart';
 import 'session_store.dart';
@@ -53,6 +59,22 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     ref.read(apiClientProvider).invalidateSessionCache();
   }
 
+  /// Drop every per-user provider's cached state so the next account doesn't
+  /// see the previous account's data. Without this, switching login leaves
+  /// stale usage / history / glossary / subscription / devices visible until
+  /// the providers happen to refetch (e.g. 1-minute usage TTL). Most visible
+  /// symptom: a free user logged in after a pro user sees pro's 9999/999999
+  /// quota until the next refresh, which is confusing AND incorrectly
+  /// implies they're on Pro.
+  void _invalidateUserScopedProviders() {
+    ref.invalidate(usageProvider);
+    ref.invalidate(translateProvider);
+    ref.invalidate(historyProvider);
+    ref.invalidate(glossaryProvider);
+    ref.invalidate(subscriptionProvider);
+    ref.invalidate(devicesProvider);
+  }
+
   Future<void> login({
     required String email,
     required String password,
@@ -82,6 +104,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(session);
       _invalidateApiSessionCache();
+      _invalidateUserScopedProviders();
       await _syncToAppGroup(session);
 
       return AuthState(isLoggedIn: true, session: session);
@@ -116,6 +139,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(session);
       _invalidateApiSessionCache();
+      _invalidateUserScopedProviders();
       await _syncToAppGroup(session);
 
       return AuthState(isLoggedIn: true, session: session);
@@ -148,6 +172,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(session);
       _invalidateApiSessionCache();
+      _invalidateUserScopedProviders();
       await _syncToAppGroup(session);
 
       return AuthState(isLoggedIn: true, session: session);
@@ -158,6 +183,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.clear();
     _invalidateApiSessionCache();
+    _invalidateUserScopedProviders();
     await AppGroupBridge.clearAuth();
     state = const AsyncData(AuthState());
   }
@@ -181,6 +207,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(updated);
       _invalidateApiSessionCache();
+      // No need to invalidate user-scoped providers — same user, just
+      // updated metadata (plan changed via web checkout etc).
       await _syncToAppGroup(updated);
       state = AsyncData(AuthState(isLoggedIn: true, session: updated));
     } catch (e) {
@@ -214,6 +242,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
       await sessionStore.save(updated);
       _invalidateApiSessionCache();
+      // No invalidate — token refresh keeps the same user identity.
       state = AsyncData(AuthState(isLoggedIn: true, session: updated));
     } catch (e) {
       debugPrint('[Auth] Proactive refresh failed: $e');
@@ -231,6 +260,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.save(session);
     _invalidateApiSessionCache();
+    // Invalidate so the new plan's limits (Pro 9999 vs Free 20) are
+    // immediately reflected in QuotaBar etc — same user identity but
+    // plan-dependent state changes.
+    _invalidateUserScopedProviders();
     await _syncToAppGroup(session);
     state = AsyncData(AuthState(isLoggedIn: true, session: session));
   }
@@ -261,6 +294,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.save(session);
     _invalidateApiSessionCache();
+    _invalidateUserScopedProviders();
     await _syncToAppGroup(session);
     state = AsyncData(AuthState(isLoggedIn: true, session: session));
   }
