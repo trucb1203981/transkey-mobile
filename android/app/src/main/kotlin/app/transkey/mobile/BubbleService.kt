@@ -114,7 +114,7 @@ class BubbleService : Service() {
 
         // Target languages user can cycle through in the overlay.
         // Persisted to Flutter SharedPreferences via the "flutter.tk_target_lang" key.
-        private val TARGET_LANGS = listOf(
+        internal val TARGET_LANGS = listOf(
             "en", "vi", "ja", "zh", "ko", "fr", "de", "es", "pt", "ru", "th", "id",
         )
         internal val LANG_LABELS = mapOf(
@@ -135,7 +135,7 @@ class BubbleService : Service() {
         private const val KEY_TTS_RATE = "flutter.tk_tts_rate"
         // Local-only flag (not under flutter.* prefix) so we don't pollute
         // the Flutter SharedPreferences mirror with native-only state.
-        private const val KEY_SCAN_DISCLOSED = "tk_scan_disclosed"
+        internal const val KEY_SCAN_DISCLOSED = "tk_scan_disclosed"
         // Speaker's language for the voice picker (independent of translate
         // source-lang — what you DICTATE in may differ from what you
         // translate FROM, e.g. dictate JP, translate JP→EN).
@@ -148,7 +148,7 @@ class BubbleService : Service() {
             "en", "vi", "ja", "ko", "zh", "fr", "de", "es", "pt", "ru", "th", "id",
         )
 
-        private val SOURCE_LANGS = listOf("auto", "en", "vi", "ja", "zh", "ko", "fr", "de", "es", "pt", "ru", "th", "id")
+        internal val SOURCE_LANGS = listOf("auto", "en", "vi", "ja", "zh", "ko", "fr", "de", "es", "pt", "ru", "th", "id")
 
         // Tone codes — MUST match Flutter `toneOptions` in
         // lib/features/settings/providers/app_settings_provider.dart so that
@@ -288,11 +288,11 @@ class BubbleService : Service() {
     private var pendingPickerText: String? = null
 
     // Language picker overlays
-    private var langPickerView: View? = null
-    private var sourceLangPickerView: View? = null
+    internal var langPickerView: View? = null
+    internal var sourceLangPickerView: View? = null
 
     // Tone picker overlay
-    private var tonePickerView: View? = null
+    internal var tonePickerView: View? = null
 
     // Text-input picker overlay (lets user type text without opening the app)
     // This window is FOCUSABLE — unlike the other pickers — so the soft
@@ -310,18 +310,18 @@ class BubbleService : Service() {
 
     // First-run disclosure overlay shown before the "Scan screen" / OCR flow
     // (MediaProjection) — explains what gets captured and where it goes.
-    private var scanDisclosureView: View? = null
+    internal var scanDisclosureView: View? = null
     // Mode chooser shown after the user taps "Scan" or "Region" in the
     // bubble picker — lets them pick Translate (Lens overlay) vs Summarize
     // (text panel) before the screen capture grant kicks in.
-    private var scanModeChooserView: View? = null
+    internal var scanModeChooserView: View? = null
 
     // Lens flow overlays. The progress card sits over the source app while
     // batch-translate is in flight; the LensOverlayView is the full-screen
     // bitmap + translated chips that replaces it on success. Both held so
     // lifecycle hooks can tear them down on stopBubble / onDestroy.
-    private var lensProgressView: View? = null
-    private var lensOverlayView: LensOverlayView? = null
+    internal var lensProgressView: View? = null
+    internal var lensOverlayView: LensOverlayView? = null
 
     // Rubber-band region selector shown when user picks the "Translate
     // selected area" entry — sits between MediaProjection capture and OCR.
@@ -350,7 +350,7 @@ class BubbleService : Service() {
     // attached); subsequent reads return the same instance. Replaces 30+
     // inline `getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)` calls
     // scattered through read*/write* settings helpers.
-    private val prefs by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    internal val prefs by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -921,7 +921,7 @@ class BubbleService : Service() {
         windowManager?.addView(backdrop, buildPickerLayoutParams())
     }
 
-    private fun buildPickerLayoutParams(): WindowManager.LayoutParams {
+    internal fun buildPickerLayoutParams(): WindowManager.LayoutParams {
         return WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -942,112 +942,6 @@ class BubbleService : Service() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    internal fun showLangPicker() {
-        if (langPickerView != null) { hideLangPicker(); return }
-        ensureWindowManager()
-        // Sync from prefs so the picker reflects any change made in Flutter
-        // UI. In reply mode the picker pre-selects KEY_REPLY_LANG (which the
-        // tap-to-pick path writes to) — otherwise picking a lang then
-        // re-opening shows the *general* target as selected instead of the
-        // reply lang the user just chose, even though translation used it.
-        currentTargetLang = if (currentMode == MODE_REPLY) {
-            val replyLang = readReplyLang()
-            when {
-                replyLang.isNotEmpty() -> replyLang
-                lastDetectedLang != null -> lastDetectedLang!!
-                else -> readTargetLang()
-            }
-        } else {
-            readTargetLang()
-        }
-
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val accent = style.accent
-        val selBg = style.accent
-
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Palette.BACKDROP_LIGHT)
-            setOnClickListener { hideLangPicker() }
-        }
-
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
-            elevation = 22 * dp
-            setPadding((14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
-            isClickable = true
-        }
-
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_panel_target_lang)
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, (10 * dp).toInt())
-        })
-
-        // Grid: 3 columns
-        var row: LinearLayout? = null
-        TARGET_LANGS.forEachIndexed { idx, lang ->
-            if (idx % 3 == 0) {
-                row = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply { bottomMargin = (6 * dp).toInt() }
-                }
-                card.addView(row)
-            }
-            val isSelected = lang == currentTargetLang
-            val chip = TextView(this).apply {
-                text = LANG_LABELS[lang] ?: lang.uppercase()
-                setTextColor(if (isSelected) Color.WHITE else textCol)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                gravity = Gravity.CENTER
-                setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
-                background = GradientDrawable().apply {
-                    setColor(if (isSelected) selBg else Color.TRANSPARENT)
-                    setStroke(1, if (isSelected) selBg else Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0"))
-                    cornerRadius = 10 * dp
-                }
-                setOnClickListener {
-                    currentTargetLang = lang
-                    // In reply mode, the picker overrides the user's "Reply Language"
-                    // preference — write to KEY_REPLY_LANG so the next reply (and the
-                    // current one we're about to fire) actually uses it.
-                    if (currentMode == MODE_REPLY) {
-                        writeReplyLang(lang)
-                    } else {
-                        writeTargetLang(lang)
-                    }
-                    hideLangPicker()
-                    updateLangChip()
-                    val src = currentSourceText ?: return@setOnClickListener
-                    handleTranslateRequest(src, currentMode)
-                }
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    .apply { marginEnd = if (idx % 3 != 2) (6 * dp).toInt() else 0 }
-            }
-            row?.addView(chip)
-        }
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (48 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
-
-        langPickerView = backdrop
-        windowManager?.addView(backdrop, buildPickerLayoutParams())
-    }
-
-    private fun hideLangPicker() {
-        langPickerView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        langPickerView = null
-    }
 
     private fun buildBubbleLayoutParams(): WindowManager.LayoutParams {
         val dp = resources.displayMetrics.density
@@ -1278,11 +1172,11 @@ class BubbleService : Service() {
         }
     }
 
-    private fun readTargetLang(): String {
+    internal fun readTargetLang(): String {
         return prefs.getString(KEY_TARGET_LANG, "en") ?: "en"
     }
 
-    private fun writeTargetLang(lang: String) {
+    internal fun writeTargetLang(lang: String) {
         prefs
             .edit()
             .putString(KEY_TARGET_LANG, lang)
@@ -1413,25 +1307,25 @@ class BubbleService : Service() {
             .putBoolean(KEY_BUBBLE_ACTIVE, active).apply()
     }
 
-    private fun readSourceLang(): String {
+    internal fun readSourceLang(): String {
         return prefs.getString(KEY_SOURCE_LANG, "auto") ?: "auto"
     }
 
-    private fun writeSourceLang(lang: String) {
+    internal fun writeSourceLang(lang: String) {
         prefs.edit()
             .putString(KEY_SOURCE_LANG, lang).apply()
         notifyFlutterLangChanged()
     }
 
-    private fun readTone(): String {
+    internal fun readTone(): String {
         return prefs.getString(KEY_TONE_OVERRIDE, "") ?: ""
     }
 
-    private fun readReplyLang(): String {
+    internal fun readReplyLang(): String {
         return prefs.getString(KEY_REPLY_LANG, "") ?: ""
     }
 
-    private fun writeReplyLang(lang: String) {
+    internal fun writeReplyLang(lang: String) {
         prefs.edit()
             .putString(KEY_REPLY_LANG, lang).apply()
         notifyFlutterLangChanged()
@@ -1463,7 +1357,7 @@ class BubbleService : Service() {
             .putString(KEY_VOICE_LANG, lang).apply()
     }
 
-    private fun writeTone(tone: String) {
+    internal fun writeTone(tone: String) {
         prefs.edit()
             .putString(KEY_TONE_OVERRIDE, tone).apply()
     }
@@ -1474,11 +1368,11 @@ class BubbleService : Service() {
     // writes to. Reading happens at app resume via appSettingsProvider.reload()
     // and ttsProvider._loadPersistedPrefs().
 
-    private fun readReplyTone(): String {
+    internal fun readReplyTone(): String {
         return prefs.getString(KEY_REPLY_TONE_OVERRIDE, "") ?: ""
     }
 
-    private fun writeReplyTone(tone: String) {
+    internal fun writeReplyTone(tone: String) {
         prefs.edit()
             .putString(KEY_REPLY_TONE_OVERRIDE, tone).apply()
     }
@@ -1512,98 +1406,18 @@ class BubbleService : Service() {
             .putFloat(KEY_TTS_RATE, rate.toFloat()).apply()
     }
 
-    private fun toneLabel(code: String): String {
+    internal fun toneLabel(code: String): String {
         val resId = TONE_STRING_IDS[code] ?: R.string.bubble_tone_auto
         return localized(resId)
     }
 
-    private fun formatRate(r: Double): String {
+    internal fun formatRate(r: Double): String {
         // Match desktop / Flutter: "1×" instead of "1.0×".
         return if (r == r.toLong().toDouble()) "${r.toInt()}×" else "${r}×"
     }
 
     // ── Source language picker ──
 
-    internal fun showSourceLangPicker() {
-        if (sourceLangPickerView != null) { hideSourceLangPicker(); return }
-        ensureWindowManager()
-        // Sync from prefs so the picker reflects any change made in Flutter UI.
-        currentSourceLang = readSourceLang()
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val accent = style.accent
-        val selBg = style.accent
-
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Palette.BACKDROP_LIGHT)
-            setOnClickListener { hideSourceLangPicker() }
-        }
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
-            elevation = 22 * dp
-            setPadding((14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
-            isClickable = true
-        }
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_panel_source_lang)
-            setTextColor(accent)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, (10 * dp).toInt())
-        })
-
-        var row: LinearLayout? = null
-        SOURCE_LANGS.forEachIndexed { idx, lang ->
-            if (idx % 3 == 0) {
-                row = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply { bottomMargin = (6 * dp).toInt() }
-                }
-                card.addView(row)
-            }
-            val isSelected = lang == currentSourceLang
-            val label = if (lang == "auto") "Auto" else (LANG_LABELS[lang] ?: lang.uppercase())
-            val chip = TextView(this).apply {
-                text = label
-                setTextColor(if (isSelected) Color.WHITE else textCol)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                gravity = Gravity.CENTER
-                setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
-                background = GradientDrawable().apply {
-                    setColor(if (isSelected) selBg else Color.TRANSPARENT)
-                    setStroke(1, if (isSelected) selBg else Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0"))
-                    cornerRadius = 10 * dp
-                }
-                setOnClickListener {
-                    currentSourceLang = lang
-                    writeSourceLang(lang)
-                    hideSourceLangPicker()
-                    updateLangChip()
-                    currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-                }
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    .apply { marginEnd = if (idx % 3 != 2) (6 * dp).toInt() else 0 }
-            }
-            row?.addView(chip)
-        }
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (48 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
-        sourceLangPickerView = backdrop
-        windowManager?.addView(backdrop, buildPickerLayoutParams())
-    }
-
-    private fun hideSourceLangPicker() {
-        sourceLangPickerView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        sourceLangPickerView = null
-    }
 
     // ── Settings sheet ──
     // Single sheet that surfaces the 5 in-app settings the bubble cares about:
@@ -1612,14 +1426,6 @@ class BubbleService : Service() {
     // in-app Settings screen picks them up on resume (and vice versa — we
     // re-read every time the sheet opens).
 
-    private fun showTonePicker() {
-        showSettingsSheet()
-    }
-
-    private fun hideTonePicker() {
-        tonePickerView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        tonePickerView = null
-    }
 
     // ── Text input picker (type text without opening the app) ──
 
@@ -2241,88 +2047,8 @@ class BubbleService : Service() {
      * user has already drafted/copied, not images of arbitrary screens.
      */
     @SuppressLint("ClickableViewAccessibility")
-    private fun showScanModeChooser(isRegion: Boolean) {
-        ensureWindowManager()
-        refreshLocale()
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val mutedCol = style.muted
-        val accent = style.accent
 
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Palette.BACKDROP_DIM)
-            setOnClickListener { hideScanModeChooser() }
-        }
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
-            elevation = 22 * dp
-            setPadding((20 * dp).toInt(), (16 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt())
-            isClickable = true
-        }
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_choose_action)
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, (12 * dp).toInt())
-        })
-
-        fun modeButton(mode: String, label: String): TextView = TextView(this).apply {
-            text = label
-            setTextColor(if (mode == MODE_TRANSLATE) Color.WHITE else textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            background = GradientDrawable().apply {
-                setColor(if (mode == MODE_TRANSLATE) accent else Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF"))
-                cornerRadius = 12 * dp
-            }
-            setPadding(0, (12 * dp).toInt(), 0, (12 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = (8 * dp).toInt() }
-            setOnClickListener {
-                hideScanModeChooser()
-                if (isRegion) handleLensRegionRequest(mode) else handleScanRequest(mode)
-            }
-        }
-        card.addView(modeButton(MODE_TRANSLATE, modeLabel(MODE_TRANSLATE)))
-        card.addView(modeButton(MODE_SUMMARIZE, modeLabel(MODE_SUMMARIZE)))
-
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_cancel)
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            gravity = Gravity.CENTER
-            setPadding(0, (12 * dp).toInt(), 0, 0)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { hideScanModeChooser() }
-        })
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(
-            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
-        ))
-        scanModeChooserView = backdrop
-        try { windowManager?.addView(backdrop, buildPickerLayoutParams()) }
-        catch (e: Exception) { android.util.Log.w("TKBubble", "scan-mode-chooser add failed: ${e.message}") }
-    }
-
-    private fun hideScanModeChooser() {
-        scanModeChooserView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        scanModeChooserView = null
-    }
-
-    private fun handleScanRequest(mode: String = MODE_TRANSLATE) {
+    internal fun handleScanRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = false
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
             launchScanFlow(mode)
@@ -2337,7 +2063,7 @@ class BubbleService : Service() {
      * presents [RegionSelectionView] so the user can drag a rectangle;
      * only that sub-region is OCR'd + translated.
      */
-    private fun handleLensRegionRequest(mode: String = MODE_TRANSLATE) {
+    internal fun handleLensRegionRequest(mode: String = MODE_TRANSLATE) {
         ScreenCaptureManager.regionMode = true
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
             launchScanFlow(mode)
@@ -2346,7 +2072,7 @@ class BubbleService : Service() {
         }
     }
 
-    private fun launchScanFlow(mode: String = MODE_TRANSLATE) {
+    internal fun launchScanFlow(mode: String = MODE_TRANSLATE) {
         // Translate → LENS overlay (visual: translation painted over original
         // text in-place on screen). Other modes (Summarize, Refine, Explain)
         // can't visualise inline so they use TEXT_INTO_INPUT — OCR text is
@@ -2415,102 +2141,10 @@ class BubbleService : Service() {
         hideResultPanel()
     }
 
-    private fun restoreBubbleVisibility() {
+    internal fun restoreBubbleVisibility() {
         bubbleView?.visibility = View.VISIBLE
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun showScanDisclosure(mode: String = MODE_TRANSLATE) {
-        if (scanDisclosureView != null) { hideScanDisclosure(); return }
-        ensureWindowManager()
-        refreshLocale()
-
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val isDark = style.isDark
-        val bg = style.bg
-        val textCol = style.text
-        val mutedCol = style.muted
-        val accent = style.accent
-
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Palette.BACKDROP_DIM)
-            setOnClickListener { hideScanDisclosure() }
-        }
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
-            elevation = 22 * dp
-            setPadding((20 * dp).toInt(), (18 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt())
-            isClickable = true
-        }
-        card.addView(TextView(this).apply {
-            text = "📷  ${localized(R.string.bubble_scan_disclosure_title)}"
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, (10 * dp).toInt())
-        })
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_scan_disclosure_body)
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setLineSpacing(2 * dp, 1f)
-            setPadding(0, 0, 0, (16 * dp).toInt())
-        })
-
-        val actions = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-        }
-        actions.addView(TextView(this).apply {
-            text = localized(R.string.bubble_cancel)
-            setTextColor(mutedCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { hideScanDisclosure() }
-        })
-        actions.addView(TextView(this).apply {
-            text = localized(R.string.bubble_scan_continue)
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            background = GradientDrawable().apply {
-                setColor(accent)
-                cornerRadius = 12 * dp
-            }
-            setPadding((18 * dp).toInt(), (10 * dp).toInt(), (18 * dp).toInt(), (10 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = (8 * dp).toInt() }
-            setOnClickListener {
-                prefs.edit()
-                    .putBoolean(KEY_SCAN_DISCLOSED, true).apply()
-                hideScanDisclosure()
-                launchScanFlow(mode)
-            }
-        })
-        card.addView(actions)
-
-        val screenWidth = resources.displayMetrics.widthPixels
-        val cardWidth = (screenWidth - (40 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-        backdrop.addView(card, FrameLayout.LayoutParams(
-            cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER,
-        ))
-        scanDisclosureView = backdrop
-        windowManager?.addView(backdrop, buildPickerLayoutParams())
-    }
-
-    private fun hideScanDisclosure() {
-        scanDisclosureView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        scanDisclosureView = null
-    }
 
     /**
      * Callback path invoked by ScreenCaptureService once OCR completes.
@@ -2623,73 +2257,6 @@ class BubbleService : Service() {
                 }
             }
         })
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun showLensProgress() {
-        if (lensProgressView != null) return
-        ensureWindowManager()
-        val style = BubbleStyle.of(this)
-        val dp = style.dp
-        val bg = style.bg
-        val textCol = style.text
-
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(0x88000000.toInt())
-            isClickable = true  // swallow taps so user can't dismiss mid-translate
-        }
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply { setColor(bg); cornerRadius = 14 * dp }
-            elevation = 20 * dp
-            setPadding((18 * dp).toInt(), (14 * dp).toInt(), (20 * dp).toInt(), (14 * dp).toInt())
-        }
-        card.addView(ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
-            isIndeterminate = true
-            layoutParams = LinearLayout.LayoutParams(
-                (22 * dp).toInt(), (22 * dp).toInt(),
-            )
-        })
-        card.addView(TextView(this).apply {
-            text = localized(R.string.bubble_lens_translating)
-            setTextColor(textCol)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding((12 * dp).toInt(), 0, 0, 0)
-        })
-        backdrop.addView(card, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.CENTER,
-        ))
-        lensProgressView = backdrop
-        windowManager?.addView(backdrop, buildPickerLayoutParams())
-    }
-
-    private fun hideLensProgress() {
-        lensProgressView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        lensProgressView = null
-    }
-
-    private fun showLensOverlay(bitmap: Bitmap, items: List<LensOverlayView.Item>) {
-        ensureWindowManager()
-        val overlay = LensOverlayView(
-            this, bitmap, items,
-            onDismissOutsideTap = { hideLensOverlay() },
-        )
-        lensOverlayView = overlay
-        windowManager?.addView(overlay, buildPickerLayoutParams())
-    }
-
-    private fun hideLensOverlay() {
-        lensOverlayView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
-        lensOverlayView = null
-        // Recycling the bitmap + clearing manager state is done together
-        // here (NOT in service.cleanup) so the bitmap survives until the
-        // user actually dismisses the overlay.
-        ScreenCaptureManager.clearAll()
-        restoreBubbleVisibility()
     }
 
     /**
