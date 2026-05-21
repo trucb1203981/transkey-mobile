@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/tracking/tracking_provider.dart';
+
 const _kHistorySave = 'tk_history_save';
 const _kRomanization = 'tk_romanization';
 const _kReplySuggestions = 'tk_reply_suggestions';
@@ -107,11 +109,20 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     state = AsyncData(fresh);
   }
 
+  /// One-liner so every setter fires `settings_change` with the same shape.
+  /// Keeps event volume bounded — only fires on a write, not on every read,
+  /// and rolls all setting writes into one queryable bucket.
+  void _trackChange(String key, Object value) {
+    ref.read(trackingServiceProvider).event('settings_change',
+        properties: {'key': key, 'value': value});
+  }
+
   Future<void> setHistorySave(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kHistorySave, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(historySave: value));
+    _trackChange('history_save', value);
   }
 
   Future<void> setRomanization(bool value) async {
@@ -119,6 +130,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setBool(_kRomanization, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(romanization: value));
+    _trackChange('romanization', value);
   }
 
   Future<void> setReplySuggestions(bool value) async {
@@ -126,6 +138,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setBool(_kReplySuggestions, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(replySuggestions: value));
+    _trackChange('reply_suggestions', value);
   }
 
   Future<void> setToneOverride(String value) async {
@@ -133,6 +146,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setString(_kToneOverride, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(toneOverride: value));
+    _trackChange('tone_override', value.isEmpty ? 'auto' : value);
   }
 
   Future<void> setReplyToneOverride(String value) async {
@@ -140,6 +154,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setString(_kReplyToneOverride, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(replyToneOverride: value));
+    _trackChange('reply_tone_override', value.isEmpty ? 'auto' : value);
   }
 
   Future<void> setReplyLang(String value) async {
@@ -147,6 +162,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setString(_kReplyLang, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(replyLang: value));
+    _trackChange('reply_lang', value.isEmpty ? 'auto' : value);
   }
 
   Future<void> setAutoCloseSeconds(int value) async {
@@ -154,6 +170,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setInt(_kAutoCloseSeconds, value);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(autoCloseSeconds: value));
+    _trackChange('auto_close_seconds', value);
   }
 
   Future<void> setCaptureKeepaliveSeconds(int value) async {
@@ -162,6 +179,7 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     await prefs.setInt(_kCaptureKeepaliveSeconds, clamped);
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(captureKeepaliveSeconds: clamped));
+    _trackChange('capture_keepalive_seconds', clamped);
   }
 }
 

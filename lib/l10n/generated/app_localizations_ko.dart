@@ -116,6 +116,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get sectionOther => '기타';
 
   @override
+  String get helpImproveApp => '앱 개선에 도움 주기';
+
+  @override
+  String get helpImproveAppHint =>
+      'TransKey 개선을 위해 익명 사용 정보를 공유합니다. 번역 내용이나 사진은 전송되지 않습니다.';
+
+  @override
   String get sectionSpeech => '음성 읽기';
 
   @override
@@ -456,11 +463,11 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get googleNotConfigured => 'Google 로그인이 설정되지 않음 (serverClientId 누락)';
+  String get googleNotConfigured =>
+      '지금은 Google 로그인을 사용할 수 없습니다. 다른 방법으로 로그인해 주세요.';
 
   @override
-  String get googleSignInNoIdToken =>
-      'Google이 idToken을 반환하지 않음 — serverClientId 확인';
+  String get googleSignInNoIdToken => 'Google 로그인이 완료되지 않았습니다. 다시 시도해 주세요.';
 
   @override
   String get proRequired => 'Pro 플랜이 필요합니다';
@@ -704,7 +711,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get glossaryIsNameLabel => '사람 이름입니다';
 
   @override
-  String get glossaryIsNameHint => '음성 입력 인식을 돕고 AI가 그대로 유지하도록 합니다.';
+  String get glossaryIsNameHint => '음성 입력이 이름을 인식하고 번역할 때 그대로 유지합니다.';
 
   @override
   String get upgradeScreenTitle => 'TransKey 업그레이드';
@@ -775,7 +782,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get upgradeFeatureColumn => '기능';
 
   @override
-  String get upgradeMobilePrice => '📱 Mobile · \$3/월';
+  String upgradeMobilePrice(Object price) {
+    return '📱 Mobile · \$4/월';
+  }
 
   @override
   String get upgradeProPrice => '💻 Pro · \$6/월';
@@ -820,10 +829,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get nudgeUpgradeToProSubtitle => '모든 플랫폼에서 사용 — 데스크톱 + 모바일';
 
   @override
-  String get nudgePriceMobile => '\$3/월';
+  String nudgePriceMobile(String price) {
+    return '$price/월';
+  }
 
   @override
-  String get nudgePriceProMonthly => '\$6/월';
+  String nudgePriceProMonthly(String price) {
+    return '$price/월';
+  }
 
   @override
   String get onboardWelcomeTitle => 'TransKey에 오신 것을 환영합니다';
@@ -1088,7 +1101,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get paywallUpgradeCta => '업그레이드 — 무제한, 광고 없음';
 
   @override
-  String get paywallUpgradeSub => '월 \$3부터. 언제든지 취소 가능.';
+  String paywallUpgradeSub(String price) {
+    return '월 $price부터. 언제든지 취소 가능.';
+  }
 
   @override
   String get paywallDismiss => '나중에';
@@ -1146,4 +1161,210 @@ class AppLocalizationsKo extends AppLocalizations {
   String captureKeepaliveMinutes(int count) {
     return '$count 분';
   }
+
+  @override
+  String get cameraTitle => '카메라';
+
+  @override
+  String get cameraCapture => '촬영';
+
+  @override
+  String get cameraRetake => '다시 촬영';
+
+  @override
+  String get cameraCopyAll => '모두 복사';
+
+  @override
+  String get cameraNoText => '텍스트가 감지되지 않았습니다. 다시 시도하세요.';
+
+  @override
+  String get cameraTapShowTranslations => '탭하여 번역 보기';
+
+  @override
+  String get cameraLowQuality => '품질 낮음';
+
+  @override
+  String get cameraTranslating => '번역 중...';
+
+  @override
+  String get cameraTranslate => '번역';
+
+  @override
+  String get cameraPermission => '이 기능을 사용하려면 카메라 권한이 필요합니다.';
+
+  @override
+  String get cameraSettingsTitle => '카메라 설정';
+
+  @override
+  String get cameraSettingsReset => '초기화';
+
+  @override
+  String get cameraSettingsConfidence => '불명확한 글자 숨기기';
+
+  @override
+  String get cameraSettingsConfidenceHint =>
+      '카메라가 흐릿하게 읽는 글자를 숨깁니다. 높을수록 엄격 — 결과가 깔끔하지만 흐린 글자를 놓칠 수 있어요.';
+
+  @override
+  String get cameraOriginalLabel => '원본';
+
+  @override
+  String get cameraSettingsHideLow => '저품질 블록 숨기기';
+
+  @override
+  String get cameraSettingsHideLowHint =>
+      '임계값 이상이지만 경고 수준 미만인 블록도 숨김. 깨끗한 문서용.';
+
+  @override
+  String get cameraSettingsShowOriginal => '원본 텍스트 표시';
+
+  @override
+  String get cameraSettingsShowOriginalHint => '각 번역 카드 아래에 원본 텍스트를 항상 표시.';
+
+  @override
+  String get cameraSettingsOpacity => '오버레이 불투명도';
+
+  @override
+  String get cameraSettingsOpacityHint => '카드 배경 투명도. 낮을수록 뒤의 사진이 더 보임.';
+
+  @override
+  String get cameraSceneAuto => '자동';
+
+  @override
+  String get cameraSceneDocument => '문서';
+
+  @override
+  String get cameraSceneMenu => '메뉴';
+
+  @override
+  String get cameraSceneSign => '간판';
+
+  @override
+  String get cameraSceneScreenshot => '스크린샷';
+
+  @override
+  String get cameraWhatIsThis => '이것은 무엇인가요?';
+
+  @override
+  String get cameraWhatIsThisHint => '미리보기의 텍스트를 탭하여 문의';
+
+  @override
+  String get cameraExplainTitle => '이것은 무엇인가요?';
+
+  @override
+  String get cameraEditTextTitle => '텍스트 편집';
+
+  @override
+  String get cameraReExplain => '다시 설명';
+
+  @override
+  String get cameraExplainEmpty => '설명이 없습니다.';
+
+  @override
+  String get cameraExplainError => '설명을 가져올 수 없습니다. 다시 시도하세요.';
+
+  @override
+  String get cameraResultExplainHint => '카드를 길게 눌러 문의';
+
+  @override
+  String get cameraExplainDisclaimer => '참고용 — 실제와 다를 수 있습니다';
+
+  @override
+  String get phrasebookTitle => '회화집';
+
+  @override
+  String get phrasebookEmpty => '회화집이 비어 있습니다. 카메라로 텍스트를 인식한 후 저장을 탭하세요.';
+
+  @override
+  String get phrasebookSave => '저장';
+
+  @override
+  String get phrasebookSaved => '저장됨';
+
+  @override
+  String get phrasebookSaveFailed => '저장하지 못했습니다. 다시 시도하세요.';
+
+  @override
+  String get phrasebookTitleTooLong => '제목이 너무 깁니다 (최대 1000자). 줄인 후 다시 시도하세요.';
+
+  @override
+  String get phrasebookDelete => '삭제';
+
+  @override
+  String get phrasebookDeleteConfirm => '회화집에서 삭제하시겠습니까?';
+
+  @override
+  String get phrasebookDeleted => '제거됨';
+
+  @override
+  String get phrasebookNote => '메모';
+
+  @override
+  String get phrasebookNoteHint => '예: ...에서 주문 — 너무 매움';
+
+  @override
+  String get phrasebookNoteSave => '메모 저장';
+
+  @override
+  String get phrasebookCopy => '복사';
+
+  @override
+  String get phrasebookViewAll => '회화집 열기';
+
+  @override
+  String get phrasebookCategoryAll => '전체';
+
+  @override
+  String get phrasebookCategoryMenu => '메뉴';
+
+  @override
+  String get phrasebookCategoryPlace => '장소';
+
+  @override
+  String get phrasebookCategoryDocument => '문서';
+
+  @override
+  String get phrasebookCategoryOther => '기타';
+
+  @override
+  String get phrasebookCategoryChange => '카테고리 변경';
+
+  @override
+  String get cameraTipsTitle => '카메라 팁';
+
+  @override
+  String get cameraTipsGotIt => '확인';
+
+  @override
+  String get cameraTip1Title => '모드 선택';
+
+  @override
+  String get cameraTip1Body =>
+      '스캔할 대상을 선택하면 결과가 더 좋아요: 메뉴, 가게 간판, 문서 — 또는 무엇이든 Auto.';
+
+  @override
+  String get cameraTip2Title => '언어 선택';
+
+  @override
+  String get cameraTip2Body =>
+      '읽는 언어와 번역할 언어를 선택하세요(왼쪽 위). 간판이나 글자가 잘 안 나오면 Auto 대신 읽는 언어를 선택하세요.';
+
+  @override
+  String get cameraTip3Title => '\"이것은?\" 묻기';
+
+  @override
+  String get cameraTip3Body =>
+      '결과를 길게 누르면 그 요리나 장소가 무엇인지 알 수 있고, 소리 내어 읽는 법도 들을 수 있어요.';
+
+  @override
+  String get cameraTip4Title => '드래그로 삭제';
+
+  @override
+  String get cameraTip4Body => '필요 없는 카드는 아래 휴지통 영역으로 드래그해 삭제하세요.';
+
+  @override
+  String get cameraTip5Title => '저장된 사진 스캔';
+
+  @override
+  String get cameraTip5Body => '셔터 옆 갤러리 아이콘을 눌러 휴대폰에 있는 사진을 번역하세요.';
 }

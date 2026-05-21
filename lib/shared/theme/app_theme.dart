@@ -192,6 +192,29 @@ class AppTheme {
         color: isDark ? AppColors.border : AppColors.borderLight,
         thickness: 1,
       ),
+      // SnackBar theme: default Material 3 SnackBar uses inverseSurface
+      // which inverts per mode — dark theme gets a near-white SnackBar
+      // with dark text, light theme gets a dark SnackBar with white
+      // text. Both end up low-contrast on the matching system theme
+      // (e.g. white-on-white when the user is on iOS system-light +
+      // app-dark mismatch). Force consistent contrast by pinning bg
+      // to the OPPOSITE of the current mode + matching readable text.
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isDark
+            ? const Color(0xFFE5E7EB) // light grey on dark theme
+            : const Color(0xFF1F2937), // slate-800 on light theme
+        contentTextStyle: TextStyle(
+          color: isDark ? Colors.black87 : Colors.white,
+          fontSize: 14,
+        ),
+        actionTextColor:
+            isDark ? AppColors.primary : AppColors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        elevation: 4,
+      ),
     );
   }
 }

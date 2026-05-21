@@ -1,6 +1,5 @@
 {
-  "@@locale": "ru",
-
+  "@locale": "ru",
   "translate": "Перевести",
   "summarize": "Кратко изложить",
   "explain": "Объяснить",
@@ -25,20 +24,26 @@
   "next": "Далее",
   "skip": "Пропустить",
   "done": "Готово",
-
   "hintEnterText": "Введите текст для перевода...",
   "detectedLang": "Обнаружено: {lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "Автоопределение",
   "sourceLang": "Исходный",
   "targetLang": "Целевой",
   "swapLanguages": "Поменять языки",
-
   "settingsTitle": "Настройки",
   "sectionLanguage": "Язык",
   "sectionTranslation": "Перевод",
   "sectionAdvanced": "Дополнительно",
   "sectionOther": "Другое",
+  "helpImproveApp": "Помочь улучшить приложение",
+  "helpImproveAppHint": "Делитесь анонимной информацией об использовании, чтобы улучшить TransKey. Тексты и фото не отправляются.",
   "sectionSpeech": "Озвучивание",
   "targetLanguage": "Целевой язык",
   "sourceLanguage": "Исходный язык",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "Автозакрытие (секунд)",
   "autoCloseUnit": "сек.",
   "autoCloseDisabled": "Выкл.",
-
   "toneAuto": "Авто",
   "toneBusiness": "Деловой",
   "toneCasual": "Непринуждённый",
@@ -63,14 +67,12 @@
   "toneTechnical": "Технический",
   "toneNeutral": "Нейтральный",
   "toneReplySameAsTranslate": "Как при переводе",
-
   "popupTo": "Кому:",
   "tabTranslate": "Перевести",
   "tabReply": "Ответить",
   "tabSummarize": "Резюме",
   "tabExplain": "Объяснить",
   "tabRefine": "Улучшить",
-
   "keyboardSetup": "Настройка клавиатуры",
   "bubbleSetup": "Настройка плавающей кнопки",
   "floatingBubble": "Плавающая кнопка",
@@ -98,7 +100,13 @@
   "devicesProLimit": "Тариф Pro допускает до 2 устройств.",
   "deviceCurrentThis": "Это устройство",
   "deviceLastUsed": "Последнее использование: {date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "Удалить",
   "removeDeviceConfirm": "Удалить это устройство? Ему потребуется войти заново.",
   "removeDeviceFailed": "Не удалось удалить устройство",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "Отменить подписку Pro? Pro останется до конца текущего периода.",
   "subscriptionCancelled": "Подписка закончится в день продления.",
   "subscriptionCancelFailed": "Не удалось отменить подписку",
-
   "voicePickerTitle": "Голос",
   "voiceDefault": "По умолчанию",
   "speedPickerTitle": "Скорость речи",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "Включите TransKey в настройках Специальных возможностей, чтобы «Вставить» записывал ответ в активное поле любого приложения.",
   "accessibilityEnabled": "Включено",
   "accessibilityDisabled": "Не включено — нажмите, чтобы открыть настройки",
-
   "feedbackTitle": "Отправить отзыв",
   "feedbackHint": "Расскажите, что вы думаете...",
   "feedbackSend": "Отправить",
@@ -135,12 +141,10 @@
   "feedbackHintFeature": "Что бы вы хотели, чтобы TransKey умел?",
   "feedbackHintOther": "Поделитесь своими мыслями...",
   "feedbackEmailLabel": "Email (необязательно, для ответа)",
-
   "selectLanguage": "Выберите язык",
   "searchLanguages": "Поиск языков...",
   "recent": "Недавние",
   "allLanguages": "Все языки",
-
   "login": "Войти",
   "signUp": "Регистрация",
   "logIn": "Войти",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "Аккаунт Pro уже зарегистрирован на максимальном числе устройств",
   "deviceLimitError": "Слишком много аккаунтов на этом устройстве",
   "googleSignInFailed": "Ошибка входа через Google: {error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "Вход через Google не настроен (отсутствует serverClientId)",
-  "googleSignInNoIdToken": "Вход через Google не вернул idToken — проверьте serverClientId",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "Вход через Google сейчас недоступен. Попробуйте другой способ входа.",
+  "googleSignInNoIdToken": "Вход через Google не завершён. Попробуйте ещё раз.",
   "proRequired": "Требуется тариф Pro",
   "noTextToTranslate": "Сначала введите текст",
   "errorGeneric": "Что-то пошло не так",
@@ -178,21 +187,48 @@
   "errorNetwork": "Нет подключения к интернету",
   "glossaryErrSyncFailed": "Не удалось синхронизировать словарь — проверьте подключение",
   "glossaryErrLimitReached": "Словарь заполнен (максимум {max} записей)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "Источник и перевод обязательны",
-
   "planFree": "Бесплатно",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "Пробный",
-
   "usageRequests": "{used}/{limit} запросов",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} символов",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "Пробный период заканчивается через {days} {days, plural, one{день} few{дня} many{дней} other{дня}}",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "Пробный период заканчивается сегодня",
   "trialEndsTomorrow": "Пробный период заканчивается завтра",
   "trialUpgradeNow": "Обновить сейчас",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "Срок вашей подписки истёк",
   "subscriptionExpiredRenew": "Продлить",
   "subscriptionEndsOn": "Заканчивается {date}",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "Подписка Mobile",
   "planProSubscription": "Подписка Pro",
   "discountFirstMonth": "−50% в первый месяц",
@@ -208,7 +250,6 @@
   "accountBannedBody": "Ваш аккаунт TransKey был заблокирован. Если вы считаете это ошибкой, свяжитесь со службой поддержки.",
   "accountBannedContact": "Связаться с поддержкой",
   "accountBannedLogout": "Выйти",
-
   "historyTitle": "История",
   "historySearchHint": "Поиск по истории...",
   "historyFilterAll": "Все",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "Разблокировать",
   "historyDetailLockAction": "Заблокировать",
   "historyDetailTtsLabel": "TTS",
-
   "glossaryTitle": "Словарь ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "Синхронизировать",
   "glossaryDeleteTitle": "Удалить запись",
   "glossaryDeleteBody": "Удалить \"{source}\"?",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "Достигнут лимит словаря ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "Источник и перевод обязательны",
   "glossarySyncFailed": "Не удалось синхронизировать словарь",
   "glossaryEditTitle": "Изменить запись",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "Перевод",
   "glossaryNamesLabel": "Имена в словаре — нажмите для вставки",
   "glossaryIsNameLabel": "Это имя человека",
-  "glossaryIsNameHint": "Помогает голосовому вводу распознать имя и указывает ИИ сохранить его точно.",
-
+  "glossaryIsNameHint": "Помогает голосовому вводу распознать имя и сохраняет его без изменений при переводе.",
   "upgradeScreenTitle": "Обновить TransKey",
   "upgradeChooseYourPlan": "Выберите свой тариф",
   "upgradeUnlockFullPower": "Раскройте полную мощь TransKey",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "Популярно",
   "upgradeTryFreeDays": "Попробуйте бесплатно 7 дней",
   "upgradeTrialActivated": "Пробный период активирован! {info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "Не удалось активировать пробный период",
   "upgradeCheckoutFailed": "Не удалось открыть оплату",
   "upgradeMobileSubtitle": "Все функции, только мобильно",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "Все платформы",
   "upgradeProFeat3": "Десктоп + мобильный",
   "upgradeFeatureColumn": "Функция",
-  "upgradeMobilePrice": "📱 Mobile · $3/mo",
+  "upgradeMobilePrice": "📱 Mobile · $4/mo",
   "upgradeProPrice": "💻 Pro · $6/mo",
   "upgradeFooterHint": "📱 Mobile: выгоднее, если вы пользуетесь только телефоном\n💻 Pro: работает и на телефоне, и на десктопе",
   "comparisonReplyTranslate": "Перевод ответа",
   "comparisonMobileApps": "📱 iOS и Android",
   "comparisonDesktop": "💻 Десктоп",
-
   "nudgeUnlock": "Разблокировать {feature}",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "Перейдите на Pro, чтобы пользоваться этой функцией\nна всех платформах.",
   "nudgeChoosePlan": "Выберите тариф, подходящий именно вам.",
   "nudgeMaybeLater": "Может, позже",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "Перейти на Pro",
   "nudgeUpgradeToProSubtitle": "Используйте на всех платформах — десктоп + мобильный",
-  "nudgePriceMobile": "$3/month",
-  "nudgePriceProMonthly": "$6/month",
-
+  "nudgePriceMobile": "{price}/мес",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/мес",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "Добро пожаловать в TransKey",
   "onboardWelcomeSubtitle": "Переводите текст в реальном времени на\nболее чем 20 языков мгновенно.",
   "onboardChooseTitle": "Выберите ваш язык",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "Начнём",
   "onboardStartedSubtitle": "Войдите или создайте бесплатный аккаунт,\nчтобы начать переводить прямо сейчас.",
   "onboardGetStarted": "Начать",
-
   "setupTitle": "Настройка клавиатуры",
   "setupOpenSettings": "Открыть настройки",
   "setupOpenPermissions": "Открыть разрешения",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "Выделите текст в любом приложении → нажмите «Поделиться» → выберите TransKey. Или используйте плавающую кнопку после копирования текста.",
   "setupStep5Title": "Умные функции",
   "setupStep5Desc": "Перевод, Ответ, Резюме, Объяснение и Улучшение — всё на основе ИИ. Функции Pro отмечены значком замка.",
-
   "guideTitle": "Как использовать",
   "guideSubtitle": "Все способы получения текста для каждой функции",
   "guideIntroTitle": "Для получения текста не требуются особые разрешения.",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "Через кнопку «Поделиться»",
   "guideInputShareDesc": "Внутри любого приложения выделите текст → нажмите «Поделиться» → выберите TransKey.",
   "guideInputMenuTitle": "Из меню выделения текста → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "Выделите текст в любом приложении — появится всплывающее меню с «Копировать»/«Поделиться». Нажмите ⋮ для дополнительных опций и выберите TransKey: {feature}.",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "Специальные возможности — по желанию, только для автовставки",
   "guideReplyA11yBody": "Если для TransKey включены Специальные возможности, ваш ответ вставляется прямо в окно чата, где вы печатаете. Без дополнительных действий.\n\nЕсли не хотите включать, ответ будет скопирован — просто удерживайте поле чата и нажмите «Вставить».",
-
   "appPermissions": "Разрешения приложения",
   "permissionsAllSet": "Всё настроено — нажмите для просмотра",
   "permissionsNeedSetup": "Нажмите, чтобы выдать необходимые разрешения",
-
   "setupTransKey": "Настройте TransKey",
   "setupTransKeyBody": "Выдайте разрешение на плавающую кнопку, чтобы начать. Специальные возможности по желанию и нужны только для вставки ответа одним касанием.",
   "permFloatingBubble": "Плавающая кнопка",
@@ -369,31 +461,34 @@
   "permSkipHint": "Специальные возможности необязательны. Без них подсказки ответа попадут в буфер обмена, и вам придётся вставлять их самостоятельно.",
   "permSkipForNow": "Пропустить пока",
   "permFinishedCheck": "Я закончил — проверить",
-
   "voiceTooltip": "Говорите, чтобы ввести",
   "voiceListening": "Слушаю…",
   "voiceNeedsLang": "Чтобы пользоваться голосом, задайте конкретный исходный язык",
   "voicePermDenied": "Доступ к микрофону запрещён",
   "voiceUnsupported": "Голосовой ввод недоступен на этом устройстве",
   "voicePickSourceLang": "Голосовому вводу нужен конкретный язык. Выберите исходный язык и снова нажмите микрофон.",
-
   "paywallTitle": "Достигнут дневной лимит",
   "paywallBody": "Вы исчерпали сегодняшнюю бесплатную квоту: 20 запросов / 2 000 символов. Посмотрите короткую рекламу, чтобы продолжить, или обновите тариф для безлимитного использования. Бесплатная квота обновляется в полночь.",
   "paywallWatchAdCta": "Посмотреть рекламу для продолжения",
   "paywallWatchAdSub": "Получайте дополнительные запросы и символы за каждую рекламу. Без ограничений на число реклам в день.",
   "paywallUpgradeCta": "Обновить — без лимитов, без рекламы",
-  "paywallUpgradeSub": "От $3/month. Отменить можно в любой момент.",
+  "paywallUpgradeSub": "От {price}/month. Отменить можно в любой момент.",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "Может, позже",
   "paywallLoading": "Загрузка…",
   "paywallAdNotComplete": "Реклама не была досмотрена — попробуйте снова, чтобы получить награду.",
   "paywallCreditFailed": "Не удалось начислить награду. Попробуйте снова через мгновение.",
   "quotaWatchAd": "+ Посмотреть рекламу",
   "quotaRewardGranted": "Награда зачислена в сегодняшнюю квоту",
-
   "historyEmpty": "Истории переводов пока нет",
   "glossaryEmpty": "Словарь пуст",
   "glossaryEmptyAddCta": "Добавить запись",
-
   "captureKeepaliveTitle": "Окно быстрого повторного сканирования",
   "captureKeepaliveHint": "двойной тап по кнопке = повторное сканирование",
   "captureKeepaliveExplain": "После сканирования экрана сохраняйте разрешение на захват экрана активным, чтобы можно было дважды нажать кнопку (или снова выбрать «Сканировать экран») без системного запроса разрешения. Более длинное окно экономит нажатия, но индикатор трансляции остаётся видимым и слегка нагревает устройство.",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "Меньше времени трансляции, но чаще запросы разрешения.",
   "captureKeepaliveLongHint": "Максимальная скорость повторного сканирования. Индикатор трансляции остаётся включён дольше.",
   "captureKeepaliveMinutes": "{count} мин",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "Камера",
+  "cameraCapture": "Снять",
+  "cameraRetake": "Переснять",
+  "cameraCopyAll": "Копировать всё",
+  "cameraNoText": "Текст не обнаружен. Попробуйте снова.",
+  "cameraTapShowTranslations": "Нажмите, чтобы показать перевод",
+  "cameraLowQuality": "Низкое качество",
+  "cameraTranslating": "Перевод...",
+  "cameraTranslate": "Перевести",
+  "cameraPermission": "Для использования этой функции требуется разрешение камеры.",
+  "cameraSettingsTitle": "Настройки камеры",
+  "cameraSettingsReset": "Сбросить",
+  "cameraSettingsConfidence": "Скрывать нечёткий текст",
+  "cameraSettingsConfidenceHint": "Скрывает текст, который камера читает нечётко. Выше = строже — чище результат, но может пропустить бледный текст.",
+  "cameraOriginalLabel": "Оригинал",
+  "cameraSettingsHideLow": "Скрыть блоки низкого качества",
+  "cameraSettingsHideLowHint": "Также скрывать блоки выше порога, но ниже уровня предупреждения. Для чистых документов.",
+  "cameraSettingsShowOriginal": "Показывать исходный текст",
+  "cameraSettingsShowOriginalHint": "Всегда показывать исходный текст под каждой карточкой перевода.",
+  "cameraSettingsOpacity": "Непрозрачность наложения",
+  "cameraSettingsOpacityHint": "Прозрачность фона карточки. Меньше = фото сзади видно лучше.",
+  "cameraSceneAuto": "Авто",
+  "cameraSceneDocument": "Документ",
+  "cameraSceneMenu": "Меню",
+  "cameraSceneSign": "Вывеска",
+  "cameraSceneScreenshot": "Скриншот",
+  "cameraWhatIsThis": "Что это?",
+  "cameraWhatIsThisHint": "Коснитесь текста в предпросмотре, чтобы спросить",
+  "cameraExplainTitle": "Что это?",
+  "cameraEditTextTitle": "Изменить текст",
+  "cameraReExplain": "Объяснить заново",
+  "cameraExplainEmpty": "Объяснение недоступно.",
+  "cameraExplainError": "Не удалось получить объяснение. Повторите попытку.",
+  "cameraResultExplainHint": "Удерживайте карточку, чтобы спросить",
+  "cameraExplainDisclaimer": "Только для справки — реальное значение может отличаться",
+  "phrasebookTitle": "Разговорник",
+  "phrasebookEmpty": "Разговорник пуст. Используйте камеру, чтобы распознать текст, затем нажмите Сохранить.",
+  "phrasebookSave": "Сохранить",
+  "phrasebookSaved": "Сохранено",
+  "phrasebookSaveFailed": "Не удалось сохранить. Повторите попытку.",
+  "phrasebookTitleTooLong": "Заголовок слишком длинный (макс. 1000 символов). Сократите и повторите.",
+  "phrasebookDelete": "Удалить",
+  "phrasebookDeleteConfirm": "Удалить из разговорника?",
+  "phrasebookDeleted": "Удалено",
+  "phrasebookNote": "Заметка",
+  "phrasebookNoteHint": "напр.: заказано в ... — слишком остро",
+  "phrasebookNoteSave": "Сохранить заметку",
+  "phrasebookCopy": "Копировать",
+  "phrasebookViewAll": "Открыть разговорник",
+  "phrasebookCategoryAll": "Все",
+  "phrasebookCategoryMenu": "Меню",
+  "phrasebookCategoryPlace": "Место",
+  "phrasebookCategoryDocument": "Документ",
+  "phrasebookCategoryOther": "Другое",
+  "phrasebookCategoryChange": "Изменить категорию",
+  "cameraTipsTitle": "Советы по камере",
+  "cameraTipsGotIt": "Понятно",
+  "cameraTip1Title": "Выберите режим",
+  "cameraTip1Body": "Выберите, что вы сканируете, для лучшего результата: меню, вывеску, документ — или Auto для всего.",
+  "cameraTip2Title": "Выберите языки",
+  "cameraTip2Body": "Укажите язык, который читаете, и язык перевода (вверху слева). Если вывеска или текст распознаются плохо, выберите язык чтения вместо Auto.",
+  "cameraTip3Title": "Спросите «Что это?»",
+  "cameraTip3Body": "Удерживайте результат, чтобы узнать, что это за блюдо или место — и услышать, как это произносится.",
+  "cameraTip4Title": "Перетащите для удаления",
+  "cameraTip4Body": "Перетащите карточку в корзину внизу, чтобы удалить ненужные блоки.",
+  "cameraTip5Title": "Сканируйте фото из галереи",
+  "cameraTip5Body": "Нажмите значок галереи рядом с кнопкой съёмки, чтобы перевести фото из телефона."
 }

@@ -91,6 +91,10 @@
 	<string>TransKey uses the microphone for voice input — speak instead of typing the text you want to translate.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>TransKey transcribes your speech on-device (or via Apple's Speech service) so you can dictate text instead of typing it.</string>
+	<!-- Camera translate: snapshot-mode OCR on live camera feed.
+	     iOS shows this string in the runtime permission alert. -->
+	<key>NSCameraUsageDescription</key>
+	<string>TransKey uses the camera to scan and translate text from menus, signs, and documents.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

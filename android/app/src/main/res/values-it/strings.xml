@@ -97,4 +97,5 @@
     <string name="process_text_summarize">TransKey: Riassumi</string>
     <string name="process_text_explain">TransKey: Spiega</string>
     <string name="process_text_refine">TransKey: Migliora</string>
+    <string name="bubble_camera">Fotocamera</string>
 </resources>

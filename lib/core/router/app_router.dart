@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_provider.dart';
+import '../tracking/tracking_provider.dart';
+import '../tracking/tracking_router_observer.dart';
 import '../../features/auth/screens/auth_screen.dart';
 import '../../features/auth/screens/banned_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
@@ -16,6 +18,9 @@ import '../../features/settings/screens/change_password_screen.dart';
 import '../../features/settings/screens/devices_screen.dart';
 import '../../features/settings/screens/guide_screen.dart';
 import '../../features/settings/screens/subscription_screen.dart';
+import '../../features/translate/screens/camera_screen.dart';
+import '../../features/phrasebook/screens/phrasebook_screen.dart';
+import '../../features/translate/screens/explain_screen.dart';
 import '../../features/translate/screens/home_screen.dart';
 import '../../features/upgrade/screens/upgrade_screen.dart';
 
@@ -40,9 +45,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _AuthRefreshNotifier(ref);
   ref.onDispose(notifier.dispose);
 
+  final tracking = ref.read(trackingServiceProvider);
   final router = GoRouter(
     initialLocation: '/',
     refreshListenable: notifier,
+    observers: [TrackingRouterObserver(tracking)],
     redirect: (context, state) {
       final authState = ref.read(authStateProvider);
       // Still loading — don't redirect yet
@@ -111,6 +118,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/guide',
         builder: (context, state) => const GuideScreen(),
+      ),
+      GoRoute(
+        path: '/camera',
+        builder: (context, state) => const CameraScreen(),
+      ),
+      GoRoute(
+        path: '/phrasebook',
+        builder: (context, state) => const PhrasebookScreen(),
+      ),
+      GoRoute(
+        path: '/explain',
+        // Native bubble Lens overlay routes here on long-press of a block so
+        // the user can run "What is this?" on the region-selected text. The
+        // text travels in [state.extra] (a Dart string). Empty/null text
+        // collapses to a no-op screen that immediately pops.
+        builder: (context, state) {
+          final text = state.extra is String ? state.extra as String : '';
+          return ExplainScreen(text: text);
+        },
       ),
     ],
   );

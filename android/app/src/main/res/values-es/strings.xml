@@ -91,4 +91,5 @@
     <string name="bubble_notification_turn_off">Desactivar</string>
     <string name="bubble_overlay_perm_needed">Activa \'Mostrar sobre otras apps\' para usar traducciones flotantes</string>
     <string name="bubble_clipboard_empty_error">Portapapeles vacío.\nCopia primero el texto, luego toca la burbuja.</string>
+    <string name="bubble_camera">Cámara</string>
 </resources>

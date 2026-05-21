@@ -253,6 +253,15 @@ internal fun BubbleService.showLensOverlay(bitmap: Bitmap, items: List<LensOverl
     val overlay = LensOverlayView(
         this, bitmap, items,
         onDismissOutsideTap = { hideLensOverlay() },
+        // Long-press any block → close the overlay + send the original
+        // (source-language) text to Flutter, which opens the "What is this?"
+        // sheet. Lets the user explain a 1-2 word region selection — handy
+        // for unfamiliar names on a menu / sign that the translation alone
+        // doesn't reveal the meaning of.
+        onLongPressBlock = { sourceText ->
+            hideLensOverlay()
+            openExplainScreen(sourceText)
+        },
     )
     lensOverlayView = overlay
     windowManager?.addView(overlay, buildPickerLayoutParams())

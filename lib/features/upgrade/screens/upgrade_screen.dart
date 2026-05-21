@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../providers/plans_provider.dart';
@@ -22,6 +23,15 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
   String get _currentPlan {
     final auth = ref.read(authStateProvider).valueOrNull;
     return auth?.session?.plan ?? 'free';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(trackingServiceProvider).event('upgrade_view', properties: {
+      'source':       'screen',
+      'current_plan': _currentPlan,
+    });
   }
 
   @override

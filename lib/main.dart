@@ -10,10 +10,14 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api/dio_client.dart';
+import 'core/auth/auth_provider.dart';
 import 'core/auth/session_store.dart';
 import 'core/bubble/bubble_manager.dart';
 import 'core/locale/locale_provider.dart';
 import 'core/router/app_router.dart';
+import 'core/tracking/crash_reporter.dart';
+import 'core/tracking/tracking_provider.dart';
+import 'features/translate/providers/features_provider.dart';
 import 'features/history/providers/history_provider.dart';
 import 'features/translate/providers/language_settings_provider.dart';
 import 'features/translate/models/translate_models.dart';
@@ -25,33 +29,109 @@ import 'l10n/generated/app_localizations.dart';
 const _bubbleChannel = MethodChannel('transkey/bubble');
 late final ProviderContainer _rootContainer;
 
+/// App-level ScaffoldMessenger. Without an explicit key, MaterialApp's default
+/// messenger is per-Scaffold and snackbars shown right after a route pop can
+/// land on a disposing Scaffold's messenger — the snackbar mounts but its
+/// auto-dismiss timer never starts (status callback doesn't fire). Routing
+/// every snackbar through this key uses the SAME messenger across all routes,
+/// so the lifecycle is consistent regardless of which screen called.
+final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // dotenv.load is the only true cold-start dependency before we can build the
-  // ApiClient — fire it first; the bubble auto-start and ProviderContainer
-  // creation don't block the first frame.
-  await dotenv.load(fileName: '.env');
+  // Wrap the entire boot in a zone so async errors that escape the widget
+  // tree (unawaited futures, plugin handlers) still reach the crash reporter
+  // instead of dying silently in release.
+  runZonedGuarded<void>(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      // dotenv.load is the only true cold-start dependency before we can build the
+      // ApiClient — fire it first; the bubble auto-start and ProviderContainer
+      // creation don't block the first frame.
+      await dotenv.load(fileName: '.env');
 
-  _rootContainer = ProviderContainer();
-  _wireBubbleChannel();
+      _rootContainer = ProviderContainer();
+      _wireBubbleChannel();
 
-  // Initialise the AdMob SDK as early as possible so by the time a free
-  // user exhausts their daily quota and the paywall offers "Watch ad",
-  // a rewarded video has already been preloaded. MobileAds.initialize()
-  // is idempotent and fast (~50 ms) once the platform side bootstraps.
-  // Fire-and-forget; pre-loading the actual ad happens lazily inside
-  // the paywall flow so the first frame doesn't wait on a network ad
-  // fetch.
-  unawaited(MobileAds.instance.initialize());
+      // Tracking bootstrap (session id, platform/device, first app_open) +
+      // crash reporter. Crash hooks MUST install before runApp so errors
+      // during the first frame are captured. Init is fire-and-forget
+      // network-wise: events queue until the API is reachable.
+      final tracking = await bootstrapTracking(_rootContainer);
+      CrashReporter(tracking).install();
+      // Tag every subsequent event with the logged-in user's id + plan, so
+      // funnels can split by plan ("conversion to pro by trial cohort") and
+      // crashes link to a user when one logged in. Fires immediately with
+      // the persisted session, and again on every login / logout / plan
+      // change without each call site having to remember.
+      _rootContainer.listen<AsyncValue<AuthState>>(
+        authStateProvider,
+        (previous, next) {
+          final session = next.valueOrNull?.session;
+          tracking.setUserId(session?.userId);
+          tracking.setUserPlan(session?.plan);
+          // Plan-upgrade detector: free → pro/trial fires
+          // `upgrade_purchase_success`. The actual purchase happens on
+          // LemonSqueezy + a webhook; the mobile observes the upgraded plan
+          // when /auth/me refreshes. This is the most reliable conversion
+          // signal we can get from the client.
+          final previousPlan = previous?.valueOrNull?.session?.plan;
+          final nextPlan = session?.plan;
+          if (previousPlan != null &&
+              nextPlan != null &&
+              previousPlan != nextPlan &&
+              previousPlan == 'free' &&
+              (nextPlan == 'pro' || nextPlan == 'trial' || nextPlan == 'mobile')) {
+            tracking.event('upgrade_purchase_success', properties: {
+              'from_plan': previousPlan,
+              'to_plan':   nextPlan,
+            });
+          }
+          // Any auth-state change can shift which features are allowed:
+          //   - login: free → newly-known plan
+          //   - logout: plan → freeDefaults
+          //   - /auth/me refresh after webhook: plan changed
+          // Refresh featuresProvider so the UI gates re-evaluate. Cheap —
+          // single /features call gated by JWT.
+          if (previousPlan != nextPlan) {
+            unawaited(_rootContainer.read(featuresProvider.notifier).refresh());
+          }
+        },
+        fireImmediately: true,
+      );
 
-  runApp(UncontrolledProviderScope(
-    container: _rootContainer,
-    child: const TransKeyApp(),
-  ));
+      // Initialise the AdMob SDK as early as possible so by the time a free
+      // user exhausts their daily quota and the paywall offers "Watch ad",
+      // a rewarded video has already been preloaded. MobileAds.initialize()
+      // is idempotent and fast (~50 ms) once the platform side bootstraps.
+      // Fire-and-forget; pre-loading the actual ad happens lazily inside
+      // the paywall flow so the first frame doesn't wait on a network ad
+      // fetch.
+      unawaited(MobileAds.instance.initialize());
 
-  // Fire-and-forget: don't make the first frame wait on platform channels.
-  // tryAutoStart() reads SharedPreferences + invokes the Android bubble plugin.
-  unawaited(_rootContainer.read(bubbleManagerProvider.notifier).tryAutoStart());
+      runApp(UncontrolledProviderScope(
+        container: _rootContainer,
+        child: const TransKeyApp(),
+      ));
+
+      // Fire-and-forget: don't make the first frame wait on platform channels.
+      // tryAutoStart() reads SharedPreferences + invokes the Android bubble plugin.
+      unawaited(_rootContainer.read(bubbleManagerProvider.notifier).tryAutoStart());
+    },
+    (error, stack) {
+      // Last-resort sink for anything the FlutterError / PlatformDispatcher
+      // hooks miss. Container may not be ready if dotenv crashed pre-bootstrap;
+      // guard the lookup so the crash path itself can't throw.
+      try {
+        _rootContainer.read(trackingServiceProvider).crash(
+              name:    error.runtimeType.toString(),
+              message: error.toString(),
+              stack:   stack.toString(),
+              fatal:   true,
+              properties: {'source': 'zone_guard_main'},
+            );
+      } catch (_) {/* nothing else we can do */}
+    },
+  );
 }
 
 // ── Bubble channel: Android (BubbleService) ↔ Flutter ↔ Android (deliverResult) ──
@@ -88,6 +168,38 @@ void _wireBubbleChannel() {
       }
       return null;
     }
+    if (call.method == 'openCamera') {
+      try {
+        _rootContainer.read(trackingServiceProvider).event(
+              'bubble_open_camera',
+            );
+        final router = _rootContainer.read(routerProvider);
+        router.push('/camera');
+      } catch (error) {
+        debugPrint('[bubbleChannel] openCamera push failed: $error');
+      }
+      return null;
+    }
+    if (call.method == 'openExplain') {
+      // Bubble Lens overlay long-press hands us the source-language text of
+      // the tapped region. Route to a thin /explain screen that opens the
+      // "What is this?" sheet over a blank scaffold and pops itself when
+      // the sheet closes — same UX as tapping a live OCR block on camera.
+      try {
+        final args = (call.arguments as Map?)?.cast<Object?, Object?>() ?? {};
+        final text = (args['text'] as String?)?.trim();
+        if (text == null || text.isEmpty) return null;
+        _rootContainer.read(trackingServiceProvider).event(
+          'bubble_open_explain',
+          properties: {'length': text.length},
+        );
+        final router = _rootContainer.read(routerProvider);
+        router.push('/explain', extra: text);
+      } catch (error) {
+        debugPrint('[bubbleChannel] openExplain push failed: $error');
+      }
+      return null;
+    }
     if (call.method == 'translateText') {
       final args = (call.arguments as Map?)?.cast<Object?, Object?>() ?? {};
       final text = args['text'] as String?;
@@ -96,6 +208,15 @@ void _wireBubbleChannel() {
       final reqId = (args['requestId'] as num?)?.toInt() ?? -1;
       final replyToOriginal = args['replyToOriginal'] as String?;
       if (text != null && text.isNotEmpty) {
+        _rootContainer.read(trackingServiceProvider).event(
+          'bubble_translate',
+          properties: {
+            'mode':        mode,
+            'target_lang': targetLang,
+            'length':      text.length,
+            'has_context': replyToOriginal != null,
+          },
+        );
         // Run async without awaiting so the Result.success() returns immediately.
         unawaited(_translateForBubble(text, mode, targetLang, reqId, replyToOriginal: replyToOriginal));
       }
@@ -115,6 +236,15 @@ void _wireBubbleChannel() {
       final targetLang = (args['targetLang'] as String?) ?? 'en';
       final sourceLang = args['sourceLang'] as String?;
       if (texts.isEmpty) return <String>[];
+      _rootContainer.read(trackingServiceProvider).event(
+        'lens_translate',
+        properties: {
+          'target_lang': targetLang,
+          'source_lang': sourceLang ?? 'auto',
+          'block_count': texts.length,
+          'total_chars': texts.fold<int>(0, (sum, t) => sum + t.length),
+        },
+      );
       return await _translateBatchForLens(texts, targetLang, sourceLang);
     }
     return null;
@@ -368,6 +498,7 @@ class TransKeyApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'TransKey',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,

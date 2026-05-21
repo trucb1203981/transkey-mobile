@@ -1007,6 +1007,77 @@ class BubbleService : Service() {
         }
     }
 
+    /** Open the Flutter camera screen for camera translate.
+     *
+     * Two steps — BOTH required:
+     *   1. Push the /camera route on the shared cached FlutterEngine
+     *      (MainActivity reuses this same engine via provideFlutterEngine,
+     *      so the route we push here is what it will display).
+     *   2. Bring MainActivity to the FOREGROUND. The bubble floats over
+     *      other apps while our app is backgrounded — pushing the route
+     *      alone leaves the camera invisible (the bug: "nhấn camera trên
+     *      popup không thấy mở"). startActivity surfaces the app so the
+     *      user actually sees the camera screen.
+     */
+    internal fun openCameraScreen() {
+        val engine = TransKeyApp.engine
+        if (engine != null) {
+            try {
+                io.flutter.plugin.common.MethodChannel(
+                    engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+                ).invokeMethod("openCamera", null)
+            } catch (error: Exception) {
+                android.util.Log.w("TKBubble", "openCamera invoke failed: ${error.message}")
+            }
+        }
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                )
+            }
+            startActivity(intent)
+        } catch (error: Exception) {
+            android.util.Log.w("TKBubble", "openCamera bring-to-front failed: ${error.message}")
+        }
+    }
+
+    /**
+     * Bring the Flutter activity foreground and open the "What is this?"
+     * explain sheet for [text]. Used when the user long-presses a block in
+     * the Lens overlay (region-select or full-screen scan) — the bubble's
+     * native overlay can't host a sheet, so we hand control back to Flutter.
+     * Mirrors [openCameraScreen]'s two-step pattern (invokeMethod first so
+     * the Dart side queues navigation while MainActivity finishes coming to
+     * front), with a `text` argument carried in both channels.
+     */
+    internal fun openExplainScreen(text: String) {
+        val engine = TransKeyApp.engine
+        if (engine != null) {
+            try {
+                io.flutter.plugin.common.MethodChannel(
+                    engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+                ).invokeMethod("openExplain", mapOf("text" to text))
+            } catch (error: Exception) {
+                android.util.Log.w("TKBubble", "openExplain invoke failed: ${error.message}")
+            }
+        }
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                )
+            }
+            startActivity(intent)
+        } catch (error: Exception) {
+            android.util.Log.w("TKBubble", "openExplain bring-to-front failed: ${error.message}")
+        }
+    }
+
     /**
      * Variant of [handleScanRequest] that asks ScreenCaptureService to skip
      * immediate OCR. After capture, BubbleService receives a bitmap and
@@ -1305,7 +1376,15 @@ class BubbleService : Service() {
                 val mode = ScreenCaptureManager.pendingMode
                 hideLensProgress()
                 if (mode == MODE_TRANSLATE) {
-                    ScreenCaptureManager.blocks = offset
+                    // Region mode = the user deliberately drew a box around
+                    // the exact text they want. Treat that selection as ONE
+                    // unit: aggregate all OCR blocks inside the box into a
+                    // single block so the overlay shows one coherent
+                    // translation card (and the translator gets the full
+                    // selected passage as one prompt) instead of N
+                    // fragmented chips. Mirrors the camera's
+                    // _aggregateBlocks for document/sign/auto scenes.
+                    ScreenCaptureManager.blocks = aggregateRegionBlocks(offset)
                     handleLensReady()
                 } else {
                     val joined = offset.joinToString("\n") { it.text }.trim()
@@ -1315,6 +1394,46 @@ class BubbleService : Service() {
                 }
             }
         }
+    }
+
+    /**
+     * Collapse the OCR blocks from a user-selected region into ONE block.
+     * Text is concatenated in reading order (top-to-bottom; left-to-right
+     * within a visual row using a 12 px row tolerance) joined by "\n";
+     * the bounding box is the union of all blocks so the single overlay
+     * card sits over the whole selected region.
+     *
+     * Why: in region mode the user has already done the segmentation by
+     * drawing the box — splitting their selection back into multiple
+     * cards is redundant and produces fragmented translations. One block
+     * = one coherent translation, and the LLM sees the full passage.
+     */
+    private fun aggregateRegionBlocks(
+        blocks: List<OcrHelper.Block>,
+    ): List<OcrHelper.Block> {
+        if (blocks.size < 2) return blocks
+        val sorted = blocks.sortedWith(Comparator { a, b ->
+            val dy = a.bounds.top - b.bounds.top
+            if (kotlin.math.abs(dy) > 12) dy else a.bounds.left - b.bounds.left
+        })
+        val text = sorted
+            .map { it.text.trim() }
+            .filter { it.isNotEmpty() }
+            .joinToString("\n")
+            .trim()
+        var left = Int.MAX_VALUE
+        var top = Int.MAX_VALUE
+        var right = Int.MIN_VALUE
+        var bottom = Int.MIN_VALUE
+        for (block in sorted) {
+            left = minOf(left, block.bounds.left)
+            top = minOf(top, block.bounds.top)
+            right = maxOf(right, block.bounds.right)
+            bottom = maxOf(bottom, block.bounds.bottom)
+        }
+        return listOf(
+            OcrHelper.Block(text, android.graphics.Rect(left, top, right, bottom)),
+        )
     }
 
     /**

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../core/voice/voice_locales.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../providers/language_settings_provider.dart';
@@ -37,6 +38,15 @@ mixin HomeVoiceMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   String _speechPrefix = '';
   bool _isListening = false;
 
+  // Tracking helpers: the SpeechToText instance is REUSED across sessions
+  // and its onStatus/onError callbacks are registered once via initialize()
+  // — the closure captures `sourceLang` from the FIRST call, which is wrong
+  // when the user picks a different source lang between sessions. Mirror it
+  // into a state variable that the callbacks read live. `_completeFired`
+  // dedupes when both 'done' AND 'notListening' fire for the same session.
+  String _activeVoiceLang = '';
+  bool _completeFired = false;
+
   bool get isListening => _isListening;
 
   void _setListening(bool value) {
@@ -54,6 +64,10 @@ mixin HomeVoiceMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (_isListening) {
       await _speech?.stop();
       _setListening(false);
+      // User-tap-stop: speech_to_text emits `notListening` here, not `done`,
+      // so the onStatus branch below wouldn't fire a complete event. Fire
+      // it manually with the partial text the user managed to dictate.
+      _fireVoiceComplete(success: true, source: 'user_stop');
       return;
     }
     // Android SpeechRecognizer needs a concrete locale — it CAN'T
@@ -92,10 +106,20 @@ mixin HomeVoiceMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     }
     final speech = _speech ??= stt.SpeechToText();
     final available = await speech.initialize(
-      onError: (_) => _setListening(false),
+      // Both callbacks read `_activeVoiceLang` (state) instead of capturing
+      // `sourceLang` in their closures — `initialize` registers handlers
+      // ONCE and reusing the SpeechToText across sessions with new langs
+      // would otherwise emit the stale lang from the first session.
+      onError: (_) {
+        _setListening(false);
+        _fireVoiceComplete(success: false, source: 'plugin_error');
+      },
       onStatus: (status) {
         if (status == 'done' || status == 'notListening') {
           _setListening(false);
+          if (status == 'done') {
+            _fireVoiceComplete(success: true, source: 'speech_done');
+          }
         }
       },
     );
@@ -111,7 +135,11 @@ mixin HomeVoiceMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     final localeId = bcp47ForLang(sourceLang);
 
     _speechPrefix = voiceTextController.text;
+    _activeVoiceLang = sourceLang;
+    _completeFired = false;
     _setListening(true);
+    ref.read(trackingServiceProvider).event('voice_input_start',
+        properties: {'lang': sourceLang});
     await speech.listen(
       localeId: localeId,
       // 60s session + 6s pause tolerance: previous 30s/3s defaults were
@@ -149,5 +177,21 @@ mixin HomeVoiceMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (_isListening) {
       await _speech?.stop();
     }
+  }
+
+  /// Single place that fires `voice_input_complete`. Dedupes when both
+  /// `done` and `notListening` arrive for the same session, and reads the
+  /// CURRENT lang from state (not a stale closure).
+  void _fireVoiceComplete({required bool success, required String source}) {
+    if (_completeFired) return;
+    _completeFired = true;
+    final length = voiceTextController.text.length - _speechPrefix.length;
+    ref.read(trackingServiceProvider).event('voice_input_complete',
+        properties: {
+          'lang':    _activeVoiceLang,
+          'success': success,
+          'length':  length < 0 ? 0 : length,
+          'source':  source,
+        });
   }
 }

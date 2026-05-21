@@ -224,9 +224,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     super.dispose();
   }
 
-  bool get _isProUser {
-    final auth = ref.read(authStateProvider).valueOrNull;
-    return auth?.session?.isPro ?? false;
+  /// Current admin-config-aware feature flags. UI gates read THIS instead
+  /// of hardcoding `isPro` so that an admin toggling /admin/features at
+  /// runtime is reflected on the next app open without an app update.
+  /// Uses `ref.watch` so when /features resolves (or refreshes) the gates
+  /// re-evaluate and lock icons flip live without manual rebuild.
+  FeatureFlags get _features => ref.watch(featuresProvider).flags;
+
+  bool _isModeAllowed(TranslateMode mode) {
+    final flags = _features;
+    switch (mode) {
+      case TranslateMode.translate:
+        return flags.translate;
+      case TranslateMode.reply:
+        return flags.replyTranslate;
+      case TranslateMode.summarize:
+        return flags.summarize;
+      case TranslateMode.explain:
+        return flags.explain;
+      case TranslateMode.refine:
+        return flags.refine;
+    }
   }
 
   void _swapLanguages() {
@@ -290,11 +308,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
+  /// Camera entry point. Gated on the server-side `camera` feature flag —
+  /// admin can toggle per plan via /admin/features. Free users on a plan
+  /// where camera is disabled see the upgrade nudge instead of opening
+  /// the screen and hitting a 403 on the first capture.
+  void _handleCameraTap() {
+    if (!_features.camera) {
+      final l = AppLocalizations.of(context)!;
+      UpgradeNudgeSheet.show(context, featureName: l.cameraTitle);
+      return;
+    }
+    context.push('/camera');
+  }
+
   void _handleAction(TranslateMode mode) {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    if (mode.requiresPro && !_isProUser) {
+    if (!_isModeAllowed(mode)) {
       UpgradeNudgeSheet.show(context, featureName: mode.label);
       return;
     }
@@ -374,7 +405,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: IndexedStack(
@@ -400,22 +430,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentTab,
-        onDestinationSelected: (i) => setState(() {
+      // Floating camera button + 4 standard tabs around it.
+      //
+      // Design (Instagram / TikTok / Snapchat pattern):
+      //   ┌───────────────────────────────────────┐
+      //   │                  ●                    │ ← floating camera
+      //   │  Translate │ History │ Glossary │ Set │ ← 4 standard tabs
+      //   └───────────────────────────────────────┘
+      //
+      // The Material 3 NavigationBar can't host a "raised" tab so we
+      // overlay a circular Material widget via a Stack that overflows
+      // the bottomNavigationBar slot. The FAB-style button sits above
+      // the divider between History and Glossary — visually it lands
+      // in the center 1/4-1/4 boundary, which thumb-reach studies
+      // (Steven Hoober, 2014) put at the natural arc midpoint for a
+      // right-hand single-thumb grip.
+      bottomNavigationBar: _BottomBarWithCamera(
+        currentTab: _currentTab,
+        onTabChanged: (i) => setState(() {
           _currentTab = i;
           _visitedTabs.add(i);
         }),
-        destinations: [
-          NavigationDestination(
-              icon: const Icon(Icons.translate), label: l.translate),
-          NavigationDestination(
-              icon: const Icon(Icons.history), label: l.history),
-          NavigationDestination(
-              icon: const Icon(Icons.menu_book), label: l.glossary),
-          NavigationDestination(
-              icon: const Icon(Icons.settings), label: l.settings),
-        ],
+        onCameraTap: _handleCameraTap,
       ),
     );
   }
@@ -604,9 +640,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           }),
           const SizedBox(height: AppSpacing.md),
 
+          // Camera moved to bottom NavigationBar (4th tab). Don't pass
+          // onCamera so the home FeatureButtons row doesn't render the
+          // duplicate camera button — bottom-bar entry is the single
+          // discoverable surface for Camera now.
           FeatureButtons(
             isDark: isDark,
-            isPro: _isProUser,
+            features: _features,
             onAction: _handleAction,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -662,5 +702,297 @@ class _LazyTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isVisited) return const SizedBox.shrink();
     return builder();
+  }
+}
+
+/// Modern bottom navigation — custom layout instead of Material 3's
+/// stock NavigationBar so we can get:
+///   • Rounded top corners + soft elevated shadow (lifts the bar
+///     visually, signals "this is a surface, not a stripe")
+///   • Pill-shaped indicator behind the selected tab (primary tint)
+///   • Floating gradient Camera button raised above the bar's center
+///     (Instagram / TikTok primary-action pattern)
+///   • Smooth 200ms cross-fade between selected / idle tab states
+///   • Theme-aware: tints adapt to dark/light mode without hardcoded
+///     colors
+class _BottomBarWithCamera extends StatelessWidget {
+  const _BottomBarWithCamera({
+    required this.currentTab,
+    required this.onTabChanged,
+    required this.onCameraTap,
+  });
+
+  final int currentTab;
+  final ValueChanged<int> onTabChanged;
+  final VoidCallback onCameraTap;
+
+  /// Lift = how far the camera button sits above the bar top edge.
+  /// Equal to half the FAB size so the bar's top edge passes exactly
+  /// through the FAB's vertical midpoint — half the circle floats above
+  /// the bar, half sits inside it. Cleaner visual ratio than the earlier
+  /// 28 (which left a faint asymmetry).
+  static const double _kCameraSize = 60;
+  static const double _kCameraLift = _kCameraSize / 2;
+  static const double _kBarHeight = 64;
+  static const double _kTopRadius = 22;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    // Background + shadow + border go on the INNER bar (only _kBarHeight
+    // tall), NOT the outer wrapper. If they sat on the wrapper, the wrapper's
+    // full height (bar + lift) would be painted in surface colour — making
+    // the lift region above the bar look like an extension of the bar and
+    // the FAB appear "stuck on top of a tall bar" instead of half-floating.
+    // Keeping the lift region transparent is what gives the FAB the real
+    // half-in / half-out look the user asked for.
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: _kBarHeight + _kCameraLift,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Bar surface + tabs — only the bottom _kBarHeight is painted.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: _kBarHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(_kTopRadius),
+                    topRight: Radius.circular(_kTopRadius),
+                  ),
+                  // Soft lift shadow + subtle top hairline for definition.
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.45)
+                          : Colors.black.withValues(alpha: 0.07),
+                      blurRadius: 24,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                  border: Border(
+                    top: BorderSide(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.08),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                      Expanded(
+                        child: _TabButton(
+                          label: l.translate,
+                          icon: Icons.translate_outlined,
+                          selectedIcon: Icons.translate,
+                          isSelected: currentTab == 0,
+                          onTap: () => onTabChanged(0),
+                        ),
+                      ),
+                      Expanded(
+                        child: _TabButton(
+                          label: l.history,
+                          icon: Icons.history_outlined,
+                          selectedIcon: Icons.history,
+                          isSelected: currentTab == 1,
+                          onTap: () => onTabChanged(1),
+                        ),
+                      ),
+                      // Gap reserved for the floating camera button.
+                      // Slightly wider than the FAB so tab pills don't
+                      // sit too close to the circle.
+                      const SizedBox(width: 72),
+                      Expanded(
+                        child: _TabButton(
+                          label: l.glossary,
+                          icon: Icons.menu_book_outlined,
+                          selectedIcon: Icons.menu_book,
+                          isSelected: currentTab == 2,
+                          onTap: () => onTabChanged(2),
+                        ),
+                      ),
+                      Expanded(
+                        child: _TabButton(
+                          label: l.settings,
+                          icon: Icons.settings_outlined,
+                          selectedIcon: Icons.settings,
+                          isSelected: currentTab == 3,
+                          onTap: () => onTabChanged(3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Floating Camera button — centered horizontally, raised
+              // by [_kCameraLift] above the bar's top edge.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _CameraFab(
+                    onTap: onCameraTap,
+                    tooltip: l.cameraTitle,
+                    size: _kCameraSize,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+  }
+}
+
+/// One tab in the modern bottom bar — animated pill background appears
+/// when selected (primary tint @ 12%), icon swaps to filled variant,
+/// label gains primary color + slight weight bump. AnimatedContainer
+/// gives the 200 ms cross-fade.
+class _TabButton extends StatelessWidget {
+  const _TabButton({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final mutedColor =
+        theme.colorScheme.onSurface.withValues(alpha: 0.62);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      splashColor: primary.withValues(alpha: 0.12),
+      highlightColor: Colors.transparent,
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSelected ? selectedIcon : icon,
+                size: 22,
+                color: isSelected ? primary : mutedColor,
+              ),
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  fontSize: 10.5,
+                  height: 1.2,
+                  color: isSelected ? primary : mutedColor,
+                  fontWeight:
+                      isSelected ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: 0.1,
+                ),
+                child: Text(label, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating camera shortcut. Gradient circle (primary → tertiary) with
+/// tinted soft shadow + white camera glyph. Larger than the stock M3
+/// FAB (60 vs 56) so it reads as the primary action on the bar.
+class _CameraFab extends StatelessWidget {
+  const _CameraFab({
+    required this.onTap,
+    required this.tooltip,
+    required this.size,
+  });
+
+  final VoidCallback onTap;
+  final String tooltip;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    // Tertiary may equal primary in plain ColorScheme — blend toward
+    // a slightly cooler shade for a visible gradient even on minimalist
+    // themes.
+    final gradientEnd = Color.lerp(primary, theme.colorScheme.tertiary, 0.6) ??
+        primary;
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [primary, gradientEnd],
+          ),
+          boxShadow: [
+            // Big soft tinted shadow — the "glow" that lifts the FAB
+            // off the bar. Tint of primary so it never looks dirty
+            // grey in dark mode.
+            BoxShadow(
+              color: primary.withValues(alpha: 0.45),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+              spreadRadius: 0,
+            ),
+            // Sharper inner shadow for crisper outline against the bar.
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            splashColor: Colors.white.withValues(alpha: 0.2),
+            highlightColor: Colors.white.withValues(alpha: 0.05),
+            child: Icon(
+              Icons.camera_alt_rounded,
+              color: theme.colorScheme.onPrimary,
+              size: 28,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

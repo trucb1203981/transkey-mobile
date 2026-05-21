@@ -116,6 +116,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionOther => 'Other';
 
   @override
+  String get helpImproveApp => 'Help improve the app';
+
+  @override
+  String get helpImproveAppHint =>
+      'Share anonymous usage info so we can make TransKey better. No personal text or photos are sent.';
+
+  @override
   String get sectionSpeech => 'Read aloud';
 
   @override
@@ -461,11 +468,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get googleNotConfigured =>
-      'Google sign-in not configured (missing serverClientId)';
+      'Google sign-in isn\'t available right now. Please try another way to sign in.';
 
   @override
   String get googleSignInNoIdToken =>
-      'Google sign-in returned no idToken — check serverClientId';
+      'Google sign-in didn\'t complete. Please try again.';
 
   @override
   String get proRequired => 'Pro plan required';
@@ -725,7 +732,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get glossaryIsNameHint =>
-      'Helps voice input recognize the name and tells the AI to preserve it exactly.';
+      'Helps voice input recognize the name and keeps it unchanged when translating.';
 
   @override
   String get upgradeScreenTitle => 'Upgrade TransKey';
@@ -796,7 +803,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get upgradeFeatureColumn => 'Feature';
 
   @override
-  String get upgradeMobilePrice => '📱 Mobile · \$3/mo';
+  String upgradeMobilePrice(Object price) {
+    return '📱 Mobile · \$4/mo';
+  }
 
   @override
   String get upgradeProPrice => '💻 Pro · \$6/mo';
@@ -843,10 +852,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use on all platforms — desktop + mobile';
 
   @override
-  String get nudgePriceMobile => '\$3/month';
+  String nudgePriceMobile(String price) {
+    return '$price/month';
+  }
 
   @override
-  String get nudgePriceProMonthly => '\$6/month';
+  String nudgePriceProMonthly(String price) {
+    return '$price/month';
+  }
 
   @override
   String get onboardWelcomeTitle => 'Welcome to TransKey';
@@ -1126,7 +1139,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallUpgradeCta => 'Upgrade — unlimited, no ads';
 
   @override
-  String get paywallUpgradeSub => 'From \$3/month. Cancel anytime.';
+  String paywallUpgradeSub(String price) {
+    return 'From $price/month. Cancel anytime.';
+  }
 
   @override
   String get paywallDismiss => 'Maybe later';
@@ -1190,4 +1205,218 @@ class AppLocalizationsEn extends AppLocalizations {
   String captureKeepaliveMinutes(int count) {
     return '$count min';
   }
+
+  @override
+  String get cameraTitle => 'Camera';
+
+  @override
+  String get cameraCapture => 'Capture';
+
+  @override
+  String get cameraRetake => 'Retake';
+
+  @override
+  String get cameraCopyAll => 'Copy all';
+
+  @override
+  String get cameraNoText => 'No text detected. Try again.';
+
+  @override
+  String get cameraTapShowTranslations => 'Tap to show translations';
+
+  @override
+  String get cameraLowQuality => 'Low quality';
+
+  @override
+  String get cameraTranslating => 'Translating...';
+
+  @override
+  String get cameraTranslate => 'Translate';
+
+  @override
+  String get cameraPermission =>
+      'Camera permission is required to use this feature.';
+
+  @override
+  String get cameraSettingsTitle => 'Camera settings';
+
+  @override
+  String get cameraSettingsReset => 'Reset';
+
+  @override
+  String get cameraSettingsConfidence => 'Hide unclear text';
+
+  @override
+  String get cameraSettingsConfidenceHint =>
+      'Hide text the camera reads unclearly. Higher = stricter — cleaner results, but may skip faint text.';
+
+  @override
+  String get cameraOriginalLabel => 'Original';
+
+  @override
+  String get cameraSettingsHideLow => 'Hide low-quality blocks';
+
+  @override
+  String get cameraSettingsHideLowHint =>
+      'Also hide blocks above the threshold but below the warning level. Turn on for clean documents.';
+
+  @override
+  String get cameraSettingsShowOriginal => 'Show original text';
+
+  @override
+  String get cameraSettingsShowOriginalHint =>
+      'Always show the source text under each translation card.';
+
+  @override
+  String get cameraSettingsOpacity => 'Overlay opacity';
+
+  @override
+  String get cameraSettingsOpacityHint =>
+      'Card background transparency. Lower = see more of the photo behind.';
+
+  @override
+  String get cameraSceneAuto => 'Auto';
+
+  @override
+  String get cameraSceneDocument => 'Document';
+
+  @override
+  String get cameraSceneMenu => 'Menu';
+
+  @override
+  String get cameraSceneSign => 'Sign';
+
+  @override
+  String get cameraSceneScreenshot => 'Screenshot';
+
+  @override
+  String get cameraWhatIsThis => 'What is this?';
+
+  @override
+  String get cameraWhatIsThisHint => 'Tap any text in the preview to ask';
+
+  @override
+  String get cameraExplainTitle => 'What is this?';
+
+  @override
+  String get cameraEditTextTitle => 'Edit text';
+
+  @override
+  String get cameraReExplain => 'Re-explain';
+
+  @override
+  String get cameraExplainEmpty => 'No explanation available.';
+
+  @override
+  String get cameraExplainError => 'Couldn\'t fetch explanation. Try again.';
+
+  @override
+  String get cameraResultExplainHint => 'Long-press a card to ask';
+
+  @override
+  String get cameraExplainDisclaimer =>
+      'For reference only — actual meaning may differ';
+
+  @override
+  String get phrasebookTitle => 'Phrasebook';
+
+  @override
+  String get phrasebookEmpty =>
+      'Your phrasebook is empty. Use the camera to identify text, then tap Save.';
+
+  @override
+  String get phrasebookSave => 'Save';
+
+  @override
+  String get phrasebookSaved => 'Saved';
+
+  @override
+  String get phrasebookSaveFailed => 'Couldn\'t save. Try again.';
+
+  @override
+  String get phrasebookTitleTooLong =>
+      'Title too long (max 1000 characters). Shorten and try again.';
+
+  @override
+  String get phrasebookDelete => 'Delete';
+
+  @override
+  String get phrasebookDeleteConfirm => 'Remove this from your phrasebook?';
+
+  @override
+  String get phrasebookDeleted => 'Removed';
+
+  @override
+  String get phrasebookNote => 'Note';
+
+  @override
+  String get phrasebookNoteHint => 'e.g. ordered at ... — too spicy';
+
+  @override
+  String get phrasebookNoteSave => 'Save note';
+
+  @override
+  String get phrasebookCopy => 'Copy';
+
+  @override
+  String get phrasebookViewAll => 'View phrasebook';
+
+  @override
+  String get phrasebookCategoryAll => 'All';
+
+  @override
+  String get phrasebookCategoryMenu => 'Menu';
+
+  @override
+  String get phrasebookCategoryPlace => 'Place';
+
+  @override
+  String get phrasebookCategoryDocument => 'Document';
+
+  @override
+  String get phrasebookCategoryOther => 'Other';
+
+  @override
+  String get phrasebookCategoryChange => 'Change category';
+
+  @override
+  String get cameraTipsTitle => 'Camera tips';
+
+  @override
+  String get cameraTipsGotIt => 'Got it';
+
+  @override
+  String get cameraTip1Title => 'Pick the right mode';
+
+  @override
+  String get cameraTip1Body =>
+      'Pick what you\'re scanning for the best result: a menu, a shop sign, a document — or Auto for anything.';
+
+  @override
+  String get cameraTip2Title => 'Choose your languages';
+
+  @override
+  String get cameraTip2Body =>
+      'Set the language you\'re reading and the one to translate into (top-left). If a sign or text doesn\'t come out right, choose the reading language instead of leaving it on Auto.';
+
+  @override
+  String get cameraTip3Title => 'Ask \"What is this?\"';
+
+  @override
+  String get cameraTip3Body =>
+      'Hold a result to learn what a dish or place is — and hear how to say it out loud.';
+
+  @override
+  String get cameraTip4Title => 'Drag to remove';
+
+  @override
+  String get cameraTip4Body =>
+      'Drag a result card to the trash zone at the bottom to remove blocks you don\'t need.';
+
+  @override
+  String get cameraTip5Title => 'Scan a saved photo';
+
+  @override
+  String get cameraTip5Body =>
+      'Tap the gallery icon next to the shutter to translate a photo already on your phone.';
 }

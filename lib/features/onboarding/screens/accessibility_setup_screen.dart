@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/bubble/bubble_manager.dart';
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
 /// One-screen permission walkthrough surfaced after login (or via the
@@ -129,11 +130,25 @@ class _AccessibilitySetupScreenState
       _hasOverlay && _hasAccessibility && _restrictedUnlocked;
 
   Future<void> _skip() async {
+    ref.read(trackingServiceProvider).event('accessibility_setup_done',
+        properties: {
+          'skipped':              true,
+          'overlay_granted':      _hasOverlay,
+          'accessibility_granted': _hasAccessibility,
+          'restricted_unlocked':  _restrictedUnlocked,
+        });
     await AccessibilitySetupScreen.markSeen();
     if (mounted) context.pop();
   }
 
   Future<void> _done() async {
+    ref.read(trackingServiceProvider).event('accessibility_setup_done',
+        properties: {
+          'skipped':              false,
+          'overlay_granted':      _hasOverlay,
+          'accessibility_granted': _hasAccessibility,
+          'restricted_unlocked':  _restrictedUnlocked,
+        });
     await AccessibilitySetupScreen.markSeen();
     if (mounted) context.pop();
   }

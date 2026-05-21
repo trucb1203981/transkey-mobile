@@ -97,4 +97,5 @@
     <string name="process_text_summarize">TransKey: สรุป</string>
     <string name="process_text_explain">TransKey: อธิบาย</string>
     <string name="process_text_refine">TransKey: ปรับปรุง</string>
+    <string name="bubble_camera">กล้อง</string>
 </resources>

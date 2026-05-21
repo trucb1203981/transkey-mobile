@@ -1,6 +1,5 @@
 {
-  "@@locale": "pt",
-
+  "@locale": "pt",
   "translate": "Traduzir",
   "summarize": "Resumir",
   "explain": "Explicar",
@@ -25,20 +24,26 @@
   "next": "Próximo",
   "skip": "Pular",
   "done": "Concluído",
-
   "hintEnterText": "Digite o texto para traduzir...",
   "detectedLang": "Detectado: {lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "Detecção automática",
   "sourceLang": "Origem",
   "targetLang": "Destino",
   "swapLanguages": "Inverter idiomas",
-
   "settingsTitle": "Configurações",
   "sectionLanguage": "Idioma",
   "sectionTranslation": "Tradução",
   "sectionAdvanced": "Avançado",
   "sectionOther": "Outros",
+  "helpImproveApp": "Ajudar a melhorar o app",
+  "helpImproveAppHint": "Compartilhe informações de uso anônimas para melhorar o TransKey. Nenhum texto ou foto é enviado.",
   "sectionSpeech": "Ler em voz alta",
   "targetLanguage": "Idioma de destino",
   "sourceLanguage": "Idioma de origem",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "Fechar automaticamente (segundos)",
   "autoCloseUnit": "segundos",
   "autoCloseDisabled": "Desativado",
-
   "toneAuto": "Automático",
   "toneBusiness": "Comercial",
   "toneCasual": "Casual",
@@ -63,14 +67,12 @@
   "toneTechnical": "Técnico",
   "toneNeutral": "Neutro",
   "toneReplySameAsTranslate": "Igual à tradução",
-
   "popupTo": "Para:",
   "tabTranslate": "Traduzir",
   "tabReply": "Responder",
   "tabSummarize": "Resumir",
   "tabExplain": "Explicar",
   "tabRefine": "Aprimorar",
-
   "keyboardSetup": "Configuração do teclado",
   "bubbleSetup": "Configuração do botão flutuante",
   "floatingBubble": "Botão flutuante",
@@ -98,7 +100,13 @@
   "devicesProLimit": "O plano Pro permite até 2 dispositivos.",
   "deviceCurrentThis": "Este dispositivo",
   "deviceLastUsed": "Último uso: {date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "Remover",
   "removeDeviceConfirm": "Remover este dispositivo? Ele precisará fazer login novamente.",
   "removeDeviceFailed": "Não foi possível remover o dispositivo",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "Cancelar sua assinatura Pro? Você manterá o Pro até o fim do período atual.",
   "subscriptionCancelled": "A assinatura terminará na data de renovação.",
   "subscriptionCancelFailed": "Não foi possível cancelar a assinatura",
-
   "voicePickerTitle": "Voz",
   "voiceDefault": "Padrão",
   "speedPickerTitle": "Velocidade da fala",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "Ative o TransKey nas configurações de Acessibilidade para permitir que \"Colar\" escreva a resposta no campo focado de qualquer app.",
   "accessibilityEnabled": "Ativado",
   "accessibilityDisabled": "Não ativado — toque para abrir as configurações",
-
   "feedbackTitle": "Enviar feedback",
   "feedbackHint": "Conte-nos o que você acha...",
   "feedbackSend": "Enviar",
@@ -135,12 +141,10 @@
   "feedbackHintFeature": "O que você gostaria que o TransKey fizesse?",
   "feedbackHintOther": "Compartilhe suas ideias...",
   "feedbackEmailLabel": "E-mail (opcional, para uma resposta)",
-
   "selectLanguage": "Selecionar idioma",
   "searchLanguages": "Buscar idiomas...",
   "recent": "Recentes",
   "allLanguages": "Todos os idiomas",
-
   "login": "Entrar",
   "signUp": "Cadastrar",
   "logIn": "Entrar",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "Conta Pro já registrada no número máximo de dispositivos",
   "deviceLimitError": "Muitas contas neste dispositivo",
   "googleSignInFailed": "Falha no login com Google: {error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "Login com Google não configurado (serverClientId ausente)",
-  "googleSignInNoIdToken": "O login com Google não retornou idToken — verifique o serverClientId",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "O login com Google não está disponível agora. Tente outra forma de entrar.",
+  "googleSignInNoIdToken": "O login com Google não foi concluído. Tente novamente.",
   "proRequired": "Plano Pro necessário",
   "noTextToTranslate": "Digite um texto primeiro",
   "errorGeneric": "Algo deu errado",
@@ -178,21 +187,48 @@
   "errorNetwork": "Sem conexão com a internet",
   "glossaryErrSyncFailed": "Não foi possível sincronizar o glossário — verifique sua conexão",
   "glossaryErrLimitReached": "O glossário está cheio (máximo de {max} entradas)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "Origem e destino são obrigatórios",
-
   "planFree": "Gratuito",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "Avaliação",
-
   "usageRequests": "{used}/{limit} solicitações",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} caracteres",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "Avaliação termina em {days} {days, plural, one{dia} other{dias}}",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "Avaliação termina hoje",
   "trialEndsTomorrow": "Avaliação termina amanhã",
   "trialUpgradeNow": "Atualizar agora",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "Sua assinatura expirou",
   "subscriptionExpiredRenew": "Renovar",
   "subscriptionEndsOn": "Termina em {date}",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "Assinatura Mobile",
   "planProSubscription": "Assinatura Pro",
   "discountFirstMonth": "−50% no primeiro mês",
@@ -208,7 +250,6 @@
   "accountBannedBody": "Sua conta TransKey foi suspensa. Entre em contato com o suporte se você acredita que isso é um engano.",
   "accountBannedContact": "Contatar suporte",
   "accountBannedLogout": "Sair",
-
   "historyTitle": "Histórico",
   "historySearchHint": "Buscar no histórico...",
   "historyFilterAll": "Tudo",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "Desbloquear",
   "historyDetailLockAction": "Bloquear",
   "historyDetailTtsLabel": "TTS",
-
   "glossaryTitle": "Glossário ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "Sincronizar",
   "glossaryDeleteTitle": "Excluir entrada",
   "glossaryDeleteBody": "Excluir \"{source}\"?",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "Limite do glossário atingido ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "Origem e destino são obrigatórios",
   "glossarySyncFailed": "Falha ao sincronizar o glossário",
   "glossaryEditTitle": "Editar entrada",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "Tradução",
   "glossaryNamesLabel": "Nomes do glossário — toque para inserir",
   "glossaryIsNameLabel": "Este é o nome de uma pessoa",
-  "glossaryIsNameHint": "Ajuda a entrada de voz a reconhecer o nome e diz à IA para preservá-lo exatamente.",
-
+  "glossaryIsNameHint": "Ajuda a entrada de voz a reconhecer o nome e mantém-no inalterado ao traduzir.",
   "upgradeScreenTitle": "Atualizar TransKey",
   "upgradeChooseYourPlan": "Escolha seu plano",
   "upgradeUnlockFullPower": "Desbloqueie todo o poder do TransKey",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "Popular",
   "upgradeTryFreeDays": "Experimente grátis por 7 dias",
   "upgradeTrialActivated": "Avaliação ativada! {info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "Falha ao ativar a avaliação",
   "upgradeCheckoutFailed": "Falha ao abrir o checkout",
   "upgradeMobileSubtitle": "Todos os recursos, apenas mobile",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "Todas as plataformas",
   "upgradeProFeat3": "Desktop + Mobile",
   "upgradeFeatureColumn": "Recurso",
-  "upgradeMobilePrice": "📱 Mobile · $3/mo",
+  "upgradeMobilePrice": "📱 Mobile · $4/mo",
   "upgradeProPrice": "💻 Pro · $6/mo",
   "upgradeFooterHint": "📱 Mobile: melhor custo-benefício se você só usa o celular\n💻 Pro: funciona no celular e no desktop",
   "comparisonReplyTranslate": "Tradução de resposta",
   "comparisonMobileApps": "📱 iOS e Android",
   "comparisonDesktop": "💻 Desktop",
-
   "nudgeUnlock": "Desbloquear {feature}",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "Atualize para o Pro para usar este recurso\nem todas as plataformas.",
   "nudgeChoosePlan": "Escolha um plano que atenda às suas necessidades.",
   "nudgeMaybeLater": "Talvez depois",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "Atualizar para Pro",
   "nudgeUpgradeToProSubtitle": "Use em todas as plataformas — desktop + mobile",
-  "nudgePriceMobile": "$3/month",
-  "nudgePriceProMonthly": "$6/month",
-
+  "nudgePriceMobile": "{price}/mês",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/mês",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "Bem-vindo ao TransKey",
   "onboardWelcomeSubtitle": "Traduza textos em tempo real em\nmais de 20 idiomas instantaneamente.",
   "onboardChooseTitle": "Escolha seu idioma",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "Começar",
   "onboardStartedSubtitle": "Entre ou crie uma conta gratuita\npara começar a traduzir agora.",
   "onboardGetStarted": "Começar",
-
   "setupTitle": "Configurar teclado",
   "setupOpenSettings": "Abrir configurações",
   "setupOpenPermissions": "Abrir permissões",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "Selecione o texto em qualquer app → toque em \"Compartilhar\" → escolha TransKey. Ou use o botão flutuante após copiar o texto.",
   "setupStep5Title": "Recursos inteligentes",
   "setupStep5Desc": "Traduzir, Responder, Resumir, Explicar e Aprimorar — tudo com IA. Os recursos Pro estão marcados com um ícone de cadeado.",
-
   "guideTitle": "Como usar",
   "guideSubtitle": "Todas as maneiras de capturar texto para cada recurso",
   "guideIntroTitle": "Não são necessárias permissões especiais para capturar texto.",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "Pelo botão Compartilhar",
   "guideInputShareDesc": "Dentro de qualquer app, selecione o texto → toque em Compartilhar → escolha TransKey.",
   "guideInputMenuTitle": "Pelo menu de seleção de texto → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "Selecione o texto em qualquer app — o popup com Copiar/Compartilhar aparece. Toque em ⋮ para mais opções e escolha TransKey: {feature}.",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "Acessibilidade — opcional, apenas para colagem automática",
   "guideReplyA11yBody": "Se a Acessibilidade estiver ativada para o TransKey, sua resposta é colada direto no campo de chat em que você está digitando. Sem etapa extra.\n\nSe preferir não ativar, a resposta é copiada para você — basta pressionar e segurar o campo de chat e tocar em Colar.",
-
   "appPermissions": "Permissões do app",
   "permissionsAllSet": "Tudo configurado — toque para revisar",
   "permissionsNeedSetup": "Toque para conceder as permissões necessárias",
-
   "setupTransKey": "Configurar TransKey",
   "setupTransKeyBody": "Conceda a permissão do botão flutuante para começar. A Acessibilidade é opcional e só é necessária para colar respostas com um toque.",
   "permFloatingBubble": "Botão flutuante",
@@ -369,31 +461,34 @@
   "permSkipHint": "A Acessibilidade é opcional. Sem ela, as sugestões de resposta vão para a área de transferência e você precisa colá-las.",
   "permSkipForNow": "Pular por enquanto",
   "permFinishedCheck": "Terminei — verificar",
-
   "voiceTooltip": "Falar para digitar",
   "voiceListening": "Ouvindo…",
   "voiceNeedsLang": "Defina um idioma de origem específico para usar a voz",
   "voicePermDenied": "Permissão de microfone negada",
   "voiceUnsupported": "Entrada de voz não disponível neste dispositivo",
   "voicePickSourceLang": "A entrada de voz precisa de um idioma específico. Escolha um idioma de origem e toque no microfone novamente.",
-
   "paywallTitle": "Limite diário atingido",
   "paywallBody": "Você usou a cota gratuita de hoje de 20 solicitações / 2.000 caracteres. Assista a um anúncio curto para continuar ou faça upgrade para uso ilimitado. Sua cota gratuita é redefinida à meia-noite.",
   "paywallWatchAdCta": "Assistir anúncio para continuar",
   "paywallWatchAdSub": "Ganhe solicitações e caracteres extras a cada anúncio. Sem limite de anúncios por dia.",
   "paywallUpgradeCta": "Atualizar — ilimitado, sem anúncios",
-  "paywallUpgradeSub": "A partir de $3/month. Cancele a qualquer momento.",
+  "paywallUpgradeSub": "A partir de {price}/month. Cancele a qualquer momento.",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "Talvez depois",
   "paywallLoading": "Carregando…",
   "paywallAdNotComplete": "O anúncio não foi concluído — tente novamente para ganhar a recompensa.",
   "paywallCreditFailed": "Não foi possível creditar a recompensa. Tente novamente em um momento.",
   "quotaWatchAd": "+ Assistir anúncio",
   "quotaRewardGranted": "Recompensa creditada na cota de hoje",
-
   "historyEmpty": "Ainda não há histórico de tradução",
   "glossaryEmpty": "Glossário vazio",
   "glossaryEmptyAddCta": "Adicionar entrada",
-
   "captureKeepaliveTitle": "Janela de re-escaneamento rápido",
   "captureKeepaliveHint": "toque duplo no botão = re-escanear",
   "captureKeepaliveExplain": "Após escanear a tela, mantenha a permissão de captura pronta para que você possa tocar duas vezes no botão (ou escolher Escanear tela novamente) sem o aviso de permissão do sistema. Janelas mais longas economizam toques mas mantêm o indicador de transmissão visível e aquecem levemente o dispositivo.",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "Menos tempo de transmissão, mas mais avisos de permissão frequentes.",
   "captureKeepaliveLongHint": "Velocidade máxima de re-escaneamento. O indicador de transmissão fica ativo por mais tempo.",
   "captureKeepaliveMinutes": "{count} min",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "Câmera",
+  "cameraCapture": "Capturar",
+  "cameraRetake": "Refazer",
+  "cameraCopyAll": "Copiar tudo",
+  "cameraNoText": "Nenhum texto detectado. Tente novamente.",
+  "cameraTapShowTranslations": "Toque para ver as traduções",
+  "cameraLowQuality": "Baixa qualidade",
+  "cameraTranslating": "Traduzindo...",
+  "cameraTranslate": "Traduzir",
+  "cameraPermission": "A permissão da câmera é necessária para usar este recurso.",
+  "cameraSettingsTitle": "Configurações da câmera",
+  "cameraSettingsReset": "Restaurar",
+  "cameraSettingsConfidence": "Ocultar texto pouco claro",
+  "cameraSettingsConfidenceHint": "Oculta o texto que a câmera lê mal. Mais alto = mais rígido — resultados mais limpos, mas pode pular texto fraco.",
+  "cameraOriginalLabel": "Original",
+  "cameraSettingsHideLow": "Ocultar blocos de baixa qualidade",
+  "cameraSettingsHideLowHint": "Também ocultar blocos acima do limite mas abaixo do nível de aviso. Para documentos limpos.",
+  "cameraSettingsShowOriginal": "Mostrar texto original",
+  "cameraSettingsShowOriginalHint": "Sempre mostrar o texto fonte abaixo de cada cartão de tradução.",
+  "cameraSettingsOpacity": "Opacidade da sobreposição",
+  "cameraSettingsOpacityHint": "Transparência do fundo do cartão. Menor = a foto atrás aparece mais.",
+  "cameraSceneAuto": "Auto",
+  "cameraSceneDocument": "Documento",
+  "cameraSceneMenu": "Cardápio",
+  "cameraSceneSign": "Placa",
+  "cameraSceneScreenshot": "Captura de tela",
+  "cameraWhatIsThis": "O que é isto?",
+  "cameraWhatIsThisHint": "Toque em um texto da visualização para perguntar",
+  "cameraExplainTitle": "O que é isto?",
+  "cameraEditTextTitle": "Editar texto",
+  "cameraReExplain": "Re-explicar",
+  "cameraExplainEmpty": "Sem explicação disponível.",
+  "cameraExplainError": "Não foi possível obter a explicação. Tente novamente.",
+  "cameraResultExplainHint": "Toque longo num cartão para perguntar",
+  "cameraExplainDisclaimer": "Apenas referência — o significado real pode diferir",
+  "phrasebookTitle": "Guia de frases",
+  "phrasebookEmpty": "Seu guia está vazio. Use a câmera para identificar texto e toque em Salvar.",
+  "phrasebookSave": "Salvar",
+  "phrasebookSaved": "Salvo",
+  "phrasebookSaveFailed": "Não foi possível salvar. Tente novamente.",
+  "phrasebookTitleTooLong": "Título muito longo (máx 1000 caracteres). Encurte e tente novamente.",
+  "phrasebookDelete": "Excluir",
+  "phrasebookDeleteConfirm": "Remover este item do guia?",
+  "phrasebookDeleted": "Removido",
+  "phrasebookNote": "Nota",
+  "phrasebookNoteHint": "ex: pedido em ... — muito picante",
+  "phrasebookNoteSave": "Salvar nota",
+  "phrasebookCopy": "Copiar",
+  "phrasebookViewAll": "Abrir guia",
+  "phrasebookCategoryAll": "Tudo",
+  "phrasebookCategoryMenu": "Menu",
+  "phrasebookCategoryPlace": "Local",
+  "phrasebookCategoryDocument": "Documento",
+  "phrasebookCategoryOther": "Outro",
+  "phrasebookCategoryChange": "Alterar categoria",
+  "cameraTipsTitle": "Dicas da câmera",
+  "cameraTipsGotIt": "Entendi",
+  "cameraTip1Title": "Escolha o modo",
+  "cameraTip1Body": "Escolha o que está a digitalizar para o melhor resultado: um menu, uma placa, um documento — ou Auto para tudo.",
+  "cameraTip2Title": "Escolha os idiomas",
+  "cameraTip2Body": "Defina o idioma que está a ler e o de tradução (canto superior esquerdo). Se uma placa ou texto não sair bem, escolha o idioma de leitura em vez de Auto.",
+  "cameraTip3Title": "Pergunte \"O que é isto?\"",
+  "cameraTip3Body": "Toque sem soltar num resultado para saber o que é um prato ou local — e ouvir como se diz.",
+  "cameraTip4Title": "Arraste para remover",
+  "cameraTip4Body": "Arraste um cartão para a lixeira na parte inferior para remover blocos desnecessários.",
+  "cameraTip5Title": "Digitalize uma foto salva",
+  "cameraTip5Body": "Toque no ícone da galeria ao lado do obturador para traduzir uma foto já no seu telefone."
 }

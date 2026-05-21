@@ -1,6 +1,5 @@
 {
-  "@@locale": "id",
-
+  "@locale": "id",
   "translate": "Terjemahkan",
   "summarize": "Ringkas",
   "explain": "Jelaskan",
@@ -25,20 +24,26 @@
   "next": "Selanjutnya",
   "skip": "Lewati",
   "done": "Selesai",
-
   "hintEnterText": "Masukkan teks untuk diterjemahkan...",
   "detectedLang": "Terdeteksi: {lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "Deteksi otomatis",
   "sourceLang": "Sumber",
   "targetLang": "Tujuan",
   "swapLanguages": "Tukar bahasa",
-
   "settingsTitle": "Pengaturan",
   "sectionLanguage": "Bahasa",
   "sectionTranslation": "Terjemahan",
   "sectionAdvanced": "Lanjutan",
   "sectionOther": "Lainnya",
+  "helpImproveApp": "Bantu tingkatkan aplikasi",
+  "helpImproveAppHint": "Bagikan info penggunaan anonim untuk membantu meningkatkan TransKey. Tidak ada teks atau foto yang dikirim.",
   "sectionSpeech": "Baca dengan suara",
   "targetLanguage": "Bahasa tujuan",
   "sourceLanguage": "Bahasa sumber",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "Tutup otomatis (detik)",
   "autoCloseUnit": "detik",
   "autoCloseDisabled": "Mati",
-
   "toneAuto": "Otomatis",
   "toneBusiness": "Bisnis",
   "toneCasual": "Santai",
@@ -63,14 +67,12 @@
   "toneTechnical": "Teknis",
   "toneNeutral": "Netral",
   "toneReplySameAsTranslate": "Sama dengan terjemahan",
-
   "popupTo": "Ke:",
   "tabTranslate": "Terjemahkan",
   "tabReply": "Balas",
   "tabSummarize": "Ringkas",
   "tabExplain": "Jelaskan",
   "tabRefine": "Perbaiki",
-
   "keyboardSetup": "Pengaturan keyboard",
   "bubbleSetup": "Pengaturan tombol melayang",
   "floatingBubble": "Tombol melayang",
@@ -98,7 +100,13 @@
   "devicesProLimit": "Paket Pro mengizinkan hingga 2 perangkat.",
   "deviceCurrentThis": "Perangkat ini",
   "deviceLastUsed": "Terakhir digunakan: {date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "Hapus",
   "removeDeviceConfirm": "Hapus perangkat ini? Perangkat akan perlu masuk lagi.",
   "removeDeviceFailed": "Tidak dapat menghapus perangkat",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "Batalkan langganan Pro? Anda akan tetap memiliki Pro hingga akhir periode saat ini.",
   "subscriptionCancelled": "Langganan akan berakhir pada tanggal perpanjangan.",
   "subscriptionCancelFailed": "Tidak dapat membatalkan langganan",
-
   "voicePickerTitle": "Suara",
   "voiceDefault": "Bawaan",
   "speedPickerTitle": "Kecepatan suara",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "Aktifkan TransKey di pengaturan Aksesibilitas agar \"Tempel\" dapat menulis balasan ke kolom yang fokus di aplikasi mana pun.",
   "accessibilityEnabled": "Aktif",
   "accessibilityDisabled": "Belum aktif — ketuk untuk membuka pengaturan",
-
   "feedbackTitle": "Kirim masukan",
   "feedbackHint": "Beri tahu kami pendapat Anda...",
   "feedbackSend": "Kirim",
@@ -135,12 +141,10 @@
   "feedbackHintFeature": "Apa yang Anda ingin TransKey lakukan?",
   "feedbackHintOther": "Bagikan pendapat Anda...",
   "feedbackEmailLabel": "Email (opsional, untuk balasan)",
-
   "selectLanguage": "Pilih bahasa",
   "searchLanguages": "Cari bahasa...",
   "recent": "Terbaru",
   "allLanguages": "Semua bahasa",
-
   "login": "Masuk",
   "signUp": "Daftar",
   "logIn": "Masuk",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "Akun Pro sudah terdaftar di jumlah perangkat maksimum",
   "deviceLimitError": "Terlalu banyak akun di perangkat ini",
   "googleSignInFailed": "Masuk dengan Google gagal: {error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "Masuk dengan Google belum dikonfigurasi (serverClientId tidak ada)",
-  "googleSignInNoIdToken": "Masuk dengan Google tidak mengembalikan idToken — periksa serverClientId",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "Masuk dengan Google tidak tersedia saat ini. Coba cara lain untuk masuk.",
+  "googleSignInNoIdToken": "Masuk dengan Google tidak selesai. Silakan coba lagi.",
   "proRequired": "Paket Pro diperlukan",
   "noTextToTranslate": "Masukkan teks terlebih dahulu",
   "errorGeneric": "Terjadi kesalahan",
@@ -178,21 +187,48 @@
   "errorNetwork": "Tidak ada koneksi internet",
   "glossaryErrSyncFailed": "Tidak dapat menyinkronkan glosarium — periksa koneksi Anda",
   "glossaryErrLimitReached": "Glosarium penuh (maks {max} entri)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "Sumber dan tujuan keduanya wajib diisi",
-
   "planFree": "Gratis",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "Uji coba",
-
   "usageRequests": "{used}/{limit} permintaan",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} karakter",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "Uji coba berakhir dalam {days} {days, plural, other{hari}}",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "Uji coba berakhir hari ini",
   "trialEndsTomorrow": "Uji coba berakhir besok",
   "trialUpgradeNow": "Tingkatkan sekarang",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "Langganan Anda telah berakhir",
   "subscriptionExpiredRenew": "Perpanjang",
   "subscriptionEndsOn": "Berakhir {date}",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "Langganan Mobile",
   "planProSubscription": "Langganan Pro",
   "discountFirstMonth": "−50% bulan pertama",
@@ -208,7 +250,6 @@
   "accountBannedBody": "Akun TransKey Anda telah ditangguhkan. Hubungi dukungan jika Anda yakin ini kesalahan.",
   "accountBannedContact": "Hubungi dukungan",
   "accountBannedLogout": "Keluar",
-
   "historyTitle": "Riwayat",
   "historySearchHint": "Cari riwayat...",
   "historyFilterAll": "Semua",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "Buka kunci",
   "historyDetailLockAction": "Kunci",
   "historyDetailTtsLabel": "TTS",
-
   "glossaryTitle": "Glosarium ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "Sinkronkan",
   "glossaryDeleteTitle": "Hapus entri",
   "glossaryDeleteBody": "Hapus \"{source}\"?",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "Batas glosarium tercapai ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "Sumber dan tujuan wajib diisi",
   "glossarySyncFailed": "Gagal menyinkronkan glosarium",
   "glossaryEditTitle": "Edit entri",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "Terjemahan",
   "glossaryNamesLabel": "Nama di glosarium — ketuk untuk menyisipkan",
   "glossaryIsNameLabel": "Ini adalah nama seseorang",
-  "glossaryIsNameHint": "Membantu input suara mengenali nama dan memberi tahu AI untuk mempertahankannya persis.",
-
+  "glossaryIsNameHint": "Membantu input suara mengenali nama dan menjaganya tetap sama saat menerjemahkan.",
   "upgradeScreenTitle": "Tingkatkan TransKey",
   "upgradeChooseYourPlan": "Pilih paket Anda",
   "upgradeUnlockFullPower": "Buka semua kekuatan TransKey",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "Populer",
   "upgradeTryFreeDays": "Coba gratis selama 7 hari",
   "upgradeTrialActivated": "Uji coba aktif! {info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "Gagal mengaktifkan uji coba",
   "upgradeCheckoutFailed": "Gagal membuka pembayaran",
   "upgradeMobileSubtitle": "Semua fitur, hanya mobile",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "Semua platform",
   "upgradeProFeat3": "Desktop + Mobile",
   "upgradeFeatureColumn": "Fitur",
-  "upgradeMobilePrice": "📱 Mobile · $3/mo",
+  "upgradeMobilePrice": "📱 Mobile · $4/mo",
   "upgradeProPrice": "💻 Pro · $6/mo",
   "upgradeFooterHint": "📱 Mobile: paling hemat jika Anda hanya pakai ponsel\n💻 Pro: bekerja di ponsel maupun desktop",
   "comparisonReplyTranslate": "Terjemahan balasan",
   "comparisonMobileApps": "📱 iOS & Android",
   "comparisonDesktop": "💻 Desktop",
-
   "nudgeUnlock": "Buka {feature}",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "Tingkatkan ke Pro untuk memakai fitur ini\ndi semua platform.",
   "nudgeChoosePlan": "Pilih paket yang sesuai dengan kebutuhan Anda.",
   "nudgeMaybeLater": "Mungkin nanti",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "Tingkatkan ke Pro",
   "nudgeUpgradeToProSubtitle": "Gunakan di semua platform — desktop + mobile",
-  "nudgePriceMobile": "$3/month",
-  "nudgePriceProMonthly": "$6/month",
-
+  "nudgePriceMobile": "{price}/bln",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/bln",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "Selamat datang di TransKey",
   "onboardWelcomeSubtitle": "Terjemahkan teks secara real-time ke\nlebih dari 20 bahasa secara instan.",
   "onboardChooseTitle": "Pilih bahasa Anda",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "Mulai",
   "onboardStartedSubtitle": "Masuk atau buat akun gratis\nuntuk mulai menerjemahkan sekarang.",
   "onboardGetStarted": "Mulai",
-
   "setupTitle": "Atur keyboard",
   "setupOpenSettings": "Buka pengaturan",
   "setupOpenPermissions": "Buka izin",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "Pilih teks di aplikasi mana pun → ketuk \"Bagikan\" → pilih TransKey. Atau gunakan tombol melayang setelah menyalin teks.",
   "setupStep5Title": "Fitur cerdas",
   "setupStep5Desc": "Terjemahkan, Balas, Ringkas, Jelaskan & Perbaiki — semuanya didukung AI. Fitur Pro ditandai dengan ikon gembok.",
-
   "guideTitle": "Cara menggunakan",
   "guideSubtitle": "Semua cara untuk menangkap teks di setiap fitur",
   "guideIntroTitle": "Tidak perlu izin khusus untuk menangkap teks.",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "Dari tombol Bagikan",
   "guideInputShareDesc": "Di aplikasi mana pun, pilih teks → ketuk Bagikan → pilih TransKey.",
   "guideInputMenuTitle": "Dari menu pemilihan teks → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "Pilih teks di aplikasi mana pun — pop-up dengan Salin/Bagikan muncul. Ketuk ⋮ untuk opsi lainnya, lalu pilih TransKey: {feature}.",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "Aksesibilitas — opsional, hanya untuk tempel otomatis",
   "guideReplyA11yBody": "Jika Aksesibilitas diaktifkan untuk TransKey, balasan Anda ditempelkan langsung ke kolom obrolan yang sedang Anda ketik. Tanpa langkah tambahan.\n\nJika Anda lebih suka tidak mengaktifkannya, balasan akan disalin untuk Anda — cukup tekan lama kolom obrolan dan ketuk Tempel.",
-
   "appPermissions": "Izin aplikasi",
   "permissionsAllSet": "Semua sudah disiapkan — ketuk untuk meninjau",
   "permissionsNeedSetup": "Ketuk untuk memberikan izin yang diperlukan",
-
   "setupTransKey": "Atur TransKey",
   "setupTransKeyBody": "Berikan izin tombol melayang untuk memulai. Aksesibilitas bersifat opsional dan hanya diperlukan untuk Tempel Balasan satu ketukan.",
   "permFloatingBubble": "Tombol melayang",
@@ -369,31 +461,34 @@
   "permSkipHint": "Aksesibilitas opsional. Tanpa itu, saran balasan akan masuk ke clipboard dan Anda perlu menempelkannya sendiri.",
   "permSkipForNow": "Lewati untuk saat ini",
   "permFinishedCheck": "Saya selesai — periksa",
-
   "voiceTooltip": "Bicara untuk mengetik",
   "voiceListening": "Mendengarkan…",
   "voiceNeedsLang": "Atur bahasa sumber yang spesifik untuk memakai suara",
   "voicePermDenied": "Izin mikrofon ditolak",
   "voiceUnsupported": "Input suara tidak tersedia di perangkat ini",
   "voicePickSourceLang": "Input suara perlu bahasa yang spesifik. Pilih bahasa sumber, lalu ketuk mikrofon lagi.",
-
   "paywallTitle": "Batas harian tercapai",
   "paywallBody": "Anda telah menggunakan kuota gratis hari ini sebanyak 20 permintaan / 2.000 karakter. Tonton iklan singkat untuk melanjutkan, atau tingkatkan untuk penggunaan tanpa batas. Kuota gratis Anda diatur ulang tengah malam.",
   "paywallWatchAdCta": "Tonton iklan untuk melanjutkan",
   "paywallWatchAdSub": "Dapatkan tambahan permintaan dan karakter setiap iklan. Tanpa batas iklan per hari.",
   "paywallUpgradeCta": "Tingkatkan — tanpa batas, tanpa iklan",
-  "paywallUpgradeSub": "Mulai dari $3/month. Batalkan kapan saja.",
+  "paywallUpgradeSub": "Mulai dari {price}/month. Batalkan kapan saja.",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "Mungkin nanti",
   "paywallLoading": "Memuat…",
   "paywallAdNotComplete": "Iklan tidak diselesaikan — coba lagi untuk mendapatkan hadiah.",
   "paywallCreditFailed": "Tidak dapat memberi kredit hadiah. Coba lagi sebentar.",
   "quotaWatchAd": "+ Tonton iklan",
   "quotaRewardGranted": "Hadiah dikreditkan ke kuota hari ini",
-
   "historyEmpty": "Belum ada riwayat terjemahan",
   "glossaryEmpty": "Glosarium kosong",
   "glossaryEmptyAddCta": "Tambah entri",
-
   "captureKeepaliveTitle": "Jendela pindai ulang cepat",
   "captureKeepaliveHint": "ketuk dua kali tombol = pindai ulang",
   "captureKeepaliveExplain": "Setelah memindai layar, biarkan izin tangkapan layar tetap aktif agar Anda dapat mengetuk dua kali tombol (atau memilih Pindai layar lagi) tanpa permintaan izin sistem. Jendela yang lebih panjang menghemat ketukan tetapi membuat indikator casting tetap terlihat dan sedikit memanaskan perangkat.",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "Waktu casting lebih singkat, tetapi izin diminta lebih sering.",
   "captureKeepaliveLongHint": "Kecepatan pindai ulang maksimum. Indikator casting tetap aktif lebih lama.",
   "captureKeepaliveMinutes": "{count} mnt",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "Kamera",
+  "cameraCapture": "Ambil",
+  "cameraRetake": "Ulangi",
+  "cameraCopyAll": "Salin semua",
+  "cameraNoText": "Tidak ada teks terdeteksi. Coba lagi.",
+  "cameraTapShowTranslations": "Ketuk untuk menampilkan terjemahan",
+  "cameraLowQuality": "Kualitas rendah",
+  "cameraTranslating": "Menerjemahkan...",
+  "cameraTranslate": "Terjemahkan",
+  "cameraPermission": "Izin kamera diperlukan untuk menggunakan fitur ini.",
+  "cameraSettingsTitle": "Pengaturan kamera",
+  "cameraSettingsReset": "Atur ulang",
+  "cameraSettingsConfidence": "Sembunyikan teks tak jelas",
+  "cameraSettingsConfidenceHint": "Sembunyikan teks yang dibaca kamera kurang jelas. Lebih tinggi = lebih ketat — hasil lebih bersih, tapi mungkin lewati teks samar.",
+  "cameraOriginalLabel": "Asli",
+  "cameraSettingsHideLow": "Sembunyikan blok kualitas rendah",
+  "cameraSettingsHideLowHint": "Sembunyikan juga blok di atas ambang tetapi di bawah tingkat peringatan. Aktifkan untuk dokumen bersih.",
+  "cameraSettingsShowOriginal": "Tampilkan teks asli",
+  "cameraSettingsShowOriginalHint": "Selalu tampilkan teks sumber di bawah setiap kartu terjemahan.",
+  "cameraSettingsOpacity": "Opasitas overlay",
+  "cameraSettingsOpacityHint": "Transparansi latar kartu. Lebih rendah = foto di belakang lebih terlihat.",
+  "cameraSceneAuto": "Otomatis",
+  "cameraSceneDocument": "Dokumen",
+  "cameraSceneMenu": "Menu",
+  "cameraSceneSign": "Papan tanda",
+  "cameraSceneScreenshot": "Tangkapan layar",
+  "cameraWhatIsThis": "Apa ini?",
+  "cameraWhatIsThisHint": "Ketuk teks di pratinjau untuk bertanya",
+  "cameraExplainTitle": "Apa ini?",
+  "cameraEditTextTitle": "Edit teks",
+  "cameraReExplain": "Jelaskan ulang",
+  "cameraExplainEmpty": "Tidak ada penjelasan.",
+  "cameraExplainError": "Tidak dapat mengambil penjelasan. Coba lagi.",
+  "cameraResultExplainHint": "Tekan lama kartu untuk bertanya",
+  "cameraExplainDisclaimer": "Hanya referensi — arti sebenarnya mungkin berbeda",
+  "phrasebookTitle": "Buku frasa",
+  "phrasebookEmpty": "Buku frasa Anda kosong. Gunakan kamera untuk mengenali teks, lalu ketuk Simpan.",
+  "phrasebookSave": "Simpan",
+  "phrasebookSaved": "Tersimpan",
+  "phrasebookSaveFailed": "Gagal menyimpan. Coba lagi.",
+  "phrasebookTitleTooLong": "Judul terlalu panjang (maks 1000 karakter). Persingkat dan coba lagi.",
+  "phrasebookDelete": "Hapus",
+  "phrasebookDeleteConfirm": "Hapus dari buku frasa?",
+  "phrasebookDeleted": "Dihapus",
+  "phrasebookNote": "Catatan",
+  "phrasebookNoteHint": "mis.: dipesan di ... — terlalu pedas",
+  "phrasebookNoteSave": "Simpan catatan",
+  "phrasebookCopy": "Salin",
+  "phrasebookViewAll": "Buka buku frasa",
+  "phrasebookCategoryAll": "Semua",
+  "phrasebookCategoryMenu": "Menu",
+  "phrasebookCategoryPlace": "Tempat",
+  "phrasebookCategoryDocument": "Dokumen",
+  "phrasebookCategoryOther": "Lainnya",
+  "phrasebookCategoryChange": "Ubah kategori",
+  "cameraTipsTitle": "Tips kamera",
+  "cameraTipsGotIt": "Mengerti",
+  "cameraTip1Title": "Pilih mode yang tepat",
+  "cameraTip1Body": "Pilih apa yang Anda pindai untuk hasil terbaik: menu, papan nama toko, dokumen — atau Auto untuk apa saja.",
+  "cameraTip2Title": "Pilih bahasa Anda",
+  "cameraTip2Body": "Atur bahasa yang Anda baca dan bahasa terjemahannya (kiri atas). Jika papan nama atau teks tidak muncul dengan benar, pilih bahasa yang dibaca alih-alih Auto.",
+  "cameraTip3Title": "Tanya \"Apa ini?\"",
+  "cameraTip3Body": "Tekan lama hasil untuk tahu apa hidangan atau tempat itu — dan dengar cara mengucapkannya.",
+  "cameraTip4Title": "Seret untuk hapus",
+  "cameraTip4Body": "Seret kartu ke area tempat sampah di bawah untuk hapus blok yang tak perlu.",
+  "cameraTip5Title": "Pindai foto tersimpan",
+  "cameraTip5Body": "Ketuk ikon galeri di samping rana untuk menerjemahkan foto yang sudah ada di ponsel."
 }

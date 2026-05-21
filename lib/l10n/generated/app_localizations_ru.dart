@@ -116,6 +116,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sectionOther => 'Другое';
 
   @override
+  String get helpImproveApp => 'Помочь улучшить приложение';
+
+  @override
+  String get helpImproveAppHint =>
+      'Делитесь анонимной информацией об использовании, чтобы улучшить TransKey. Тексты и фото не отправляются.';
+
+  @override
   String get sectionSpeech => 'Озвучивание';
 
   @override
@@ -460,11 +467,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get googleNotConfigured =>
-      'Вход через Google не настроен (отсутствует serverClientId)';
+      'Вход через Google сейчас недоступен. Попробуйте другой способ входа.';
 
   @override
   String get googleSignInNoIdToken =>
-      'Вход через Google не вернул idToken — проверьте serverClientId';
+      'Вход через Google не завершён. Попробуйте ещё раз.';
 
   @override
   String get proRequired => 'Требуется тариф Pro';
@@ -727,7 +734,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get glossaryIsNameHint =>
-      'Помогает голосовому вводу распознать имя и указывает ИИ сохранить его точно.';
+      'Помогает голосовому вводу распознать имя и сохраняет его без изменений при переводе.';
 
   @override
   String get upgradeScreenTitle => 'Обновить TransKey';
@@ -799,7 +806,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get upgradeFeatureColumn => 'Функция';
 
   @override
-  String get upgradeMobilePrice => '📱 Mobile · \$3/mo';
+  String upgradeMobilePrice(Object price) {
+    return '📱 Mobile · \$4/mo';
+  }
 
   @override
   String get upgradeProPrice => '💻 Pro · \$6/mo';
@@ -846,10 +855,14 @@ class AppLocalizationsRu extends AppLocalizations {
       'Используйте на всех платформах — десктоп + мобильный';
 
   @override
-  String get nudgePriceMobile => '\$3/month';
+  String nudgePriceMobile(String price) {
+    return '$price/мес';
+  }
 
   @override
-  String get nudgePriceProMonthly => '\$6/month';
+  String nudgePriceProMonthly(String price) {
+    return '$price/мес';
+  }
 
   @override
   String get onboardWelcomeTitle => 'Добро пожаловать в TransKey';
@@ -1130,8 +1143,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get paywallUpgradeCta => 'Обновить — без лимитов, без рекламы';
 
   @override
-  String get paywallUpgradeSub =>
-      'От \$3/month. Отменить можно в любой момент.';
+  String paywallUpgradeSub(String price) {
+    return 'От $price/month. Отменить можно в любой момент.';
+  }
 
   @override
   String get paywallDismiss => 'Может, позже';
@@ -1196,4 +1210,220 @@ class AppLocalizationsRu extends AppLocalizations {
   String captureKeepaliveMinutes(int count) {
     return '$count мин';
   }
+
+  @override
+  String get cameraTitle => 'Камера';
+
+  @override
+  String get cameraCapture => 'Снять';
+
+  @override
+  String get cameraRetake => 'Переснять';
+
+  @override
+  String get cameraCopyAll => 'Копировать всё';
+
+  @override
+  String get cameraNoText => 'Текст не обнаружен. Попробуйте снова.';
+
+  @override
+  String get cameraTapShowTranslations => 'Нажмите, чтобы показать перевод';
+
+  @override
+  String get cameraLowQuality => 'Низкое качество';
+
+  @override
+  String get cameraTranslating => 'Перевод...';
+
+  @override
+  String get cameraTranslate => 'Перевести';
+
+  @override
+  String get cameraPermission =>
+      'Для использования этой функции требуется разрешение камеры.';
+
+  @override
+  String get cameraSettingsTitle => 'Настройки камеры';
+
+  @override
+  String get cameraSettingsReset => 'Сбросить';
+
+  @override
+  String get cameraSettingsConfidence => 'Скрывать нечёткий текст';
+
+  @override
+  String get cameraSettingsConfidenceHint =>
+      'Скрывает текст, который камера читает нечётко. Выше = строже — чище результат, но может пропустить бледный текст.';
+
+  @override
+  String get cameraOriginalLabel => 'Оригинал';
+
+  @override
+  String get cameraSettingsHideLow => 'Скрыть блоки низкого качества';
+
+  @override
+  String get cameraSettingsHideLowHint =>
+      'Также скрывать блоки выше порога, но ниже уровня предупреждения. Для чистых документов.';
+
+  @override
+  String get cameraSettingsShowOriginal => 'Показывать исходный текст';
+
+  @override
+  String get cameraSettingsShowOriginalHint =>
+      'Всегда показывать исходный текст под каждой карточкой перевода.';
+
+  @override
+  String get cameraSettingsOpacity => 'Непрозрачность наложения';
+
+  @override
+  String get cameraSettingsOpacityHint =>
+      'Прозрачность фона карточки. Меньше = фото сзади видно лучше.';
+
+  @override
+  String get cameraSceneAuto => 'Авто';
+
+  @override
+  String get cameraSceneDocument => 'Документ';
+
+  @override
+  String get cameraSceneMenu => 'Меню';
+
+  @override
+  String get cameraSceneSign => 'Вывеска';
+
+  @override
+  String get cameraSceneScreenshot => 'Скриншот';
+
+  @override
+  String get cameraWhatIsThis => 'Что это?';
+
+  @override
+  String get cameraWhatIsThisHint =>
+      'Коснитесь текста в предпросмотре, чтобы спросить';
+
+  @override
+  String get cameraExplainTitle => 'Что это?';
+
+  @override
+  String get cameraEditTextTitle => 'Изменить текст';
+
+  @override
+  String get cameraReExplain => 'Объяснить заново';
+
+  @override
+  String get cameraExplainEmpty => 'Объяснение недоступно.';
+
+  @override
+  String get cameraExplainError =>
+      'Не удалось получить объяснение. Повторите попытку.';
+
+  @override
+  String get cameraResultExplainHint => 'Удерживайте карточку, чтобы спросить';
+
+  @override
+  String get cameraExplainDisclaimer =>
+      'Только для справки — реальное значение может отличаться';
+
+  @override
+  String get phrasebookTitle => 'Разговорник';
+
+  @override
+  String get phrasebookEmpty =>
+      'Разговорник пуст. Используйте камеру, чтобы распознать текст, затем нажмите Сохранить.';
+
+  @override
+  String get phrasebookSave => 'Сохранить';
+
+  @override
+  String get phrasebookSaved => 'Сохранено';
+
+  @override
+  String get phrasebookSaveFailed => 'Не удалось сохранить. Повторите попытку.';
+
+  @override
+  String get phrasebookTitleTooLong =>
+      'Заголовок слишком длинный (макс. 1000 символов). Сократите и повторите.';
+
+  @override
+  String get phrasebookDelete => 'Удалить';
+
+  @override
+  String get phrasebookDeleteConfirm => 'Удалить из разговорника?';
+
+  @override
+  String get phrasebookDeleted => 'Удалено';
+
+  @override
+  String get phrasebookNote => 'Заметка';
+
+  @override
+  String get phrasebookNoteHint => 'напр.: заказано в ... — слишком остро';
+
+  @override
+  String get phrasebookNoteSave => 'Сохранить заметку';
+
+  @override
+  String get phrasebookCopy => 'Копировать';
+
+  @override
+  String get phrasebookViewAll => 'Открыть разговорник';
+
+  @override
+  String get phrasebookCategoryAll => 'Все';
+
+  @override
+  String get phrasebookCategoryMenu => 'Меню';
+
+  @override
+  String get phrasebookCategoryPlace => 'Место';
+
+  @override
+  String get phrasebookCategoryDocument => 'Документ';
+
+  @override
+  String get phrasebookCategoryOther => 'Другое';
+
+  @override
+  String get phrasebookCategoryChange => 'Изменить категорию';
+
+  @override
+  String get cameraTipsTitle => 'Советы по камере';
+
+  @override
+  String get cameraTipsGotIt => 'Понятно';
+
+  @override
+  String get cameraTip1Title => 'Выберите режим';
+
+  @override
+  String get cameraTip1Body =>
+      'Выберите, что вы сканируете, для лучшего результата: меню, вывеску, документ — или Auto для всего.';
+
+  @override
+  String get cameraTip2Title => 'Выберите языки';
+
+  @override
+  String get cameraTip2Body =>
+      'Укажите язык, который читаете, и язык перевода (вверху слева). Если вывеска или текст распознаются плохо, выберите язык чтения вместо Auto.';
+
+  @override
+  String get cameraTip3Title => 'Спросите «Что это?»';
+
+  @override
+  String get cameraTip3Body =>
+      'Удерживайте результат, чтобы узнать, что это за блюдо или место — и услышать, как это произносится.';
+
+  @override
+  String get cameraTip4Title => 'Перетащите для удаления';
+
+  @override
+  String get cameraTip4Body =>
+      'Перетащите карточку в корзину внизу, чтобы удалить ненужные блоки.';
+
+  @override
+  String get cameraTip5Title => 'Сканируйте фото из галереи';
+
+  @override
+  String get cameraTip5Body =>
+      'Нажмите значок галереи рядом с кнопкой съёмки, чтобы перевести фото из телефона.';
 }

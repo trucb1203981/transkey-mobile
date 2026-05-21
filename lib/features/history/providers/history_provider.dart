@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/tracking/tracking_provider.dart';
 import '../../translate/models/translate_models.dart';
 import '../models/history_entry.dart';
 import '../storage/history_store.dart';
@@ -100,6 +101,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
     state = state.copyWith(
       entries: state.entries.where((e) => e.id != id).toList(),
     );
+    ref.read(trackingServiceProvider).event('history_delete');
   }
 
   Future<void> toggleFavorite(String id) async {
@@ -128,6 +130,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
     state = state.copyWith(
       entries: state.entries.where((e) => e.isLocked).toList(),
     );
+    ref.read(trackingServiceProvider).event('history_clear',
+        properties: {'mode': 'all'});
   }
 
   Future<void> clearNonFavorites() async {
@@ -136,6 +140,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
     state = state.copyWith(
       entries: state.entries.where((e) => e.isFavorite || e.isLocked).toList(),
     );
+    ref.read(trackingServiceProvider).event('history_clear',
+        properties: {'mode': 'non_favorites'});
   }
 
   void setFilter(HistoryFilter filter) {

@@ -97,4 +97,5 @@
     <string name="process_text_summarize">TransKey: Summarize</string>
     <string name="process_text_explain">TransKey: Explain</string>
     <string name="process_text_refine">TransKey: Refine</string>
+    <string name="bubble_camera">Camera</string>
 </resources>

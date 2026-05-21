@@ -332,6 +332,18 @@ abstract class AppLocalizations {
   /// **'Other'**
   String get sectionOther;
 
+  /// No description provided for @helpImproveApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Help improve the app'**
+  String get helpImproveApp;
+
+  /// No description provided for @helpImproveAppHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share anonymous usage info so we can make TransKey better. No personal text or photos are sent.'**
+  String get helpImproveAppHint;
+
   /// No description provided for @sectionSpeech.
   ///
   /// In en, this message translates to:
@@ -1001,13 +1013,13 @@ abstract class AppLocalizations {
   /// No description provided for @googleNotConfigured.
   ///
   /// In en, this message translates to:
-  /// **'Google sign-in not configured (missing serverClientId)'**
+  /// **'Google sign-in isn\'t available right now. Please try another way to sign in.'**
   String get googleNotConfigured;
 
   /// No description provided for @googleSignInNoIdToken.
   ///
   /// In en, this message translates to:
-  /// **'Google sign-in returned no idToken — check serverClientId'**
+  /// **'Google sign-in didn\'t complete. Please try again.'**
   String get googleSignInNoIdToken;
 
   /// No description provided for @proRequired.
@@ -1463,7 +1475,7 @@ abstract class AppLocalizations {
   /// No description provided for @glossaryIsNameHint.
   ///
   /// In en, this message translates to:
-  /// **'Helps voice input recognize the name and tells the AI to preserve it exactly.'**
+  /// **'Helps voice input recognize the name and keeps it unchanged when translating.'**
   String get glossaryIsNameHint;
 
   /// No description provided for @upgradeScreenTitle.
@@ -1601,8 +1613,8 @@ abstract class AppLocalizations {
   /// No description provided for @upgradeMobilePrice.
   ///
   /// In en, this message translates to:
-  /// **'📱 Mobile · \$3/mo'**
-  String get upgradeMobilePrice;
+  /// **'📱 Mobile · \$4/mo'**
+  String upgradeMobilePrice(Object price);
 
   /// No description provided for @upgradeProPrice.
   ///
@@ -1685,14 +1697,14 @@ abstract class AppLocalizations {
   /// No description provided for @nudgePriceMobile.
   ///
   /// In en, this message translates to:
-  /// **'\$3/month'**
-  String get nudgePriceMobile;
+  /// **'{price}/month'**
+  String nudgePriceMobile(String price);
 
   /// No description provided for @nudgePriceProMonthly.
   ///
   /// In en, this message translates to:
-  /// **'\$6/month'**
-  String get nudgePriceProMonthly;
+  /// **'{price}/month'**
+  String nudgePriceProMonthly(String price);
 
   /// No description provided for @onboardWelcomeTitle.
   ///
@@ -2177,8 +2189,8 @@ abstract class AppLocalizations {
   /// No description provided for @paywallUpgradeSub.
   ///
   /// In en, this message translates to:
-  /// **'From \$3/month. Cancel anytime.'**
-  String get paywallUpgradeSub;
+  /// **'From {price}/month. Cancel anytime.'**
+  String paywallUpgradeSub(String price);
 
   /// No description provided for @paywallDismiss.
   ///
@@ -2287,6 +2299,408 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} min'**
   String captureKeepaliveMinutes(int count);
+
+  /// No description provided for @cameraTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get cameraTitle;
+
+  /// No description provided for @cameraCapture.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture'**
+  String get cameraCapture;
+
+  /// No description provided for @cameraRetake.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake'**
+  String get cameraRetake;
+
+  /// No description provided for @cameraCopyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy all'**
+  String get cameraCopyAll;
+
+  /// No description provided for @cameraNoText.
+  ///
+  /// In en, this message translates to:
+  /// **'No text detected. Try again.'**
+  String get cameraNoText;
+
+  /// No description provided for @cameraTapShowTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to show translations'**
+  String get cameraTapShowTranslations;
+
+  /// No description provided for @cameraLowQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Low quality'**
+  String get cameraLowQuality;
+
+  /// No description provided for @cameraTranslating.
+  ///
+  /// In en, this message translates to:
+  /// **'Translating...'**
+  String get cameraTranslating;
+
+  /// No description provided for @cameraTranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate'**
+  String get cameraTranslate;
+
+  /// No description provided for @cameraPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera permission is required to use this feature.'**
+  String get cameraPermission;
+
+  /// No description provided for @cameraSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera settings'**
+  String get cameraSettingsTitle;
+
+  /// No description provided for @cameraSettingsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get cameraSettingsReset;
+
+  /// No description provided for @cameraSettingsConfidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide unclear text'**
+  String get cameraSettingsConfidence;
+
+  /// No description provided for @cameraSettingsConfidenceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide text the camera reads unclearly. Higher = stricter — cleaner results, but may skip faint text.'**
+  String get cameraSettingsConfidenceHint;
+
+  /// No description provided for @cameraOriginalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get cameraOriginalLabel;
+
+  /// No description provided for @cameraSettingsHideLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide low-quality blocks'**
+  String get cameraSettingsHideLow;
+
+  /// No description provided for @cameraSettingsHideLowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Also hide blocks above the threshold but below the warning level. Turn on for clean documents.'**
+  String get cameraSettingsHideLowHint;
+
+  /// No description provided for @cameraSettingsShowOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show original text'**
+  String get cameraSettingsShowOriginal;
+
+  /// No description provided for @cameraSettingsShowOriginalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Always show the source text under each translation card.'**
+  String get cameraSettingsShowOriginalHint;
+
+  /// No description provided for @cameraSettingsOpacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay opacity'**
+  String get cameraSettingsOpacity;
+
+  /// No description provided for @cameraSettingsOpacityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Card background transparency. Lower = see more of the photo behind.'**
+  String get cameraSettingsOpacityHint;
+
+  /// No description provided for @cameraSceneAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get cameraSceneAuto;
+
+  /// No description provided for @cameraSceneDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Document'**
+  String get cameraSceneDocument;
+
+  /// No description provided for @cameraSceneMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get cameraSceneMenu;
+
+  /// No description provided for @cameraSceneSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign'**
+  String get cameraSceneSign;
+
+  /// No description provided for @cameraSceneScreenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot'**
+  String get cameraSceneScreenshot;
+
+  /// No description provided for @cameraWhatIsThis.
+  ///
+  /// In en, this message translates to:
+  /// **'What is this?'**
+  String get cameraWhatIsThis;
+
+  /// No description provided for @cameraWhatIsThisHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap any text in the preview to ask'**
+  String get cameraWhatIsThisHint;
+
+  /// No description provided for @cameraExplainTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is this?'**
+  String get cameraExplainTitle;
+
+  /// No description provided for @cameraEditTextTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit text'**
+  String get cameraEditTextTitle;
+
+  /// No description provided for @cameraReExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-explain'**
+  String get cameraReExplain;
+
+  /// No description provided for @cameraExplainEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No explanation available.'**
+  String get cameraExplainEmpty;
+
+  /// No description provided for @cameraExplainError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t fetch explanation. Try again.'**
+  String get cameraExplainError;
+
+  /// No description provided for @cameraResultExplainHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press a card to ask'**
+  String get cameraResultExplainHint;
+
+  /// No description provided for @cameraExplainDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'For reference only — actual meaning may differ'**
+  String get cameraExplainDisclaimer;
+
+  /// No description provided for @phrasebookTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Phrasebook'**
+  String get phrasebookTitle;
+
+  /// No description provided for @phrasebookEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phrasebook is empty. Use the camera to identify text, then tap Save.'**
+  String get phrasebookEmpty;
+
+  /// No description provided for @phrasebookSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get phrasebookSave;
+
+  /// No description provided for @phrasebookSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get phrasebookSaved;
+
+  /// No description provided for @phrasebookSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. Try again.'**
+  String get phrasebookSaveFailed;
+
+  /// No description provided for @phrasebookTitleTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Title too long (max 1000 characters). Shorten and try again.'**
+  String get phrasebookTitleTooLong;
+
+  /// No description provided for @phrasebookDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get phrasebookDelete;
+
+  /// No description provided for @phrasebookDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this from your phrasebook?'**
+  String get phrasebookDeleteConfirm;
+
+  /// No description provided for @phrasebookDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get phrasebookDeleted;
+
+  /// No description provided for @phrasebookNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get phrasebookNote;
+
+  /// No description provided for @phrasebookNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. ordered at ... — too spicy'**
+  String get phrasebookNoteHint;
+
+  /// No description provided for @phrasebookNoteSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save note'**
+  String get phrasebookNoteSave;
+
+  /// No description provided for @phrasebookCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get phrasebookCopy;
+
+  /// No description provided for @phrasebookViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View phrasebook'**
+  String get phrasebookViewAll;
+
+  /// No description provided for @phrasebookCategoryAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get phrasebookCategoryAll;
+
+  /// No description provided for @phrasebookCategoryMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get phrasebookCategoryMenu;
+
+  /// No description provided for @phrasebookCategoryPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place'**
+  String get phrasebookCategoryPlace;
+
+  /// No description provided for @phrasebookCategoryDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Document'**
+  String get phrasebookCategoryDocument;
+
+  /// No description provided for @phrasebookCategoryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get phrasebookCategoryOther;
+
+  /// No description provided for @phrasebookCategoryChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change category'**
+  String get phrasebookCategoryChange;
+
+  /// No description provided for @cameraTipsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera tips'**
+  String get cameraTipsTitle;
+
+  /// No description provided for @cameraTipsGotIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get cameraTipsGotIt;
+
+  /// No description provided for @cameraTip1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the right mode'**
+  String get cameraTip1Title;
+
+  /// No description provided for @cameraTip1Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick what you\'re scanning for the best result: a menu, a shop sign, a document — or Auto for anything.'**
+  String get cameraTip1Body;
+
+  /// No description provided for @cameraTip2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your languages'**
+  String get cameraTip2Title;
+
+  /// No description provided for @cameraTip2Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the language you\'re reading and the one to translate into (top-left). If a sign or text doesn\'t come out right, choose the reading language instead of leaving it on Auto.'**
+  String get cameraTip2Body;
+
+  /// No description provided for @cameraTip3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask \"What is this?\"'**
+  String get cameraTip3Title;
+
+  /// No description provided for @cameraTip3Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold a result to learn what a dish or place is — and hear how to say it out loud.'**
+  String get cameraTip3Body;
+
+  /// No description provided for @cameraTip4Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to remove'**
+  String get cameraTip4Title;
+
+  /// No description provided for @cameraTip4Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag a result card to the trash zone at the bottom to remove blocks you don\'t need.'**
+  String get cameraTip4Body;
+
+  /// No description provided for @cameraTip5Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a saved photo'**
+  String get cameraTip5Title;
+
+  /// No description provided for @cameraTip5Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the gallery icon next to the shutter to translate a photo already on your phone.'**
+  String get cameraTip5Body;
 }
 
 class _AppLocalizationsDelegate

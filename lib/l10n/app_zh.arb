@@ -1,6 +1,5 @@
 {
-  "@@locale": "zh",
-
+  "@locale": "zh",
   "translate": "翻译",
   "summarize": "总结",
   "explain": "解释",
@@ -25,20 +24,26 @@
   "next": "下一步",
   "skip": "跳过",
   "done": "完成",
-
   "hintEnterText": "输入要翻译的文本...",
   "detectedLang": "检测到:{lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "自动检测",
   "sourceLang": "原文",
   "targetLang": "目标",
   "swapLanguages": "互换语言",
-
   "settingsTitle": "设置",
   "sectionLanguage": "语言",
   "sectionTranslation": "翻译",
   "sectionAdvanced": "高级",
   "sectionOther": "其他",
+  "helpImproveApp": "帮助改进应用",
+  "helpImproveAppHint": "分享匿名使用信息以改进 TransKey。不会发送任何翻译内容或照片。",
   "sectionSpeech": "朗读",
   "targetLanguage": "目标语言",
   "sourceLanguage": "源语言",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "自动关闭(秒)",
   "autoCloseUnit": "秒",
   "autoCloseDisabled": "关闭",
-
   "toneAuto": "自动",
   "toneBusiness": "商务",
   "toneCasual": "随意",
@@ -63,14 +67,12 @@
   "toneTechnical": "技术",
   "toneNeutral": "中立",
   "toneReplySameAsTranslate": "与翻译相同",
-
   "popupTo": "至:",
   "tabTranslate": "翻译",
   "tabReply": "回复",
   "tabSummarize": "总结",
   "tabExplain": "解释",
   "tabRefine": "润色",
-
   "keyboardSetup": "键盘设置",
   "bubbleSetup": "气泡设置",
   "floatingBubble": "悬浮气泡",
@@ -98,7 +100,13 @@
   "devicesProLimit": "Pro 套餐最多允许 2 台设备。",
   "deviceCurrentThis": "当前设备",
   "deviceLastUsed": "上次使用:{date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "移除",
   "removeDeviceConfirm": "移除此设备?需要重新登录。",
   "removeDeviceFailed": "无法移除设备",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "取消 Pro 订阅?当前周期结束前仍可使用 Pro。",
   "subscriptionCancelled": "订阅将在续订日结束。",
   "subscriptionCancelFailed": "无法取消订阅",
-
   "voicePickerTitle": "语音",
   "voiceDefault": "默认",
   "speedPickerTitle": "朗读速度",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "在无障碍设置中启用 TransKey,即可让\"粘贴\"将回复直接写入聚焦中的输入框。",
   "accessibilityEnabled": "已启用",
   "accessibilityDisabled": "未启用 — 点击打开设置",
-
   "feedbackCatBug": "报告问题",
   "feedbackCatFeature": "功能建议",
   "feedbackCatOther": "其他",
@@ -135,12 +141,10 @@
   "feedbackSend": "发送",
   "feedbackThanks": "感谢您的反馈!",
   "feedbackFailed": "发送反馈失败",
-
   "selectLanguage": "选择语言",
   "searchLanguages": "搜索语言...",
   "recent": "最近",
   "allLanguages": "所有语言",
-
   "login": "登录",
   "signUp": "注册",
   "logIn": "登录",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "Pro 账户已达最大设备数",
   "deviceLimitError": "此设备上账户过多",
   "googleSignInFailed": "Google 登录失败:{error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "Google 登录未配置(缺少 serverClientId)",
-  "googleSignInNoIdToken": "Google 未返回 idToken — 请检查 serverClientId",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "目前无法使用 Google 登录，请尝试其他登录方式。",
+  "googleSignInNoIdToken": "Google 登录未完成，请重试。",
   "proRequired": "需要 Pro 套餐",
   "noTextToTranslate": "请先输入文本",
   "errorGeneric": "发生错误",
@@ -178,21 +187,48 @@
   "errorNetwork": "无网络连接",
   "glossaryErrSyncFailed": "无法同步术语表 — 请检查网络",
   "glossaryErrLimitReached": "术语表已满(最多 {max} 条)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "源和目标都不能为空",
-
   "planFree": "免费",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "试用",
-
   "usageRequests": "{used}/{limit} 次请求",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} 字符",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "试用还剩 {days} 天",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "试用今天结束",
   "trialEndsTomorrow": "试用明天结束",
   "trialUpgradeNow": "立即升级",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "订阅已过期",
   "subscriptionExpiredRenew": "续订",
   "subscriptionEndsOn": "{date} 结束",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "Mobile 订阅",
   "planProSubscription": "Pro 订阅",
   "discountFirstMonth": "首月 −50%",
@@ -208,7 +250,6 @@
   "accountBannedBody": "您的 TransKey 账户已被暂停。如认为是错误,请联系支持。",
   "accountBannedContact": "联系支持",
   "accountBannedLogout": "退出登录",
-
   "historyTitle": "历史",
   "historySearchHint": "搜索历史...",
   "historyFilterAll": "全部",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "解锁",
   "historyDetailLockAction": "锁定",
   "historyDetailTtsLabel": "朗读",
-
   "glossaryTitle": "术语库 ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "同步",
   "glossaryDeleteTitle": "删除条目",
   "glossaryDeleteBody": "删除 \"{source}\"?",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "已达术语库上限 ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "请同时填写原文和翻译",
   "glossarySyncFailed": "术语库同步失败",
   "glossaryEditTitle": "编辑条目",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "译文",
   "glossaryNamesLabel": "术语表中的名字 — 点击插入",
   "glossaryIsNameLabel": "这是人名",
-  "glossaryIsNameHint": "帮助语音输入识别该名字，并让 AI 完整保留。",
-
+  "glossaryIsNameHint": "帮助语音输入识别该名称，并在翻译时保持不变。",
   "upgradeScreenTitle": "升级 TransKey",
   "upgradeChooseYourPlan": "选择套餐",
   "upgradeUnlockFullPower": "解锁 TransKey 的全部能力",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "热门",
   "upgradeTryFreeDays": "免费试用 7 天",
   "upgradeTrialActivated": "试用已激活!{info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "试用激活失败",
   "upgradeCheckoutFailed": "无法打开结账页面",
   "upgradeMobileSubtitle": "全部功能,仅限移动端",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "所有平台",
   "upgradeProFeat3": "桌面 + 移动",
   "upgradeFeatureColumn": "功能",
-  "upgradeMobilePrice": "📱 Mobile · $3/月",
+  "upgradeMobilePrice": "📱 Mobile · $4/月",
   "upgradeProPrice": "💻 Pro · $6/月",
   "upgradeFooterHint": "📱 Mobile:只用手机的最佳性价比\n💻 Pro:手机和桌面通用",
   "comparisonReplyTranslate": "回复翻译",
   "comparisonMobileApps": "📱 iOS & Android",
   "comparisonDesktop": "💻 桌面",
-
   "nudgeUnlock": "解锁 {feature}",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "升级到 Pro,可在所有平台\n使用此功能。",
   "nudgeChoosePlan": "选择适合您的套餐。",
   "nudgeMaybeLater": "稍后",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "升级到 Pro",
   "nudgeUpgradeToProSubtitle": "所有平台均可使用 — 桌面 + 移动",
-  "nudgePriceMobile": "$3/月",
-  "nudgePriceProMonthly": "$6/月",
-
+  "nudgePriceMobile": "{price}/月",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/月",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "欢迎使用 TransKey",
   "onboardWelcomeSubtitle": "实时翻译\n20+ 种语言。",
   "onboardChooseTitle": "选择您的语言",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "开始使用",
   "onboardStartedSubtitle": "登录或创建免费账户\n立即开始翻译。",
   "onboardGetStarted": "开始使用",
-
   "setupTitle": "设置键盘",
   "setupOpenSettings": "打开设置",
   "setupOpenPermissions": "打开权限",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "在任意应用中选择文本 → 点击\"分享\" → 选择 TransKey。或复制文本后使用悬浮气泡。",
   "setupStep5Title": "AI 功能",
   "setupStep5Desc": "翻译、回复、总结、解释、润色 — 均由 AI 驱动。Pro 功能带有锁形图标。",
-
   "guideTitle": "使用方法",
   "guideSubtitle": "每个功能可用的所有文本输入方式",
   "guideIntroTitle": "捕获文本无需开启任何特殊权限。",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "从分享按钮",
   "guideInputShareDesc": "在任意应用:选中文本 → 点击分享 → 选择 TransKey。",
   "guideInputMenuTitle": "从文本选择菜单 → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "在任意应用选中文本,出现 复制/分享 弹窗。点 ⋮ 查看更多,然后选 TransKey: {feature}。",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "辅助功能 — 可选,仅用于自动粘贴",
   "guideReplyA11yBody": "如果为 TransKey 开启辅助功能,你的回复会直接粘贴到正在输入的聊天框,无需额外步骤。\n\n如果不想开启,回复会自动复制好 — 长按聊天框点 粘贴 即可。",
-
   "appPermissions": "应用权限",
   "permissionsAllSet": "全部就绪 — 点击查看",
   "permissionsNeedSetup": "点击授予所需权限",
-
   "setupTransKey": "设置 TransKey",
   "setupTransKeyBody": "授予悬浮气泡权限即可开始。辅助功能为可选项,仅用于一键粘贴 Reply。",
   "permFloatingBubble": "悬浮气泡",
@@ -369,31 +461,34 @@
   "permSkipHint": "辅助功能为可选项。没有它,Reply 建议会进入剪贴板,你需要自己粘贴。",
   "permSkipForNow": "暂时跳过",
   "permFinishedCheck": "已完成 — 检查",
-
   "voiceTooltip": "语音输入",
   "voiceListening": "正在聆听…",
   "voiceNeedsLang": "请先设置具体的源语言以使用语音输入",
   "voicePermDenied": "麦克风权限被拒绝",
   "voiceUnsupported": "此设备不支持语音输入",
   "voicePickSourceLang": "请先选择源语言 — 语音输入无法自动检测",
-
   "paywallTitle": "今日额度已用完",
   "paywallBody": "您今日的免费额度 20 次请求 / 2,000 字符已用完。观看一个短广告即可继续使用,或升级享受无限制使用。免费额度将在午夜重置。",
   "paywallWatchAdCta": "观看广告以继续",
   "paywallWatchAdSub": "每个广告可获得额外的请求次数和字符数。每日观看广告次数无限制。",
   "paywallUpgradeCta": "升级 — 无限制、无广告",
-  "paywallUpgradeSub": "$3/月起。可随时取消。",
+  "paywallUpgradeSub": "{price}/月起。可随时取消。",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "稍后再说",
   "paywallLoading": "加载中…",
   "paywallAdNotComplete": "广告未看完 — 请再试一次以获得奖励。",
   "paywallCreditFailed": "无法发放奖励。请稍后再试。",
   "quotaWatchAd": "+ 看广告",
   "quotaRewardGranted": "奖励已加入今日额度",
-
   "historyEmpty": "暂无翻译历史",
   "glossaryEmpty": "术语表为空",
   "glossaryEmptyAddCta": "添加词条",
-
   "captureKeepaliveTitle": "快速再次截图保留时长",
   "captureKeepaliveHint": "双击悬浮按钮即可再扫",
   "captureKeepaliveExplain": "扫屏后在此时段内保留屏幕录制权限，下次双击悬浮按钮（或再次选择 Lens）时无需重新弹出系统授权。保留越久操作越少，但投屏指示器会持续显示，设备会略微发热。",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "投屏显示时间更短，但授权弹窗更频繁。",
   "captureKeepaliveLongHint": "再扫速度最快，投屏指示器会显示更久。",
   "captureKeepaliveMinutes": "{count} 分钟",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "相机",
+  "cameraCapture": "拍照",
+  "cameraRetake": "重拍",
+  "cameraCopyAll": "全部复制",
+  "cameraNoText": "未检测到文字，请重试。",
+  "cameraTapShowTranslations": "点击显示翻译",
+  "cameraLowQuality": "质量低",
+  "cameraTranslating": "翻译中...",
+  "cameraTranslate": "翻译",
+  "cameraPermission": "需要相机权限才能使用此功能。",
+  "cameraSettingsTitle": "相机设置",
+  "cameraSettingsReset": "重置",
+  "cameraSettingsConfidence": "隐藏模糊文字",
+  "cameraSettingsConfidenceHint": "隐藏相机看不清的文字。越高越严格 — 结果更干净，但可能漏掉模糊文字。",
+  "cameraOriginalLabel": "原文",
+  "cameraSettingsHideLow": "隐藏低质量块",
+  "cameraSettingsHideLowHint": "同时隐藏阈值之上但低于警告级别的块。整洁文档时打开。",
+  "cameraSettingsShowOriginal": "显示原文",
+  "cameraSettingsShowOriginalHint": "始终在每张翻译卡片下显示原文。",
+  "cameraSettingsOpacity": "覆盖层不透明度",
+  "cameraSettingsOpacityHint": "卡片背景透明度。低 = 后面照片更可见。",
+  "cameraSceneAuto": "自动",
+  "cameraSceneDocument": "文档",
+  "cameraSceneMenu": "菜单",
+  "cameraSceneSign": "招牌",
+  "cameraSceneScreenshot": "屏幕截图",
+  "cameraWhatIsThis": "这是什么?",
+  "cameraWhatIsThisHint": "点击预览中的文字提问",
+  "cameraExplainTitle": "这是什么?",
+  "cameraEditTextTitle": "编辑文本",
+  "cameraReExplain": "重新解释",
+  "cameraExplainEmpty": "无可用解释。",
+  "cameraExplainError": "无法获取解释。请重试。",
+  "cameraResultExplainHint": "长按卡片提问",
+  "cameraExplainDisclaimer": "仅供参考 — 实际含义可能不同",
+  "phrasebookTitle": "短语集",
+  "phrasebookEmpty": "短语集为空。用相机识别文字后点击保存。",
+  "phrasebookSave": "保存",
+  "phrasebookSaved": "已保存",
+  "phrasebookSaveFailed": "保存失败,请重试。",
+  "phrasebookTitleTooLong": "标题过长(最多1000个字符)。请缩短后重试。",
+  "phrasebookDelete": "删除",
+  "phrasebookDeleteConfirm": "从短语集中删除？",
+  "phrasebookDeleted": "已删除",
+  "phrasebookNote": "备注",
+  "phrasebookNoteHint": "例如:在...点的 — 太辣",
+  "phrasebookNoteSave": "保存备注",
+  "phrasebookCopy": "复制",
+  "phrasebookViewAll": "打开短语集",
+  "phrasebookCategoryAll": "全部",
+  "phrasebookCategoryMenu": "菜单",
+  "phrasebookCategoryPlace": "地点",
+  "phrasebookCategoryDocument": "文档",
+  "phrasebookCategoryOther": "其他",
+  "phrasebookCategoryChange": "更改分类",
+  "cameraTipsTitle": "相机使用提示",
+  "cameraTipsGotIt": "知道了",
+  "cameraTip1Title": "选择合适的模式",
+  "cameraTip1Body": "选择你要扫描的内容以获得最佳效果：菜单、店铺招牌、文档 — 或用 Auto 适配一切。",
+  "cameraTip2Title": "选择语言",
+  "cameraTip2Body": "选择你正在读的语言和要翻译成的语言(左上角)。如果招牌或文字识别不准，请选择正在读的语言，而不要停留在 Auto。",
+  "cameraTip3Title": "询问\"这是什么？\"",
+  "cameraTip3Body": "长按结果即可了解这是什么菜或什么地方 — 还能听到怎么读出来。",
+  "cameraTip4Title": "拖动删除",
+  "cameraTip4Body": "将不需要的结果卡片拖到底部垃圾桶区域即可删除。",
+  "cameraTip5Title": "扫描已有照片",
+  "cameraTip5Body": "点击快门旁的相册图标，翻译手机里已有的照片。"
 }

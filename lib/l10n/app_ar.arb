@@ -1,6 +1,5 @@
 {
-  "@@locale": "ar",
-
+  "@locale": "ar",
   "translate": "ترجمة",
   "summarize": "تلخيص",
   "explain": "شرح",
@@ -25,20 +24,26 @@
   "next": "التالي",
   "skip": "تخطي",
   "done": "تم",
-
   "hintEnterText": "أدخل النص للترجمة...",
   "detectedLang": "تم اكتشاف: {lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "اكتشاف تلقائي",
   "sourceLang": "المصدر",
   "targetLang": "الهدف",
   "swapLanguages": "تبديل اللغات",
-
   "settingsTitle": "الإعدادات",
   "sectionLanguage": "اللغة",
   "sectionTranslation": "الترجمة",
   "sectionAdvanced": "متقدم",
   "sectionOther": "أخرى",
+  "helpImproveApp": "ساعد في تحسين التطبيق",
+  "helpImproveAppHint": "شارك معلومات استخدام مجهولة لتحسين TransKey. لا يتم إرسال أي نصوص أو صور.",
   "sectionSpeech": "القراءة الصوتية",
   "targetLanguage": "اللغة الهدف",
   "sourceLanguage": "اللغة المصدر",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "الإغلاق التلقائي (ثوانٍ)",
   "autoCloseUnit": "ثانية",
   "autoCloseDisabled": "إيقاف",
-
   "toneAuto": "تلقائي",
   "toneBusiness": "أعمال",
   "toneCasual": "ودي",
@@ -63,14 +67,12 @@
   "toneTechnical": "تقني",
   "toneNeutral": "محايد",
   "toneReplySameAsTranslate": "مثل الترجمة",
-
   "popupTo": "إلى:",
   "tabTranslate": "ترجمة",
   "tabReply": "رد",
   "tabSummarize": "تلخيص",
   "tabExplain": "شرح",
   "tabRefine": "تحسين",
-
   "keyboardSetup": "إعداد لوحة المفاتيح",
   "bubbleSetup": "إعداد الزر العائم",
   "floatingBubble": "الزر العائم",
@@ -98,7 +100,13 @@
   "devicesProLimit": "خطة Pro تسمح بحد أقصى جهازين.",
   "deviceCurrentThis": "هذا الجهاز",
   "deviceLastUsed": "آخر استخدام: {date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "إزالة",
   "removeDeviceConfirm": "إزالة هذا الجهاز؟ سيحتاج لتسجيل الدخول مرة أخرى.",
   "removeDeviceFailed": "تعذرت إزالة الجهاز",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "إلغاء اشتراك Pro؟ ستحتفظ بـ Pro حتى نهاية الفترة الحالية.",
   "subscriptionCancelled": "سينتهي الاشتراك في تاريخ التجديد.",
   "subscriptionCancelFailed": "تعذر إلغاء الاشتراك",
-
   "voicePickerTitle": "الصوت",
   "voiceDefault": "افتراضي",
   "speedPickerTitle": "سرعة الكلام",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "فعّل TransKey في إعدادات إمكانية الوصول للسماح لـ \"لصق\" بكتابة الرد في الحقل النشط في أي تطبيق.",
   "accessibilityEnabled": "مفعّل",
   "accessibilityDisabled": "غير مفعّل — اضغط لفتح الإعدادات",
-
   "feedbackTitle": "إرسال ملاحظات",
   "feedbackHint": "أخبرنا برأيك...",
   "feedbackSend": "إرسال",
@@ -135,12 +141,10 @@
   "feedbackHintFeature": "ماذا تريد أن يفعل TransKey؟",
   "feedbackHintOther": "شاركنا أفكارك...",
   "feedbackEmailLabel": "البريد الإلكتروني (اختياري، للرد)",
-
   "selectLanguage": "اختر اللغة",
   "searchLanguages": "البحث في اللغات...",
   "recent": "الحديثة",
   "allLanguages": "جميع اللغات",
-
   "login": "تسجيل الدخول",
   "signUp": "إنشاء حساب",
   "logIn": "تسجيل الدخول",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "حساب Pro مسجل بالفعل على الحد الأقصى من الأجهزة",
   "deviceLimitError": "عدد الحسابات على هذا الجهاز كبير جدًا",
   "googleSignInFailed": "فشل تسجيل الدخول عبر Google: {error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "تسجيل الدخول عبر Google غير مُعدّ (serverClientId مفقود)",
-  "googleSignInNoIdToken": "لم يُعِد تسجيل الدخول عبر Google أي idToken — تحقق من serverClientId",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "تسجيل الدخول عبر Google غير متاح حالياً. جرّب طريقة أخرى لتسجيل الدخول.",
+  "googleSignInNoIdToken": "لم يكتمل تسجيل الدخول عبر Google. حاول مرة أخرى.",
   "proRequired": "خطة Pro مطلوبة",
   "noTextToTranslate": "أدخل نصًا أولاً",
   "errorGeneric": "حدث خطأ ما",
@@ -178,21 +187,48 @@
   "errorNetwork": "لا يوجد اتصال بالإنترنت",
   "glossaryErrSyncFailed": "تعذرت مزامنة المعجم — تحقق من اتصالك",
   "glossaryErrLimitReached": "المعجم ممتلئ (الحد الأقصى {max} مدخل)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "المصدر والهدف كلاهما مطلوب",
-
   "planFree": "مجاني",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "تجريبي",
-
   "usageRequests": "{used}/{limit} طلب",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} حرف",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "تنتهي الفترة التجريبية خلال {days} {days, plural, zero{يوم} one{يوم} two{يومين} few{أيام} many{يومًا} other{يوم}}",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "تنتهي الفترة التجريبية اليوم",
   "trialEndsTomorrow": "تنتهي الفترة التجريبية غدًا",
   "trialUpgradeNow": "الترقية الآن",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "انتهت صلاحية اشتراكك",
   "subscriptionExpiredRenew": "تجديد",
   "subscriptionEndsOn": "ينتهي في {date}",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "اشتراك Mobile",
   "planProSubscription": "اشتراك Pro",
   "discountFirstMonth": "−50% الشهر الأول",
@@ -208,7 +250,6 @@
   "accountBannedBody": "تم تعليق حساب TransKey الخاص بك. يرجى التواصل مع الدعم إذا كنت تعتقد أن هذا خطأ.",
   "accountBannedContact": "التواصل مع الدعم",
   "accountBannedLogout": "تسجيل الخروج",
-
   "historyTitle": "السجل",
   "historySearchHint": "البحث في السجل...",
   "historyFilterAll": "الكل",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "فتح القفل",
   "historyDetailLockAction": "قفل",
   "historyDetailTtsLabel": "TTS",
-
   "glossaryTitle": "المعجم ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "مزامنة",
   "glossaryDeleteTitle": "حذف المدخل",
   "glossaryDeleteBody": "حذف \"{source}\"؟",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "تم الوصول إلى حد المعجم ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "المصدر والهدف مطلوبان",
   "glossarySyncFailed": "فشلت مزامنة المعجم",
   "glossaryEditTitle": "تعديل المدخل",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "الترجمة",
   "glossaryNamesLabel": "أسماء المعجم — اضغط للإدراج",
   "glossaryIsNameLabel": "هذا اسم شخص",
-  "glossaryIsNameHint": "يساعد الإدخال الصوتي على التعرف على الاسم ويخبر الذكاء الاصطناعي بالحفاظ عليه كما هو.",
-
+  "glossaryIsNameHint": "يساعد الإدخال الصوتي على التعرف على الاسم ويبقيه دون تغيير عند الترجمة.",
   "upgradeScreenTitle": "ترقية TransKey",
   "upgradeChooseYourPlan": "اختر خطتك",
   "upgradeUnlockFullPower": "أطلق العنان لكامل قوة TransKey",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "الأكثر شيوعًا",
   "upgradeTryFreeDays": "جرّب مجانًا لمدة 7 أيام",
   "upgradeTrialActivated": "تم تفعيل الفترة التجريبية! {info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "فشل تفعيل الفترة التجريبية",
   "upgradeCheckoutFailed": "فشل فتح صفحة الدفع",
   "upgradeMobileSubtitle": "جميع الميزات، للجوال فقط",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "جميع المنصات",
   "upgradeProFeat3": "سطح المكتب + الجوال",
   "upgradeFeatureColumn": "الميزة",
-  "upgradeMobilePrice": "📱 Mobile · $3/mo",
+  "upgradeMobilePrice": "📱 Mobile · $4/mo",
   "upgradeProPrice": "💻 Pro · $6/mo",
   "upgradeFooterHint": "📱 Mobile: الأفضل من حيث القيمة إذا كنت تستخدم الهاتف فقط\n💻 Pro: يعمل على الهاتف وسطح المكتب",
   "comparisonReplyTranslate": "ترجمة الرد",
   "comparisonMobileApps": "📱 iOS و Android",
   "comparisonDesktop": "💻 سطح المكتب",
-
   "nudgeUnlock": "فتح {feature}",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "قم بالترقية إلى Pro لاستخدام هذه الميزة\nعلى جميع المنصات.",
   "nudgeChoosePlan": "اختر خطة تناسب احتياجاتك.",
   "nudgeMaybeLater": "ربما لاحقًا",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "الترقية إلى Pro",
   "nudgeUpgradeToProSubtitle": "استخدمه على جميع المنصات — سطح المكتب + الجوال",
-  "nudgePriceMobile": "$3/month",
-  "nudgePriceProMonthly": "$6/month",
-
+  "nudgePriceMobile": "{price}/شهر",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/شهر",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "أهلًا بك في TransKey",
   "onboardWelcomeSubtitle": "ترجم النصوص في الوقت الفعلي عبر\nأكثر من 20 لغة فورًا.",
   "onboardChooseTitle": "اختر لغتك",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "ابدأ",
   "onboardStartedSubtitle": "سجّل الدخول أو أنشئ حسابًا مجانيًا\nلبدء الترجمة الآن.",
   "onboardGetStarted": "ابدأ",
-
   "setupTitle": "إعداد لوحة المفاتيح",
   "setupOpenSettings": "فتح الإعدادات",
   "setupOpenPermissions": "فتح الأذونات",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "حدد النص في أي تطبيق → اضغط \"مشاركة\" → اختر TransKey. أو استخدم الزر العائم بعد نسخ النص.",
   "setupStep5Title": "ميزات ذكية",
   "setupStep5Desc": "ترجمة ورد وتلخيص وشرح وتحسين النص — كلها مدعومة بالذكاء الاصطناعي. ميزات Pro مُعلَّمة برمز قفل.",
-
   "guideTitle": "كيفية الاستخدام",
   "guideSubtitle": "جميع طرق التقاط النص لكل ميزة",
   "guideIntroTitle": "لا حاجة لأذونات خاصة لالتقاط النص.",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "من زر المشاركة",
   "guideInputShareDesc": "داخل أي تطبيق، حدد النص → اضغط مشاركة → اختر TransKey.",
   "guideInputMenuTitle": "من قائمة تحديد النص → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "حدد النص في أي تطبيق — تظهر القائمة المنبثقة بخيارات نسخ/مشاركة. اضغط على ⋮ لمزيد من الخيارات، ثم اختر TransKey: {feature}.",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "إمكانية الوصول — اختيارية، للصق التلقائي فقط",
   "guideReplyA11yBody": "إذا كانت إمكانية الوصول مفعّلة لـ TransKey، فسيُلصق ردك مباشرة في حقل الدردشة الذي تكتب فيه. بدون أي خطوة إضافية.\n\nإذا كنت تفضّل عدم تفعيلها، فسيتم نسخ الرد لك — فقط اضغط مطولًا على حقل الدردشة واضغط لصق.",
-
   "appPermissions": "أذونات التطبيق",
   "permissionsAllSet": "كل شيء جاهز — اضغط للمراجعة",
   "permissionsNeedSetup": "اضغط لمنح الأذونات المطلوبة",
-
   "setupTransKey": "إعداد TransKey",
   "setupTransKeyBody": "امنح إذن الزر العائم للبدء. إمكانية الوصول اختيارية ومطلوبة فقط للصق الرد بضغطة واحدة.",
   "permFloatingBubble": "الزر العائم",
@@ -369,31 +461,34 @@
   "permSkipHint": "إمكانية الوصول اختيارية. بدونها ستظهر اقتراحات الرد في حافظتك وعليك لصقها بنفسك.",
   "permSkipForNow": "تخطٍ في الوقت الحالي",
   "permFinishedCheck": "لقد انتهيت — تحقق",
-
   "voiceTooltip": "تحدّث للكتابة",
   "voiceListening": "جارٍ الاستماع…",
   "voiceNeedsLang": "حدد لغة مصدر معينة لاستخدام الصوت",
   "voicePermDenied": "تم رفض إذن الميكروفون",
   "voiceUnsupported": "الإدخال الصوتي غير متاح على هذا الجهاز",
   "voicePickSourceLang": "يحتاج الإدخال الصوتي إلى لغة محددة. اختر لغة مصدر، ثم اضغط على الميكروفون مرة أخرى.",
-
   "paywallTitle": "تم الوصول إلى الحد اليومي",
   "paywallBody": "لقد استخدمت حصتك المجانية اليوم وهي 20 طلبًا / 2000 حرف. شاهد إعلانًا قصيرًا للمتابعة، أو قم بالترقية للاستخدام غير المحدود. تتم إعادة تعيين حصتك المجانية في منتصف الليل.",
   "paywallWatchAdCta": "شاهد إعلانًا للمتابعة",
   "paywallWatchAdSub": "احصل على طلبات وأحرف إضافية مع كل إعلان. لا يوجد حد لعدد الإعلانات يوميًا.",
   "paywallUpgradeCta": "ترقية — بلا حدود، بلا إعلانات",
-  "paywallUpgradeSub": "ابتداءً من $3/month. ألغِ في أي وقت.",
+  "paywallUpgradeSub": "ابتداءً من {price}/month. ألغِ في أي وقت.",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "ربما لاحقًا",
   "paywallLoading": "جارٍ التحميل…",
   "paywallAdNotComplete": "لم يكتمل الإعلان — حاول مرة أخرى للحصول على المكافأة.",
   "paywallCreditFailed": "تعذر إضافة المكافأة. حاول مرة أخرى بعد لحظة.",
   "quotaWatchAd": "+ شاهد إعلانًا",
   "quotaRewardGranted": "تمت إضافة المكافأة إلى حصة اليوم",
-
   "historyEmpty": "لا يوجد سجل ترجمات بعد",
   "glossaryEmpty": "المعجم فارغ",
   "glossaryEmptyAddCta": "إضافة مدخل",
-
   "captureKeepaliveTitle": "نافذة إعادة المسح السريعة",
   "captureKeepaliveHint": "نقر مزدوج على الزر = إعادة مسح",
   "captureKeepaliveExplain": "بعد مسح الشاشة، أبقِ إذن التقاط الشاشة جاهزًا حتى تتمكن من النقر المزدوج على الزر (أو اختيار مسح الشاشة مرة أخرى) دون مطالبة النظام بالإذن. النوافذ الأطول تقلل النقرات لكنها تُبقي مؤشر البث ظاهرًا وتُسخّن الجهاز قليلًا.",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "وقت بث أقل لكن طلبات إذن أكثر تكرارًا.",
   "captureKeepaliveLongHint": "أقصى سرعة لإعادة المسح. يبقى مؤشر البث مفعّلًا لفترة أطول.",
   "captureKeepaliveMinutes": "{count} د",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "الكاميرا",
+  "cameraCapture": "التقاط",
+  "cameraRetake": "إعادة",
+  "cameraCopyAll": "نسخ الكل",
+  "cameraNoText": "لم يتم اكتشاف نص. حاول مرة أخرى.",
+  "cameraTapShowTranslations": "انقر لعرض الترجمات",
+  "cameraLowQuality": "جودة منخفضة",
+  "cameraTranslating": "جاري الترجمة...",
+  "cameraTranslate": "ترجم",
+  "cameraPermission": "يتطلب إذن الكاميرا لاستخدام هذه الميزة.",
+  "cameraSettingsTitle": "إعدادات الكاميرا",
+  "cameraSettingsReset": "إعادة تعيين",
+  "cameraSettingsConfidence": "إخفاء النص غير الواضح",
+  "cameraSettingsConfidenceHint": "يخفي النص الذي تقرأه الكاميرا بشكل غير واضح. أعلى = أكثر صرامة — نتائج أنظف، لكن قد يتخطى النص الباهت.",
+  "cameraOriginalLabel": "الأصلي",
+  "cameraSettingsHideLow": "إخفاء الكتل منخفضة الجودة",
+  "cameraSettingsHideLowHint": "إخفاء أيضاً الكتل فوق الحد لكن تحت مستوى التحذير. للوثائق النظيفة.",
+  "cameraSettingsShowOriginal": "إظهار النص الأصلي",
+  "cameraSettingsShowOriginalHint": "إظهار النص المصدر دائماً تحت كل بطاقة ترجمة.",
+  "cameraSettingsOpacity": "شفافية التراكب",
+  "cameraSettingsOpacityHint": "شفافية خلفية البطاقة. أقل = الصورة خلفها أوضح.",
+  "cameraSceneAuto": "تلقائي",
+  "cameraSceneDocument": "مستند",
+  "cameraSceneMenu": "قائمة طعام",
+  "cameraSceneSign": "لافتة",
+  "cameraSceneScreenshot": "لقطة شاشة",
+  "cameraWhatIsThis": "ما هذا؟",
+  "cameraWhatIsThisHint": "اضغط على نص في المعاينة للسؤال",
+  "cameraExplainTitle": "ما هذا؟",
+  "cameraEditTextTitle": "تعديل النص",
+  "cameraReExplain": "إعادة الشرح",
+  "cameraExplainEmpty": "لا يوجد شرح متاح.",
+  "cameraExplainError": "تعذر جلب الشرح. حاول مرة أخرى.",
+  "cameraResultExplainHint": "اضغط مطولاً على البطاقة للسؤال",
+  "cameraExplainDisclaimer": "للإشارة فقط — قد يختلف المعنى الفعلي",
+  "phrasebookTitle": "دليل العبارات",
+  "phrasebookEmpty": "الدليل فارغ. استخدم الكاميرا للتعرف على النص ثم اضغط على حفظ.",
+  "phrasebookSave": "حفظ",
+  "phrasebookSaved": "تم الحفظ",
+  "phrasebookSaveFailed": "فشل الحفظ. حاول مرة أخرى.",
+  "phrasebookTitleTooLong": "العنوان طويل جداً (1000 حرف كحد أقصى). اختصره وأعد المحاولة.",
+  "phrasebookDelete": "حذف",
+  "phrasebookDeleteConfirm": "إزالة هذا من الدليل؟",
+  "phrasebookDeleted": "تمت الإزالة",
+  "phrasebookNote": "ملاحظة",
+  "phrasebookNoteHint": "مثال: طلبته في ... — حار جداً",
+  "phrasebookNoteSave": "حفظ الملاحظة",
+  "phrasebookCopy": "نسخ",
+  "phrasebookViewAll": "فتح الدليل",
+  "phrasebookCategoryAll": "الكل",
+  "phrasebookCategoryMenu": "القائمة",
+  "phrasebookCategoryPlace": "مكان",
+  "phrasebookCategoryDocument": "مستند",
+  "phrasebookCategoryOther": "أخرى",
+  "phrasebookCategoryChange": "تغيير الفئة",
+  "cameraTipsTitle": "نصائح الكاميرا",
+  "cameraTipsGotIt": "فهمت",
+  "cameraTip1Title": "اختر الوضع المناسب",
+  "cameraTip1Body": "اختر ما تقوم بمسحه للحصول على أفضل نتيجة: قائمة طعام، لافتة متجر، مستند — أو تلقائي لأي شيء.",
+  "cameraTip2Title": "اختر لغاتك",
+  "cameraTip2Body": "حدّد اللغة التي تقرأها واللغة التي تريد الترجمة إليها (أعلى اليسار). إذا لم تظهر لافتة أو نص بشكل صحيح، اختر لغة القراءة بدلاً من تلقائي.",
+  "cameraTip3Title": "اسأل «ما هذا؟»",
+  "cameraTip3Body": "اضغط مطولاً على نتيجة لمعرفة ما هو الطبق أو المكان — واستمع إلى طريقة نطقه.",
+  "cameraTip4Title": "اسحب للإزالة",
+  "cameraTip4Body": "اسحب البطاقة إلى سلة المهملات في الأسفل لإزالة الكتل غير المطلوبة.",
+  "cameraTip5Title": "امسح صورة محفوظة",
+  "cameraTip5Body": "اضغط أيقونة المعرض بجوار زر الالتقاط لترجمة صورة موجودة على هاتفك."
 }

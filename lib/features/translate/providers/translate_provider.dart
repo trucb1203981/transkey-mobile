@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_errors.dart';
 import '../../../core/api/dio_client.dart';
+import '../../../core/tracking/tracking_provider.dart';
 import '../../history/providers/history_provider.dart';
 import '../../settings/providers/app_settings_provider.dart';
 import '../../upgrade/providers/usage_provider.dart';
@@ -237,6 +238,14 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         sourceText: trimmed,
         lastHistoryId: historyId,
       ));
+      ref.read(trackingServiceProvider).event('translate_text', properties: {
+        'mode':        mode.value,
+        'source_lang': sourceLang.isEmpty ? 'auto' : sourceLang,
+        'target_lang': targetLang,
+        'length':      trimmed.length,
+        'endpoint':    endpoint,
+        'cache_hit':   true,
+      });
       return;
     }
 
@@ -274,6 +283,15 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         lastHistoryId: historyId,
       ));
 
+      ref.read(trackingServiceProvider).event('translate_text', properties: {
+        'mode':        mode.value,
+        'source_lang': sourceLang.isEmpty ? 'auto' : sourceLang,
+        'target_lang': targetLang,
+        'length':      trimmed.length,
+        'endpoint':    endpoint,
+        'cache_hit':   false,
+      });
+
       // Refresh usage in the background so the quota bar reflects the
       // request that just consumed quota.
       unawaited(ref.read(usageProvider.notifier).refresh());
@@ -304,6 +322,11 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         mode: mode,
         sourceText: trimmed,
       ));
+      ref.read(trackingServiceProvider).event('translate_error', properties: {
+        'mode':      mode.value,
+        'endpoint':  endpoint,
+        'code':      code.name,
+      });
     }
   }
 

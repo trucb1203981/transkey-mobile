@@ -97,4 +97,5 @@
     <string name="process_text_summarize">TransKey: تلخيص</string>
     <string name="process_text_explain">TransKey: شرح</string>
     <string name="process_text_refine">TransKey: تحسين</string>
+    <string name="bubble_camera">الكاميرا</string>
 </resources>

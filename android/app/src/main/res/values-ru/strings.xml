@@ -97,4 +97,5 @@
     <string name="process_text_summarize">TransKey: Кратко</string>
     <string name="process_text_explain">TransKey: Объяснить</string>
     <string name="process_text_refine">TransKey: Улучшить</string>
+    <string name="bubble_camera">Камера</string>
 </resources>

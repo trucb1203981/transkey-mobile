@@ -89,4 +89,5 @@
     <string name="process_text_summarize">TransKey: Tóm tắt</string>
     <string name="process_text_explain">TransKey: Giải thích</string>
     <string name="process_text_refine">TransKey: Cải thiện</string>
+    <string name="bubble_camera">Camera</string>
 </resources>

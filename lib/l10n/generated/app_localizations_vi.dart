@@ -116,6 +116,13 @@ class AppLocalizationsVi extends AppLocalizations {
   String get sectionOther => 'Khác';
 
   @override
+  String get helpImproveApp => 'Giúp cải thiện ứng dụng';
+
+  @override
+  String get helpImproveAppHint =>
+      'Chia sẻ thông tin sử dụng ẩn danh để TransKey tốt hơn. Không gửi nội dung dịch hay ảnh.';
+
+  @override
   String get sectionSpeech => 'Đọc to';
 
   @override
@@ -460,11 +467,11 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get googleNotConfigured =>
-      'Google sign-in chưa cấu hình (thiếu serverClientId)';
+      'Đăng nhập Google hiện không khả dụng. Vui lòng thử cách đăng nhập khác.';
 
   @override
   String get googleSignInNoIdToken =>
-      'Google trả về idToken rỗng — kiểm tra serverClientId';
+      'Đăng nhập Google chưa hoàn tất. Vui lòng thử lại.';
 
   @override
   String get proRequired => 'Yêu cầu gói Pro';
@@ -718,7 +725,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get glossaryIsNameHint =>
-      'Giúp nhập giọng nói nhận diện tên và yêu cầu AI giữ nguyên.';
+      'Giúp nhập giọng nói nhận diện tên và giữ nguyên khi dịch.';
 
   @override
   String get upgradeScreenTitle => 'Nâng cấp TransKey';
@@ -789,7 +796,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get upgradeFeatureColumn => 'Tính năng';
 
   @override
-  String get upgradeMobilePrice => '📱 Mobile · \$3/tháng';
+  String upgradeMobilePrice(Object price) {
+    return '📱 Mobile · \$4/tháng';
+  }
 
   @override
   String get upgradeProPrice => '💻 Pro · \$6/tháng';
@@ -836,10 +845,14 @@ class AppLocalizationsVi extends AppLocalizations {
       'Dùng trên mọi nền tảng — desktop + mobile';
 
   @override
-  String get nudgePriceMobile => '\$3/tháng';
+  String nudgePriceMobile(String price) {
+    return '$price/tháng';
+  }
 
   @override
-  String get nudgePriceProMonthly => '\$6/tháng';
+  String nudgePriceProMonthly(String price) {
+    return '$price/tháng';
+  }
 
   @override
   String get onboardWelcomeTitle => 'Chào mừng đến với TransKey';
@@ -1116,7 +1129,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get paywallUpgradeCta => 'Nâng cấp — không giới hạn, không quảng cáo';
 
   @override
-  String get paywallUpgradeSub => 'Từ \$3/tháng. Hủy bất cứ lúc nào.';
+  String paywallUpgradeSub(String price) {
+    return 'Từ $price/tháng. Hủy bất cứ lúc nào.';
+  }
 
   @override
   String get paywallDismiss => 'Để sau';
@@ -1180,4 +1195,218 @@ class AppLocalizationsVi extends AppLocalizations {
   String captureKeepaliveMinutes(int count) {
     return '$count phút';
   }
+
+  @override
+  String get cameraTitle => 'Camera';
+
+  @override
+  String get cameraCapture => 'Chụp';
+
+  @override
+  String get cameraRetake => 'Chụp lại';
+
+  @override
+  String get cameraCopyAll => 'Sao chép';
+
+  @override
+  String get cameraNoText => 'Không phát hiện văn bản. Thử lại.';
+
+  @override
+  String get cameraTapShowTranslations => 'Chạm để hiện bản dịch';
+
+  @override
+  String get cameraLowQuality => 'Chất lượng thấp';
+
+  @override
+  String get cameraTranslating => 'Đang dịch...';
+
+  @override
+  String get cameraTranslate => 'Dịch';
+
+  @override
+  String get cameraPermission =>
+      'Cần quyền truy cập camera để sử dụng tính năng này.';
+
+  @override
+  String get cameraSettingsTitle => 'Cài đặt Camera';
+
+  @override
+  String get cameraSettingsReset => 'Mặc định';
+
+  @override
+  String get cameraSettingsConfidence => 'Ẩn chữ mờ';
+
+  @override
+  String get cameraSettingsConfidenceHint =>
+      'Ẩn những chữ camera đọc không rõ. Cao hơn = chặt hơn — kết quả gọn hơn nhưng có thể bỏ chữ mờ.';
+
+  @override
+  String get cameraOriginalLabel => 'Gốc';
+
+  @override
+  String get cameraSettingsHideLow => 'Ẩn đoạn chất lượng thấp';
+
+  @override
+  String get cameraSettingsHideLowHint =>
+      'Ẩn luôn các đoạn trên ngưỡng nhưng dưới mức cảnh báo. Bật khi chụp tài liệu sạch.';
+
+  @override
+  String get cameraSettingsShowOriginal => 'Hiện văn bản gốc';
+
+  @override
+  String get cameraSettingsShowOriginalHint =>
+      'Luôn hiển thị chữ gốc bên dưới mỗi thẻ dịch.';
+
+  @override
+  String get cameraSettingsOpacity => 'Độ mờ của thẻ';
+
+  @override
+  String get cameraSettingsOpacityHint =>
+      'Độ mờ nền của thẻ dịch. Thấp hơn = thấy ảnh gốc rõ hơn.';
+
+  @override
+  String get cameraSceneAuto => 'Tự động';
+
+  @override
+  String get cameraSceneDocument => 'Tài liệu';
+
+  @override
+  String get cameraSceneMenu => 'Thực đơn';
+
+  @override
+  String get cameraSceneSign => 'Biển hiệu';
+
+  @override
+  String get cameraSceneScreenshot => 'Ảnh màn hình';
+
+  @override
+  String get cameraWhatIsThis => 'Đây là gì?';
+
+  @override
+  String get cameraWhatIsThisHint => 'Chạm vào chữ để hỏi';
+
+  @override
+  String get cameraExplainTitle => 'Đây là gì?';
+
+  @override
+  String get cameraEditTextTitle => 'Sửa văn bản';
+
+  @override
+  String get cameraReExplain => 'Giải thích lại';
+
+  @override
+  String get cameraExplainEmpty => 'Không có giải thích.';
+
+  @override
+  String get cameraExplainError => 'Không lấy được giải thích. Thử lại.';
+
+  @override
+  String get cameraResultExplainHint => 'Nhấn giữ thẻ để hỏi';
+
+  @override
+  String get cameraExplainDisclaimer =>
+      'Chỉ để tham khảo — thực tế có thể khác';
+
+  @override
+  String get phrasebookTitle => 'Sổ tay';
+
+  @override
+  String get phrasebookEmpty =>
+      'Sổ tay của bạn đang trống. Dùng camera để nhận diện rồi nhấn Lưu.';
+
+  @override
+  String get phrasebookSave => 'Lưu';
+
+  @override
+  String get phrasebookSaved => 'Đã lưu';
+
+  @override
+  String get phrasebookSaveFailed => 'Không lưu được. Thử lại.';
+
+  @override
+  String get phrasebookTitleTooLong =>
+      'Tiêu đề quá dài (tối đa 1000 ký tự). Rút gọn rồi thử lại.';
+
+  @override
+  String get phrasebookDelete => 'Xóa';
+
+  @override
+  String get phrasebookDeleteConfirm => 'Xóa mục này khỏi sổ tay?';
+
+  @override
+  String get phrasebookDeleted => 'Đã xóa';
+
+  @override
+  String get phrasebookNote => 'Ghi chú';
+
+  @override
+  String get phrasebookNoteHint => 'vd: ăn ở quán ... — hơi cay';
+
+  @override
+  String get phrasebookNoteSave => 'Lưu ghi chú';
+
+  @override
+  String get phrasebookCopy => 'Sao chép';
+
+  @override
+  String get phrasebookViewAll => 'Mở sổ tay';
+
+  @override
+  String get phrasebookCategoryAll => 'Tất cả';
+
+  @override
+  String get phrasebookCategoryMenu => 'Thực đơn';
+
+  @override
+  String get phrasebookCategoryPlace => 'Địa điểm';
+
+  @override
+  String get phrasebookCategoryDocument => 'Tài liệu';
+
+  @override
+  String get phrasebookCategoryOther => 'Khác';
+
+  @override
+  String get phrasebookCategoryChange => 'Đổi phân loại';
+
+  @override
+  String get cameraTipsTitle => 'Mẹo dùng camera';
+
+  @override
+  String get cameraTipsGotIt => 'Đã hiểu';
+
+  @override
+  String get cameraTip1Title => 'Chọn đúng chế độ';
+
+  @override
+  String get cameraTip1Body =>
+      'Chọn đúng thứ bạn đang quét để ra kết quả tốt nhất: thực đơn, biển hiệu, tài liệu — hoặc Auto cho mọi loại.';
+
+  @override
+  String get cameraTip2Title => 'Chọn ngôn ngữ';
+
+  @override
+  String get cameraTip2Body =>
+      'Chọn ngôn ngữ bạn đang đọc và ngôn ngữ muốn dịch sang (góc trên trái). Nếu một biển hiệu hay đoạn chữ ra chưa đúng, hãy chọn đúng ngôn ngữ đang đọc thay vì để Tự động.';
+
+  @override
+  String get cameraTip3Title => 'Hỏi \"Đây là gì?\"';
+
+  @override
+  String get cameraTip3Body =>
+      'Nhấn giữ một kết quả để biết đó là món gì hoặc nơi nào — và nghe cách đọc to.';
+
+  @override
+  String get cameraTip4Title => 'Kéo để xoá';
+
+  @override
+  String get cameraTip4Body =>
+      'Kéo thẻ kết quả vào vùng thùng rác phía dưới để loại bỏ các thẻ không cần.';
+
+  @override
+  String get cameraTip5Title => 'Quét ảnh có sẵn';
+
+  @override
+  String get cameraTip5Body =>
+      'Nhấn biểu tượng thư viện cạnh nút chụp để dịch ảnh có sẵn trong máy.';
 }

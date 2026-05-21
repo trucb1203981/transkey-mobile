@@ -10,6 +10,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/bubble/bubble_manager.dart';
 import '../../../core/locale/locale_provider.dart';
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/option_picker_sheet.dart';
 import '../../../shared/widgets/plan_status_banner.dart';
@@ -174,6 +175,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                       onTap: () =>
                           context.push('/settings/subscription'),
                     ),
+                  // Saved dishes from camera "What is this?" — same plan
+                  // gate as camera itself (pro / mobile / trial).
+                  if (plan == 'pro' || plan == 'mobile' || plan == 'trial')
+                    ListTile(
+                      leading: const Icon(Icons.bookmark_outline),
+                      title: Text(t.phrasebookTitle),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () => context.push('/phrasebook'),
+                    ),
                 ],
 
                 const SizedBox(height: AppSpacing.md),
@@ -303,6 +313,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   trailing: const Icon(Icons.chevron_right, size: 20),
                   onTap: () => context.push('/settings/guide'),
                 ),
+                _helpImproveAppTile(t),
                 ListTile(
                   leading: const Icon(Icons.feedback_outlined),
                   title: Text(t.sendFeedback),
@@ -459,6 +470,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           onChanged: locked ? null : onChanged,
         ),
       ),
+    );
+  }
+
+  /// "Help improve the app" — opt-out of anonymous usage tracking. Stored
+  /// in [TrackingService] (persisted in prefs). Default ON (opt-out=false)
+  /// so we get data from the silent majority; users who care will toggle.
+  /// Crash reporting is intentionally NOT gated by this toggle — it's
+  /// strictly technical, contains no user content, and we need it to keep
+  /// the app stable.
+  Widget _helpImproveAppTile(AppLocalizations t) {
+    final optedOut = ref.watch(trackingOptOutProvider);
+    return SwitchListTile(
+      secondary: const Icon(Icons.insights_outlined),
+      title: Text(t.helpImproveApp),
+      subtitle: Text(
+        t.helpImproveAppHint,
+        style: const TextStyle(fontSize: 12),
+      ),
+      value: !optedOut,
+      onChanged: (enabled) async {
+        await ref.read(trackingOptOutProvider.notifier).set(!enabled);
+      },
     );
   }
 

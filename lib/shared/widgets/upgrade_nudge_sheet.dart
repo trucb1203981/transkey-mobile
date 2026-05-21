@@ -4,9 +4,20 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../features/upgrade/providers/plans_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import 'drag_handle.dart';
+
+/// Format a plan's monthly price as a "$X" label. Trims trailing zeros so
+/// `4.0` → `$4` and `3.5` → `$3.5`. The localized "/month" suffix is left
+/// to the ARB template that consumes this string (e.g. nudgePriceMobile).
+String _formatDollar(num? amount, num fallback) {
+  final value = amount ?? fallback;
+  final str =
+      value % 1 == 0 ? value.toInt().toString() : value.toString();
+  return '\$$str';
+}
 
 class UpgradeNudgeSheet extends ConsumerStatefulWidget {
   const UpgradeNudgeSheet({
@@ -108,6 +119,20 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
     final plan = _currentPlan;
     final l = AppLocalizations.of(context)!;
 
+    // Pull live prices from the /plans API so the labels stay in sync with
+    // what the server actually charges. Falls back to the historical defaults
+    // when the API hasn't resolved yet (mobile = $4, pro = $6); the templates
+    // wrap whatever we pass with the locale's "/month" suffix.
+    final plansList = ref.watch(plansProvider).valueOrNull;
+    final mobilePrice = _formatDollar(
+      planByKey(plansList, 'mobile')?.priceMonthly,
+      4,
+    );
+    final proPrice = _formatDollar(
+      planByKey(plansList, 'pro')?.priceMonthly,
+      6,
+    );
+
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -138,7 +163,7 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
             _planButton(
               icon: Icons.devices,
               title: l.nudgeUpgradeToPro,
-              price: l.nudgePriceProMonthly,
+              price: l.nudgePriceProMonthly(proPrice),
               subtitle: l.nudgeUpgradeToProSubtitle,
               color: AppColors.amber,
               onTap: () => _checkout('pro'),
@@ -147,7 +172,7 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
             _planButton(
               icon: Icons.phone_android,
               title: l.nudgeMobileTitle,
-              price: l.nudgePriceMobile,
+              price: l.nudgePriceMobile(mobilePrice),
               subtitle: l.upgradeMobileSubtitle,
               color: AppColors.primary,
               onTap: () => _checkout('mobile'),
@@ -156,7 +181,7 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
             _planButton(
               icon: Icons.devices,
               title: l.nudgeProTitle,
-              price: l.nudgePriceProMonthly,
+              price: l.nudgePriceProMonthly(proPrice),
               subtitle: l.upgradeProSubtitle,
               color: AppColors.amber,
               onTap: () => _checkout('pro'),

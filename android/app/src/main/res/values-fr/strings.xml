@@ -91,4 +91,5 @@
     <string name="bubble_notification_turn_off">Désactiver</string>
     <string name="bubble_overlay_perm_needed">Activez \'Afficher par-dessus les autres apps\' pour les traductions flottantes</string>
     <string name="bubble_clipboard_empty_error">Aucun texte dans le presse-papiers.\nCopiez le texte d\'abord, puis touchez la bulle.</string>
+    <string name="bubble_camera">Caméra</string>
 </resources>

@@ -97,4 +97,5 @@
     <string name="process_text_summarize">TransKey: Ringkas</string>
     <string name="process_text_explain">TransKey: Jelaskan</string>
     <string name="process_text_refine">TransKey: Perbaiki</string>
+    <string name="bubble_camera">Kamera</string>
 </resources>

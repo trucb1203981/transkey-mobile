@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/tracking/tracking_provider.dart';
 import '../models/glossary_entry.dart';
 
 const _kGlossaryKey = 'tk_glossary';
@@ -174,6 +175,10 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
     await _saveLocal(updated);
     state = state.copyWith(entries: updated, clearError: true);
 
+    ref.read(trackingServiceProvider).event('glossary_add', properties: {
+      'is_name': entry.isName,
+      'total':   updated.length,
+    });
     _schedulePush();
     return true;
   }
@@ -203,6 +208,8 @@ class GlossaryNotifier extends Notifier<GlossaryState> {
     await _saveLocal(updated);
     state = state.copyWith(entries: updated, clearError: true);
 
+    ref.read(trackingServiceProvider).event('glossary_delete',
+        properties: {'total': updated.length});
     _schedulePush();
   }
 

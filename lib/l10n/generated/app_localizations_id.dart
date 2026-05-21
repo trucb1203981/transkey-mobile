@@ -116,6 +116,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get sectionOther => 'Lainnya';
 
   @override
+  String get helpImproveApp => 'Bantu tingkatkan aplikasi';
+
+  @override
+  String get helpImproveAppHint =>
+      'Bagikan info penggunaan anonim untuk membantu meningkatkan TransKey. Tidak ada teks atau foto yang dikirim.';
+
+  @override
   String get sectionSpeech => 'Baca dengan suara';
 
   @override
@@ -462,11 +469,11 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get googleNotConfigured =>
-      'Masuk dengan Google belum dikonfigurasi (serverClientId tidak ada)';
+      'Masuk dengan Google tidak tersedia saat ini. Coba cara lain untuk masuk.';
 
   @override
   String get googleSignInNoIdToken =>
-      'Masuk dengan Google tidak mengembalikan idToken — periksa serverClientId';
+      'Masuk dengan Google tidak selesai. Silakan coba lagi.';
 
   @override
   String get proRequired => 'Paket Pro diperlukan';
@@ -726,7 +733,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get glossaryIsNameHint =>
-      'Membantu input suara mengenali nama dan memberi tahu AI untuk mempertahankannya persis.';
+      'Membantu input suara mengenali nama dan menjaganya tetap sama saat menerjemahkan.';
 
   @override
   String get upgradeScreenTitle => 'Tingkatkan TransKey';
@@ -797,7 +804,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get upgradeFeatureColumn => 'Fitur';
 
   @override
-  String get upgradeMobilePrice => '📱 Mobile · \$3/mo';
+  String upgradeMobilePrice(Object price) {
+    return '📱 Mobile · \$4/mo';
+  }
 
   @override
   String get upgradeProPrice => '💻 Pro · \$6/mo';
@@ -845,10 +854,14 @@ class AppLocalizationsId extends AppLocalizations {
       'Gunakan di semua platform — desktop + mobile';
 
   @override
-  String get nudgePriceMobile => '\$3/month';
+  String nudgePriceMobile(String price) {
+    return '$price/bln';
+  }
 
   @override
-  String get nudgePriceProMonthly => '\$6/month';
+  String nudgePriceProMonthly(String price) {
+    return '$price/bln';
+  }
 
   @override
   String get onboardWelcomeTitle => 'Selamat datang di TransKey';
@@ -1129,7 +1142,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get paywallUpgradeCta => 'Tingkatkan — tanpa batas, tanpa iklan';
 
   @override
-  String get paywallUpgradeSub => 'Mulai dari \$3/month. Batalkan kapan saja.';
+  String paywallUpgradeSub(String price) {
+    return 'Mulai dari $price/month. Batalkan kapan saja.';
+  }
 
   @override
   String get paywallDismiss => 'Mungkin nanti';
@@ -1193,4 +1208,219 @@ class AppLocalizationsId extends AppLocalizations {
   String captureKeepaliveMinutes(int count) {
     return '$count mnt';
   }
+
+  @override
+  String get cameraTitle => 'Kamera';
+
+  @override
+  String get cameraCapture => 'Ambil';
+
+  @override
+  String get cameraRetake => 'Ulangi';
+
+  @override
+  String get cameraCopyAll => 'Salin semua';
+
+  @override
+  String get cameraNoText => 'Tidak ada teks terdeteksi. Coba lagi.';
+
+  @override
+  String get cameraTapShowTranslations => 'Ketuk untuk menampilkan terjemahan';
+
+  @override
+  String get cameraLowQuality => 'Kualitas rendah';
+
+  @override
+  String get cameraTranslating => 'Menerjemahkan...';
+
+  @override
+  String get cameraTranslate => 'Terjemahkan';
+
+  @override
+  String get cameraPermission =>
+      'Izin kamera diperlukan untuk menggunakan fitur ini.';
+
+  @override
+  String get cameraSettingsTitle => 'Pengaturan kamera';
+
+  @override
+  String get cameraSettingsReset => 'Atur ulang';
+
+  @override
+  String get cameraSettingsConfidence => 'Sembunyikan teks tak jelas';
+
+  @override
+  String get cameraSettingsConfidenceHint =>
+      'Sembunyikan teks yang dibaca kamera kurang jelas. Lebih tinggi = lebih ketat — hasil lebih bersih, tapi mungkin lewati teks samar.';
+
+  @override
+  String get cameraOriginalLabel => 'Asli';
+
+  @override
+  String get cameraSettingsHideLow => 'Sembunyikan blok kualitas rendah';
+
+  @override
+  String get cameraSettingsHideLowHint =>
+      'Sembunyikan juga blok di atas ambang tetapi di bawah tingkat peringatan. Aktifkan untuk dokumen bersih.';
+
+  @override
+  String get cameraSettingsShowOriginal => 'Tampilkan teks asli';
+
+  @override
+  String get cameraSettingsShowOriginalHint =>
+      'Selalu tampilkan teks sumber di bawah setiap kartu terjemahan.';
+
+  @override
+  String get cameraSettingsOpacity => 'Opasitas overlay';
+
+  @override
+  String get cameraSettingsOpacityHint =>
+      'Transparansi latar kartu. Lebih rendah = foto di belakang lebih terlihat.';
+
+  @override
+  String get cameraSceneAuto => 'Otomatis';
+
+  @override
+  String get cameraSceneDocument => 'Dokumen';
+
+  @override
+  String get cameraSceneMenu => 'Menu';
+
+  @override
+  String get cameraSceneSign => 'Papan tanda';
+
+  @override
+  String get cameraSceneScreenshot => 'Tangkapan layar';
+
+  @override
+  String get cameraWhatIsThis => 'Apa ini?';
+
+  @override
+  String get cameraWhatIsThisHint => 'Ketuk teks di pratinjau untuk bertanya';
+
+  @override
+  String get cameraExplainTitle => 'Apa ini?';
+
+  @override
+  String get cameraEditTextTitle => 'Edit teks';
+
+  @override
+  String get cameraReExplain => 'Jelaskan ulang';
+
+  @override
+  String get cameraExplainEmpty => 'Tidak ada penjelasan.';
+
+  @override
+  String get cameraExplainError =>
+      'Tidak dapat mengambil penjelasan. Coba lagi.';
+
+  @override
+  String get cameraResultExplainHint => 'Tekan lama kartu untuk bertanya';
+
+  @override
+  String get cameraExplainDisclaimer =>
+      'Hanya referensi — arti sebenarnya mungkin berbeda';
+
+  @override
+  String get phrasebookTitle => 'Buku frasa';
+
+  @override
+  String get phrasebookEmpty =>
+      'Buku frasa Anda kosong. Gunakan kamera untuk mengenali teks, lalu ketuk Simpan.';
+
+  @override
+  String get phrasebookSave => 'Simpan';
+
+  @override
+  String get phrasebookSaved => 'Tersimpan';
+
+  @override
+  String get phrasebookSaveFailed => 'Gagal menyimpan. Coba lagi.';
+
+  @override
+  String get phrasebookTitleTooLong =>
+      'Judul terlalu panjang (maks 1000 karakter). Persingkat dan coba lagi.';
+
+  @override
+  String get phrasebookDelete => 'Hapus';
+
+  @override
+  String get phrasebookDeleteConfirm => 'Hapus dari buku frasa?';
+
+  @override
+  String get phrasebookDeleted => 'Dihapus';
+
+  @override
+  String get phrasebookNote => 'Catatan';
+
+  @override
+  String get phrasebookNoteHint => 'mis.: dipesan di ... — terlalu pedas';
+
+  @override
+  String get phrasebookNoteSave => 'Simpan catatan';
+
+  @override
+  String get phrasebookCopy => 'Salin';
+
+  @override
+  String get phrasebookViewAll => 'Buka buku frasa';
+
+  @override
+  String get phrasebookCategoryAll => 'Semua';
+
+  @override
+  String get phrasebookCategoryMenu => 'Menu';
+
+  @override
+  String get phrasebookCategoryPlace => 'Tempat';
+
+  @override
+  String get phrasebookCategoryDocument => 'Dokumen';
+
+  @override
+  String get phrasebookCategoryOther => 'Lainnya';
+
+  @override
+  String get phrasebookCategoryChange => 'Ubah kategori';
+
+  @override
+  String get cameraTipsTitle => 'Tips kamera';
+
+  @override
+  String get cameraTipsGotIt => 'Mengerti';
+
+  @override
+  String get cameraTip1Title => 'Pilih mode yang tepat';
+
+  @override
+  String get cameraTip1Body =>
+      'Pilih apa yang Anda pindai untuk hasil terbaik: menu, papan nama toko, dokumen — atau Auto untuk apa saja.';
+
+  @override
+  String get cameraTip2Title => 'Pilih bahasa Anda';
+
+  @override
+  String get cameraTip2Body =>
+      'Atur bahasa yang Anda baca dan bahasa terjemahannya (kiri atas). Jika papan nama atau teks tidak muncul dengan benar, pilih bahasa yang dibaca alih-alih Auto.';
+
+  @override
+  String get cameraTip3Title => 'Tanya \"Apa ini?\"';
+
+  @override
+  String get cameraTip3Body =>
+      'Tekan lama hasil untuk tahu apa hidangan atau tempat itu — dan dengar cara mengucapkannya.';
+
+  @override
+  String get cameraTip4Title => 'Seret untuk hapus';
+
+  @override
+  String get cameraTip4Body =>
+      'Seret kartu ke area tempat sampah di bawah untuk hapus blok yang tak perlu.';
+
+  @override
+  String get cameraTip5Title => 'Pindai foto tersimpan';
+
+  @override
+  String get cameraTip5Body =>
+      'Ketuk ikon galeri di samping rana untuk menerjemahkan foto yang sudah ada di ponsel.';
 }

@@ -14,10 +14,18 @@ class FeatureFlags {
     this.glossary = true,
     this.toneOverride = false,
     this.romanization = false,
+    this.lens = false,
+    this.camera = false,
     this.allowedTargetLangs = const <String>[],
     this.allowedSourceLangs = const <String>[],
     this.allowedReplyTargetLangs = const <String>[],
   });
+
+  /// Default for the "unauthenticated / not yet fetched" window. Keep it
+  /// pessimistic — translate + glossary on, every paid feature OFF — so a
+  /// flaky cold-start never accidentally unlocks paid features. Refreshed
+  /// when /features resolves (see [FeaturesNotifier.fetch]).
+  static const freeDefaults = FeatureFlags();
 
   final bool translate;
   final bool summarize;
@@ -28,6 +36,11 @@ class FeatureFlags {
   final bool glossary;
   final bool toneOverride;
   final bool romanization;
+  /// Bubble screen-scan (region OCR + translate-batch path). Distinct
+  /// from [camera] in /admin/plans — admin can toggle each per plan.
+  final bool lens;
+  /// Camera-capture flow (photo of menu/sign → /translate-image).
+  final bool camera;
 
   /// Empty list = unrestricted (every language in the catalog is offered).
   /// Non-empty = client must intersect with the catalog before showing.
@@ -45,6 +58,8 @@ class FeatureFlags {
         glossary: map['glossary'] as bool? ?? true,
         toneOverride: map['tone_override'] as bool? ?? false,
         romanization: map['romanization'] as bool? ?? false,
+        lens:   map['lens']   as bool? ?? false,
+        camera: map['camera'] as bool? ?? false,
         allowedTargetLangs: _asStringList(map['allowed_target_langs']),
         allowedSourceLangs: _asStringList(map['allowed_source_langs']),
         allowedReplyTargetLangs:
@@ -146,6 +161,14 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
   /// Fetch only if cache is stale or empty.
   Future<void> refreshIfNeeded() async {
     if (state.isStale) await fetch();
+  }
+
+  /// Force-refresh, ignoring TTL. Used when auth state changes — login,
+  /// logout, plan upgrade via webhook — because the allowed feature set
+  /// might be completely different for the new identity.
+  Future<void> refresh() async {
+    state = state.copyWith(fetchedAt: null);
+    await fetch();
   }
 }
 

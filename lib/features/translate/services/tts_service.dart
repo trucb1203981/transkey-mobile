@@ -158,7 +158,7 @@ class TtsNotifier extends Notifier<TtsState> {
     }
   }
 
-  Future<void> speak(String text, {String lang = 'en'}) async {
+  Future<void> speak(String text, {String lang = 'en', double? rate}) async {
     if (text.trim().isEmpty) return;
 
     final sameText = state.currentText == text.trim() && state.isPlaying;
@@ -180,7 +180,11 @@ class TtsNotifier extends Notifier<TtsState> {
       state = state.copyWith(isPlaying: false, clearText: true);
       return;
     }
-    await _tts.setSpeechRate(state.rate);
+    // Optional per-call rate override — used by travel surfaces (camera
+    // "What is this?" + saved phrasebook) that want a slower pace so a
+    // local listener can catch each syllable. Doesn't persist; the global
+    // rate in [state.rate] is untouched.
+    await _tts.setSpeechRate(rate ?? state.rate);
 
     final voiceName = state.voiceByLang[lang];
     if (voiceName != null && voiceName.isNotEmpty) {

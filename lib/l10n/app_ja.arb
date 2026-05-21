@@ -1,6 +1,5 @@
 {
-  "@@locale": "ja",
-
+  "@locale": "ja",
   "translate": "翻訳",
   "summarize": "要約",
   "explain": "説明",
@@ -25,20 +24,26 @@
   "next": "次へ",
   "skip": "スキップ",
   "done": "完了",
-
   "hintEnterText": "翻訳するテキストを入力...",
   "detectedLang": "検出: {lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "自動検出",
   "sourceLang": "元",
   "targetLang": "先",
   "swapLanguages": "言語を入れ替え",
-
   "settingsTitle": "設定",
   "sectionLanguage": "言語",
   "sectionTranslation": "翻訳",
   "sectionAdvanced": "詳細",
   "sectionOther": "その他",
+  "helpImproveApp": "アプリの改善に協力する",
+  "helpImproveAppHint": "匿名の利用情報を共有して TransKey の改善に役立てます。翻訳内容や写真は送信されません。",
   "sectionSpeech": "読み上げ",
   "targetLanguage": "翻訳先の言語",
   "sourceLanguage": "翻訳元の言語",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "自動で閉じる(秒)",
   "autoCloseUnit": "秒",
   "autoCloseDisabled": "オフ",
-
   "toneAuto": "自動",
   "toneBusiness": "ビジネス",
   "toneCasual": "カジュアル",
@@ -63,14 +67,12 @@
   "toneTechnical": "技術的",
   "toneNeutral": "中立",
   "toneReplySameAsTranslate": "翻訳と同じ",
-
   "popupTo": "翻訳先:",
   "tabTranslate": "翻訳",
   "tabReply": "返信",
   "tabSummarize": "要約",
   "tabExplain": "説明",
   "tabRefine": "推敲",
-
   "keyboardSetup": "キーボード設定",
   "bubbleSetup": "バブル設定",
   "floatingBubble": "フローティングバブル",
@@ -98,7 +100,13 @@
   "devicesProLimit": "Proプランは最大2台のデバイスを使用できます。",
   "deviceCurrentThis": "このデバイス",
   "deviceLastUsed": "最終使用: {date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "削除",
   "removeDeviceConfirm": "このデバイスを削除しますか?再ログインが必要になります。",
   "removeDeviceFailed": "デバイスを削除できませんでした",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "Proサブスクリプションをキャンセルしますか?現在の期間が終わるまでProのまま使えます。",
   "subscriptionCancelled": "更新日に終了します。",
   "subscriptionCancelFailed": "サブスクリプションをキャンセルできませんでした",
-
   "voicePickerTitle": "音声",
   "voiceDefault": "デフォルト",
   "speedPickerTitle": "読み上げ速度",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "アクセシビリティ設定でTransKeyを有効にすると、「貼り付け」でフォーカス中の入力欄に返信を直接書き込めます。",
   "accessibilityEnabled": "有効",
   "accessibilityDisabled": "未有効 — タップして設定を開く",
-
   "feedbackCatBug": "バグ報告",
   "feedbackCatFeature": "機能リクエスト",
   "feedbackCatOther": "その他",
@@ -135,12 +141,10 @@
   "feedbackSend": "送信",
   "feedbackThanks": "フィードバックをありがとうございました!",
   "feedbackFailed": "フィードバックを送信できませんでした",
-
   "selectLanguage": "言語を選択",
   "searchLanguages": "言語を検索...",
   "recent": "最近",
   "allLanguages": "すべての言語",
-
   "login": "ログイン",
   "signUp": "登録",
   "logIn": "ログイン",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "Proアカウントは登録できるデバイス数の上限に達しています",
   "deviceLimitError": "このデバイスにアカウントが多すぎます",
   "googleSignInFailed": "Googleログインに失敗: {error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "Googleログインが未設定です(serverClientIdがありません)",
-  "googleSignInNoIdToken": "GoogleからidTokenが返されません — serverClientIdを確認してください",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "現在Googleログインを利用できません。別の方法でログインしてください。",
+  "googleSignInNoIdToken": "Googleログインが完了しませんでした。もう一度お試しください。",
   "proRequired": "Proプランが必要です",
   "noTextToTranslate": "先にテキストを入力してください",
   "errorGeneric": "エラーが発生しました",
@@ -178,21 +187,48 @@
   "errorNetwork": "インターネットに接続されていません",
   "glossaryErrSyncFailed": "用語集を同期できませんでした — 接続をご確認ください",
   "glossaryErrLimitReached": "用語集が満杯です(最大 {max} 件)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "原文と訳文の両方が必要です",
-
   "planFree": "無料",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "トライアル",
-
   "usageRequests": "{used}/{limit} リクエスト",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} 文字",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "トライアル終了まであと{days}日",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "トライアルは本日終了",
   "trialEndsTomorrow": "トライアルは明日終了",
   "trialUpgradeNow": "今すぐアップグレード",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "サブスクリプションが期限切れ",
   "subscriptionExpiredRenew": "更新",
   "subscriptionEndsOn": "{date}に終了",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "Mobileサブスクリプション",
   "planProSubscription": "Proサブスクリプション",
   "discountFirstMonth": "初月−50%",
@@ -208,7 +250,6 @@
   "accountBannedBody": "TransKeyアカウントが停止されています。誤りと思われる場合はサポートにお問い合わせください。",
   "accountBannedContact": "サポートに連絡",
   "accountBannedLogout": "ログアウト",
-
   "historyTitle": "履歴",
   "historySearchHint": "履歴を検索...",
   "historyFilterAll": "すべて",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "解除",
   "historyDetailLockAction": "ロック",
   "historyDetailTtsLabel": "読上",
-
   "glossaryTitle": "用語集 ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "同期",
   "glossaryDeleteTitle": "項目を削除",
   "glossaryDeleteBody": "\"{source}\"を削除しますか?",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "用語集の上限に達しました ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "原文と翻訳の両方を入力してください",
   "glossarySyncFailed": "用語集の同期に失敗しました",
   "glossaryEditTitle": "項目を編集",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "訳語",
   "glossaryNamesLabel": "用語集の名前 — タップで挿入",
   "glossaryIsNameLabel": "これは人名です",
-  "glossaryIsNameHint": "音声入力での認識精度を上げ、AIにそのまま残すよう指示します。",
-
+  "glossaryIsNameHint": "音声入力が名前を認識し、翻訳時にそのまま保持します。",
   "upgradeScreenTitle": "TransKeyをアップグレード",
   "upgradeChooseYourPlan": "プランを選択",
   "upgradeUnlockFullPower": "TransKeyの全機能を解放",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "人気",
   "upgradeTryFreeDays": "7日間無料で試す",
   "upgradeTrialActivated": "トライアル開始! {info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "トライアルの開始に失敗しました",
   "upgradeCheckoutFailed": "チェックアウトを開けませんでした",
   "upgradeMobileSubtitle": "全機能、モバイル限定",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "全プラットフォーム",
   "upgradeProFeat3": "Desktop + Mobile",
   "upgradeFeatureColumn": "機能",
-  "upgradeMobilePrice": "📱 Mobile · $3/月",
+  "upgradeMobilePrice": "📱 Mobile · $4/月",
   "upgradeProPrice": "💻 Pro · $6/月",
   "upgradeFooterHint": "📱 Mobile: 電話のみで使う場合のベストバリュー\n💻 Pro: 電話とデスクトップの両方で使える",
   "comparisonReplyTranslate": "返信翻訳",
   "comparisonMobileApps": "📱 iOS & Android",
   "comparisonDesktop": "💻 Desktop",
-
   "nudgeUnlock": "{feature}を解放",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "Proにアップグレードすると\n全プラットフォームでこの機能を使えます。",
   "nudgeChoosePlan": "ニーズに合うプランをお選びください。",
   "nudgeMaybeLater": "あとで",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "Proにアップグレード",
   "nudgeUpgradeToProSubtitle": "全プラットフォームで使える — desktop + mobile",
-  "nudgePriceMobile": "$3/月",
-  "nudgePriceProMonthly": "$6/月",
-
+  "nudgePriceMobile": "{price}/月",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/月",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "TransKeyへようこそ",
   "onboardWelcomeSubtitle": "20以上の言語を\nリアルタイムで翻訳。",
   "onboardChooseTitle": "言語を選択",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "はじめる",
   "onboardStartedSubtitle": "ログインまたは無料アカウントを作成して\nすぐに翻訳を始めましょう。",
   "onboardGetStarted": "はじめる",
-
   "setupTitle": "キーボードを設定",
   "setupOpenSettings": "設定を開く",
   "setupOpenPermissions": "権限を開く",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "テキストを選択 → 「共有」 → TransKey を選ぶ。またはコピー後にフローティングバブルを使えます。",
   "setupStep5Title": "AI機能",
   "setupStep5Desc": "翻訳・返信・要約・説明・推敲 — すべてAI搭載。Pro限定機能には鍵アイコンがついています。",
-
   "guideTitle": "使い方",
   "guideSubtitle": "各機能でテキストを取り込むあらゆる方法",
   "guideIntroTitle": "テキスト取得に特別な権限は不要です。",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "共有ボタンから",
   "guideInputShareDesc": "任意のアプリ:テキストを選択 → 共有をタップ → TransKey を選択。",
   "guideInputMenuTitle": "テキスト選択メニューから → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "アプリでテキストを選択するとコピー/共有のポップアップが出ます。⋮ をタップしてその他のオプションから TransKey: {feature} を選択。",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "アクセシビリティ — 任意、自動ペースト用のみ",
   "guideReplyA11yBody": "TransKey にアクセシビリティを有効にすれば、返信が入力中のチャット欄に直接ペーストされます。追加操作不要。\n\n有効にしたくなければ、返信は自動でコピーされます — チャット欄を長押しして「貼り付け」をタップしてください。",
-
   "appPermissions": "アプリの権限",
   "permissionsAllSet": "設定完了 — タップで確認",
   "permissionsNeedSetup": "必要な権限を付与するためタップ",
-
   "setupTransKey": "TransKey をセットアップ",
   "setupTransKeyBody": "フローティングバブル権限を付与するだけで始められます。アクセシビリティは任意で、ワンタップ Reply ペーストにのみ必要です。",
   "permFloatingBubble": "フローティングバブル",
@@ -369,31 +461,34 @@
   "permSkipHint": "アクセシビリティは任意です。なしでも Reply 結果はクリップボードに入り、自分でペーストできます。",
   "permSkipForNow": "後で",
   "permFinishedCheck": "完了 — 確認",
-
   "voiceTooltip": "音声入力",
   "voiceListening": "聞き取り中…",
   "voiceNeedsLang": "音声入力には元の言語を指定してください",
   "voicePermDenied": "マイクの権限が拒否されました",
   "voiceUnsupported": "この端末では音声入力を利用できません",
   "voicePickSourceLang": "先に元の言語を選択してください — 音声入力は自動検出できません",
-
   "paywallTitle": "本日の上限に達しました",
   "paywallBody": "本日の無料枠 20 リクエスト / 2,000 文字を使い切りました。短い広告を視聴して続けるか、アップグレードして無制限にご利用ください。無料枠は深夜にリセットされます。",
   "paywallWatchAdCta": "広告を見て続ける",
   "paywallWatchAdSub": "広告ごとに追加のリクエスト数と文字数を獲得できます。1日の視聴回数に制限はありません。",
   "paywallUpgradeCta": "アップグレード — 無制限、広告なし",
-  "paywallUpgradeSub": "$3/月から。いつでもキャンセル可能。",
+  "paywallUpgradeSub": "{price}/月から。いつでもキャンセル可能。",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "あとで",
   "paywallLoading": "読み込み中…",
   "paywallAdNotComplete": "広告が完了しませんでした — もう一度試して報酬を獲得してください。",
   "paywallCreditFailed": "報酬を付与できませんでした。少し時間をおいて再試行してください。",
   "quotaWatchAd": "+ 広告を見る",
   "quotaRewardGranted": "本日の枠に報酬が追加されました",
-
   "historyEmpty": "翻訳履歴はまだありません",
   "glossaryEmpty": "用語集は空です",
   "glossaryEmptyAddCta": "用語を追加",
-
   "captureKeepaliveTitle": "再スキャン許可の保持時間",
   "captureKeepaliveHint": "ダブルタップで再スキャン",
   "captureKeepaliveExplain": "スキャン後、画面キャプチャ許可をこの時間だけ保持し、次回ダブルタップ（または再度Lens選択）でシステム許可を再要求せずに済むようにします。長く保持するほど操作が減りますが、画面録画インジケーターが表示され続け、端末がわずかに発熱します。",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "録画表示は短めですが、許可ダイアログが頻繁に出ます。",
   "captureKeepaliveLongHint": "最速の再スキャン。録画インジケーターが長く表示されます。",
   "captureKeepaliveMinutes": "{count} 分",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "カメラ",
+  "cameraCapture": "撮影",
+  "cameraRetake": "撮り直し",
+  "cameraCopyAll": "すべてコピー",
+  "cameraNoText": "テキストが検出されません。もう一度お試しください。",
+  "cameraTapShowTranslations": "タップして翻訳を表示",
+  "cameraLowQuality": "画質が低い",
+  "cameraTranslating": "翻訳中...",
+  "cameraTranslate": "翻訳する",
+  "cameraPermission": "この機能を使用するにはカメラの許可が必要です。",
+  "cameraSettingsTitle": "カメラ設定",
+  "cameraSettingsReset": "リセット",
+  "cameraSettingsConfidence": "不明瞭な文字を隠す",
+  "cameraSettingsConfidenceHint": "はっきり読めない文字を隠します。高いほど厳しく、結果がすっきりしますが薄い文字を逃すことがあります。",
+  "cameraOriginalLabel": "元",
+  "cameraSettingsHideLow": "低品質ブロックを非表示",
+  "cameraSettingsHideLowHint": "しきい値以上でも警告レベル未満のブロックを非表示。クリーンな書類向け。",
+  "cameraSettingsShowOriginal": "元のテキストを表示",
+  "cameraSettingsShowOriginalHint": "各翻訳カードの下に元のテキストを常に表示。",
+  "cameraSettingsOpacity": "オーバーレイの透明度",
+  "cameraSettingsOpacityHint": "カード背景の透明度。低い = 後ろの写真がより見える。",
+  "cameraSceneAuto": "自動",
+  "cameraSceneDocument": "書類",
+  "cameraSceneMenu": "メニュー",
+  "cameraSceneSign": "看板",
+  "cameraSceneScreenshot": "スクリーンショット",
+  "cameraWhatIsThis": "これは何?",
+  "cameraWhatIsThisHint": "プレビューの文字をタップして質問",
+  "cameraExplainTitle": "これは何?",
+  "cameraEditTextTitle": "テキストを編集",
+  "cameraReExplain": "再解析",
+  "cameraExplainEmpty": "説明がありません。",
+  "cameraExplainError": "説明を取得できませんでした。再試行。",
+  "cameraResultExplainHint": "カードを長押しして質問",
+  "cameraExplainDisclaimer": "参考のみ — 実際の意味と異なる場合があります",
+  "phrasebookTitle": "フレーズ集",
+  "phrasebookEmpty": "フレーズ集は空です。カメラでテキストを認識し、保存をタップ。",
+  "phrasebookSave": "保存",
+  "phrasebookSaved": "保存しました",
+  "phrasebookSaveFailed": "保存できませんでした。再試行。",
+  "phrasebookTitleTooLong": "タイトルが長すぎます（最大1000文字）。短くしてから再試行してください。",
+  "phrasebookDelete": "削除",
+  "phrasebookDeleteConfirm": "フレーズ集から削除しますか？",
+  "phrasebookDeleted": "削除しました",
+  "phrasebookNote": "メモ",
+  "phrasebookNoteHint": "例: ... のお店で注文 — 辛すぎ",
+  "phrasebookNoteSave": "メモを保存",
+  "phrasebookCopy": "コピー",
+  "phrasebookViewAll": "フレーズ集を開く",
+  "phrasebookCategoryAll": "すべて",
+  "phrasebookCategoryMenu": "メニュー",
+  "phrasebookCategoryPlace": "場所",
+  "phrasebookCategoryDocument": "文書",
+  "phrasebookCategoryOther": "その他",
+  "phrasebookCategoryChange": "カテゴリ変更",
+  "cameraTipsTitle": "カメラのヒント",
+  "cameraTipsGotIt": "OK",
+  "cameraTip1Title": "モードを選ぶ",
+  "cameraTip1Body": "スキャンする対象を選ぶと結果が良くなります：メニュー、お店の看板、書類 — または何でもAuto。",
+  "cameraTip2Title": "言語を選ぶ",
+  "cameraTip2Body": "読み取る言語と翻訳先の言語を選びます（左上）。看板や文字がうまく出ないときは、Autoのままにせず読み取る言語を選んでください。",
+  "cameraTip3Title": "「これは何？」と聞く",
+  "cameraTip3Body": "結果を長押しすると、その料理や場所が何かが分かり、声に出した読み方も聞けます。",
+  "cameraTip4Title": "ドラッグで削除",
+  "cameraTip4Body": "不要なカードは下のゴミ箱エリアにドラッグして削除します。",
+  "cameraTip5Title": "保存済みの写真をスキャン",
+  "cameraTip5Body": "シャッター横のギャラリーアイコンをタップして、端末内の写真を翻訳できます。"
 }

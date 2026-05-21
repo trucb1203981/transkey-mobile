@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/tracking/tracking_provider.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/theme/app_theme.dart';
 
-class KeyboardSetupScreen extends StatefulWidget {
+class KeyboardSetupScreen extends ConsumerStatefulWidget {
   final bool showSkip;
 
   const KeyboardSetupScreen({super.key, this.showSkip = true});
@@ -66,10 +68,10 @@ class KeyboardSetupScreen extends StatefulWidget {
   }
 
   @override
-  State<KeyboardSetupScreen> createState() => _KeyboardSetupScreenState();
+  ConsumerState<KeyboardSetupScreen> createState() => _KeyboardSetupScreenState();
 }
 
-class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
+class _KeyboardSetupScreenState extends ConsumerState<KeyboardSetupScreen>
     with WidgetsBindingObserver {
   int _currentStep = 0;
   bool _waitingForPermission = false;
@@ -120,6 +122,8 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
         curve: Curves.easeInOut,
       );
     } else {
+      ref.read(trackingServiceProvider).event('keyboard_setup_complete',
+          properties: {'skipped': false});
       KeyboardSetupScreen.markDone();
       Navigator.of(context).pop();
     }
@@ -137,6 +141,10 @@ class _KeyboardSetupScreenState extends State<KeyboardSetupScreen>
         leading: widget.showSkip
             ? TextButton(
                 onPressed: () {
+                  ref.read(trackingServiceProvider).event(
+                    'keyboard_setup_complete',
+                    properties: {'skipped': true, 'step': _currentStep},
+                  );
                   KeyboardSetupScreen.markDone();
                   Navigator.of(context).pop();
                 },

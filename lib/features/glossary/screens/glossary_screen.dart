@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/empty_states.dart';
@@ -26,6 +27,9 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(glossaryProvider.notifier).ensureInitialPull();
     });
+    final entryCount = ref.read(glossaryProvider).entries.length;
+    ref.read(trackingServiceProvider).event('glossary_open',
+        properties: {'entry_count': entryCount});
   }
 
   @override

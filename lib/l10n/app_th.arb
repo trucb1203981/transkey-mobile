@@ -1,6 +1,5 @@
 {
-  "@@locale": "th",
-
+  "@locale": "th",
   "translate": "แปล",
   "summarize": "สรุป",
   "explain": "อธิบาย",
@@ -25,20 +24,26 @@
   "next": "ถัดไป",
   "skip": "ข้าม",
   "done": "เสร็จสิ้น",
-
   "hintEnterText": "พิมพ์ข้อความที่ต้องการแปล...",
   "detectedLang": "ตรวจพบ: {lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "ตรวจจับอัตโนมัติ",
   "sourceLang": "ต้นทาง",
   "targetLang": "ปลายทาง",
   "swapLanguages": "สลับภาษา",
-
   "settingsTitle": "ตั้งค่า",
   "sectionLanguage": "ภาษา",
   "sectionTranslation": "การแปล",
   "sectionAdvanced": "ขั้นสูง",
   "sectionOther": "อื่น ๆ",
+  "helpImproveApp": "ช่วยปรับปรุงแอป",
+  "helpImproveAppHint": "แชร์ข้อมูลการใช้งานแบบไม่ระบุตัวตนเพื่อช่วยปรับปรุง TransKey ไม่มีการส่งข้อความหรือรูปภาพ",
   "sectionSpeech": "อ่านออกเสียง",
   "targetLanguage": "ภาษาปลายทาง",
   "sourceLanguage": "ภาษาต้นทาง",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "ปิดอัตโนมัติ (วินาที)",
   "autoCloseUnit": "วินาที",
   "autoCloseDisabled": "ปิด",
-
   "toneAuto": "อัตโนมัติ",
   "toneBusiness": "ธุรกิจ",
   "toneCasual": "ลำลอง",
@@ -63,14 +67,12 @@
   "toneTechnical": "วิชาการ",
   "toneNeutral": "เป็นกลาง",
   "toneReplySameAsTranslate": "เหมือนการแปล",
-
   "popupTo": "ถึง:",
   "tabTranslate": "แปล",
   "tabReply": "ตอบกลับ",
   "tabSummarize": "สรุป",
   "tabExplain": "อธิบาย",
   "tabRefine": "ปรับปรุง",
-
   "keyboardSetup": "ตั้งค่าแป้นพิมพ์",
   "bubbleSetup": "ตั้งค่าปุ่มลอย",
   "floatingBubble": "ปุ่มลอย TransKey",
@@ -98,7 +100,13 @@
   "devicesProLimit": "แผน Pro รองรับสูงสุด 2 อุปกรณ์",
   "deviceCurrentThis": "อุปกรณ์นี้",
   "deviceLastUsed": "ใช้งานล่าสุด: {date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "ลบออก",
   "removeDeviceConfirm": "ลบอุปกรณ์นี้ออก? อุปกรณ์จะต้องเข้าสู่ระบบใหม่",
   "removeDeviceFailed": "ไม่สามารถลบอุปกรณ์ได้",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "ยกเลิกการสมัครสมาชิก Pro? คุณจะยังคงใช้ Pro ได้จนสิ้นสุดรอบปัจจุบัน",
   "subscriptionCancelled": "การสมัครสมาชิกจะสิ้นสุดในวันที่ต่ออายุ",
   "subscriptionCancelFailed": "ไม่สามารถยกเลิกการสมัครสมาชิกได้",
-
   "voicePickerTitle": "เสียง",
   "voiceDefault": "ค่าเริ่มต้น",
   "speedPickerTitle": "ความเร็วการพูด",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "เปิดใช้งาน TransKey ในการตั้งค่าการเข้าถึง เพื่อให้ \"วาง\" เขียนคำตอบลงในช่องที่กำลังพิมพ์ในแอปใดก็ได้",
   "accessibilityEnabled": "เปิดใช้งานแล้ว",
   "accessibilityDisabled": "ยังไม่ได้เปิดใช้งาน — แตะเพื่อเปิดการตั้งค่า",
-
   "feedbackTitle": "ส่งความคิดเห็น",
   "feedbackHint": "บอกเราว่าคุณคิดอย่างไร...",
   "feedbackSend": "ส่ง",
@@ -135,12 +141,10 @@
   "feedbackHintFeature": "คุณอยากให้ TransKey ทำอะไร?",
   "feedbackHintOther": "แบ่งปันความคิดของคุณ...",
   "feedbackEmailLabel": "อีเมล (ไม่บังคับ สำหรับการตอบกลับ)",
-
   "selectLanguage": "เลือกภาษา",
   "searchLanguages": "ค้นหาภาษา...",
   "recent": "ล่าสุด",
   "allLanguages": "ทุกภาษา",
-
   "login": "เข้าสู่ระบบ",
   "signUp": "สมัครสมาชิก",
   "logIn": "เข้าสู่ระบบ",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "บัญชี Pro ลงทะเบียนครบจำนวนอุปกรณ์สูงสุดแล้ว",
   "deviceLimitError": "บัญชีบนอุปกรณ์นี้มากเกินไป",
   "googleSignInFailed": "เข้าสู่ระบบด้วย Google ล้มเหลว: {error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "ยังไม่ได้ตั้งค่าเข้าสู่ระบบด้วย Google (ไม่มี serverClientId)",
-  "googleSignInNoIdToken": "การเข้าสู่ระบบด้วย Google ไม่ได้คืน idToken — ตรวจสอบ serverClientId",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "ขณะนี้ยังลงชื่อเข้าใช้ด้วย Google ไม่ได้ โปรดลองวิธีอื่น",
+  "googleSignInNoIdToken": "การลงชื่อเข้าใช้ด้วย Google ไม่สำเร็จ โปรดลองอีกครั้ง",
   "proRequired": "ต้องใช้แผน Pro",
   "noTextToTranslate": "พิมพ์ข้อความก่อน",
   "errorGeneric": "เกิดข้อผิดพลาดบางอย่าง",
@@ -178,21 +187,48 @@
   "errorNetwork": "ไม่มีการเชื่อมต่ออินเทอร์เน็ต",
   "glossaryErrSyncFailed": "ไม่สามารถซิงค์คลังศัพท์ — ตรวจสอบการเชื่อมต่อ",
   "glossaryErrLimitReached": "คลังศัพท์เต็มแล้ว (สูงสุด {max} รายการ)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "ต้องระบุทั้งต้นทางและปลายทาง",
-
   "planFree": "ฟรี",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "ทดลองใช้",
-
   "usageRequests": "{used}/{limit} คำขอ",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} ตัวอักษร",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "ทดลองใช้สิ้นสุดในอีก {days} {days, plural, other{วัน}}",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "ทดลองใช้สิ้นสุดวันนี้",
   "trialEndsTomorrow": "ทดลองใช้สิ้นสุดพรุ่งนี้",
   "trialUpgradeNow": "อัปเกรดเลย",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "การสมัครสมาชิกของคุณหมดอายุแล้ว",
   "subscriptionExpiredRenew": "ต่ออายุ",
   "subscriptionEndsOn": "สิ้นสุดวันที่ {date}",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "การสมัครสมาชิก Mobile",
   "planProSubscription": "การสมัครสมาชิก Pro",
   "discountFirstMonth": "−50% เดือนแรก",
@@ -208,7 +250,6 @@
   "accountBannedBody": "บัญชี TransKey ของคุณถูกระงับการใช้งาน หากคุณคิดว่าเป็นความผิดพลาด โปรดติดต่อฝ่ายสนับสนุน",
   "accountBannedContact": "ติดต่อฝ่ายสนับสนุน",
   "accountBannedLogout": "ออกจากระบบ",
-
   "historyTitle": "ประวัติ",
   "historySearchHint": "ค้นหาในประวัติ...",
   "historyFilterAll": "ทั้งหมด",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "ปลดล็อก",
   "historyDetailLockAction": "ล็อก",
   "historyDetailTtsLabel": "TTS",
-
   "glossaryTitle": "คลังศัพท์ ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "ซิงค์",
   "glossaryDeleteTitle": "ลบรายการ",
   "glossaryDeleteBody": "ลบ \"{source}\"?",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "ถึงขีดจำกัดคลังศัพท์แล้ว ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "ต้องระบุต้นทางและปลายทาง",
   "glossarySyncFailed": "ซิงค์คลังศัพท์ล้มเหลว",
   "glossaryEditTitle": "แก้ไขรายการ",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "คำแปล",
   "glossaryNamesLabel": "ชื่อในคลังศัพท์ — แตะเพื่อแทรก",
   "glossaryIsNameLabel": "นี่คือชื่อบุคคล",
-  "glossaryIsNameHint": "ช่วยให้การป้อนเสียงรู้จักชื่อ และบอกให้ AI คงรูปเดิมไว้",
-
+  "glossaryIsNameHint": "ช่วยให้การพิมพ์ด้วยเสียงรู้จักชื่อและคงไว้เหมือนเดิมเมื่อแปล",
   "upgradeScreenTitle": "อัปเกรด TransKey",
   "upgradeChooseYourPlan": "เลือกแผนของคุณ",
   "upgradeUnlockFullPower": "ปลดล็อกพลังทั้งหมดของ TransKey",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "ยอดนิยม",
   "upgradeTryFreeDays": "ทดลองใช้ฟรี 7 วัน",
   "upgradeTrialActivated": "เปิดใช้งานทดลองใช้แล้ว! {info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "เปิดใช้งานช่วงทดลองใช้ไม่สำเร็จ",
   "upgradeCheckoutFailed": "เปิดหน้าชำระเงินไม่สำเร็จ",
   "upgradeMobileSubtitle": "ฟีเจอร์ครบ ใช้เฉพาะบนมือถือ",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "ทุกแพลตฟอร์ม",
   "upgradeProFeat3": "เดสก์ท็อป + มือถือ",
   "upgradeFeatureColumn": "ฟีเจอร์",
-  "upgradeMobilePrice": "📱 Mobile · $3/mo",
+  "upgradeMobilePrice": "📱 Mobile · $4/mo",
   "upgradeProPrice": "💻 Pro · $6/mo",
   "upgradeFooterHint": "📱 Mobile: คุ้มที่สุดถ้าใช้แค่บนมือถือ\n💻 Pro: ใช้ได้ทั้งมือถือและเดสก์ท็อป",
   "comparisonReplyTranslate": "แปลคำตอบ",
   "comparisonMobileApps": "📱 iOS และ Android",
   "comparisonDesktop": "💻 เดสก์ท็อป",
-
   "nudgeUnlock": "ปลดล็อก {feature}",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "อัปเกรดเป็น Pro เพื่อใช้ฟีเจอร์นี้\nบนทุกแพลตฟอร์ม",
   "nudgeChoosePlan": "เลือกแผนที่เหมาะกับคุณ",
   "nudgeMaybeLater": "ไว้ก่อน",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "อัปเกรดเป็น Pro",
   "nudgeUpgradeToProSubtitle": "ใช้ได้ทุกแพลตฟอร์ม — เดสก์ท็อป + มือถือ",
-  "nudgePriceMobile": "$3/month",
-  "nudgePriceProMonthly": "$6/month",
-
+  "nudgePriceMobile": "{price}/เดือน",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/เดือน",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "ยินดีต้อนรับสู่ TransKey",
   "onboardWelcomeSubtitle": "แปลข้อความแบบเรียลไทม์\nมากกว่า 20 ภาษาในทันที",
   "onboardChooseTitle": "เลือกภาษาของคุณ",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "เริ่มต้นใช้งาน",
   "onboardStartedSubtitle": "เข้าสู่ระบบหรือสร้างบัญชีฟรี\nเพื่อเริ่มแปลตอนนี้",
   "onboardGetStarted": "เริ่มต้น",
-
   "setupTitle": "ตั้งค่าแป้นพิมพ์",
   "setupOpenSettings": "เปิดการตั้งค่า",
   "setupOpenPermissions": "เปิดสิทธิ์อนุญาต",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "เลือกข้อความในแอปใด ๆ → แตะ \"แชร์\" → เลือก TransKey หรือใช้ปุ่มลอยหลังจากคัดลอกข้อความ",
   "setupStep5Title": "ฟีเจอร์อัจฉริยะ",
   "setupStep5Desc": "แปล ตอบกลับ สรุป อธิบาย และปรับปรุงข้อความ — ทั้งหมดขับเคลื่อนด้วย AI ฟีเจอร์ Pro มีไอคอนรูปกุญแจกำกับ",
-
   "guideTitle": "วิธีใช้งาน",
   "guideSubtitle": "ทุกวิธีในการนำข้อความเข้าสู่แต่ละฟีเจอร์",
   "guideIntroTitle": "ไม่ต้องใช้สิทธิ์พิเศษในการดึงข้อความ",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "จากปุ่มแชร์",
   "guideInputShareDesc": "ในแอปใด ๆ เลือกข้อความ → แตะแชร์ → เลือก TransKey",
   "guideInputMenuTitle": "จากเมนูเลือกข้อความ → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "เลือกข้อความในแอปใด ๆ — ป๊อปอัป คัดลอก/แชร์ จะปรากฏ แตะ ⋮ เพื่อดูตัวเลือกเพิ่มเติม แล้วเลือก TransKey: {feature}",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "การเข้าถึง — ไม่บังคับ ใช้สำหรับวางอัตโนมัติเท่านั้น",
   "guideReplyA11yBody": "ถ้าเปิดการเข้าถึงให้ TransKey ไว้ คำตอบของคุณจะถูกวางลงในช่องแชตที่คุณกำลังพิมพ์อยู่โดยตรง ไม่ต้องทำอะไรเพิ่ม\n\nถ้าไม่อยากเปิดใช้งาน คำตอบจะถูกคัดลอกให้คุณ — เพียงกดค้างที่ช่องแชตแล้วแตะ วาง",
-
   "appPermissions": "สิทธิ์ของแอป",
   "permissionsAllSet": "ตั้งค่าครบแล้ว — แตะเพื่อตรวจสอบ",
   "permissionsNeedSetup": "แตะเพื่ออนุญาตสิทธิ์ที่จำเป็น",
-
   "setupTransKey": "ตั้งค่า TransKey",
   "setupTransKeyBody": "อนุญาตสิทธิ์ปุ่มลอยเพื่อเริ่มต้นใช้งาน การเข้าถึงเป็นทางเลือก จำเป็นเฉพาะเมื่อต้องการให้วางคำตอบด้วยแตะเดียว",
   "permFloatingBubble": "ปุ่มลอย",
@@ -369,31 +461,34 @@
   "permSkipHint": "การเข้าถึงเป็นทางเลือก ถ้าไม่เปิด ข้อเสนอแนะการตอบจะอยู่ในคลิปบอร์ดและคุณต้องวางเอง",
   "permSkipForNow": "ข้ามไปก่อน",
   "permFinishedCheck": "เสร็จแล้ว — ตรวจสอบ",
-
   "voiceTooltip": "พูดเพื่อพิมพ์",
   "voiceListening": "กำลังฟัง…",
   "voiceNeedsLang": "ตั้งภาษาต้นทางที่ชัดเจนเพื่อใช้เสียง",
   "voicePermDenied": "ไม่ได้รับอนุญาตให้ใช้ไมโครโฟน",
   "voiceUnsupported": "ไม่รองรับการป้อนด้วยเสียงบนอุปกรณ์นี้",
   "voicePickSourceLang": "การป้อนด้วยเสียงต้องใช้ภาษาที่ชัดเจน เลือกภาษาต้นทาง แล้วแตะไมค์อีกครั้ง",
-
   "paywallTitle": "ถึงขีดจำกัดรายวัน",
   "paywallBody": "คุณใช้โควต้าฟรีของวันนี้ครบแล้ว 20 คำขอ / 2,000 ตัวอักษร ดูโฆษณาสั้น ๆ เพื่อใช้งานต่อ หรืออัปเกรดเพื่อใช้ไม่จำกัด โควต้าฟรีของคุณจะรีเซ็ตเที่ยงคืน",
   "paywallWatchAdCta": "ดูโฆษณาเพื่อใช้งานต่อ",
   "paywallWatchAdSub": "รับคำขอและตัวอักษรเพิ่มทุกครั้งที่ดูโฆษณา ไม่จำกัดจำนวนโฆษณาต่อวัน",
   "paywallUpgradeCta": "อัปเกรด — ใช้ไม่จำกัด ไม่มีโฆษณา",
-  "paywallUpgradeSub": "เริ่มต้น $3/month ยกเลิกได้ทุกเมื่อ",
+  "paywallUpgradeSub": "เริ่มต้น {price}/month ยกเลิกได้ทุกเมื่อ",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "ไว้ก่อน",
   "paywallLoading": "กำลังโหลด…",
   "paywallAdNotComplete": "โฆษณายังไม่จบ — ลองใหม่เพื่อรับรางวัล",
   "paywallCreditFailed": "ไม่สามารถเครดิตรางวัลได้ ลองใหม่อีกครั้ง",
   "quotaWatchAd": "+ ดูโฆษณา",
   "quotaRewardGranted": "เครดิตรางวัลเข้าโควต้าวันนี้แล้ว",
-
   "historyEmpty": "ยังไม่มีประวัติการแปล",
   "glossaryEmpty": "คลังศัพท์ว่างเปล่า",
   "glossaryEmptyAddCta": "เพิ่มรายการ",
-
   "captureKeepaliveTitle": "ช่วงเวลาสแกนซ้ำเร็ว",
   "captureKeepaliveHint": "แตะสองครั้งที่ปุ่ม = สแกนซ้ำ",
   "captureKeepaliveExplain": "หลังจากสแกนหน้าจอ ให้คงสิทธิ์จับภาพหน้าจอไว้ เพื่อให้คุณแตะสองครั้งที่ปุ่ม (หรือเลือกสแกนหน้าจออีกครั้ง) ได้โดยไม่ต้องผ่านการขอสิทธิ์จากระบบ ระยะที่ยาวขึ้นช่วยลดการแตะ แต่จะคงตัวบ่งชี้การส่งสัญญาณไว้ และทำให้อุปกรณ์อุ่นขึ้นเล็กน้อย",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "เวลาส่งสัญญาณน้อยลง แต่ถามสิทธิ์บ่อยขึ้น",
   "captureKeepaliveLongHint": "ความเร็วการสแกนซ้ำสูงสุด ตัวบ่งชี้การส่งสัญญาณจะติดนานขึ้น",
   "captureKeepaliveMinutes": "{count} นาที",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "กล้อง",
+  "cameraCapture": "ถ่าย",
+  "cameraRetake": "ถ่ายใหม่",
+  "cameraCopyAll": "คัดลอกทั้งหมด",
+  "cameraNoText": "ไม่พบข้อความ ลองอีกครั้ง",
+  "cameraTapShowTranslations": "แตะเพื่อแสดงการแปล",
+  "cameraLowQuality": "คุณภาพต่ำ",
+  "cameraTranslating": "กำลังแปล...",
+  "cameraTranslate": "แปล",
+  "cameraPermission": "ต้องการสิทธิ์กล้องเพื่อใช้ฟีเจอร์นี้",
+  "cameraSettingsTitle": "การตั้งค่ากล้อง",
+  "cameraSettingsReset": "รีเซ็ต",
+  "cameraSettingsConfidence": "ซ่อนข้อความที่ไม่ชัด",
+  "cameraSettingsConfidenceHint": "ซ่อนข้อความที่กล้องอ่านไม่ชัด ค่าสูง = เข้มงวดขึ้น — ผลลัพธ์สะอาดขึ้นแต่อาจข้ามข้อความจาง",
+  "cameraOriginalLabel": "ต้นฉบับ",
+  "cameraSettingsHideLow": "ซ่อนบล็อกคุณภาพต่ำ",
+  "cameraSettingsHideLowHint": "ซ่อนบล็อกที่อยู่เหนือเกณฑ์แต่ต่ำกว่าระดับเตือน เปิดสำหรับเอกสารสะอาด",
+  "cameraSettingsShowOriginal": "แสดงข้อความต้นฉบับ",
+  "cameraSettingsShowOriginalHint": "แสดงข้อความต้นฉบับใต้การ์ดแปลทุกใบเสมอ",
+  "cameraSettingsOpacity": "ความทึบของซ้อนทับ",
+  "cameraSettingsOpacityHint": "ความโปร่งของพื้นหลังการ์ด ต่ำ = เห็นรูปด้านหลังมากขึ้น",
+  "cameraSceneAuto": "อัตโนมัติ",
+  "cameraSceneDocument": "เอกสาร",
+  "cameraSceneMenu": "เมนู",
+  "cameraSceneSign": "ป้าย",
+  "cameraSceneScreenshot": "ภาพหน้าจอ",
+  "cameraWhatIsThis": "นี่คืออะไร?",
+  "cameraWhatIsThisHint": "แตะข้อความในตัวอย่างเพื่อถาม",
+  "cameraExplainTitle": "นี่คืออะไร?",
+  "cameraEditTextTitle": "แก้ไขข้อความ",
+  "cameraReExplain": "อธิบายอีกครั้ง",
+  "cameraExplainEmpty": "ไม่มีคำอธิบาย",
+  "cameraExplainError": "ไม่สามารถดึงคำอธิบาย ลองใหม่",
+  "cameraResultExplainHint": "กดค้างที่การ์ดเพื่อถาม",
+  "cameraExplainDisclaimer": "ใช้อ้างอิงเท่านั้น — ความหมายจริงอาจแตกต่าง",
+  "phrasebookTitle": "คู่มือวลี",
+  "phrasebookEmpty": "คู่มือของคุณยังว่างเปล่า ใช้กล้องเพื่อรู้จำข้อความแล้วแตะบันทึก",
+  "phrasebookSave": "บันทึก",
+  "phrasebookSaved": "บันทึกแล้ว",
+  "phrasebookSaveFailed": "บันทึกไม่สำเร็จ ลองใหม่",
+  "phrasebookTitleTooLong": "หัวข้อยาวเกินไป (สูงสุด 1000 ตัวอักษร) โปรดย่อแล้วลองอีกครั้ง",
+  "phrasebookDelete": "ลบ",
+  "phrasebookDeleteConfirm": "ลบรายการนี้จากคู่มือ?",
+  "phrasebookDeleted": "ลบแล้ว",
+  "phrasebookNote": "หมายเหตุ",
+  "phrasebookNoteHint": "เช่น: สั่งที่ ... — เผ็ดเกินไป",
+  "phrasebookNoteSave": "บันทึกหมายเหตุ",
+  "phrasebookCopy": "คัดลอก",
+  "phrasebookViewAll": "เปิดคู่มือ",
+  "phrasebookCategoryAll": "ทั้งหมด",
+  "phrasebookCategoryMenu": "เมนู",
+  "phrasebookCategoryPlace": "สถานที่",
+  "phrasebookCategoryDocument": "เอกสาร",
+  "phrasebookCategoryOther": "อื่นๆ",
+  "phrasebookCategoryChange": "เปลี่ยนหมวด",
+  "cameraTipsTitle": "เคล็ดลับกล้อง",
+  "cameraTipsGotIt": "เข้าใจแล้ว",
+  "cameraTip1Title": "เลือกโหมดที่เหมาะ",
+  "cameraTip1Body": "เลือกสิ่งที่คุณกำลังสแกนเพื่อผลลัพธ์ที่ดีที่สุด: เมนู ป้ายร้าน เอกสาร — หรือ Auto สำหรับทุกอย่าง",
+  "cameraTip2Title": "เลือกภาษาของคุณ",
+  "cameraTip2Body": "ตั้งภาษาที่คุณกำลังอ่านและภาษาที่ต้องการแปล (มุมบนซ้าย) ถ้าป้ายหรือข้อความออกมาไม่ถูกต้อง ให้เลือกภาษาที่กำลังอ่านแทนการใช้ Auto",
+  "cameraTip3Title": "ถาม \"นี่คืออะไร?\"",
+  "cameraTip3Body": "กดค้างที่ผลลัพธ์เพื่อรู้ว่าเป็นเมนูหรือสถานที่อะไร — และฟังวิธีออกเสียง",
+  "cameraTip4Title": "ลากเพื่อลบ",
+  "cameraTip4Body": "ลากการ์ดไปยังถังขยะด้านล่างเพื่อลบบล็อกที่ไม่ต้องการ",
+  "cameraTip5Title": "สแกนรูปที่บันทึกไว้",
+  "cameraTip5Body": "แตะไอคอนแกลเลอรีข้างปุ่มชัตเตอร์เพื่อแปลรูปที่มีอยู่ในเครื่อง"
 }

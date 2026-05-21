@@ -5,10 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../tracking/tracking_provider.dart';
+import '../tracking/tracking_service.dart';
+
 enum BubbleState { idle, loading, result, error }
 
 class BubbleManager extends StateNotifier<bool> {
-  BubbleManager() : super(false);
+  BubbleManager(this._tracking) : super(false);
+
+  final TrackingService _tracking;
 
   static const _channel = MethodChannel('transkey/bubble');
 
@@ -37,8 +42,10 @@ class BubbleManager extends StateNotifier<bool> {
     }
   }
 
-  /// Start the floating bubble service.
-  Future<bool> startBubble() async {
+  /// Start the floating bubble service. [source] feeds the tracking event
+  /// so the dashboard can split intentional starts (user tapped the toggle
+  /// / completed setup) from passive ones (auto-resume on cold start).
+  Future<bool> startBubble({String source = 'user'}) async {
     if (!Platform.isAndroid || kIsWeb) return false;
 
     if (!_hasPermission) {
@@ -49,6 +56,7 @@ class BubbleManager extends StateNotifier<bool> {
     try {
       await _channel.invokeMethod<void>('startBubble');
       state = true;
+      _tracking.event('bubble_start', properties: {'source': source});
       return true;
     } on PlatformException catch (e) {
       debugPrint('[BubbleManager] startBubble failed: $e');
@@ -62,6 +70,7 @@ class BubbleManager extends StateNotifier<bool> {
     try {
       await _channel.invokeMethod<void>('stopBubble');
       state = false;
+      _tracking.event('bubble_stop');
     } on PlatformException catch (e) {
       debugPrint('[BubbleManager] stopBubble failed: $e');
     }
@@ -96,7 +105,7 @@ class BubbleManager extends StateNotifier<bool> {
     final wasActive = prefs.getBool('tk_bubble_active') ?? false;
     if (!wasActive) return;
     _hasPermission = await checkPermission();
-    if (_hasPermission) await startBubble();
+    if (_hasPermission) await startBubble(source: 'auto_resume');
   }
 
   /// Show overlay permission dialog if needed, then start.
@@ -155,5 +164,6 @@ class BubbleManager extends StateNotifier<bool> {
   }
 }
 
-final bubbleManagerProvider =
-    StateNotifierProvider<BubbleManager, bool>((ref) => BubbleManager());
+final bubbleManagerProvider = StateNotifierProvider<BubbleManager, bool>(
+  (ref) => BubbleManager(ref.read(trackingServiceProvider)),
+);

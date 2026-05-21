@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/dio_client.dart';
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../providers/plans_provider.dart';
 import '../providers/usage_provider.dart';
 import '../services/rewarded_ad_service.dart';
 
@@ -45,6 +47,11 @@ class PaywallSheet extends ConsumerStatefulWidget {
 class _PaywallSheetState extends ConsumerState<PaywallSheet> {
   late final RewardedAdService _adService;
   bool _watchingAd = false;
+  /// Set true when the user takes ANY explicit action (watched ad to credit,
+  /// or tapped Upgrade). dispose() consults this so `paywall_dismiss` only
+  /// fires when the sheet actually closed without conversion — not on top
+  /// of `paywall_watch_ad_complete` or `paywall_upgrade_click`.
+  bool _converted = false;
 
   @override
   void initState() {
@@ -54,17 +61,24 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
     // reads the CTAs and taps "Watch ad" the video is already in
     // memory — saves the user from staring at a spinner.
     _adService.preload();
+    ref.read(trackingServiceProvider).event('upgrade_view', properties: {
+      'source': 'paywall',
+    });
   }
 
   @override
   void dispose() {
     _adService.dispose();
+    if (!_converted) {
+      ref.read(trackingServiceProvider).event('paywall_dismiss');
+    }
     super.dispose();
   }
 
   Future<void> _onWatchAd() async {
     final l = AppLocalizations.of(context)!;
     setState(() => _watchingAd = true);
+    ref.read(trackingServiceProvider).event('paywall_watch_ad_start');
 
     final earned = await _adService.showAndAwaitReward();
     if (!mounted) return;
@@ -74,6 +88,8 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.paywallAdNotComplete)),
       );
+      ref.read(trackingServiceProvider).event('paywall_watch_ad_complete',
+          properties: {'success': false, 'reason': 'not_completed'});
       return;
     }
 
@@ -87,6 +103,9 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
       // limit immediately.
       await ref.read(usageProvider.notifier).refresh();
       if (!mounted) return;
+      ref.read(trackingServiceProvider).event('paywall_watch_ad_complete',
+          properties: {'success': true});
+      _converted = true;
       Navigator.of(context).pop(true);
     } on DioException catch (e) {
       if (!mounted) return;
@@ -98,10 +117,14 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
               : l.paywallCreditFailed,
         )),
       );
+      ref.read(trackingServiceProvider).event('paywall_watch_ad_complete',
+          properties: {'success': false, 'reason': 'credit_failed'});
     }
   }
 
   void _onUpgrade() {
+    ref.read(trackingServiceProvider).event('paywall_upgrade_click');
+    _converted = true;
     Navigator.of(context).pop(null);
     context.push('/upgrade');
   }
@@ -110,6 +133,17 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
+
+    // Entry-level price = the cheapest paid tier (currently mobile). Pulled
+    // from /plans so the "From $X/month" copy tracks any price change without
+    // an app update. Falls back to $4 if the API hasn't resolved yet.
+    final mobilePrice =
+        ref.watch(plansProvider).valueOrNull;
+    final entryPrice = planByKey(mobilePrice, 'mobile')?.priceMonthly ?? 4;
+    final entryPriceLabel = entryPrice % 1 == 0
+        ? '\$${entryPrice.toInt()}'
+        : '\$$entryPrice';
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -190,7 +224,7 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              l.paywallUpgradeSub,
+              l.paywallUpgradeSub(entryPriceLabel),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
               ),

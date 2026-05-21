@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/empty_states.dart';
@@ -19,6 +20,14 @@ class HistoryScreen extends ConsumerStatefulWidget {
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    final entries = ref.read(historyProvider).entries.length;
+    ref.read(trackingServiceProvider).event('history_open',
+        properties: {'entry_count': entries});
+  }
 
   @override
   void dispose() {

@@ -10,6 +10,7 @@ import '../../features/settings/providers/subscription_provider.dart';
 import '../../features/translate/providers/translate_provider.dart';
 import '../../features/upgrade/providers/usage_provider.dart';
 import '../api/dio_client.dart';
+import '../tracking/tracking_provider.dart';
 import 'app_group_bridge.dart';
 import 'session_store.dart';
 
@@ -79,6 +80,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     required String email,
     required String password,
   }) async {
+    final tracking = ref.read(trackingServiceProvider);
+    tracking.event('login_attempt', properties: {'method': 'password'});
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final api = ref.read(apiClientProvider);
@@ -107,8 +110,16 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       _invalidateUserScopedProviders();
       await _syncToAppGroup(session);
 
+      tracking.event('login_success',
+          properties: {'method': 'password', 'plan': session.plan});
       return AuthState(isLoggedIn: true, session: session);
     });
+    if (state.hasError) {
+      tracking.event('login_fail', properties: {
+        'method': 'password',
+        'error':  state.error.runtimeType.toString(),
+      });
+    }
   }
 
   Future<void> register({
@@ -116,6 +127,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     required String password,
     required String name,
   }) async {
+    final tracking = ref.read(trackingServiceProvider);
+    tracking.event('register_attempt');
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final api = ref.read(apiClientProvider);
@@ -142,14 +155,21 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       _invalidateUserScopedProviders();
       await _syncToAppGroup(session);
 
+      tracking.event('register_success', properties: {'plan': session.plan});
       return AuthState(isLoggedIn: true, session: session);
     });
+    if (state.hasError) {
+      tracking.event('register_fail',
+          properties: {'error': state.error.runtimeType.toString()});
+    }
   }
 
   /// Native Google sign-in: the mobile app already used GoogleSignIn SDK to
   /// produce `idToken`. Verify-and-mint server-side via POST /auth/google/mobile
   /// — no browser, no deep link.
   Future<void> signInWithGoogleIdToken(String idToken) async {
+    final tracking = ref.read(trackingServiceProvider);
+    tracking.event('login_attempt', properties: {'method': 'google'});
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final api = ref.read(apiClientProvider);
@@ -175,11 +195,20 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       _invalidateUserScopedProviders();
       await _syncToAppGroup(session);
 
+      tracking.event('login_success',
+          properties: {'method': 'google', 'plan': session.plan});
       return AuthState(isLoggedIn: true, session: session);
     });
+    if (state.hasError) {
+      tracking.event('login_fail', properties: {
+        'method': 'google',
+        'error':  state.error.runtimeType.toString(),
+      });
+    }
   }
 
   Future<void> logout() async {
+    ref.read(trackingServiceProvider).event('logout');
     final sessionStore = ref.read(sessionStoreProvider);
     await sessionStore.clear();
     _invalidateApiSessionCache();

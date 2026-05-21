@@ -12,6 +12,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.util.TypedValue
+import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
@@ -37,9 +38,29 @@ class LensOverlayView(
     private val screenshot: Bitmap,
     private val items: List<Item>,
     private val onDismissOutsideTap: () -> Unit,
+    /// Long-press on a block opens the "What is this?" explain sheet for
+    /// that block's original (source) text. Caller is responsible for
+    /// dismissing the overlay + bringing the Flutter activity foreground.
+    /// Null skips the long-press feature entirely.
+    private val onLongPressBlock: ((String) -> Unit)? = null,
 ) : View(context) {
 
     data class Item(val original: String, val translation: String, val bounds: Rect)
+
+    /// Bridges Android's long-press recognizer to [onLongPressBlock]. We
+    /// keep the existing onTouchEvent (single-tap toggle) intact and just
+    /// forward events to the gesture detector for the long-press signal.
+    private val gestureDetector = GestureDetector(
+        context,
+        object : GestureDetector.SimpleOnGestureListener() {
+            override fun onLongPress(event: MotionEvent) {
+                val callback = onLongPressBlock ?: return
+                val idx = findItemIndexAt(event.x, event.y)
+                if (idx < 0) return
+                callback(items[idx].original)
+            }
+        },
+    )
 
     private val whitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -287,12 +308,29 @@ class LensOverlayView(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Forward EVERY event to the gesture detector — it needs the full
+        // DOWN→MOVE→UP stream to recognize a long-press. We then keep the
+        // existing tap behaviour by acting only on ACTION_UP below.
+        gestureDetector.onTouchEvent(event)
         if (event.action != MotionEvent.ACTION_UP) return true
-        val x = event.x
-        val y = event.y
+        val idx = findItemIndexAt(event.x, event.y)
+        if (idx >= 0) {
+            showOriginal[idx] = !showOriginal[idx]
+            // Force rebuild so the toggle's hidden translation doesn't sit
+            // stale in cache when user flips back.
+            if (!showOriginal[idx]) layoutCache[idx] = null
+            invalidate()
+            return true
+        }
+        // Tap outside any block → dismiss.
+        onDismissOutsideTap()
+        return true
+    }
 
-        // Translate touch point back into bitmap coords using same scale
-        // factors as onDraw.
+    /// Find the item whose visible rect contains [x, y] (in view coords).
+    /// Iterates top-down so a block whose expanded rect overlaps a smaller
+    /// neighbour below still claims its own taps first.
+    private fun findItemIndexAt(x: Float, y: Float): Int {
         val viewW = width.toFloat()
         val viewH = height.toFloat()
         val bmpW = screenshot.width.toFloat()
@@ -303,8 +341,6 @@ class LensOverlayView(
         val offsetX = (viewW - drawW) / 2f
         val offsetY = (viewH - drawH) / 2f
 
-        // Iterate top-down so a block whose expanded rect overlaps a
-        // smaller neighbour below still claims its own taps first.
         for (i in items.indices) {
             // Prefer the expanded rect (matches the visible white card);
             // fall back to original OCR bounds before first paint.
@@ -315,17 +351,10 @@ class LensOverlayView(
                 offsetY + items[i].bounds.bottom * scale,
             )
             if (x in rect.left..rect.right && y in rect.top..rect.bottom) {
-                showOriginal[i] = !showOriginal[i]
-                // Force rebuild so the toggle's hidden translation doesn't
-                // sit stale in cache when user flips back.
-                if (!showOriginal[i]) layoutCache[i] = null
-                invalidate()
-                return true
+                return i
             }
         }
-        // Tap outside any block → dismiss.
-        onDismissOutsideTap()
-        return true
+        return -1
     }
 
     companion object {

@@ -275,6 +275,23 @@ internal fun BubbleService.showModePicker() {
         }
     })
 
+    // "Camera translate" — opens the Flutter camera screen for
+    // snapshot-mode OCR on live camera feed (menus, signs, etc.).
+    card.addView(TextView(this).apply {
+        text = "📷  ${localized(R.string.bubble_camera)}"
+        setTextColor(accent)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER
+        setPadding(0, (8 * dp).toInt(), 0, (8 * dp).toInt())
+        isClickable = true
+        isFocusable = true
+        setOnClickListener {
+            hideModePicker()
+            openCameraScreen()
+        }
+    })
+
     // "Last result" shortcut if we have a cached output
     if (currentOutput != null) {
         card.addView(TextView(this).apply {

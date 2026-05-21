@@ -91,4 +91,5 @@
     <string name="bubble_notification_turn_off">끄기</string>
     <string name="bubble_overlay_perm_needed">플로팅 번역을 사용하려면 \'다른 앱 위에 표시\' 권한을 활성화하세요</string>
     <string name="bubble_clipboard_empty_error">클립보드가 비어 있습니다.\n먼저 텍스트를 복사한 다음 버블을 탭하세요.</string>
+    <string name="bubble_camera">카메라</string>
 </resources>

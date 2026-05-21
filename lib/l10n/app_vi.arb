@@ -1,6 +1,5 @@
 {
-  "@@locale": "vi",
-
+  "@locale": "vi",
   "translate": "Dịch",
   "summarize": "Tóm tắt",
   "explain": "Giải thích",
@@ -25,20 +24,26 @@
   "next": "Tiếp",
   "skip": "Bỏ qua",
   "done": "Xong",
-
   "hintEnterText": "Nhập văn bản để dịch...",
   "detectedLang": "Phát hiện: {lang}",
-  "@detectedLang": { "placeholders": { "lang": { "type": "String" } } },
+  "@detectedLang": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
   "autoDetect": "Tự động",
   "sourceLang": "Nguồn",
   "targetLang": "Đích",
   "swapLanguages": "Đổi ngôn ngữ",
-
   "settingsTitle": "Cài đặt",
   "sectionLanguage": "Ngôn ngữ",
   "sectionTranslation": "Dịch thuật",
   "sectionAdvanced": "Nâng cao",
   "sectionOther": "Khác",
+  "helpImproveApp": "Giúp cải thiện ứng dụng",
+  "helpImproveAppHint": "Chia sẻ thông tin sử dụng ẩn danh để TransKey tốt hơn. Không gửi nội dung dịch hay ảnh.",
   "sectionSpeech": "Đọc to",
   "targetLanguage": "Ngôn ngữ đích",
   "sourceLanguage": "Ngôn ngữ nguồn",
@@ -54,7 +59,6 @@
   "autoCloseSeconds": "Tự đóng (giây)",
   "autoCloseUnit": "giây",
   "autoCloseDisabled": "Tắt",
-
   "toneAuto": "Tự động",
   "toneBusiness": "Công việc",
   "toneCasual": "Thân mật",
@@ -63,14 +67,12 @@
   "toneTechnical": "Kỹ thuật",
   "toneNeutral": "Trung tính",
   "toneReplySameAsTranslate": "Như giọng văn dịch",
-
   "popupTo": "Đến:",
   "tabTranslate": "Dịch",
   "tabReply": "Phản hồi",
   "tabSummarize": "Tóm tắt",
   "tabExplain": "Giải thích",
   "tabRefine": "Cải thiện",
-
   "keyboardSetup": "Cài đặt bàn phím",
   "bubbleSetup": "Cài đặt Nút TransKey",
   "floatingBubble": "Nút TransKey",
@@ -98,7 +100,13 @@
   "devicesProLimit": "Gói Pro cho phép tối đa 2 thiết bị.",
   "deviceCurrentThis": "Thiết bị này",
   "deviceLastUsed": "Dùng lần cuối: {date}",
-  "@deviceLastUsed": { "placeholders": { "date": { "type": "String" } } },
+  "@deviceLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "removeDevice": "Gỡ",
   "removeDeviceConfirm": "Gỡ thiết bị này? Thiết bị sẽ cần đăng nhập lại.",
   "removeDeviceFailed": "Không thể gỡ thiết bị",
@@ -113,7 +121,6 @@
   "subscriptionCancelConfirm": "Huỷ gói Pro? Bạn vẫn dùng Pro đến hết kỳ thanh toán hiện tại.",
   "subscriptionCancelled": "Gói sẽ kết thúc vào ngày gia hạn.",
   "subscriptionCancelFailed": "Không thể huỷ gói",
-
   "voicePickerTitle": "Giọng đọc",
   "voiceDefault": "Mặc định",
   "speedPickerTitle": "Tốc độ đọc",
@@ -122,7 +129,6 @@
   "accessibilityPasteBackDesc": "Bật TransKey trong Accessibility để nút \"Paste\" có thể ghi reply trực tiếp vào ô nhập của app đang focus.",
   "accessibilityEnabled": "Đã bật",
   "accessibilityDisabled": "Chưa bật — chạm để mở cài đặt",
-
   "feedbackCatBug": "Báo lỗi",
   "feedbackCatFeature": "Đề xuất tính năng",
   "feedbackCatOther": "Khác",
@@ -135,12 +141,10 @@
   "feedbackSend": "Gửi",
   "feedbackThanks": "Cảm ơn phản hồi của bạn!",
   "feedbackFailed": "Không thể gửi phản hồi",
-
   "selectLanguage": "Chọn ngôn ngữ",
   "searchLanguages": "Tìm kiếm ngôn ngữ...",
   "recent": "Gần đây",
   "allLanguages": "Tất cả ngôn ngữ",
-
   "login": "Đăng nhập",
   "signUp": "Đăng ký",
   "logIn": "Đăng nhập",
@@ -158,10 +162,15 @@
   "proDeviceLimitError": "Tài khoản Pro đã đăng ký tối đa số thiết bị",
   "deviceLimitError": "Quá nhiều tài khoản trên thiết bị này",
   "googleSignInFailed": "Đăng nhập Google thất bại: {error}",
-  "@googleSignInFailed": { "placeholders": { "error": { "type": "String" } } },
-  "googleNotConfigured": "Google sign-in chưa cấu hình (thiếu serverClientId)",
-  "googleSignInNoIdToken": "Google trả về idToken rỗng — kiểm tra serverClientId",
-
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "googleNotConfigured": "Đăng nhập Google hiện không khả dụng. Vui lòng thử cách đăng nhập khác.",
+  "googleSignInNoIdToken": "Đăng nhập Google chưa hoàn tất. Vui lòng thử lại.",
   "proRequired": "Yêu cầu gói Pro",
   "noTextToTranslate": "Vui lòng nhập văn bản trước",
   "errorGeneric": "Đã xảy ra lỗi",
@@ -178,21 +187,48 @@
   "errorNetwork": "Không có kết nối internet",
   "glossaryErrSyncFailed": "Không đồng bộ được từ điển — kiểm tra kết nối",
   "glossaryErrLimitReached": "Từ điển đã đầy (tối đa {max} mục)",
-  "@glossaryErrLimitReached": { "placeholders": { "max": {"type": "int"} } },
+  "@glossaryErrLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossaryErrSourceTargetRequired": "Cần điền cả từ gốc và bản dịch",
-
   "planFree": "Miễn phí",
   "planPro": "Pro",
   "planMobile": "Mobile",
   "planTrial": "Dùng thử",
-
   "usageRequests": "{used}/{limit} lượt",
-  "@usageRequests": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
+  "@usageRequests": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "usageCharacters": "{used}/{limit} ký tự",
-  "@usageCharacters": { "placeholders": { "used": { "type": "int" }, "limit": { "type": "int" } } },
-
+  "@usageCharacters": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsInDays": "Hết hạn dùng thử sau {days} ngày",
-  "@trialEndsInDays": { "placeholders": { "days": { "type": "int" } } },
+  "@trialEndsInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "trialEndsToday": "Dùng thử hết hạn hôm nay",
   "trialEndsTomorrow": "Dùng thử hết hạn ngày mai",
   "trialUpgradeNow": "Nâng cấp ngay",
@@ -200,7 +236,13 @@
   "subscriptionExpiredBanner": "Gói của bạn đã hết hạn",
   "subscriptionExpiredRenew": "Gia hạn",
   "subscriptionEndsOn": "Kết thúc {date}",
-  "@subscriptionEndsOn": { "placeholders": { "date": { "type": "String" } } },
+  "@subscriptionEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planMobileSubscription": "Gói Mobile",
   "planProSubscription": "Gói Pro",
   "discountFirstMonth": "−50% tháng đầu",
@@ -208,7 +250,6 @@
   "accountBannedBody": "Tài khoản TransKey của bạn đã bị khoá. Vui lòng liên hệ hỗ trợ nếu bạn cho rằng đây là nhầm lẫn.",
   "accountBannedContact": "Liên hệ hỗ trợ",
   "accountBannedLogout": "Đăng xuất",
-
   "historyTitle": "Lịch sử",
   "historySearchHint": "Tìm trong lịch sử...",
   "historyFilterAll": "Tất cả",
@@ -231,15 +272,35 @@
   "historyDetailUnlock": "Mở khoá",
   "historyDetailLockAction": "Khoá",
   "historyDetailTtsLabel": "Đọc",
-
   "glossaryTitle": "Từ điển ({count}/{max})",
-  "@glossaryTitle": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "@glossaryTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySync": "Đồng bộ",
   "glossaryDeleteTitle": "Xoá mục",
   "glossaryDeleteBody": "Xoá \"{source}\"?",
-  "@glossaryDeleteBody": { "placeholders": { "source": { "type": "String" } } },
+  "@glossaryDeleteBody": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "glossaryLimitReached": "Đã đạt giới hạn từ điển ({max})",
-  "@glossaryLimitReached": { "placeholders": { "max": { "type": "int" } } },
+  "@glossaryLimitReached": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "glossarySourceTargetRequired": "Phải nhập cả nguồn và đích",
   "glossarySyncFailed": "Đồng bộ từ điển thất bại",
   "glossaryEditTitle": "Sửa mục",
@@ -250,8 +311,7 @@
   "glossaryTargetHint": "Bản dịch",
   "glossaryNamesLabel": "Tên trong từ điển — chạm để chèn",
   "glossaryIsNameLabel": "Đây là tên người",
-  "glossaryIsNameHint": "Giúp nhập giọng nói nhận diện tên và yêu cầu AI giữ nguyên.",
-
+  "glossaryIsNameHint": "Giúp nhập giọng nói nhận diện tên và giữ nguyên khi dịch.",
   "upgradeScreenTitle": "Nâng cấp TransKey",
   "upgradeChooseYourPlan": "Chọn gói của bạn",
   "upgradeUnlockFullPower": "Mở khoá toàn bộ tính năng TransKey",
@@ -259,7 +319,13 @@
   "upgradePopularBadge": "Phổ biến",
   "upgradeTryFreeDays": "Dùng thử miễn phí 7 ngày",
   "upgradeTrialActivated": "Đã kích hoạt dùng thử! {info}",
-  "@upgradeTrialActivated": { "placeholders": { "info": { "type": "String" } } },
+  "@upgradeTrialActivated": {
+    "placeholders": {
+      "info": {
+        "type": "String"
+      }
+    }
+  },
   "upgradeTrialActivateFailed": "Kích hoạt dùng thử thất bại",
   "upgradeCheckoutFailed": "Không mở được trang thanh toán",
   "upgradeMobileSubtitle": "Tất cả tính năng, chỉ trên mobile",
@@ -275,15 +341,20 @@
   "upgradeProFeat2": "Tất cả nền tảng",
   "upgradeProFeat3": "Desktop + Mobile",
   "upgradeFeatureColumn": "Tính năng",
-  "upgradeMobilePrice": "📱 Mobile · $3/tháng",
+  "upgradeMobilePrice": "📱 Mobile · $4/tháng",
   "upgradeProPrice": "💻 Pro · $6/tháng",
   "upgradeFooterHint": "📱 Mobile: tiết kiệm nhất nếu chỉ dùng điện thoại\n💻 Pro: dùng được trên cả điện thoại và máy tính",
   "comparisonReplyTranslate": "Dịch phản hồi",
   "comparisonMobileApps": "📱 iOS & Android",
   "comparisonDesktop": "💻 Desktop",
-
   "nudgeUnlock": "Mở khoá {feature}",
-  "@nudgeUnlock": { "placeholders": { "feature": { "type": "String" } } },
+  "@nudgeUnlock": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "nudgeMobileCopy": "Nâng cấp lên Pro để dùng tính năng này\ntrên mọi nền tảng.",
   "nudgeChoosePlan": "Chọn gói phù hợp với nhu cầu của bạn.",
   "nudgeMaybeLater": "Để sau",
@@ -291,9 +362,22 @@
   "nudgeProTitle": "💻 Pro",
   "nudgeUpgradeToPro": "Nâng cấp lên Pro",
   "nudgeUpgradeToProSubtitle": "Dùng trên mọi nền tảng — desktop + mobile",
-  "nudgePriceMobile": "$3/tháng",
-  "nudgePriceProMonthly": "$6/tháng",
-
+  "nudgePriceMobile": "{price}/tháng",
+  "@nudgePriceMobile": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "nudgePriceProMonthly": "{price}/tháng",
+  "@nudgePriceProMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "onboardWelcomeTitle": "Chào mừng đến với TransKey",
   "onboardWelcomeSubtitle": "Dịch văn bản tức thì\ntrên hơn 20 ngôn ngữ.",
   "onboardChooseTitle": "Chọn ngôn ngữ",
@@ -301,7 +385,6 @@
   "onboardStartedTitle": "Bắt đầu",
   "onboardStartedSubtitle": "Đăng nhập hoặc tạo tài khoản miễn phí\nđể bắt đầu dịch ngay.",
   "onboardGetStarted": "Bắt đầu",
-
   "setupTitle": "Cài đặt bàn phím",
   "setupOpenSettings": "Mở Cài đặt",
   "setupOpenPermissions": "Mở Quyền",
@@ -320,7 +403,6 @@
   "setupStep4DescAndroid": "Chọn văn bản trong app bất kỳ → nhấn \"Share\" → chọn TransKey. Hoặc dùng bong bóng nổi sau khi copy.",
   "setupStep5Title": "Tính năng AI",
   "setupStep5Desc": "Dịch, Phản hồi, Tóm tắt, Giải thích & Tinh chỉnh — tất cả do AI. Tính năng Pro có biểu tượng khoá.",
-
   "guideTitle": "Cách sử dụng",
   "guideSubtitle": "Tất cả cách để lấy text cho mỗi tính năng",
   "guideIntroTitle": "Không cần bật quyền đặc biệt nào để lấy text.",
@@ -344,16 +426,26 @@
   "guideInputShareTitle": "Từ nút Share (chia sẻ)",
   "guideInputShareDesc": "Trong app bất kỳ: chọn text → tap Share → chọn TransKey.",
   "guideInputMenuTitle": "Từ menu chọn text → TransKey: {feature}",
-  "@guideInputMenuTitle": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideInputMenuDesc": "Khi bạn chọn text trong app, popup Copy/Share hiện ra. Tap ⋮ để xem thêm, rồi chọn TransKey: {feature}.",
-  "@guideInputMenuDesc": { "placeholders": { "feature": { "type": "String" } } },
+  "@guideInputMenuDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "guideReplyA11yTitle": "Trợ năng — tùy chọn, chỉ để tự động dán",
   "guideReplyA11yBody": "Nếu bật Trợ năng cho TransKey, câu trả lời được dán thẳng vào ô chat bạn đang gõ. Không cần thao tác thêm.\n\nNếu bạn không muốn bật, câu trả lời tự copy sẵn cho bạn — chỉ cần long-press ô chat rồi tap Dán.",
-
   "appPermissions": "Quyền ứng dụng",
   "permissionsAllSet": "Đã cấp đủ — tap để xem lại",
   "permissionsNeedSetup": "Tap để cấp các quyền cần thiết",
-
   "setupTransKey": "Thiết lập TransKey",
   "setupTransKeyBody": "Cấp quyền hiển thị Nút TransKey để bắt đầu. Trợ năng là tùy chọn, chỉ cần cho tính năng dán câu trả lời một chạm.",
   "permFloatingBubble": "Nút TransKey nổi",
@@ -369,31 +461,34 @@
   "permSkipHint": "Trợ năng là tùy chọn. Không có nó, kết quả Reply rơi vào clipboard và bạn dán thủ công.",
   "permSkipForNow": "Bỏ qua",
   "permFinishedCheck": "Đã xong — kiểm tra",
-
   "voiceTooltip": "Nói để nhập",
   "voiceListening": "Đang nghe…",
   "voiceNeedsLang": "Đặt ngôn ngữ nguồn cụ thể để dùng giọng nói",
   "voicePermDenied": "Đã từ chối quyền micro",
   "voiceUnsupported": "Thiết bị này không hỗ trợ nhập giọng nói",
   "voicePickSourceLang": "Giọng nói cần ngôn ngữ cụ thể. Chọn ngôn ngữ nguồn rồi chạm mic lại.",
-
   "paywallTitle": "Hết lượt dùng hôm nay",
   "paywallBody": "Bạn đã dùng hết 20 lượt / 2.000 ký tự miễn phí hôm nay. Xem 1 quảng cáo ngắn để dùng tiếp, hoặc nâng cấp để dùng không giới hạn. Lượt miễn phí được làm mới mỗi nửa đêm.",
   "paywallWatchAdCta": "Xem quảng cáo để dùng tiếp",
   "paywallWatchAdSub": "Nhận thêm lượt dịch và ký tự mỗi quảng cáo. Không giới hạn số quảng cáo trong ngày.",
   "paywallUpgradeCta": "Nâng cấp — không giới hạn, không quảng cáo",
-  "paywallUpgradeSub": "Từ $3/tháng. Hủy bất cứ lúc nào.",
+  "paywallUpgradeSub": "Từ {price}/tháng. Hủy bất cứ lúc nào.",
+  "@paywallUpgradeSub": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "paywallDismiss": "Để sau",
   "paywallLoading": "Đang tải…",
   "paywallAdNotComplete": "Quảng cáo chưa xem xong — thử lại để nhận thưởng.",
   "paywallCreditFailed": "Không cộng thưởng được. Thử lại sau một lát.",
   "quotaWatchAd": "+ Xem QC",
   "quotaRewardGranted": "Đã cộng thưởng vào lượt dùng hôm nay",
-
   "historyEmpty": "Chưa có lịch sử dịch nào",
   "glossaryEmpty": "Từ điển trống",
   "glossaryEmptyAddCta": "Thêm từ",
-
   "captureKeepaliveTitle": "Giữ quyền chụp lại nhanh",
   "captureKeepaliveHint": "chạm 2 lần Nút TransKey = chụp lại",
   "captureKeepaliveExplain": "Sau khi chụp màn hình, app giữ quyền chụp trong khoảng thời gian này để lần sau bạn chạm 2 lần Nút TransKey (hoặc chọn Dịch màn hình) không bị hỏi quyền hệ thống lại. Giữ lâu = ít thao tác hơn nhưng biểu tượng đang quay màn hình hiển thị lâu và máy hơi nóng thêm.",
@@ -403,5 +498,78 @@
   "captureKeepaliveShortHint": "Thời gian quay màn hình ngắn hơn, nhưng phải duyệt quyền nhiều lần hơn.",
   "captureKeepaliveLongHint": "Chụp lại nhanh nhất. Biểu tượng quay màn hình hiển thị lâu hơn.",
   "captureKeepaliveMinutes": "{count} phút",
-  "@captureKeepaliveMinutes": { "placeholders": { "count": { "type": "int" } } }
+  "@captureKeepaliveMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraTitle": "Camera",
+  "cameraCapture": "Chụp",
+  "cameraRetake": "Chụp lại",
+  "cameraCopyAll": "Sao chép",
+  "cameraNoText": "Không phát hiện văn bản. Thử lại.",
+  "cameraTapShowTranslations": "Chạm để hiện bản dịch",
+  "cameraLowQuality": "Chất lượng thấp",
+  "cameraTranslating": "Đang dịch...",
+  "cameraTranslate": "Dịch",
+  "cameraPermission": "Cần quyền truy cập camera để sử dụng tính năng này.",
+  "cameraSettingsTitle": "Cài đặt Camera",
+  "cameraSettingsReset": "Mặc định",
+  "cameraSettingsConfidence": "Ẩn chữ mờ",
+  "cameraSettingsConfidenceHint": "Ẩn những chữ camera đọc không rõ. Cao hơn = chặt hơn — kết quả gọn hơn nhưng có thể bỏ chữ mờ.",
+  "cameraOriginalLabel": "Gốc",
+  "cameraSettingsHideLow": "Ẩn đoạn chất lượng thấp",
+  "cameraSettingsHideLowHint": "Ẩn luôn các đoạn trên ngưỡng nhưng dưới mức cảnh báo. Bật khi chụp tài liệu sạch.",
+  "cameraSettingsShowOriginal": "Hiện văn bản gốc",
+  "cameraSettingsShowOriginalHint": "Luôn hiển thị chữ gốc bên dưới mỗi thẻ dịch.",
+  "cameraSettingsOpacity": "Độ mờ của thẻ",
+  "cameraSettingsOpacityHint": "Độ mờ nền của thẻ dịch. Thấp hơn = thấy ảnh gốc rõ hơn.",
+  "cameraSceneAuto": "Tự động",
+  "cameraSceneDocument": "Tài liệu",
+  "cameraSceneMenu": "Thực đơn",
+  "cameraSceneSign": "Biển hiệu",
+  "cameraSceneScreenshot": "Ảnh màn hình",
+  "cameraWhatIsThis": "Đây là gì?",
+  "cameraWhatIsThisHint": "Chạm vào chữ để hỏi",
+  "cameraExplainTitle": "Đây là gì?",
+  "cameraEditTextTitle": "Sửa văn bản",
+  "cameraReExplain": "Giải thích lại",
+  "cameraExplainEmpty": "Không có giải thích.",
+  "cameraExplainError": "Không lấy được giải thích. Thử lại.",
+  "cameraResultExplainHint": "Nhấn giữ thẻ để hỏi",
+  "cameraExplainDisclaimer": "Chỉ để tham khảo — thực tế có thể khác",
+  "phrasebookTitle": "Sổ tay",
+  "phrasebookEmpty": "Sổ tay của bạn đang trống. Dùng camera để nhận diện rồi nhấn Lưu.",
+  "phrasebookSave": "Lưu",
+  "phrasebookSaved": "Đã lưu",
+  "phrasebookSaveFailed": "Không lưu được. Thử lại.",
+  "phrasebookTitleTooLong": "Tiêu đề quá dài (tối đa 1000 ký tự). Rút gọn rồi thử lại.",
+  "phrasebookDelete": "Xóa",
+  "phrasebookDeleteConfirm": "Xóa mục này khỏi sổ tay?",
+  "phrasebookDeleted": "Đã xóa",
+  "phrasebookNote": "Ghi chú",
+  "phrasebookNoteHint": "vd: ăn ở quán ... — hơi cay",
+  "phrasebookNoteSave": "Lưu ghi chú",
+  "phrasebookCopy": "Sao chép",
+  "phrasebookViewAll": "Mở sổ tay",
+  "phrasebookCategoryAll": "Tất cả",
+  "phrasebookCategoryMenu": "Thực đơn",
+  "phrasebookCategoryPlace": "Địa điểm",
+  "phrasebookCategoryDocument": "Tài liệu",
+  "phrasebookCategoryOther": "Khác",
+  "phrasebookCategoryChange": "Đổi phân loại",
+  "cameraTipsTitle": "Mẹo dùng camera",
+  "cameraTipsGotIt": "Đã hiểu",
+  "cameraTip1Title": "Chọn đúng chế độ",
+  "cameraTip1Body": "Chọn đúng thứ bạn đang quét để ra kết quả tốt nhất: thực đơn, biển hiệu, tài liệu — hoặc Auto cho mọi loại.",
+  "cameraTip2Title": "Chọn ngôn ngữ",
+  "cameraTip2Body": "Chọn ngôn ngữ bạn đang đọc và ngôn ngữ muốn dịch sang (góc trên trái). Nếu một biển hiệu hay đoạn chữ ra chưa đúng, hãy chọn đúng ngôn ngữ đang đọc thay vì để Tự động.",
+  "cameraTip3Title": "Hỏi \"Đây là gì?\"",
+  "cameraTip3Body": "Nhấn giữ một kết quả để biết đó là món gì hoặc nơi nào — và nghe cách đọc to.",
+  "cameraTip4Title": "Kéo để xoá",
+  "cameraTip4Body": "Kéo thẻ kết quả vào vùng thùng rác phía dưới để loại bỏ các thẻ không cần.",
+  "cameraTip5Title": "Quét ảnh có sẵn",
+  "cameraTip5Body": "Nhấn biểu tượng thư viện cạnh nút chụp để dịch ảnh có sẵn trong máy."
 }

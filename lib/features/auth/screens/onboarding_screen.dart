@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   static const _kDoneKey = 'onboarding_done';
@@ -21,10 +23,10 @@ class OnboardingScreen extends StatefulWidget {
   }
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _currentPage = 0;
 
@@ -65,6 +67,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _finish() async {
+    ref.read(trackingServiceProvider).event('onboarding_complete',
+        properties: {'last_page': _currentPage});
     await OnboardingScreen.markDone();
     if (mounted) context.go('/auth/login');
   }

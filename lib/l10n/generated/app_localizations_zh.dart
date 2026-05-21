@@ -116,6 +116,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sectionOther => '其他';
 
   @override
+  String get helpImproveApp => '帮助改进应用';
+
+  @override
+  String get helpImproveAppHint => '分享匿名使用信息以改进 TransKey。不会发送任何翻译内容或照片。';
+
+  @override
   String get sectionSpeech => '朗读';
 
   @override
@@ -454,10 +460,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get googleNotConfigured => 'Google 登录未配置(缺少 serverClientId)';
+  String get googleNotConfigured => '目前无法使用 Google 登录，请尝试其他登录方式。';
 
   @override
-  String get googleSignInNoIdToken => 'Google 未返回 idToken — 请检查 serverClientId';
+  String get googleSignInNoIdToken => 'Google 登录未完成，请重试。';
 
   @override
   String get proRequired => '需要 Pro 套餐';
@@ -701,7 +707,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get glossaryIsNameLabel => '这是人名';
 
   @override
-  String get glossaryIsNameHint => '帮助语音输入识别该名字，并让 AI 完整保留。';
+  String get glossaryIsNameHint => '帮助语音输入识别该名称，并在翻译时保持不变。';
 
   @override
   String get upgradeScreenTitle => '升级 TransKey';
@@ -772,7 +778,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get upgradeFeatureColumn => '功能';
 
   @override
-  String get upgradeMobilePrice => '📱 Mobile · \$3/月';
+  String upgradeMobilePrice(Object price) {
+    return '📱 Mobile · \$4/月';
+  }
 
   @override
   String get upgradeProPrice => '💻 Pro · \$6/月';
@@ -816,10 +824,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nudgeUpgradeToProSubtitle => '所有平台均可使用 — 桌面 + 移动';
 
   @override
-  String get nudgePriceMobile => '\$3/月';
+  String nudgePriceMobile(String price) {
+    return '$price/月';
+  }
 
   @override
-  String get nudgePriceProMonthly => '\$6/月';
+  String nudgePriceProMonthly(String price) {
+    return '$price/月';
+  }
 
   @override
   String get onboardWelcomeTitle => '欢迎使用 TransKey';
@@ -1074,7 +1086,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get paywallUpgradeCta => '升级 — 无限制、无广告';
 
   @override
-  String get paywallUpgradeSub => '\$3/月起。可随时取消。';
+  String paywallUpgradeSub(String price) {
+    return '$price/月起。可随时取消。';
+  }
 
   @override
   String get paywallDismiss => '稍后再说';
@@ -1132,4 +1146,207 @@ class AppLocalizationsZh extends AppLocalizations {
   String captureKeepaliveMinutes(int count) {
     return '$count 分钟';
   }
+
+  @override
+  String get cameraTitle => '相机';
+
+  @override
+  String get cameraCapture => '拍照';
+
+  @override
+  String get cameraRetake => '重拍';
+
+  @override
+  String get cameraCopyAll => '全部复制';
+
+  @override
+  String get cameraNoText => '未检测到文字，请重试。';
+
+  @override
+  String get cameraTapShowTranslations => '点击显示翻译';
+
+  @override
+  String get cameraLowQuality => '质量低';
+
+  @override
+  String get cameraTranslating => '翻译中...';
+
+  @override
+  String get cameraTranslate => '翻译';
+
+  @override
+  String get cameraPermission => '需要相机权限才能使用此功能。';
+
+  @override
+  String get cameraSettingsTitle => '相机设置';
+
+  @override
+  String get cameraSettingsReset => '重置';
+
+  @override
+  String get cameraSettingsConfidence => '隐藏模糊文字';
+
+  @override
+  String get cameraSettingsConfidenceHint =>
+      '隐藏相机看不清的文字。越高越严格 — 结果更干净，但可能漏掉模糊文字。';
+
+  @override
+  String get cameraOriginalLabel => '原文';
+
+  @override
+  String get cameraSettingsHideLow => '隐藏低质量块';
+
+  @override
+  String get cameraSettingsHideLowHint => '同时隐藏阈值之上但低于警告级别的块。整洁文档时打开。';
+
+  @override
+  String get cameraSettingsShowOriginal => '显示原文';
+
+  @override
+  String get cameraSettingsShowOriginalHint => '始终在每张翻译卡片下显示原文。';
+
+  @override
+  String get cameraSettingsOpacity => '覆盖层不透明度';
+
+  @override
+  String get cameraSettingsOpacityHint => '卡片背景透明度。低 = 后面照片更可见。';
+
+  @override
+  String get cameraSceneAuto => '自动';
+
+  @override
+  String get cameraSceneDocument => '文档';
+
+  @override
+  String get cameraSceneMenu => '菜单';
+
+  @override
+  String get cameraSceneSign => '招牌';
+
+  @override
+  String get cameraSceneScreenshot => '屏幕截图';
+
+  @override
+  String get cameraWhatIsThis => '这是什么?';
+
+  @override
+  String get cameraWhatIsThisHint => '点击预览中的文字提问';
+
+  @override
+  String get cameraExplainTitle => '这是什么?';
+
+  @override
+  String get cameraEditTextTitle => '编辑文本';
+
+  @override
+  String get cameraReExplain => '重新解释';
+
+  @override
+  String get cameraExplainEmpty => '无可用解释。';
+
+  @override
+  String get cameraExplainError => '无法获取解释。请重试。';
+
+  @override
+  String get cameraResultExplainHint => '长按卡片提问';
+
+  @override
+  String get cameraExplainDisclaimer => '仅供参考 — 实际含义可能不同';
+
+  @override
+  String get phrasebookTitle => '短语集';
+
+  @override
+  String get phrasebookEmpty => '短语集为空。用相机识别文字后点击保存。';
+
+  @override
+  String get phrasebookSave => '保存';
+
+  @override
+  String get phrasebookSaved => '已保存';
+
+  @override
+  String get phrasebookSaveFailed => '保存失败,请重试。';
+
+  @override
+  String get phrasebookTitleTooLong => '标题过长(最多1000个字符)。请缩短后重试。';
+
+  @override
+  String get phrasebookDelete => '删除';
+
+  @override
+  String get phrasebookDeleteConfirm => '从短语集中删除？';
+
+  @override
+  String get phrasebookDeleted => '已删除';
+
+  @override
+  String get phrasebookNote => '备注';
+
+  @override
+  String get phrasebookNoteHint => '例如:在...点的 — 太辣';
+
+  @override
+  String get phrasebookNoteSave => '保存备注';
+
+  @override
+  String get phrasebookCopy => '复制';
+
+  @override
+  String get phrasebookViewAll => '打开短语集';
+
+  @override
+  String get phrasebookCategoryAll => '全部';
+
+  @override
+  String get phrasebookCategoryMenu => '菜单';
+
+  @override
+  String get phrasebookCategoryPlace => '地点';
+
+  @override
+  String get phrasebookCategoryDocument => '文档';
+
+  @override
+  String get phrasebookCategoryOther => '其他';
+
+  @override
+  String get phrasebookCategoryChange => '更改分类';
+
+  @override
+  String get cameraTipsTitle => '相机使用提示';
+
+  @override
+  String get cameraTipsGotIt => '知道了';
+
+  @override
+  String get cameraTip1Title => '选择合适的模式';
+
+  @override
+  String get cameraTip1Body => '选择你要扫描的内容以获得最佳效果：菜单、店铺招牌、文档 — 或用 Auto 适配一切。';
+
+  @override
+  String get cameraTip2Title => '选择语言';
+
+  @override
+  String get cameraTip2Body =>
+      '选择你正在读的语言和要翻译成的语言(左上角)。如果招牌或文字识别不准，请选择正在读的语言，而不要停留在 Auto。';
+
+  @override
+  String get cameraTip3Title => '询问\"这是什么？\"';
+
+  @override
+  String get cameraTip3Body => '长按结果即可了解这是什么菜或什么地方 — 还能听到怎么读出来。';
+
+  @override
+  String get cameraTip4Title => '拖动删除';
+
+  @override
+  String get cameraTip4Body => '将不需要的结果卡片拖到底部垃圾桶区域即可删除。';
+
+  @override
+  String get cameraTip5Title => '扫描已有照片';
+
+  @override
+  String get cameraTip5Body => '点击快门旁的相册图标，翻译手机里已有的照片。';
 }

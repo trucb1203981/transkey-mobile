@@ -3,36 +3,50 @@ import 'package:flutter/material.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../models/translate_models.dart';
+import '../providers/features_provider.dart';
 
-/// Five-up row of feature actions (Translate / Reply / Summarize /
-/// Explain / Refine). Translate is the primary (filled purple);
-/// Summarize / Explain / Refine show a lock icon for free users so the
-/// gate is visible BEFORE they tap, then the host handles the upsell.
+/// Row of feature actions (Translate / Reply / Summarize / Explain /
+/// Refine) with a Camera button on the left. Translate is the primary
+/// (filled purple). Each non-translate button shows a padlock when the
+/// CURRENT user's plan doesn't enable it (per [features]) so the gate
+/// is visible BEFORE they tap; the host then routes through [onAction]
+/// to either run the feature or show the upsell.
 class FeatureButtons extends StatelessWidget {
   const FeatureButtons({
     super.key,
     required this.isDark,
-    required this.isPro,
+    required this.features,
     required this.onAction,
+    this.onCamera,
   });
 
   final bool isDark;
-  /// Drives the lock icon on summarize / explain / refine. Free users
-  /// see a padlock; tapping still routes through [onAction] so the host
-  /// can decide whether to gate (paywall) or proceed.
-  final bool isPro;
+  /// Per-feature enable map from server (`/features` endpoint). Drives
+  /// the per-button padlock so the lock state matches admin config —
+  /// NOT a hardcoded `isPro` check (admin can flip individual flags via
+  /// /admin/features without redeploy).
+  final FeatureFlags features;
   final void Function(TranslateMode mode) onAction;
+  final VoidCallback? onCamera;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return Row(
       children: [
+        if (onCamera != null)
+          _CameraBtn(
+            isDark: isDark,
+            locked: !features.camera,
+            onTap: onCamera!,
+          ),
+        if (onCamera != null) const SizedBox(width: AppSpacing.sm),
         _FeatureBtn(
           icon: Icons.translate,
           label: l.translate,
           isDark: isDark,
           isPrimary: true,
+          locked: !features.translate,
           onTap: () => onAction(TranslateMode.translate),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -40,6 +54,7 @@ class FeatureButtons extends StatelessWidget {
           icon: Icons.reply_outlined,
           label: l.reply,
           isDark: isDark,
+          locked: !features.replyTranslate,
           onTap: () => onAction(TranslateMode.reply),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -47,7 +62,7 @@ class FeatureButtons extends StatelessWidget {
           icon: Icons.summarize_outlined,
           label: l.summarize,
           isDark: isDark,
-          locked: !isPro,
+          locked: !features.summarize,
           onTap: () => onAction(TranslateMode.summarize),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -55,7 +70,7 @@ class FeatureButtons extends StatelessWidget {
           icon: Icons.lightbulb_outline,
           label: l.explain,
           isDark: isDark,
-          locked: !isPro,
+          locked: !features.explain,
           onTap: () => onAction(TranslateMode.explain),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -63,10 +78,74 @@ class FeatureButtons extends StatelessWidget {
           icon: Icons.auto_fix_high,
           label: l.refine,
           isDark: isDark,
-          locked: !isPro,
+          locked: !features.refine,
           onTap: () => onAction(TranslateMode.refine),
         ),
       ],
+    );
+  }
+}
+
+class _CameraBtn extends StatelessWidget {
+  const _CameraBtn({
+    required this.isDark,
+    required this.onTap,
+    this.locked = false,
+  });
+
+  final bool isDark;
+  final bool locked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final fg = isDark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+    return Expanded(
+      child: Material(
+        color: isDark ? AppColors.surface : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+              border: Border.all(
+                color: isDark ? AppColors.border : AppColors.borderLight,
+              ),
+            ),
+            child: Column(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(Icons.camera_alt, size: 18, color: fg),
+                    if (locked)
+                      const Positioned(
+                        right: -6,
+                        bottom: -4,
+                        child: Icon(Icons.lock,
+                            size: 11, color: AppColors.textSecondary),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l.cameraTitle,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: fg,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
