@@ -92,4 +92,7 @@
     <string name="bubble_overlay_perm_needed">Activez \'Afficher par-dessus les autres apps\' pour les traductions flottantes</string>
     <string name="bubble_clipboard_empty_error">Aucun texte dans le presse-papiers.\nCopiez le texte d\'abord, puis touchez la bulle.</string>
     <string name="bubble_camera">Caméra</string>
+    <string name="lens_progress_translating">Traduction %1$d/%2$d…</string>
+    <string name="lens_source_mismatch">%1$s détecté — touchez pour retraduire</string>
+    <string name="lens_reopen_result">Rouvrir la traduction</string>
 </resources>

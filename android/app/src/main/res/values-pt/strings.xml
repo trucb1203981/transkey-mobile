@@ -98,4 +98,7 @@
     <string name="process_text_explain">TransKey: Explicar</string>
     <string name="process_text_refine">TransKey: Melhorar</string>
     <string name="bubble_camera">Câmera</string>
+    <string name="lens_progress_translating">Traduzindo %1$d/%2$d…</string>
+    <string name="lens_source_mismatch">%1$s detectado — toque para retraduzir</string>
+    <string name="lens_reopen_result">Reabrir tradução</string>
 </resources>

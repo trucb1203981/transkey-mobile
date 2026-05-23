@@ -3,12 +3,16 @@ package app.transkey.mobile
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ScrollView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -252,7 +256,9 @@ internal fun BubbleService.showLensOverlay(bitmap: Bitmap, items: List<LensOverl
     ensureWindowManager()
     val overlay = LensOverlayView(
         this, bitmap, items,
-        onDismissOutsideTap = { hideLensOverlay() },
+        // Outside tap = the "accidental dismiss" case — offer a quick undo
+        // so re-opening the same result is instant.
+        onDismissOutsideTap = { hideLensOverlay(offerReopen = true) },
         // Long-press any block → close the overlay + send the original
         // (source-language) text to Flutter, which opens the "What is this?"
         // sheet. Lets the user explain a 1-2 word region selection — handy
@@ -262,17 +268,198 @@ internal fun BubbleService.showLensOverlay(bitmap: Bitmap, items: List<LensOverl
             hideLensOverlay()
             openExplainScreen(sourceText)
         },
+        // Single tap → readable popup with the FULL translation + original,
+        // so long results that get truncated in the in-place chip are never
+        // lost.
+        onBlockTap = { original, translation ->
+            showLensDetailPopup(original, translation)
+        },
     )
     lensOverlayView = overlay
     windowManager?.addView(overlay, buildPickerLayoutParams())
 }
 
-internal fun BubbleService.hideLensOverlay() {
+/**
+ * Readable popup showing one block's full translation (and its original
+ * source text below). Opened by tapping a chip in the Lens overlay — the
+ * in-place chips stay size-bounded for a clean overlay, this is where the
+ * complete text lives. Tap anywhere to dismiss.
+ */
+@SuppressLint("ClickableViewAccessibility")
+internal fun BubbleService.showLensDetailPopup(original: String, translation: String) {
+    hideLensDetailPopup()
+    ensureWindowManager()
+    val style = BubbleStyle.of(this)
+    val dp = style.dp
+    val backdrop = FrameLayout(this).apply {
+        setBackgroundColor(0xAA000000.toInt())
+        isClickable = true
+        setOnClickListener { hideLensDetailPopup() }
+    }
+    val scroll = ScrollView(this).apply {
+        isFillViewport = false
+        overScrollMode = View.OVER_SCROLL_NEVER
+    }
+    val card = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = GradientDrawable().apply { setColor(style.bg); cornerRadius = 16 * dp }
+        elevation = 22 * dp
+        setPadding((20 * dp).toInt(), (18 * dp).toInt(), (20 * dp).toInt(), (18 * dp).toInt())
+        // Swallow taps on the card itself so they don't fall through to the
+        // backdrop's dismiss handler.
+        isClickable = true
+    }
+    card.addView(TextView(this).apply {
+        text = translation.ifBlank { original }
+        setTextColor(style.text)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+        typeface = Typeface.DEFAULT_BOLD
+        setTextIsSelectable(true)
+    })
+    if (original.isNotBlank() && original.trim() != translation.trim()) {
+        card.addView(TextView(this).apply {
+            text = original
+            setTextColor((style.text and 0x00FFFFFF) or 0x99000000.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTextIsSelectable(true)
+            setPadding(0, (12 * dp).toInt(), 0, 0)
+        })
+    }
+    scroll.addView(card)
+    // WRAP_CONTENT height lets a short translation show a compact card while
+    // a long one grows up to the screen and scrolls inside the ScrollView.
+    backdrop.addView(scroll, FrameLayout.LayoutParams(
+        (320 * dp).toInt().coerceAtMost(
+            (resources.displayMetrics.widthPixels * 0.9f).toInt(),
+        ),
+        FrameLayout.LayoutParams.WRAP_CONTENT,
+        Gravity.CENTER,
+    ))
+    lensDetailView = backdrop
+    windowManager?.addView(backdrop, buildPickerLayoutParams())
+}
+
+internal fun BubbleService.hideLensDetailPopup() {
+    lensDetailView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+    lensDetailView = null
+}
+
+/**
+ * @param offerReopen when true (outside-tap dismiss), keep the screenshot
+ * + finished chips in the reopen cache and float a brief "reopen" pill so
+ * an accidental close can be undone instantly. When false (long-press →
+ * explain, stop, new scan), tear everything down as before.
+ */
+internal fun BubbleService.hideLensOverlay(offerReopen: Boolean = false) {
+    hideLensDetailPopup()
+    val overlay = lensOverlayView
     lensOverlayView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
     lensOverlayView = null
-    // Recycling the bitmap + clearing manager state is done together
-    // here (NOT in service.cleanup) so the bitmap survives until the
-    // user actually dismisses the overlay.
+    if (offerReopen && overlay != null) {
+        val ovBmp = overlay.bitmap
+        if (!ovBmp.isRecycled) {
+            // Drop any OLDER cached scan first (recycles its bitmap). Safe
+            // because a restored overlay already nulled the cache, so this
+            // never frees the bitmap we're about to re-cache.
+            discardLensCache()
+            // If this bitmap is still the live SCM screenshot, detach it so
+            // clearAll() below won't recycle it out from under the cache.
+            if (ScreenCaptureManager.screenshot === ovBmp) {
+                ScreenCaptureManager.detachScreenshot()
+            }
+            lastLensBitmap = ovBmp
+            lastLensItems = overlay.snapshotItems()
+            ScreenCaptureManager.clearAll()
+            restoreBubbleVisibility()
+            showReopenPill()
+            return
+        }
+    }
     ScreenCaptureManager.clearAll()
     restoreBubbleVisibility()
+}
+
+/** Recycle + forget any cached "reopen last result" scan. */
+internal fun BubbleService.discardLensCache() {
+    hideReopenPill()
+    lastLensBitmap?.let { if (!it.isRecycled) it.recycle() }
+    lastLensBitmap = null
+    lastLensItems = null
+}
+
+internal fun BubbleService.hideReopenPill() {
+    reopenDismissRunnable?.let { handler.removeCallbacks(it) }
+    reopenDismissRunnable = null
+    reopenPillView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+    reopenPillView = null
+}
+
+/**
+ * Float a small tappable "Reopen translation" pill near the bubble for a
+ * few seconds after an accidental dismiss. Tap → restore the cached
+ * overlay instantly; ignore → auto-hide and recycle the cached bitmap.
+ */
+@SuppressLint("ClickableViewAccessibility")
+internal fun BubbleService.showReopenPill() {
+    if (reopenPillView != null) return
+    ensureWindowManager()
+    val style = BubbleStyle.of(this)
+    val dp = style.dp
+    val pill = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = GradientDrawable().apply {
+            setColor(style.bg); cornerRadius = 22 * dp
+        }
+        elevation = 18 * dp
+        setPadding((18 * dp).toInt(), (12 * dp).toInt(), (18 * dp).toInt(), (12 * dp).toInt())
+        addView(TextView(this@showReopenPill).apply {
+            text = localized(R.string.lens_reopen_result)
+            setTextColor(style.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        setOnClickListener { restoreLensFromCache() }
+    }
+    reopenPillView = pill
+    // IMPORTANT: a dedicated WRAP_CONTENT window — NOT buildPickerLayoutParams
+    // (which is MATCH_PARENT). A full-screen window here would stretch the
+    // pill across the screen and make its click listener fire on ANY tap.
+    // FLAG_NOT_TOUCH_MODAL lets taps outside the small pill fall through to
+    // the app behind it.
+    val lp = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        y = (90 * dp).toInt()
+    }
+    windowManager?.addView(pill, lp)
+    // Auto-dismiss after 6s — drop the cache if the user didn't undo.
+    // Stored so a re-armed pill can cancel the previous timeout (otherwise
+    // a stale callback would recycle a freshly re-cached bitmap).
+    val dismiss = Runnable { discardLensCache() }
+    reopenDismissRunnable = dismiss
+    handler.postDelayed(dismiss, 6000L)
+}
+
+/** Re-show the cached scan instantly (no re-capture/OCR/LLM). */
+internal fun BubbleService.restoreLensFromCache() {
+    val bmp = lastLensBitmap ?: return
+    val items = lastLensItems ?: return
+    hideReopenPill()
+    bubbleView?.visibility = View.GONE
+    // Transfer logical ownership of the bitmap to the live overlay BEFORE
+    // showing it; do NOT recycle here. On the overlay's own dismiss,
+    // [hideLensOverlay] reads overlay.bitmap again to re-cache or recycle.
+    lastLensBitmap = null
+    lastLensItems = null
+    showLensOverlay(bmp, items)
+    lensOverlayView?.markAllProcessed()
 }

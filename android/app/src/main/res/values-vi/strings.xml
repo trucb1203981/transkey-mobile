@@ -90,4 +90,7 @@
     <string name="process_text_explain">TransKey: Giải thích</string>
     <string name="process_text_refine">TransKey: Cải thiện</string>
     <string name="bubble_camera">Camera</string>
+    <string name="lens_progress_translating">Đang dịch %1$d/%2$d…</string>
+    <string name="lens_source_mismatch">Có vẻ là %1$s — chạm để dịch lại</string>
+    <string name="lens_reopen_result">Mở lại bản dịch</string>
 </resources>

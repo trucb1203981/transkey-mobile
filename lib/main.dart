@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -384,11 +385,88 @@ Future<Map<String, dynamic>> _lensVisionTranslate(
   }
 }
 
+/// Dense Lens scans (a Chinese news website, a multi-column menu) return
+/// 100+ OCR blocks in one go. /translate-batch tries to fit ALL of them
+/// into one LLM round-trip, and the output JSON array can run past the
+/// model's max_tokens budget (8k) — the response is cut mid-array, the
+/// server's [parseBatchResponse] falls back to returning the originals,
+/// and the user sees their chips render the source text unchanged. Cap
+/// chunk size so each request stays inside a comfortable output budget,
+/// then fire chunks in parallel so the total wall-time stays close to
+/// one batch.
+const _kLensBatchChunkSize = 20;
+
+/// In-memory LRU cache of Lens translations, keyed by
+/// `sourceLang|targetLang|sourceText`. Survives for the life of the
+/// pre-warmed Flutter engine (i.e. the whole bubble-service session), so
+/// re-scanning the same screen — e.g. after an accidental dismiss — skips
+/// the expensive LLM round-trip entirely and only pays for capture + OCR.
+///
+/// Only ACTUAL translations are cached (value != original). A failed slot
+/// that the server echoed back as the original is NOT cached, so a later
+/// re-scan still gets a fresh attempt instead of a stuck bad result.
+const _kLensCacheMax = 2000;
+final _lensTransCache = <String, String>{};
+
+String _lensCacheKey(String? sourceLang, String targetLang, String text) {
+  final src = (sourceLang == null || sourceLang.isEmpty) ? 'auto' : sourceLang;
+  return '$src|$targetLang|$text';
+}
+
+void _lensCachePut(String key, String value) {
+  // Refresh LRU position: Dart maps keep insertion order, so remove+insert
+  // moves this key to the most-recently-used (last) slot.
+  _lensTransCache.remove(key);
+  _lensTransCache[key] = value;
+  if (_lensTransCache.length > _kLensCacheMax) {
+    _lensTransCache.remove(_lensTransCache.keys.first);
+  }
+}
+
+/// Progressive-emit hook: push one chunk of translations up to the
+/// native side so [LensOverlayView.applyTranslations] can patch the
+/// already-shown chips in place. Fire-and-forget — any platform-side
+/// error just means the user waits for the final batch return.
+void _emitLensChunk(int startIdx, List<String> translations) {
+  if (translations.isEmpty) return;
+  unawaited(
+    _bubbleChannel.invokeMethod('deliverLensChunk', {
+      'startIdx': startIdx,
+      'translations': translations,
+    }).catchError((e) {
+      debugPrint('[LensTranslate] deliverLensChunk failed: $e');
+      return null;
+    }),
+  );
+}
+
+/// One-shot guard so a multi-chunk scan only surfaces ONE mismatch
+/// banner even though every chunk independently reports the same
+/// detected/requested pair. Reset at the start of each scan.
+bool _lensMismatchEmitted = false;
+
+/// Tell the native overlay that the user's pinned source language
+/// disagrees with the script we actually saw, so it can show a
+/// "Detected X — switch?" banner. Fire-and-forget.
+void _emitLensMismatch(String? detected, String? requested) {
+  if (detected == null || detected.isEmpty) return;
+  unawaited(
+    _bubbleChannel.invokeMethod('deliverLensMismatch', {
+      'detected': detected,
+      'requested': requested ?? '',
+    }).catchError((e) {
+      debugPrint('[LensTranslate] deliverLensMismatch failed: $e');
+      return null;
+    }),
+  );
+}
+
 Future<List<String>> _translateBatchForLens(
   List<String> texts,
   String targetLang,
   String? sourceLang,
 ) async {
+  _lensMismatchEmitted = false;
   try {
     final session = await SessionStore().load();
     if (session == null || session.accessToken.isEmpty) {
@@ -396,31 +474,152 @@ Future<List<String>> _translateBatchForLens(
       // rather than blowing up the native side.
       return texts;
     }
-    final api = _rootContainer.read(apiClientProvider);
-    final response = await api.dio.post('/translate-batch', data: {
-      'texts': texts,
-      'targetLang': targetLang,
-      if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
-        'sourceLang': sourceLang,
-      'appHint': 'lens',
-    });
-    final data = response.data as Map?;
-    final raw = data?['translations'] as List?;
-    if (raw == null) return texts;
-    // Backend guarantees same-length array via parseBatchResponse fallback;
-    // mirror that guarantee here in case middleware ever drops items.
-    final out = <String>[];
-    for (var i = 0; i < texts.length; i++) {
-      final value = i < raw.length ? raw[i] : null;
-      out.add(value is String && value.trim().isNotEmpty ? value : texts[i]);
+    if (texts.length <= _kLensBatchChunkSize) {
+      final translations = await _lensBatchChunk(texts, targetLang, sourceLang, 0, texts);
+      // Single-chunk case: still emit progressively so the overlay's
+      // placeholder chips update the moment the chunk lands (instead of
+      // staying on the originals until the MethodChannel return resolves).
+      _emitLensChunk(0, translations);
+      return translations;
     }
-    return out;
-  } on DioException catch (e) {
-    debugPrint('[LensTranslate] Dio error: ${e.response?.statusCode} ${e.message}');
-    return texts;
+    // Split into chunks of <= _kLensBatchChunkSize, dispatched in parallel.
+    final chunks = <List<String>>[];
+    final starts = <int>[];
+    for (var i = 0; i < texts.length; i += _kLensBatchChunkSize) {
+      starts.add(i);
+      chunks.add(texts.sublist(i, math.min(i + _kLensBatchChunkSize, texts.length)));
+    }
+    debugPrint('[LensTranslate] split ${texts.length} blocks into ${chunks.length} chunks of <=$_kLensBatchChunkSize');
+    // Fire each chunk and emit its result to the overlay AS SOON AS it
+    // completes — the overlay shows originals as placeholders, so each
+    // emit replaces a slab of chips with their real translation. The
+    // overall Future.wait still aggregates for the final MethodChannel
+    // return (which is now just a safety net since chips were already
+    // patched in place).
+    final futures = List<Future<List<String>>>.generate(chunks.length, (idx) {
+      final start = starts[idx];
+      return _lensBatchChunk(chunks[idx], targetLang, sourceLang, idx, texts).then((translations) {
+        _emitLensChunk(start, translations);
+        return translations;
+      });
+    });
+    final results = await Future.wait(futures);
+    return results.expand((r) => r).toList(growable: false);
   } catch (e) {
     debugPrint('[LensTranslate] Error: $e');
     return texts;
+  }
+}
+
+Future<List<String>> _lensBatchChunk(
+  List<String> texts,
+  String targetLang,
+  String? sourceLang,
+  int chunkIdx,
+  List<String> contextTexts,
+) async {
+  final tag = '[LensChunk#$chunkIdx]';
+  final t0 = DateTime.now().millisecondsSinceEpoch;
+  // Cache pre-pass: pull any already-translated texts out of the chunk so
+  // we only spend an LLM call on the genuinely-new ones. On a full re-scan
+  // of the same screen every slot hits, so the chunk returns ~instantly.
+  final out = List<String>.from(texts);
+  final missTexts = <String>[];
+  final missIdx = <int>[];
+  for (var i = 0; i < texts.length; i++) {
+    final cached = _lensTransCache[_lensCacheKey(sourceLang, targetLang, texts[i])];
+    if (cached != null) {
+      _lensCachePut(_lensCacheKey(sourceLang, targetLang, texts[i]), cached);
+    } else {
+      missTexts.add(texts[i]);
+      missIdx.add(i);
+    }
+  }
+  // Apply cache hits up front so positions stay correct.
+  for (var i = 0; i < texts.length; i++) {
+    final cached = _lensTransCache[_lensCacheKey(sourceLang, targetLang, texts[i])];
+    if (cached != null) out[i] = cached;
+  }
+  if (missTexts.isEmpty) {
+    debugPrint('$tag fully-cached n=${texts.length} (0 LLM)');
+    return out;
+  }
+  try {
+    final api = _rootContainer.read(apiClientProvider);
+    // Lens batch can hit the slow path on the server (Llama-4 Scout fails →
+    // retry Llama-3.3 70b → Gemini → Claude). Each hop takes 2-5s, so a
+    // single chunk on the deep fallback chain can blow past the global 30s
+    // Dio receiveTimeout. Bump per-request to 90s for batch translation.
+    final response = await api.dio.post(
+      '/translate-batch',
+      data: {
+        'texts': missTexts,
+        // Full-screen text as disambiguation context so each chunk keeps
+        // the surrounding meaning even though we only send the cache-miss
+        // subset for translation. Cap to the DTO's limit (200).
+        'contextTexts': contextTexts.length <= 200 ? contextTexts : contextTexts.sublist(0, 200),
+        'targetLang': targetLang,
+        if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
+          'sourceLang': sourceLang,
+        'appHint': 'lens',
+      },
+      options: Options(
+        receiveTimeout: const Duration(seconds: 90),
+        sendTimeout: const Duration(seconds: 60),
+      ),
+    );
+    final dt = DateTime.now().millisecondsSinceEpoch - t0;
+    final data = response.data as Map?;
+    // Source-language mismatch: server compared the user's pinned source
+    // against the dominant script and they disagree. Surface ONCE per
+    // scan (the check+set is synchronous so parallel chunks can't double
+    // -fire). Lets the overlay offer a "switch & re-translate" banner.
+    final mismatch = data?['sourceMismatch'];
+    if (mismatch is Map && !_lensMismatchEmitted) {
+      _lensMismatchEmitted = true;
+      _emitLensMismatch(
+        mismatch['detected'] as String?,
+        mismatch['requested'] as String?,
+      );
+    }
+    final raw = data?['translations'] as List?;
+    if (raw == null) {
+      debugPrint('$tag dt=${dt}ms FAIL no-translations-field data=$data');
+      return out; // cache hits (if any) still applied
+    }
+    // Merge fresh translations back into their original positions and cache
+    // the GOOD ones (a translation that actually differs from the source).
+    var fallback = 0;
+    for (var j = 0; j < missTexts.length; j++) {
+      final value = j < raw.length ? raw[j] : null;
+      final original = missTexts[j];
+      final isGood = value is String && value.trim().isNotEmpty && value.trim() != original.trim();
+      if (isGood) {
+        out[missIdx[j]] = value;
+        _lensCachePut(_lensCacheKey(sourceLang, targetLang, original), value);
+      } else {
+        out[missIdx[j]] = original;
+        fallback++;
+      }
+    }
+    final provider = data?['provider'] ?? '?';
+    final model = data?['model'] ?? '?';
+    final hits = texts.length - missTexts.length;
+    debugPrint('$tag dt=${dt}ms n=${texts.length} hits=$hits sent=${missTexts.length} good=${missTexts.length - fallback} fallback=$fallback provider=$provider model=$model');
+    if (fallback == missTexts.length) {
+      final firstIn = missTexts.isNotEmpty ? missTexts.first : '';
+      final firstRaw = raw.isNotEmpty ? raw.first.toString() : '';
+      debugPrint('$tag whole-fallback in[0]="${firstIn.substring(0, math.min(60, firstIn.length))}" raw[0]="${firstRaw.substring(0, math.min(60, firstRaw.length))}"');
+    }
+    return out;
+  } on DioException catch (e) {
+    final dt = DateTime.now().millisecondsSinceEpoch - t0;
+    debugPrint('$tag dt=${dt}ms DIO ${e.response?.statusCode} ${e.message}');
+    return out; // keep any cache hits we already applied
+  } catch (e) {
+    final dt = DateTime.now().millisecondsSinceEpoch - t0;
+    debugPrint('$tag dt=${dt}ms ERR $e');
+    return out;
   }
 }
 

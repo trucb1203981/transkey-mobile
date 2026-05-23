@@ -64,6 +64,19 @@ class BubbleService : Service() {
         // rubber-band selector on top of the bitmap so the user can crop
         // before we OCR + translate.
         const val ACTION_DELIVER_REGION_READY = "transkey.bubble.DELIVER_REGION_READY"
+        // Progressive Lens translate: emitted by Flutter via
+        // [TransKeyApp]'s deliverLensChunk handler each time one chunk
+        // of /translate-batch returns. Lets the overlay patch its
+        // already-shown chips in place so the user sees chips fill in
+        // within ~1-2s instead of waiting for the slowest chunk.
+        const val ACTION_DELIVER_LENS_CHUNK = "transkey.bubble.DELIVER_LENS_CHUNK"
+        const val EXTRA_LENS_CHUNK_START = "lens_chunk_start"
+        const val EXTRA_LENS_CHUNK_TRANSLATIONS = "lens_chunk_translations"
+        // Source-language mismatch: server saw a script different from the
+        // user's pinned source. Carries the detected language code so the
+        // overlay can offer a one-tap "switch & re-translate".
+        const val ACTION_DELIVER_LENS_MISMATCH = "transkey.bubble.DELIVER_LENS_MISMATCH"
+        const val EXTRA_LENS_MISMATCH_DETECTED = "lens_mismatch_detected"
         const val EXTRA_STATE = "bubble_state"
         const val EXTRA_TEXT = "text"
         const val EXTRA_MODE = "mode"
@@ -246,6 +259,9 @@ class BubbleService : Service() {
     internal fun localized(@androidx.annotation.StringRes resId: Int): String =
         (localizedContext ?: this).getString(resId)
 
+    internal fun localized(@androidx.annotation.StringRes resId: Int, vararg args: Any): String =
+        (localizedContext ?: this).getString(resId, *args)
+
     internal fun modeLabel(mode: String): String =
         MODE_STRING_IDS[mode]?.let { localized(it) } ?: mode
 
@@ -353,6 +369,22 @@ class BubbleService : Service() {
     // lifecycle hooks can tear them down on stopBubble / onDestroy.
     internal var lensProgressView: View? = null
     internal var lensOverlayView: LensOverlayView? = null
+    // Last Lens scan's inputs, kept so a source-mismatch banner tap can
+    // re-run translation with the detected language WITHOUT re-capturing
+    // or re-OCR'ing the screen.
+    internal var lensTexts: List<String>? = null
+    internal var lensTarget: String? = null
+    // "Reopen last result" cache: when the user dismisses the overlay we
+    // keep the screenshot + finished chips around briefly so an accidental
+    // tap-to-close can be undone instantly (no re-capture / OCR / LLM).
+    // The bitmap is OWNED here once detached from ScreenCaptureManager —
+    // we recycle it in [discardLensCache].
+    internal var lastLensBitmap: Bitmap? = null
+    internal var lastLensItems: List<LensOverlayView.Item>? = null
+    internal var reopenPillView: View? = null
+    internal var reopenDismissRunnable: Runnable? = null
+    // Full-translation popup opened by tapping a Lens chip.
+    internal var lensDetailView: View? = null
 
     // Rubber-band region selector shown when user picks the "Translate
     // selected area" entry — sits between MediaProjection capture and OCR.
@@ -466,6 +498,22 @@ class BubbleService : Service() {
             }
             ACTION_DELIVER_LENS -> handleLensReady()
             ACTION_DELIVER_REGION_READY -> handleRegionReady()
+            ACTION_DELIVER_LENS_CHUNK -> {
+                val startIdx = intent.getIntExtra(EXTRA_LENS_CHUNK_START, -1)
+                val translations = intent.getStringArrayExtra(EXTRA_LENS_CHUNK_TRANSLATIONS)
+                if (startIdx >= 0 && translations != null) {
+                    lensOverlayView?.applyTranslations(startIdx, translations.toList())
+                }
+            }
+            ACTION_DELIVER_LENS_MISMATCH -> {
+                val detected = intent.getStringExtra(EXTRA_LENS_MISMATCH_DETECTED)
+                if (!detected.isNullOrBlank()) {
+                    val detectedLabel = getEffectiveLangLabels()[detected] ?: detected
+                    lensOverlayView?.showSourceMismatch(
+                        localized(R.string.lens_source_mismatch, detectedLabel),
+                    ) { retranslateLens(detected) }
+                }
+            }
             ACTION_SCAN_CANCELLED -> {
                 // User dismissed the system consent dialog — just put the
                 // bubble back. Manager state is also cleared so the next
@@ -493,7 +541,9 @@ class BubbleService : Service() {
         hideScanDisclosure()
         hideScanModeChooser()
         hideLensProgress()
+        hideLensDetailPopup()
         hideLensOverlay()
+        discardLensCache()
         hideRegionSelectionView()
         releaseScreenCapture()
         hideCloseZone()
@@ -1268,6 +1318,8 @@ class BubbleService : Service() {
     }
 
     internal fun launchScanFlow(mode: String = MODE_TRANSLATE) {
+        // A fresh scan supersedes any "reopen last result" cache.
+        discardLensCache()
         // Translate → LENS overlay (visual: translation painted over original
         // text in-place on screen). Other modes (Summarize, Refine, Explain)
         // can't visualise inline so they use TEXT_INTO_INPUT — OCR text is
@@ -1450,6 +1502,9 @@ class BubbleService : Service() {
         val texts = blocks.map { it.text }
         val target = ScreenCaptureManager.targetLang
         val source = ScreenCaptureManager.languageHint
+        // Stash for a possible source-mismatch re-translate.
+        lensTexts = texts
+        lensTarget = target
         android.util.Log.w(
             "TKBubble",
             "lens-translate: target=$target source=$source texts.size=${texts.size} " +
@@ -1460,6 +1515,17 @@ class BubbleService : Service() {
             "targetLang" to target,
             "sourceLang" to (source ?: ""),
         )
+        // Progressive UX: show the overlay IMMEDIATELY with the original
+        // text in each chip as a placeholder, hide the spinner, and let
+        // Flutter push translations chunk-by-chunk via
+        // ACTION_DELIVER_LENS_CHUNK. User sees chips fill in within ~1-2s
+        // instead of staring at a spinner for the slowest chunk.
+        val placeholderItems = blocks.map { block ->
+            LensOverlayView.Item(block.text, block.text, block.bounds)
+        }
+        hideLensProgress()
+        showLensOverlay(bitmap, placeholderItems)
+
         channel.invokeMethod("translateBatch", args, object : io.flutter.plugin.common.MethodChannel.Result {
             override fun success(result: Any?) {
                 handler.post {
@@ -1471,20 +1537,18 @@ class BubbleService : Service() {
                         "lens-translate: got ${translations.size} translations, " +
                             "first='${translations.firstOrNull()?.take(40)?.replace('\n', '⏎')}'",
                     )
-                    val items = blocks.mapIndexed { idx, block ->
-                        val t = translations.getOrNull(idx).takeUnless { it.isNullOrBlank() } ?: block.text
-                        LensOverlayView.Item(block.text, t, block.bounds)
-                    }
-                    hideLensProgress()
-                    showLensOverlay(bitmap, items)
+                    // Final safety net: in case any progressive chunk emit
+                    // was dropped, re-apply the full result. Idempotent —
+                    // [LensOverlayView.applyTranslations] skips slots that
+                    // already match.
+                    lensOverlayView?.applyTranslations(0, translations)
                 }
             }
             override fun error(code: String, message: String?, details: Any?) {
                 handler.post {
-                    hideLensProgress()
-                    ScreenCaptureManager.clearAll()
-                    restoreBubbleVisibility()
-                    if (!bitmap.isRecycled) bitmap.recycle()
+                    // Overlay is already up showing originals — user still
+                    // sees something useful. Toast the error but keep the
+                    // overlay so they can dismiss with a tap.
                     Toast.makeText(
                         this@BubbleService,
                         message ?: localized(R.string.bubble_panel_translation_failed),
@@ -1500,6 +1564,49 @@ class BubbleService : Service() {
                     if (!bitmap.isRecycled) bitmap.recycle()
                 }
             }
+        })
+    }
+
+    /**
+     * Re-run the Lens batch translate on the current overlay using a new
+     * source language (the script the server detected). Reuses the stashed
+     * [lensTexts] so we don't re-capture or re-OCR; resets chips to the
+     * pending state, then progressive emit re-fills them under the new
+     * source hint.
+     */
+    private fun retranslateLens(newSource: String) {
+        val texts = lensTexts ?: return
+        val overlay = lensOverlayView ?: return
+        val target = lensTarget ?: ScreenCaptureManager.targetLang
+        val engine = TransKeyApp.engine ?: return
+        overlay.resetForRetranslate()
+        val channel = io.flutter.plugin.common.MethodChannel(
+            engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+        )
+        val args = mapOf(
+            "texts" to texts,
+            "targetLang" to target,
+            "sourceLang" to newSource,
+        )
+        channel.invokeMethod("translateBatch", args, object : io.flutter.plugin.common.MethodChannel.Result {
+            override fun success(result: Any?) {
+                handler.post {
+                    val translations = (result as? List<*>)
+                        ?.map { (it as? String).orEmpty() }
+                        ?: emptyList()
+                    lensOverlayView?.applyTranslations(0, translations)
+                }
+            }
+            override fun error(code: String, message: String?, details: Any?) {
+                handler.post {
+                    Toast.makeText(
+                        this@BubbleService,
+                        message ?: localized(R.string.bubble_panel_translation_failed),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+            override fun notImplemented() {}
         })
     }
 

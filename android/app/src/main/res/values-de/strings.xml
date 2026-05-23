@@ -92,4 +92,7 @@
     <string name="bubble_overlay_perm_needed">Aktiviere \'Über anderen Apps anzeigen\' für schwebende Übersetzungen</string>
     <string name="bubble_clipboard_empty_error">Zwischenablage leer.\nText zuerst kopieren, dann die Bubble antippen.</string>
     <string name="bubble_camera">Kamera</string>
+    <string name="lens_progress_translating">Übersetze %1$d/%2$d…</string>
+    <string name="lens_source_mismatch">%1$s erkannt — tippen zum Neuübersetzen</string>
+    <string name="lens_reopen_result">Übersetzung erneut öffnen</string>
 </resources>

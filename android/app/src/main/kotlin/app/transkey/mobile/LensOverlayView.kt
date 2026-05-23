@@ -36,16 +36,26 @@ import kotlin.math.min
 class LensOverlayView(
     context: Context,
     private val screenshot: Bitmap,
-    private val items: List<Item>,
+    initialItems: List<Item>,
     private val onDismissOutsideTap: () -> Unit,
     /// Long-press on a block opens the "What is this?" explain sheet for
     /// that block's original (source) text. Caller is responsible for
     /// dismissing the overlay + bringing the Flutter activity foreground.
     /// Null skips the long-press feature entirely.
     private val onLongPressBlock: ((String) -> Unit)? = null,
+    /// Single tap on a block opens a readable popup with the FULL
+    /// translation + original text. In-place chips stay size-bounded for a
+    /// clean overlay, but long CJK→Latin translations that don't fit the
+    /// chip are never lost — the user taps to read the whole thing.
+    private val onBlockTap: ((original: String, translation: String) -> Unit)? = null,
 ) : View(context) {
 
     data class Item(val original: String, val translation: String, val bounds: Rect)
+
+    /// Mutable so chunks can patch translations in place as they arrive
+    /// from the server (progressive emit). Bounds + count never change
+    /// after construction — only [Item.translation] gets swapped.
+    private val items: MutableList<Item> = initialItems.toMutableList()
 
     /// Bridges Android's long-press recognizer to [onLongPressBlock]. We
     /// keep the existing onTouchEvent (single-tap toggle) intact and just
@@ -66,6 +76,13 @@ class LensOverlayView(
         color = Color.WHITE
         style = Paint.Style.FILL
     }
+    // Background for chips still waiting on their translation. Amber tint
+    // tells the user "this one is in flight" so the source-text placeholder
+    // doesn't look like a translation failure.
+    private val pendingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFF3CD")
+        style = Paint.Style.FILL
+    }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#33000000")
         style = Paint.Style.STROKE
@@ -75,10 +92,45 @@ class LensOverlayView(
         color = Color.parseColor("#1A1A2E")
         textAlign = Paint.Align.LEFT
     }
+    // "Đang dịch X/Y" progress pill — painted at the top of the overlay
+    // while any chunk is still in flight; dropped once every slot has
+    // been processed.
+    private val progressBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#E61A1A2E")
+        style = Paint.Style.FILL
+    }
+    private val progressTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
+        textSize = context.resources.displayMetrics.density * 13f
+    }
 
-    // Per-item "show original" toggle. When true for a given index, that
-    // block draws the screenshot crop instead of the white-on-translation.
-    private val showOriginal = BooleanArray(items.size)
+    // Per-item "translation arrived from the server" flag. Starts false
+    // (every chip begins as a placeholder showing its source text). Set
+    // true by [applyTranslations] for every slot the server has spoken
+    // for — independent of whether the answer differs from the original
+    // (a no-op answer for a slot with garbage OCR still counts as
+    // processed so we don't keep painting it amber forever).
+    private val processed = BooleanArray(items.size)
+    private var processedCount: Int = 0
+
+    // Source-mismatch banner. Set via [showSourceMismatch] when the
+    // server reports the pinned source language disagrees with the
+    // detected script. Tapping it re-runs the translation with the
+    // detected language. [mismatchBannerRect] is the last-painted hit
+    // box, recomputed every frame the banner is visible.
+    private var mismatchLabel: String? = null
+    private var onMismatchTap: (() -> Unit)? = null
+    private val mismatchBannerRect = RectF()
+    private val mismatchBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#F0B45309")
+        style = Paint.Style.FILL
+    }
+    private val mismatchTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
+        textSize = context.resources.displayMetrics.density * 13f
+    }
 
     // Cached StaticLayouts indexed by item position — built lazily inside
     // onDraw, invalidated whenever the toggle flips.
@@ -120,6 +172,82 @@ class LensOverlayView(
         setBackgroundColor(Color.parseColor("#CC000000"))
         isClickable = true
         computeExpansionLimits()
+    }
+
+    /**
+     * Progressive emit hook: replace the translations for the slice
+     * `[startIdx, startIdx + newTranslations.size)` in place. Bounds /
+     * count don't change, so [computeExpansionLimits] stays valid; only
+     * the layout caches for the patched slots are invalidated so the
+     * next [onDraw] re-measures and re-paints them with the real text.
+     *
+     * MUST be called on the UI thread (the View owns the caches).
+     */
+    fun applyTranslations(startIdx: Int, newTranslations: List<String>) {
+        if (startIdx < 0 || startIdx >= items.size) return
+        val end = min(startIdx + newTranslations.size, items.size)
+        var dirty = false
+        for (i in startIdx until end) {
+            if (!processed[i]) {
+                processed[i] = true
+                processedCount++
+                // Background tint changes even if the text doesn't, so we
+                // need a redraw for the colour swap alone.
+                dirty = true
+            }
+            val incoming = newTranslations[i - startIdx]
+            if (incoming.isBlank()) continue
+            val current = items[i]
+            if (current.translation == incoming) continue
+            items[i] = current.copy(translation = incoming)
+            // Drop layout caches for THIS index so onDraw rebuilds with
+            // the new translation text; expandedRect needs to be re-fit
+            // for the new content length too.
+            layoutCache[i] = null
+            sizeCache[i] = 0f
+            expandedRect[i] = null
+            dirty = true
+        }
+        if (dirty) invalidate()
+    }
+
+    /**
+     * Show the tappable "Detected X — switch?" banner. [onTap] re-runs the
+     * translation with the detected language (wired by BubbleService).
+     */
+    fun showSourceMismatch(label: String, onTap: () -> Unit) {
+        mismatchLabel = label
+        onMismatchTap = onTap
+        invalidate()
+    }
+
+    /**
+     * Reset every chip back to the pending (amber) state and drop the
+     * mismatch banner — used right before a re-translate so the user sees
+     * the chips re-process under the new source language.
+     */
+    fun resetForRetranslate() {
+        for (i in processed.indices) processed[i] = false
+        processedCount = 0
+        mismatchLabel = null
+        onMismatchTap = null
+        invalidate()
+    }
+
+    /** Current items (with whatever translations have landed) — used to
+     *  snapshot a finished scan into the "reopen last result" cache. */
+    fun snapshotItems(): List<Item> = items.toList()
+
+    /** The screenshot this overlay paints over — exposed so the reopen
+     *  cache can take ownership of the SAME bitmap on dismiss. */
+    val bitmap: Bitmap get() = screenshot
+
+    /** Mark every chip as already-translated (white, no progress pill) —
+     *  used when restoring a cached scan whose translations are final. */
+    fun markAllProcessed() {
+        for (i in processed.indices) processed[i] = true
+        processedCount = items.size
+        invalidate()
     }
 
     /**
@@ -191,13 +319,6 @@ class LensOverlayView(
             val bottom = offsetY + item.bounds.bottom * scale
             val origRect = RectF(left, top, right, bottom)
 
-            if (showOriginal[i]) {
-                // Leave the original screenshot visible; just outline so
-                // the user knows this block is interactive.
-                canvas.drawRect(origRect, borderPaint)
-                continue
-            }
-
             val blockW = ((right - left) - PADDING_PX * 2f).toInt()
             val origBlockH = ((bottom - top) - PADDING_PX * 2f).toInt()
             if (blockW <= 0 || origBlockH <= 0) {
@@ -230,8 +351,11 @@ class LensOverlayView(
 
             // Cover original, then draw translation top-aligned (preserve
             // the anchor at top-left so the visual link to the source
-            // location stays even when the box grows).
-            canvas.drawRect(drawRect, whitePaint)
+            // location stays even when the box grows). Untranslated chips
+            // use an amber tint so the user can tell at a glance that
+            // those slots are still in flight.
+            val bgPaint = if (processed[i]) whitePaint else pendingPaint
+            canvas.drawRect(drawRect, bgPaint)
             canvas.drawRect(drawRect, borderPaint)
             val drawY = if (finalBlockH > origBlockH) {
                 top + PADDING_PX
@@ -243,6 +367,72 @@ class LensOverlayView(
             layout.draw(canvas)
             canvas.restore()
         }
+
+        drawProgressPill(canvas, viewW)
+        drawMismatchBanner(canvas, viewW)
+    }
+
+    /**
+     * Tappable amber banner under the progress pill warning that the
+     * pinned source language likely doesn't match the on-screen script.
+     */
+    private fun drawMismatchBanner(canvas: Canvas, viewW: Float) {
+        val label = mismatchLabel ?: run {
+            mismatchBannerRect.setEmpty()
+            return
+        }
+        val density = resources.displayMetrics.density
+        val padH = 16f * density
+        val padV = 10f * density
+        val textW = mismatchTextPaint.measureText(label)
+        val fm = mismatchTextPaint.fontMetrics
+        val textH = -fm.ascent + fm.descent
+        val bannerW = min(textW + padH * 2, viewW - 24f * density)
+        val bannerH = textH + padV * 2
+        // Stack below the progress pill when it's showing; otherwise sit
+        // at the same top margin.
+        val topMargin = (if (processedCount < items.size) 60f else 14f) * density
+        val left = (viewW - bannerW) / 2f
+        val top = topMargin
+        val radius = 10f * density
+        mismatchBannerRect.set(left, top, left + bannerW, top + bannerH)
+        canvas.drawRoundRect(mismatchBannerRect, radius, radius, mismatchBgPaint)
+        canvas.drawText(label, viewW / 2f, top + padV - fm.ascent, mismatchTextPaint)
+    }
+
+    /**
+     * Floating "Đang dịch X/Y" pill at the top of the overlay while any
+     * slot is still un-processed. Once every slot has been spoken for by
+     * the server, the pill is dropped from the next frame.
+     *
+     * Localised label is fetched lazily from the host context so this
+     * View doesn't have to know which string resources exist.
+     */
+    private fun drawProgressPill(canvas: Canvas, viewW: Float) {
+        if (processedCount >= items.size) return
+        val density = resources.displayMetrics.density
+        val label = context.getString(
+            R.string.lens_progress_translating,
+            processedCount,
+            items.size,
+        )
+        val padH = 14f * density
+        val padV = 8f * density
+        val textW = progressTextPaint.measureText(label)
+        val textH = -progressTextPaint.fontMetrics.ascent + progressTextPaint.fontMetrics.descent
+        val pillW = textW + padH * 2
+        val pillH = textH + padV * 2
+        val topMargin = 14f * density
+        val left = (viewW - pillW) / 2f
+        val top = topMargin
+        val radius = pillH / 2f
+        canvas.drawRoundRect(left, top, left + pillW, top + pillH, radius, radius, progressBgPaint)
+        canvas.drawText(
+            label,
+            viewW / 2f,
+            top + padV - progressTextPaint.fontMetrics.ascent,
+            progressTextPaint,
+        )
     }
 
     /**
@@ -287,7 +477,10 @@ class LensOverlayView(
             .setLineSpacing(0f, 1f)
             .setIncludePad(false)
             .setEllipsize(android.text.TextUtils.TruncateAt.END)
-            .setMaxLines(8)
+            // Medium blocks fit in-place; anything longer is still fully
+            // readable via the tap-to-expand popup, so the cap only guards
+            // against one giant block dominating the overlay.
+            .setMaxLines(15)
             .build()
     }
 
@@ -313,13 +506,20 @@ class LensOverlayView(
         // existing tap behaviour by acting only on ACTION_UP below.
         gestureDetector.onTouchEvent(event)
         if (event.action != MotionEvent.ACTION_UP) return true
+        // Mismatch banner tap takes priority — it sits above the chips and
+        // re-runs translation with the detected language.
+        if (mismatchLabel != null && !mismatchBannerRect.isEmpty &&
+            event.x in mismatchBannerRect.left..mismatchBannerRect.right &&
+            event.y in mismatchBannerRect.top..mismatchBannerRect.bottom
+        ) {
+            onMismatchTap?.invoke()
+            return true
+        }
         val idx = findItemIndexAt(event.x, event.y)
         if (idx >= 0) {
-            showOriginal[idx] = !showOriginal[idx]
-            // Force rebuild so the toggle's hidden translation doesn't sit
-            // stale in cache when user flips back.
-            if (!showOriginal[idx]) layoutCache[idx] = null
-            invalidate()
+            // Tap a chip → open the full-translation popup so long results
+            // truncated in-place are still fully readable.
+            onBlockTap?.invoke(items[idx].original, items[idx].translation)
             return true
         }
         // Tap outside any block → dismiss.

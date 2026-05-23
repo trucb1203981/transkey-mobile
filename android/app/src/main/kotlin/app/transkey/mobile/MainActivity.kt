@@ -177,6 +177,46 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(null)
                     }
+                    // Same reason as deliverResult above — MainActivity's
+                    // handler replaces TransKeyApp's on the shared engine,
+                    // so the progressive-Lens path needs this case here too
+                    // or chunks silently fail with MissingPluginException.
+                    "deliverLensChunk" -> {
+                        val args = call.arguments as? Map<*, *>
+                        val startIdx = (args?.get("startIdx") as? Number)?.toInt() ?: -1
+                        val translations = (args?.get("translations") as? List<*>)
+                            ?.map { (it as? String).orEmpty() }
+                            ?.toTypedArray()
+                        if (startIdx >= 0 && translations != null) {
+                            val i = Intent(this, BubbleService::class.java).apply {
+                                action = BubbleService.ACTION_DELIVER_LENS_CHUNK
+                                putExtra(BubbleService.EXTRA_LENS_CHUNK_START, startIdx)
+                                putExtra(BubbleService.EXTRA_LENS_CHUNK_TRANSLATIONS, translations)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                startForegroundService(i)
+                            } else {
+                                startService(i)
+                            }
+                        }
+                        result.success(null)
+                    }
+                    "deliverLensMismatch" -> {
+                        val args = call.arguments as? Map<*, *>
+                        val detected = args?.get("detected") as? String
+                        if (!detected.isNullOrBlank()) {
+                            val i = Intent(this, BubbleService::class.java).apply {
+                                action = BubbleService.ACTION_DELIVER_LENS_MISMATCH
+                                putExtra(BubbleService.EXTRA_LENS_MISMATCH_DETECTED, detected)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                startForegroundService(i)
+                            } else {
+                                startService(i)
+                            }
+                        }
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }

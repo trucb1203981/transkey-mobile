@@ -71,6 +71,46 @@ class TransKeyApp : FlutterApplication() {
                     }
                     result.success(null)
                 }
+                "deliverLensChunk" -> {
+                    // Progressive Lens translate: Flutter pushes one chunk
+                    // of translations at a time as each /translate-batch
+                    // call completes. We forward to BubbleService via
+                    // Intent so the LensOverlayView patches chips in place.
+                    val args = call.arguments as? Map<*, *>
+                    val startIdx = (args?.get("startIdx") as? Number)?.toInt() ?: -1
+                    val translations = (args?.get("translations") as? List<*>)
+                        ?.map { (it as? String).orEmpty() }
+                        ?.toTypedArray()
+                    if (startIdx >= 0 && translations != null) {
+                        val intent = Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_DELIVER_LENS_CHUNK
+                            putExtra(BubbleService.EXTRA_LENS_CHUNK_START, startIdx)
+                            putExtra(BubbleService.EXTRA_LENS_CHUNK_TRANSLATIONS, translations)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                    }
+                    result.success(null)
+                }
+                "deliverLensMismatch" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val detected = args?.get("detected") as? String
+                    if (!detected.isNullOrBlank()) {
+                        val intent = Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_DELIVER_LENS_MISMATCH
+                            putExtra(BubbleService.EXTRA_LENS_MISMATCH_DETECTED, detected)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                    }
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

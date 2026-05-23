@@ -61,4 +61,16 @@ object ScreenCaptureManager {
         languageHint = null
         regionMode = false
     }
+
+    /**
+     * Hand the current screenshot to a caller that will own its lifecycle
+     * (e.g. the Lens "reopen last result" cache) WITHOUT recycling it. The
+     * manager forgets the reference so a subsequent [clearAll] won't double
+     * -free it. Caller MUST recycle the returned bitmap when done.
+     */
+    fun detachScreenshot(): Bitmap? {
+        val b = screenshot
+        screenshot = null
+        return b
+    }
 }

@@ -92,4 +92,7 @@
     <string name="bubble_overlay_perm_needed">Activa \'Mostrar sobre otras apps\' para usar traducciones flotantes</string>
     <string name="bubble_clipboard_empty_error">Portapapeles vacío.\nCopia primero el texto, luego toca la burbuja.</string>
     <string name="bubble_camera">Cámara</string>
+    <string name="lens_progress_translating">Traduciendo %1$d/%2$d…</string>
+    <string name="lens_source_mismatch">Detectado %1$s — toca para retraducir</string>
+    <string name="lens_reopen_result">Reabrir traducción</string>
 </resources>

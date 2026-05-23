@@ -92,4 +92,7 @@
     <string name="bubble_overlay_perm_needed">启用 \'在其他应用上层显示\' 以使用悬浮翻译</string>
     <string name="bubble_clipboard_empty_error">剪贴板为空。\n请先复制文本,然后点击气泡。</string>
     <string name="bubble_camera">相机</string>
+    <string name="lens_progress_translating">翻译中 %1$d/%2$d…</string>
+    <string name="lens_source_mismatch">检测到%1$s — 点按重新翻译</string>
+    <string name="lens_reopen_result">重新打开翻译</string>
 </resources>
