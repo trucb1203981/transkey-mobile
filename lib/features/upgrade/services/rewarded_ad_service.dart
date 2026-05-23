@@ -7,27 +7,36 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 /// callback as a simple [Future<bool>]. One service instance per
 /// paywall presentation; dispose when the sheet is dismissed.
 ///
-/// Account-approval gate: AdMob blocks all ad loads until the
-/// publisher account is approved by Google review (~1-7 days post-
-/// signup). While pending, we ship Google's public test unit IDs so
-/// dev / TestFlight / internal users can still exercise the full
-/// paywall → ad → reward → grant flow. Swap to production IDs after
-/// approval (see PRODUCTION constants below + AndroidManifest).
+/// Server-side gating: ad UI is hidden unless `/features.ads_enabled`
+/// is true (FeatureFlags.adsEnabled). The server keeps that flag OFF
+/// until the AdMob publisher account is approved by Google review and
+/// flips it to ON without an app update — so this class assumes any
+/// call site has already checked the flag.
+///
+/// Per-platform unit IDs:
+///  - Android — production unit in release builds, Google's public TEST
+///    unit in debug to avoid invalid-traffic strikes from developer
+///    devices hitting real impressions.
+///  - iOS — still on TEST until the iOS release lands + an iOS prod
+///    ad unit is provisioned in AdMob console. TODO before iOS GA.
 class RewardedAdService {
-  // ACTIVE — Google public test units, always fill, no approval needed.
-  static const _adUnitAndroid = 'ca-app-pub-3940256099942544/5224354917';
-  static const _adUnitIOS     = 'ca-app-pub-3940256099942544/1712485313';
+  // Android — TransKey AdMob production rewarded unit.
+  static const _adUnitAndroidProd = 'ca-app-pub-4388572340562895/8963970428';
+  // Android — Google public test unit (always fills with test creative).
+  static const _adUnitAndroidTest = 'ca-app-pub-3940256099942544/5224354917';
 
-  // PRODUCTION — TransKey AdMob (pending Google review at time of
-  // writing). Swap into the constants above when approval lands.
-  // ignore: unused_field
-  static const _prodAdUnitAndroid = 'ca-app-pub-4388572340562895/8963970428';
+  // iOS — Google public test unit. Swap to TransKey iOS prod unit before
+  // shipping the iOS build to the App Store; do NOT ship test IDs to a
+  // production iOS release (AdMob policy violation, account ban risk).
+  static const _adUnitIOS = 'ca-app-pub-3940256099942544/1712485313';
 
   RewardedAd? _ad;
   Completer<RewardedAd?>? _loadCompleter;
 
-  String get _adUnitId =>
-      defaultTargetPlatform == TargetPlatform.iOS ? _adUnitIOS : _adUnitAndroid;
+  String get _adUnitId {
+    if (defaultTargetPlatform == TargetPlatform.iOS) return _adUnitIOS;
+    return kReleaseMode ? _adUnitAndroidProd : _adUnitAndroidTest;
+  }
 
   /// Preload one ad. Safe to call multiple times — concurrent calls
   /// share the same in-flight Future, idempotent if an ad is already

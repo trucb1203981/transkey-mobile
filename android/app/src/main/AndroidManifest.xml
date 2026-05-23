@@ -221,18 +221,16 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- AdMob application ID.
-             ACTIVE: Google public TEST app ID — works without account
-             approval, returns fillable test creative.
-             PRODUCTION (TransKey, swap after AdMob account approval):
-               ca-app-pub-4388572340562895~4234387926
-             The production account is "pending review" — AdMob blocks
-             ALL ad loads on a pending account regardless of ad unit ID
-             used, so we have to keep both app ID and unit IDs on test
-             until approval lands. -->
+        <!-- AdMob application ID — TransKey production.
+             Ad UI is hidden client-side until /features.ads_enabled flips
+             true (see FeatureFlags.adsEnabled), so users never see a
+             no-fill error while AdMob review is pending. Debug builds use
+             a TEST ad unit at request time (RewardedAdService); the prod
+             app ID + test unit combo is allowed by AdMob and avoids
+             invalid-traffic risk from developer devices. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-4388572340562895~4234387926" />
     </application>
 
     <queries>

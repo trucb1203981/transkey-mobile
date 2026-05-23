@@ -469,7 +469,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             charsUsed: usage.charsUsed,
             charsLimit: usage.charsLimit,
             isWatchingAd: _isWatchingProactiveAd,
-            onWatchAd: _isWatchingProactiveAd ? null : _watchProactiveAd,
+            // Server-gated: when /features.ads_enabled is OFF (AdMob still
+            // in review), pass null so QuotaBar drops the "+Ad" affordance
+            // entirely — free users only see the "Upgrade" path until the
+            // flag flips on without an app update.
+            onWatchAd: !_features.adsEnabled || _isWatchingProactiveAd
+                ? null
+                : _watchProactiveAd,
           ),
       ],
     );

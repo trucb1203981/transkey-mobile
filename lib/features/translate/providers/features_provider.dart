@@ -50,6 +50,7 @@ class FeatureFlags {
     this.romanization = false,
     this.lens = false,
     this.camera = false,
+    this.adsEnabled = false,
     this.allowedTargetLangs = const <String>[],
     this.allowedSourceLangs = const <String>[],
     this.allowedReplyTargetLangs = const <String>[],
@@ -76,6 +77,14 @@ class FeatureFlags {
   /// Camera-capture flow (photo of menu/sign → /translate-image).
   final bool camera;
 
+  /// Global kill-switch for AdMob rewarded ads — driven by the server's
+  /// `ADS_ENABLED` env (see /features response). OFF until AdMob publisher
+  /// review approves the account; once flipped, the watch-ad CTAs in the
+  /// paywall and quota bar appear without an app update. Default false so
+  /// any cold-start / unauthenticated window NEVER shows ad UI we can't
+  /// fill (which would just confuse the user with no-fill errors).
+  final bool adsEnabled;
+
   /// Empty list = unrestricted (every language in the catalog is offered).
   /// Non-empty = client must intersect with the catalog before showing.
   final List<String> allowedTargetLangs;
@@ -94,6 +103,7 @@ class FeatureFlags {
         romanization: map['romanization'] as bool? ?? false,
         lens:   map['lens']   as bool? ?? false,
         camera: map['camera'] as bool? ?? false,
+        adsEnabled: map['ads_enabled'] as bool? ?? false,
         allowedTargetLangs: _asStringList(map['allowed_target_langs']),
         allowedSourceLangs: _asStringList(map['allowed_source_langs']),
         allowedReplyTargetLangs:

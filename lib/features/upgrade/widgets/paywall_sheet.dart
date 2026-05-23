@@ -7,6 +7,7 @@ import '../../../core/api/dio_client.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../translate/providers/features_provider.dart';
 import '../providers/plans_provider.dart';
 import '../providers/usage_provider.dart';
 import '../services/rewarded_ad_service.dart';
@@ -45,7 +46,12 @@ class PaywallSheet extends ConsumerStatefulWidget {
 }
 
 class _PaywallSheetState extends ConsumerState<PaywallSheet> {
-  late final RewardedAdService _adService;
+  /// Null when the server-side ads_enabled flag is OFF — the sheet then
+  /// only renders the Upgrade CTA and never tries to preload an ad we
+  /// can't actually show. Resolved once in [initState] so the decision is
+  /// stable across the sheet's lifetime even if /features refreshes mid-
+  /// presentation.
+  RewardedAdService? _adService;
   bool _watchingAd = false;
   /// Set true when the user takes ANY explicit action (watched ad to credit,
   /// or tapped Upgrade). dispose() consults this so `paywall_dismiss` only
@@ -56,11 +62,14 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
   @override
   void initState() {
     super.initState();
-    _adService = RewardedAdService();
-    // Preload as soon as the sheet appears so by the time the user
-    // reads the CTAs and taps "Watch ad" the video is already in
-    // memory — saves the user from staring at a spinner.
-    _adService.preload();
+    final adsEnabled = ref.read(featuresProvider).flags.adsEnabled;
+    if (adsEnabled) {
+      _adService = RewardedAdService();
+      // Preload as soon as the sheet appears so by the time the user
+      // reads the CTAs and taps "Watch ad" the video is already in
+      // memory — saves the user from staring at a spinner.
+      _adService!.preload();
+    }
     ref.read(trackingServiceProvider).event('upgrade_view', properties: {
       'source': 'paywall',
     });
@@ -68,7 +77,7 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
 
   @override
   void dispose() {
-    _adService.dispose();
+    _adService?.dispose();
     if (!_converted) {
       ref.read(trackingServiceProvider).event('paywall_dismiss');
     }
@@ -76,11 +85,16 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
   }
 
   Future<void> _onWatchAd() async {
+    final adService = _adService;
+    // Defensive — the button that triggers this is only rendered when
+    // _adService != null, so this branch is unreachable in practice, but
+    // keeping it makes the nullable surface explicit for the analyzer.
+    if (adService == null) return;
     final l = AppLocalizations.of(context)!;
     setState(() => _watchingAd = true);
     ref.read(trackingServiceProvider).event('paywall_watch_ad_start');
 
-    final earned = await _adService.showAndAwaitReward();
+    final earned = await adService.showAndAwaitReward();
     if (!mounted) return;
 
     if (!earned) {
@@ -187,31 +201,34 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Watch-ad CTA (free, immediate)
-            FilledButton.icon(
-              onPressed: _watchingAd ? null : _onWatchAd,
-              icon: _watchingAd
-                  ? const SizedBox(
-                      width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.play_circle_outline),
-              label: Text(_watchingAd ? l.paywallLoading : l.paywallWatchAdCta),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                minimumSize: const Size.fromHeight(48),
+            // Watch-ad CTA (free, immediate). Only rendered when the server
+            // ads_enabled flag is ON (resolved into _adService in initState);
+            // when OFF the sheet falls through directly to the Upgrade CTA.
+            if (_adService != null) ...[
+              FilledButton.icon(
+                onPressed: _watchingAd ? null : _onWatchAd,
+                icon: _watchingAd
+                    ? const SizedBox(
+                        width: 18, height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.play_circle_outline),
+                label: Text(_watchingAd ? l.paywallLoading : l.paywallWatchAdCta),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  minimumSize: const Size.fromHeight(48),
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l.paywallWatchAdSub,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
+              const SizedBox(height: 6),
+              Text(
+                l.paywallWatchAdSub,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-
-            const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.md),
+            ],
 
             // Upgrade CTA (unlimited, paid)
             OutlinedButton.icon(
