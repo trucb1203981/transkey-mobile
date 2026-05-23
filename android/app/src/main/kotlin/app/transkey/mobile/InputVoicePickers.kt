@@ -22,7 +22,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import app.transkey.mobile.BubbleService.Companion.ALL_MODES
-import app.transkey.mobile.BubbleService.Companion.LANG_LABELS
+// LANG_LABELS replaced by getEffectiveLangLabels() — see BubbleService.
 import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
 import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
@@ -480,8 +480,9 @@ internal fun BubbleService.showVoicePicker(initialMode: String) {
             pill.setTextColor(if (selected) Color.WHITE else textCol)
         }
     }
+    val voiceLabels = getEffectiveLangLabels()
     VOICE_LANGS.forEachIndexed { idx, code ->
-        val label = LANG_LABELS[code] ?: code.uppercase()
+        val label = voiceLabels[code] ?: code.uppercase()
         val pill = TextView(this).apply {
             text = label
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)

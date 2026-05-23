@@ -10,10 +10,14 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import app.transkey.mobile.BubbleService.Companion.LANG_LABELS
+// (LANG_LABELS removed — read via getEffectiveLangLabels() per call.)
 import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
-import app.transkey.mobile.BubbleService.Companion.SOURCE_LANGS
-import app.transkey.mobile.BubbleService.Companion.TARGET_LANGS
+// SOURCE_LANGS / TARGET_LANGS / LANG_LABELS are NO LONGER imported as
+// static fallbacks — the pickers below read via instance helpers
+// (getEffectiveTargetLangs / getEffectiveSourceLangs /
+// getEffectiveLangLabels) so the server-mirrored catalog drives the
+// list. The static lists in BubbleService stay as last-resort fallback
+// used INSIDE those helpers when the catalog pref is empty.
 
 /**
  * Floating bubble's lang / source-lang / tone picker overlays —
@@ -75,7 +79,9 @@ internal fun BubbleService.showLangPicker() {
 
     // Grid: 3 columns
     var row: LinearLayout? = null
-    TARGET_LANGS.forEachIndexed { idx, lang ->
+    val effectiveTargetLangs = getEffectiveTargetLangs()
+    val effectiveLabels = getEffectiveLangLabels()
+    effectiveTargetLangs.forEachIndexed { idx, lang ->
         if (idx % 3 == 0) {
             row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -88,7 +94,7 @@ internal fun BubbleService.showLangPicker() {
         }
         val isSelected = lang == currentTargetLang
         val chip = TextView(this).apply {
-            text = LANG_LABELS[lang] ?: lang.uppercase()
+            text = effectiveLabels[lang] ?: lang.uppercase()
             setTextColor(if (isSelected) Color.WHITE else textCol)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             gravity = Gravity.CENTER
@@ -121,7 +127,19 @@ internal fun BubbleService.showLangPicker() {
 
     val screenWidth = resources.displayMetrics.widthPixels
     val cardWidth = (screenWidth - (48 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-    backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+    // Wrap the grid in a ScrollView so the picker still fits on screen
+    // when we expand the language list past what one viewport can hold.
+    // Cap to 70% of screen height — enough headroom for the 30-entry
+    // grid without covering the source app entirely.
+    val maxPickerHeight = (resources.displayMetrics.heightPixels * 0.7f).toInt()
+    val scroll = android.widget.ScrollView(this).apply {
+        isFillViewport = false
+        addView(card, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+        ))
+    }
+    backdrop.addView(scroll, FrameLayout.LayoutParams(cardWidth, maxPickerHeight, Gravity.CENTER))
 
     langPickerView = backdrop
     windowManager?.addView(backdrop, buildPickerLayoutParams())
@@ -165,7 +183,9 @@ internal fun BubbleService.showSourceLangPicker() {
     })
 
     var row: LinearLayout? = null
-    SOURCE_LANGS.forEachIndexed { idx, lang ->
+    val effectiveSourceLangs = getEffectiveSourceLangs()
+    val effectiveSourceLabels = getEffectiveLangLabels()
+    effectiveSourceLangs.forEachIndexed { idx, lang ->
         if (idx % 3 == 0) {
             row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -176,7 +196,7 @@ internal fun BubbleService.showSourceLangPicker() {
             card.addView(row)
         }
         val isSelected = lang == currentSourceLang
-        val label = if (lang == "auto") "Auto" else (LANG_LABELS[lang] ?: lang.uppercase())
+        val label = if (lang == "auto") "Auto" else (effectiveSourceLabels[lang] ?: lang.uppercase())
         val chip = TextView(this).apply {
             text = label
             setTextColor(if (isSelected) Color.WHITE else textCol)
@@ -203,7 +223,15 @@ internal fun BubbleService.showSourceLangPicker() {
 
     val screenWidth = resources.displayMetrics.widthPixels
     val cardWidth = (screenWidth - (48 * dp).toInt()).coerceAtMost((360 * dp).toInt())
-    backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+    val maxPickerHeight = (resources.displayMetrics.heightPixels * 0.7f).toInt()
+    val scroll = android.widget.ScrollView(this).apply {
+        isFillViewport = false
+        addView(card, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+        ))
+    }
+    backdrop.addView(scroll, FrameLayout.LayoutParams(cardWidth, maxPickerHeight, Gravity.CENTER))
     sourceLangPickerView = backdrop
     windowManager?.addView(backdrop, buildPickerLayoutParams())
 }

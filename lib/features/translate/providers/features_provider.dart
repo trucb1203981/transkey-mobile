@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,6 +30,12 @@ const _kSharedReplyFlagKey    = 'tk_feature_reply';
 const _kSharedSummarizeKey    = 'tk_feature_summarize';
 const _kSharedExplainKey      = 'tk_feature_explain';
 const _kSharedRefineKey       = 'tk_feature_refine';
+// Mirror of the SERVER-driven /features languages catalog so the bubble
+// (Kotlin) can populate its source/target pickers from the same list the
+// home tab shows, instead of the hardcoded ~30-language fallback. JSON
+// shape: [{"code":"en","label":"English"}, ...]. Empty / missing → bubble
+// falls back to its built-in list.
+const _kSharedLangsCatalogKey = 'tk_lang_catalog';
 
 class FeatureFlags {
   const FeatureFlags({
@@ -192,6 +200,18 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
         await prefs.setBool(_kSharedSummarizeKey, flags.summarize);
         await prefs.setBool(_kSharedExplainKey, flags.explain);
         await prefs.setBool(_kSharedRefineKey, flags.refine);
+        // Mirror the server-driven language catalog so the bubble picker
+        // shows the SAME list as the home language bar (admin can
+        // enable/disable per plan via /admin/features without an app
+        // release). Store as a compact JSON array of {code,label} —
+        // Kotlin parses it on picker open. Falls back to the bubble's
+        // built-in 30-language list if the pref is missing/empty.
+        if (languages.isNotEmpty) {
+          final encoded = jsonEncode(languages
+              .map((l) => {'code': l.code, 'label': l.nativeName})
+              .toList());
+          await prefs.setString(_kSharedLangsCatalogKey, encoded);
+        }
       } catch (e) {
         // Persistence is best-effort — if it fails the bubble falls
         // back to "no gate" (current behaviour), which the server

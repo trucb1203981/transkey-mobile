@@ -8,6 +8,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -340,6 +341,12 @@ object OcrHelper {
         "ko" -> TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build())
         "zh", "zh-TW", "zh-CN" ->
             TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
+        // Devanagari covers Hindi / Marathi / Nepali. Without this case
+        // the lookup fell through to the Latin recognizer, which CAN'T
+        // read Devanagari — Hindi screens silently returned garbage
+        // glyphs instead of either real OCR or the vision fallback.
+        "hi", "mr", "ne" ->
+            TextRecognition.getClient(DevanagariTextRecognizerOptions.Builder().build())
         // Default Latin recognizer covers Latin-script languages (en, vi,
         // fr, de, es, pt, it, id, ms, tr, pl, nl, sv, da, fi, no, cs, sk,
         // hu, ro, hr, sr-Latn, …) plus basic digits. NOTE: it CANNOT read

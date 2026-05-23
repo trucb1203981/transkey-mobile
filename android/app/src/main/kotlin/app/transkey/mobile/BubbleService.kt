@@ -111,14 +111,45 @@ class BubbleService : Service() {
 
         // Target languages user can cycle through in the overlay.
         // Persisted to Flutter SharedPreferences via the "flutter.tk_target_lang" key.
+        //
+        // The two lists below are the FALLBACK catalog used only when the
+        // mirrored server catalog (flutter.tk_lang_catalog, written by
+        // FeaturesNotifier.fetch) is missing — first-run before /features
+        // responded, OR a logged-out user. The runtime helpers
+        // [getEffectiveTargetLangs] / [getEffectiveSourceLangs] /
+        // [getEffectiveLangLabels] do the read-from-prefs-with-fallback,
+        // so the bubble picker shows the SAME list as the home language
+        // bar (admin can enable/disable languages per plan via
+        // /admin/features without shipping a new app).
         internal val TARGET_LANGS = listOf(
-            "en", "vi", "ja", "zh", "ko", "fr", "de", "es", "pt", "ru", "th", "id",
+            // Latin / European
+            "en", "vi", "fr", "de", "es", "pt", "it", "nl", "sv", "da",
+            "no", "fi", "pl", "cs", "ro", "hu", "tr",
+            // CJK / SEA
+            "ja", "zh", "ko", "th", "id", "ms", "fil",
+            // Cyrillic / Hebrew / Greek / Arabic / Indic (vision path)
+            "ru", "uk", "el", "he", "ar", "hi",
         )
+        // Source picker mirrors the target list + an "auto" entry up front.
+        // Built lazily off TARGET_LANGS so we only maintain ONE source of
+        // truth — adding a language above automatically shows up in both.
+        internal val SOURCE_LANGS: List<String> = listOf("auto") + TARGET_LANGS
         internal val LANG_LABELS = mapOf(
-            "auto" to "Auto", "en" to "English", "vi" to "Tiếng Việt",
+            "auto" to "Auto",
+            // Latin
+            "en" to "English", "vi" to "Tiếng Việt", "fr" to "Français",
+            "de" to "Deutsch", "es" to "Español", "pt" to "Português",
+            "it" to "Italiano", "nl" to "Nederlands", "sv" to "Svenska",
+            "da" to "Dansk", "no" to "Norsk", "fi" to "Suomi",
+            "pl" to "Polski", "cs" to "Čeština", "ro" to "Română",
+            "hu" to "Magyar", "tr" to "Türkçe",
+            // CJK / SEA
             "ja" to "日本語", "zh" to "中文", "ko" to "한국어",
-            "fr" to "Français", "de" to "Deutsch", "es" to "Español",
-            "pt" to "Português", "ru" to "Русский", "th" to "ไทย", "id" to "Indonesia",
+            "th" to "ไทย", "id" to "Indonesia", "ms" to "Melayu",
+            "fil" to "Filipino",
+            // Cyrillic / Hebrew / Greek / Arabic / Indic
+            "ru" to "Русский", "uk" to "Українська", "el" to "Ελληνικά",
+            "he" to "עברית", "ar" to "العربية", "hi" to "हिन्दी",
         )
         private const val PREFS_NAME = "FlutterSharedPreferences"
         private const val KEY_TARGET_LANG = "flutter.tk_target_lang"
@@ -144,8 +175,6 @@ class BubbleService : Service() {
         internal val VOICE_LANGS = listOf(
             "en", "vi", "ja", "ko", "zh", "fr", "de", "es", "pt", "ru", "th", "id",
         )
-
-        internal val SOURCE_LANGS = listOf("auto", "en", "vi", "ja", "zh", "ko", "fr", "de", "es", "pt", "ru", "th", "id")
 
         // Tone codes — MUST match Flutter `toneOptions` in
         // lib/features/settings/providers/app_settings_provider.dart so that
@@ -883,6 +912,62 @@ class BubbleService : Service() {
         notifyFlutterLangChanged()
     }
 
+    /**
+     * Effective language catalog for the bubble pickers. Reads the
+     * mirror of /features languages that [FeaturesNotifier.fetch] wrote
+     * to `flutter.tk_lang_catalog` (JSON `[{code,label}, …]`), so the
+     * bubble shows the SAME enabled languages as the home tab without
+     * needing a MethodChannel round-trip per picker open. Falls back to
+     * the hardcoded [TARGET_LANGS] / [LANG_LABELS] when the catalog
+     * pref is missing (pre-login first-run, /features failed, etc.).
+     *
+     * Cached on the service instance so the JSON parse only happens
+     * once per bubble session — pickers open frequently.
+     */
+    private var cachedCatalog: Pair<List<String>, Map<String, String>>? = null
+
+    private fun readCatalogFromPrefs(): Pair<List<String>, Map<String, String>>? {
+        val cached = cachedCatalog
+        if (cached != null) return cached
+        val raw = prefs.getString("flutter.tk_lang_catalog", null)
+            ?.takeIf { it.isNotBlank() } ?: return null
+        return try {
+            val arr = org.json.JSONArray(raw)
+            val codes = mutableListOf<String>()
+            val labels = mutableMapOf<String, String>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val code = obj.optString("code").takeIf { it.isNotBlank() } ?: continue
+                val label = obj.optString("label").takeIf { it.isNotBlank() } ?: code
+                codes.add(code)
+                labels[code] = label
+            }
+            if (codes.isEmpty()) null
+            else Pair(codes, labels).also { cachedCatalog = it }
+        } catch (e: Throwable) {
+            android.util.Log.w("TKBubble", "lang catalog parse failed: ${e.message}")
+            null
+        }
+    }
+
+    internal fun getEffectiveTargetLangs(): List<String> =
+        readCatalogFromPrefs()?.first ?: TARGET_LANGS
+
+    internal fun getEffectiveSourceLangs(): List<String> {
+        val catalog = readCatalogFromPrefs()?.first ?: return SOURCE_LANGS
+        return listOf("auto") + catalog
+    }
+
+    /**
+     * Merged label lookup: server-catalog labels first (native names per
+     * admin config), then the built-in LANG_LABELS for entries the
+     * catalog didn't ship (the hardcoded "Auto" sentinel, mainly).
+     */
+    internal fun getEffectiveLangLabels(): Map<String, String> {
+        val catalog = readCatalogFromPrefs()?.second ?: return LANG_LABELS
+        return LANG_LABELS + catalog
+    }
+
     internal fun readTone(): String {
         return prefs.getString(KEY_TONE_OVERRIDE, "") ?: ""
     }
@@ -1204,10 +1289,15 @@ class BubbleService : Service() {
         // For TEXT_INTO_INPUT (Summarize / Refine / Explain) we trust the
         // user's source-lang hint — they typed source=vi because they
         // mean Vietnamese, and the single-recognizer path is cheaper.
-        ScreenCaptureManager.languageHint = when (ScreenCaptureManager.flow) {
-            ScreenCaptureManager.Flow.LENS              -> null
-            ScreenCaptureManager.Flow.TEXT_INTO_INPUT   -> readSourceLang().takeIf { it != "auto" }
-        }
+        // The user's pinned source language drives BOTH the ML Kit
+        // recognizer choice AND the vision-vs-MLKit routing — without
+        // it the script-routing matrix has no signal, so pinning
+        // source=ar/th/ru never triggered vision and Lens silently fell
+        // back to the Latin recognizer (returning garbage on
+        // unsupported scripts). "auto" stays null so the existing
+        // auto-mode behaviour (Latin recognizer + auto-fallback to
+        // vision when ML Kit comes back empty) still kicks in.
+        ScreenCaptureManager.languageHint = readSourceLang().takeIf { it != "auto" }
         ScreenCaptureManager.targetLang = readTargetLang()
         ScreenCaptureManager.pendingMode = mode
         // Hide everything we'd otherwise be painting OVER the source app
@@ -1545,7 +1635,7 @@ class BubbleService : Service() {
                         val joinedOriginal = items.joinToString(" ") { it.original }.trim()
                         val joinedTranslation = items.joinToString(" ") { it.translation }.trim()
                         listOf(LensOverlayView.Item(joinedOriginal, joinedTranslation, aggregateBounds))
-                    } else items
+                    } else dedupOverlappingItems(items)
                     onSuccessRecycle?.invoke()
                     hideLensProgress()
                     showLensOverlay(renderBitmap ?: bitmap, finalItems)
@@ -1558,6 +1648,58 @@ class BubbleService : Service() {
                 handler.post { onError(localized(R.string.bubble_panel_app_not_ready)) }
             }
         })
+    }
+
+    /**
+     * Merge Lens overlay items whose boxes overlap heavily (IoU > 0.6).
+     * The vision LLM occasionally returns 2-3 near-identical boxes for
+     * text that visually sits in one region (multi-line headline, brand
+     * + tagline above each other), producing chips that render directly
+     * on top of each other — LensOverlayView's collision-avoidance can't
+     * push them apart when the bounds are nearly the same Rect.
+     *
+     * Merge texts in REVERSE iteration order so the result lists the
+     * later (lower / right) blocks first when stacked — matches how the
+     * user reads grouped signage top-to-bottom under the chip's first
+     * line. We do NOT touch boxes that are merely close — only
+     * effectively-coincident ones — so distinct adjacent items still
+     * get their own chip and the render-side collision logic still
+     * spreads them slightly when needed.
+     */
+    private fun dedupOverlappingItems(items: List<LensOverlayView.Item>): List<LensOverlayView.Item> {
+        if (items.size < 2) return items
+        val merged = BooleanArray(items.size)
+        val out = mutableListOf<LensOverlayView.Item>()
+        for (i in items.indices) {
+            if (merged[i]) continue
+            val baseBounds = items[i].bounds
+            val originals = mutableListOf(items[i].original)
+            val translations = mutableListOf(items[i].translation)
+            var unionBounds = android.graphics.Rect(baseBounds)
+            for (j in (i + 1) until items.size) {
+                if (merged[j]) continue
+                if (iouRect(baseBounds, items[j].bounds) > 0.6f) {
+                    originals.add(items[j].original)
+                    translations.add(items[j].translation)
+                    unionBounds.union(items[j].bounds)
+                    merged[j] = true
+                }
+            }
+            val original = originals.filter { it.isNotBlank() }.joinToString("\n").trim()
+            val translation = translations.filter { it.isNotBlank() }.joinToString("\n").trim()
+            out.add(LensOverlayView.Item(original, translation, unionBounds))
+        }
+        return out
+    }
+
+    private fun iouRect(a: android.graphics.Rect, b: android.graphics.Rect): Float {
+        val inter = android.graphics.Rect(a)
+        if (!inter.intersect(b)) return 0f
+        val interArea = inter.width().toFloat() * inter.height()
+        val aArea = a.width().toFloat() * a.height()
+        val bArea = b.width().toFloat() * b.height()
+        val union = aArea + bArea - interArea
+        return if (union <= 0f) 0f else interArea / union
     }
 
     private fun handleRegionReady() {

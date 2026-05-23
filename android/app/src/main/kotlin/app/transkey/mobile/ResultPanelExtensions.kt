@@ -23,7 +23,9 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import app.transkey.mobile.BubbleService.Companion.ALL_MODES
-import app.transkey.mobile.BubbleService.Companion.LANG_LABELS
+// LANG_LABELS replaced by getEffectiveLangLabels() so the chip text
+// reflects the server-mirrored catalog (admin-enabled language list)
+// instead of the hardcoded fallback set.
 import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
 import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
@@ -799,7 +801,7 @@ internal fun BubbleService.showResultPanel(
         panel.detectedLangTv?.apply {
             text = (localizedContext ?: service).getString(
                 R.string.bubble_panel_detected,
-                LANG_LABELS[detected] ?: detected.uppercase(),
+                getEffectiveLangLabels()[detected] ?: detected.uppercase(),
             )
             visibility = View.VISIBLE
         }
@@ -970,16 +972,17 @@ internal fun BubbleService.updateLangChip() {
     // showTonePicker / showSourceLangPicker.
 
     // Source chip: show "Auto" or language name
+    val chipLabels = getEffectiveLangLabels()
     panel.sourceLangChip?.apply {
         visibility = View.VISIBLE
         text = if (currentSourceLang == "auto") "Auto"
-               else (LANG_LABELS[currentSourceLang] ?: currentSourceLang.uppercase())
+               else (chipLabels[currentSourceLang] ?: currentSourceLang.uppercase())
     }
 
     // Target chip
     panel.langChip?.apply {
         visibility = View.VISIBLE
-        text = LANG_LABELS[currentTargetLang] ?: currentTargetLang.uppercase()
+        text = chipLabels[currentTargetLang] ?: currentTargetLang.uppercase()
     }
 
     // Settings icon (formerly tone chip): always visible. The icon alone

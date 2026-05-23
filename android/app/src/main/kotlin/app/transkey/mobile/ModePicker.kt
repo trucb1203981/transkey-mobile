@@ -19,7 +19,10 @@ import android.widget.Toast
 import app.transkey.mobile.BubbleService.Companion.ACTION_READ_CLIPBOARD
 import app.transkey.mobile.BubbleService.Companion.ALL_MODES
 import app.transkey.mobile.BubbleService.Companion.EXTRA_MODE
-import app.transkey.mobile.BubbleService.Companion.LANG_LABELS
+// LANG_LABELS replaced by getEffectiveLangLabels() so the result-panel
+// chip + mode-picker header render the server-catalog label (e.g.
+// "Filipino" instead of falling back to "FIL") when the admin enables
+// a language that isn't in the hardcoded set.
 import app.transkey.mobile.BubbleService.Companion.MODE_EXPLAIN
 import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
 import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
@@ -113,9 +116,10 @@ internal fun BubbleService.showModePicker() {
     // hidden behind a translate-first workflow.
     val pickedSource = readSourceLang()
     val pickedTarget = readTargetLang()
+    val labels = getEffectiveLangLabels()
     val sourceLabel = if (pickedSource == "auto") "Auto"
-        else (LANG_LABELS[pickedSource] ?: pickedSource.uppercase())
-    val targetLabel = LANG_LABELS[pickedTarget] ?: pickedTarget.uppercase()
+        else (labels[pickedSource] ?: pickedSource.uppercase())
+    val targetLabel = labels[pickedTarget] ?: pickedTarget.uppercase()
     val chipBgColor = Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF")
     fun langChip(label: String, onTap: () -> Unit): TextView = TextView(this).apply {
         text = label
