@@ -423,6 +423,15 @@ void _lensCachePut(String key, String value) {
   }
 }
 
+// Mirror of the server's residual-source-script check: any kana/hangul
+// char or a 2+ Han run. A translation that still carries source script
+// (e.g. a leaked "チュックさん") is a low-quality result we must NOT cache,
+// otherwise a re-scan would serve the leak instantly instead of retrying.
+final _kKanaHangulRe = RegExp(r'[぀-ゟ゠-ヿｦ-ﾟ가-힯]');
+final _kHanRunRe = RegExp(r'[一-鿿㐀-䶿]{2,}');
+bool _lensHasResidualSourceScript(String t) =>
+    _kKanaHangulRe.hasMatch(t) || _kHanRunRe.hasMatch(t);
+
 /// Progressive-emit hook: push one chunk of translations up to the
 /// native side so [LensOverlayView.applyTranslations] can patch the
 /// already-shown chips in place. Fire-and-forget — any platform-side
@@ -596,7 +605,12 @@ Future<List<String>> _lensBatchChunk(
       final isGood = value is String && value.trim().isNotEmpty && value.trim() != original.trim();
       if (isGood) {
         out[missIdx[j]] = value;
-        _lensCachePut(_lensCacheKey(sourceLang, targetLang, original), value);
+        // Cache only clean results — a translation that still leaks source
+        // script is shown (best we have) but NOT cached, so a re-scan gets
+        // a fresh attempt at a clean translation instead of the leak.
+        if (!_lensHasResidualSourceScript(value)) {
+          _lensCachePut(_lensCacheKey(sourceLang, targetLang, original), value);
+        }
       } else {
         out[missIdx[j]] = original;
         fallback++;
