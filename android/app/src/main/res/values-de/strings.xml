@@ -95,4 +95,5 @@
     <string name="lens_progress_translating">Übersetze %1$d/%2$d…</string>
     <string name="lens_source_mismatch">%1$s erkannt — tippen zum Neuübersetzen</string>
     <string name="lens_reopen_result">Übersetzung erneut öffnen</string>
+    <string name="lens_empty_for_source">Kein %1$s-Text gefunden — versuche Bilderkennung...</string>
 </resources>

@@ -1449,14 +1449,27 @@ class BubbleService : Service() {
         }
 
         // Vision route for unsupported scripts (Cyrillic/Thai/Arabic/...)
-        // OR auto-mode where ML Kit returned nothing readable. Sends the
-        // bitmap through /translate-image?withBoxes=true so the overlay
-        // still shows positioned chips — the only path Lens has for
-        // scripts ML Kit literally cannot read.
+        // OR ML Kit returned nothing readable. The empty-OCR case includes
+        // a wrong-source pin (e.g. source=ja while the screen is Arabic) —
+        // ML Kit's JA recognizer can't read Arabic, returns empty, and
+        // without this fallback the user would see a bare "no text" toast
+        // with no hint to switch language. Vision reads any script, and
+        // the server's sourceMismatch detector on the transcription tells
+        // the user which language to actually pick.
         val hint = ScreenCaptureManager.languageHint
         val forceVision = OcrHelper.needsVisionForSource(hint)
-        val autoFallback = blocks.isEmpty() && (hint.isNullOrEmpty() || hint == "auto")
-        if (forceVision || autoFallback) {
+        val emptyMlkitFallback = blocks.isEmpty()
+        if (emptyMlkitFallback && !hint.isNullOrEmpty() && hint != "auto") {
+            // Surface the wrong-pin signal early — vision is about to run
+            // (~2-5s on Gemini) so the user understands why they're waiting.
+            val hintLabel = getEffectiveLangLabels()[hint] ?: hint
+            Toast.makeText(
+                this,
+                localized(R.string.lens_empty_for_source, hintLabel),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+        if (forceVision || emptyMlkitFallback) {
             runLensVisionTranslate(
                 bitmap = bitmap,
                 offsetX = 0,

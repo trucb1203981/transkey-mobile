@@ -323,6 +323,9 @@ Future<Map<String, dynamic>> _lensVisionTranslate(
   int imageWidth,
   int imageHeight,
 ) async {
+  // Reset the once-per-scan mismatch guard, same as the batch entry, so
+  // the vision-fallback path can fire its own banner independently.
+  _lensMismatchEmitted = false;
   try {
     final session = await SessionStore().load();
     if (session == null || session.accessToken.isEmpty) {
@@ -342,6 +345,19 @@ Future<Map<String, dynamic>> _lensVisionTranslate(
       'imageHeight': imageHeight,
     });
     final data = response.data as Map?;
+    // Source-mismatch surfacing for the vision path — same shape as the
+    // batch path so the overlay shows one banner regardless of which OCR
+    // route fed it. The vision fallback exists EXACTLY for this case
+    // (user pinned ja but the screen is Arabic and ML Kit can't read it),
+    // so this is the most useful place for the warning.
+    final mismatch = data?['sourceMismatch'];
+    if (mismatch is Map && !_lensMismatchEmitted) {
+      _lensMismatchEmitted = true;
+      _emitLensMismatch(
+        mismatch['detected'] as String?,
+        mismatch['requested'] as String?,
+      );
+    }
     final rawBlocks = data?['blocks'];
     final out = <Map<String, dynamic>>[];
     if (rawBlocks is List) {

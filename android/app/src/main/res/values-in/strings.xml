@@ -101,4 +101,5 @@
     <string name="lens_progress_translating">Menerjemahkan %1$d/%2$d…</string>
     <string name="lens_source_mismatch">Terdeteksi %1$s — ketuk untuk terjemah ulang</string>
     <string name="lens_reopen_result">Buka lagi terjemahan</string>
+    <string name="lens_empty_for_source">Tidak ada teks %1$s — mencoba vision...</string>
 </resources>

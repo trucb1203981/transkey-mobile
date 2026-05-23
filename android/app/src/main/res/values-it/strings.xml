@@ -101,4 +101,5 @@
     <string name="lens_progress_translating">Traduzione %1$d/%2$d…</string>
     <string name="lens_source_mismatch">Rilevato %1$s — tocca per ritradurre</string>
     <string name="lens_reopen_result">Riapri traduzione</string>
+    <string name="lens_empty_for_source">Nessun testo in %1$s — provo la visione...</string>
 </resources>
