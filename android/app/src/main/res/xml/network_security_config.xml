@@ -1,18 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Allow HTTP (cleartext) only for LAN IP ranges so dev builds can talk
-  to the laptop running the API locally. Production traffic still
-  requires HTTPS — the base-config explicitly denies cleartext for any
-  domain not whitelisted below.
+  Production network policy — cleartext (HTTP) is denied for every host,
+  no exceptions. Release builds against https://api.transkey.app only.
 
-  Remove this file (and the manifest reference) before signing a real
-  Play Store release if dev convenience is no longer needed.
+  Local development needs to hit the laptop's API over plain HTTP on the
+  LAN; that allowance lives in `network_security_config_debug.xml` and is
+  wired in via `android/app/src/debug/AndroidManifest.xml`, so it only
+  applies to debug builds and never ships to the Play Store.
 -->
 <network-security-config>
   <base-config cleartextTrafficPermitted="false" />
-  <domain-config cleartextTrafficPermitted="true">
-    <domain includeSubdomains="false">192.168.2.11</domain>
-    <domain includeSubdomains="false">10.0.2.2</domain>
-    <domain includeSubdomains="false">localhost</domain>
-  </domain-config>
 </network-security-config>
