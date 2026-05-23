@@ -455,7 +455,7 @@ class LensOverlayView(
         val density = resources.displayMetrics.density
         var sizePx = sizeCache[idx].takeIf { it > 0f } ?: heuristicStartSizePx(origHeight)
 
-        var layout = makeLayout(text, sizePx, width)
+        var layout = makeLayout(text, sizePx, width, MAX_LINES_HARD)
         // Shrink only when even the max-allowed (expanded) height can't
         // contain the layout. This means translations that just spill
         // slightly past the original box stay at full size and we expand
@@ -463,24 +463,35 @@ class LensOverlayView(
         val minPx = MIN_SP * density
         while (layout.height > maxAllowedHeight && sizePx > minPx) {
             sizePx = max(minPx, sizePx * 0.9f)
-            layout = makeLayout(text, sizePx, width)
+            layout = makeLayout(text, sizePx, width, MAX_LINES_HARD)
+        }
+        // Even at the minimum size the text can still be taller than the
+        // neighbour-aware cap (a long CJK->Latin block wedged above another
+        // block). Bounding the rect alone would clip text mid-line; instead
+        // cap the LINE COUNT to what fits so the chip never grows past the
+        // cap and overlaps the block below. The full translation stays one
+        // tap away via the detail popup.
+        if (layout.height > maxAllowedHeight) {
+            textPaint.textSize = sizePx
+            val lineH = textPaint.fontSpacing
+            val fitLines = max(1, (maxAllowedHeight / lineH).toInt())
+            if (fitLines < layout.lineCount) {
+                layout = makeLayout(text, sizePx, width, fitLines)
+            }
         }
         sizeCache[idx] = sizePx
         layoutCache[idx] = layout
         return layout
     }
 
-    private fun makeLayout(text: String, sizePx: Float, width: Int): StaticLayout {
+    private fun makeLayout(text: String, sizePx: Float, width: Int, maxLines: Int): StaticLayout {
         textPaint.textSize = sizePx
         return StaticLayout.Builder.obtain(text, 0, text.length, textPaint, width)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setLineSpacing(0f, 1f)
             .setIncludePad(false)
             .setEllipsize(android.text.TextUtils.TruncateAt.END)
-            // Medium blocks fit in-place; anything longer is still fully
-            // readable via the tap-to-expand popup, so the cap only guards
-            // against one giant block dominating the overlay.
-            .setMaxLines(15)
+            .setMaxLines(maxLines)
             .build()
     }
 
@@ -573,5 +584,12 @@ class LensOverlayView(
          * into a card-sized chunk of the screen.
          */
         private const val MAX_EXPAND_FACTOR = 3f
+        /**
+         * Generous line cap used only while MEASURING during the shrink
+         * loop — the real per-chip cap is derived from the neighbour-aware
+         * [maxExpandPxBmp] so a chip never overlaps the block below. High
+         * enough that a normal block is never artificially clipped.
+         */
+        private const val MAX_LINES_HARD = 40
     }
 }
