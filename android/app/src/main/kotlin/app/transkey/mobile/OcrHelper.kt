@@ -340,8 +340,43 @@ object OcrHelper {
         "ko" -> TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build())
         "zh", "zh-TW", "zh-CN" ->
             TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
-        // Default Latin recognizer covers EN/VI/FR/DE/ES/PT/IT/RU/etc and
-        // basic numbers — handles roughly 80% of mobile UI in our user base.
+        // Default Latin recognizer covers Latin-script languages (en, vi,
+        // fr, de, es, pt, it, id, ms, tr, pl, nl, sv, da, fi, no, cs, sk,
+        // hu, ro, hr, sr-Latn, …) plus basic digits. NOTE: it CANNOT read
+        // Cyrillic, Thai, Arabic, Hebrew, Greek, Khmer, Lao, Myanmar,
+        // Georgian, etc. — those are handled by the vision LLM fallback,
+        // see [needsVisionForSource].
         else -> TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     }
+
+    /**
+     * Script-class set ML Kit cannot read with any of its on-device
+     * recognizers. When the user pins source to one of these, Lens must
+     * skip ML Kit entirely and route the bitmap through the vision LLM
+     * (Gemini-first via `/translate-image?withBoxes=true`) — running ML
+     * Kit's Latin recognizer on Cyrillic / Thai / Arabic either returns
+     * nothing or hallucinates lookalike Latin chars (garbage out).
+     *
+     * Kept as a hard-coded set rather than a probe because the user's
+     * source pick is the authoritative signal — the cost of being wrong
+     * (vision call on a Latin screen) is far higher than the cost of
+     * being right (ML Kit free path on a supported script).
+     */
+    fun needsVisionForSource(hintLang: String?): Boolean {
+        val lang = hintLang?.lowercase()?.split('-', '_')?.firstOrNull() ?: return false
+        return lang in VISION_ONLY_LANGS
+    }
+
+    private val VISION_ONLY_LANGS = setOf(
+        // Cyrillic
+        "ru", "uk", "bg", "sr", "mk", "be", "kk", "ky", "mn",
+        // Thai / Lao / Khmer / Myanmar
+        "th", "lo", "km", "my",
+        // Arabic-script (Arabic, Persian, Urdu, Pashto)
+        "ar", "fa", "ur", "ps",
+        // Hebrew / Yiddish, Greek, Georgian, Armenian, Sinhala, Amharic
+        "he", "yi", "el", "ka", "hy", "si", "am",
+        // Non-Devanagari Indic ML Kit doesn't ship a recognizer for
+        "ta", "te", "kn", "ml", "or", "gu", "pa", "bn",
+    )
 }

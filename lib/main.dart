@@ -272,8 +272,116 @@ void _wireBubbleChannel() {
       );
       return await _translateBatchForLens(texts, targetLang, sourceLang);
     }
+    if (call.method == 'lensVisionTranslate') {
+      // Lens vision-fallback flow: when the source script is one ML Kit
+      // can't read (Cyrillic / Thai / Arabic / …) or auto-mode produced
+      // an empty ML Kit result, the native side hands us the captured
+      // bitmap (base64 JPEG) plus the dims, and we route it through
+      // /translate-image?withBoxes=true. The server (Gemini-first) returns
+      // per-block boxes scaled to those exact dims, so the Lens overlay
+      // can position chips over the source-text regions — same UX as the
+      // ML Kit path, just driven by vision for unsupported scripts.
+      final args = (call.arguments as Map?)?.cast<Object?, Object?>() ?? {};
+      final imageB64 = args['imageBase64'] as String?;
+      final targetLang = (args['targetLang'] as String?) ?? 'en';
+      final sourceLang = args['sourceLang'] as String?;
+      final imageWidth = (args['imageWidth'] as num?)?.toInt() ?? 0;
+      final imageHeight = (args['imageHeight'] as num?)?.toInt() ?? 0;
+      if (imageB64 == null || imageB64.isEmpty || imageWidth <= 0 || imageHeight <= 0) {
+        return <String, dynamic>{
+          'blocks': const <Map<String, dynamic>>[],
+          'error': 'bad_args',
+        };
+      }
+      _rootContainer.read(trackingServiceProvider).event(
+        'lens_vision_translate',
+        properties: {
+          'target_lang': targetLang,
+          'source_lang': sourceLang ?? 'auto',
+          'image_kb': (imageB64.length * 0.75 / 1024).round(),
+        },
+      );
+      return await _lensVisionTranslate(
+        imageB64, targetLang, sourceLang, imageWidth, imageHeight,
+      );
+    }
     return null;
   });
+}
+
+/// Lens vision fallback: forward a captured screen bitmap through
+/// /translate-image with withBoxes=true so the overlay can position
+/// chips over each source-text region, just like the ML Kit path —
+/// but for scripts ML Kit can't read. The MethodChannel return shape
+/// uses primitive types (parallel arrays + box ints) because complex
+/// nested objects don't survive the platform-channel codec cleanly.
+Future<Map<String, dynamic>> _lensVisionTranslate(
+  String imageBase64,
+  String targetLang,
+  String? sourceLang,
+  int imageWidth,
+  int imageHeight,
+) async {
+  try {
+    final session = await SessionStore().load();
+    if (session == null || session.accessToken.isEmpty) {
+      return <String, dynamic>{
+        'blocks': const <Map<String, dynamic>>[],
+        'error': 'not_logged_in',
+      };
+    }
+    final api = _rootContainer.read(apiClientProvider);
+    final response = await api.dio.post('/translate-image', data: {
+      'imageBase64': imageBase64,
+      'targetLang': targetLang,
+      if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
+        'sourceLang': sourceLang,
+      'withBoxes': true,
+      'imageWidth': imageWidth,
+      'imageHeight': imageHeight,
+    });
+    final data = response.data as Map?;
+    final rawBlocks = data?['blocks'];
+    final out = <Map<String, dynamic>>[];
+    if (rawBlocks is List) {
+      for (final b in rawBlocks) {
+        if (b is! Map) continue;
+        final original = (b['original'] as String?)?.trim() ?? '';
+        final translation = (b['translation'] as String?)?.trim() ?? '';
+        if (original.isEmpty && translation.isEmpty) continue;
+        final box = b['box'];
+        if (box is! List || box.length != 4) continue;
+        int? n(int i) => box[i] is num ? (box[i] as num).toInt() : null;
+        final ymin = n(0), xmin = n(1), ymax = n(2), xmax = n(3);
+        if (ymin == null || xmin == null || ymax == null || xmax == null) continue;
+        if (xmax <= xmin || ymax <= ymin) continue;
+        out.add(<String, dynamic>{
+          'original': original,
+          'translation': translation,
+          'ymin': ymin,
+          'xmin': xmin,
+          'ymax': ymax,
+          'xmax': xmax,
+        });
+      }
+    }
+    return <String, dynamic>{
+      'blocks': out,
+      'sourceLang': data?['sourceLang'],
+    };
+  } on DioException catch (e) {
+    debugPrint('[LensVision] Dio error: ${e.response?.statusCode} ${e.message}');
+    return <String, dynamic>{
+      'blocks': const <Map<String, dynamic>>[],
+      'error': 'http_${e.response?.statusCode ?? 0}',
+    };
+  } catch (e) {
+    debugPrint('[LensVision] Error: $e');
+    return <String, dynamic>{
+      'blocks': const <Map<String, dynamic>>[],
+      'error': 'exception',
+    };
+  }
 }
 
 Future<List<String>> _translateBatchForLens(

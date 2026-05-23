@@ -1295,7 +1295,45 @@ class BubbleService : Service() {
     private fun handleLensReady() {
         val bitmap = ScreenCaptureManager.screenshot
         val blocks = ScreenCaptureManager.blocks
-        if (bitmap == null || blocks.isEmpty()) {
+        if (bitmap == null) {
+            ScreenCaptureManager.clearAll()
+            restoreBubbleVisibility()
+            Toast.makeText(
+                this,
+                localized(R.string.bubble_scan_empty),
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+
+        // Vision route for unsupported scripts (Cyrillic/Thai/Arabic/...)
+        // OR auto-mode where ML Kit returned nothing readable. Sends the
+        // bitmap through /translate-image?withBoxes=true so the overlay
+        // still shows positioned chips — the only path Lens has for
+        // scripts ML Kit literally cannot read.
+        val hint = ScreenCaptureManager.languageHint
+        val forceVision = OcrHelper.needsVisionForSource(hint)
+        val autoFallback = blocks.isEmpty() && (hint.isNullOrEmpty() || hint == "auto")
+        if (forceVision || autoFallback) {
+            runLensVisionTranslate(
+                bitmap = bitmap,
+                offsetX = 0,
+                offsetY = 0,
+                sourceLang = if (hint.isNullOrEmpty()) null else hint,
+                onError = { msg ->
+                    handler.post {
+                        hideLensProgress()
+                        ScreenCaptureManager.clearAll()
+                        restoreBubbleVisibility()
+                        if (!bitmap.isRecycled) bitmap.recycle()
+                        Toast.makeText(this, msg ?: localized(R.string.bubble_panel_translation_failed), Toast.LENGTH_LONG).show()
+                    }
+                },
+            )
+            return
+        }
+
+        if (blocks.isEmpty()) {
             ScreenCaptureManager.clearAll()
             restoreBubbleVisibility()
             Toast.makeText(
@@ -1383,6 +1421,145 @@ class BubbleService : Service() {
      * still-full screenshot), then reuse [handleLensReady] for the
      * batch-translate + overlay render.
      */
+
+    /**
+     * Vision-backed Lens path. Downscales [bitmap] to keep upload + vision
+     * input cost in check, ships it through the Flutter bridge to
+     * /translate-image?withBoxes=true (Gemini-routed), then builds the
+     * positioned overlay from the per-block boxes the server returns.
+     *
+     * [offsetX]/[offsetY] are added to every block's bounds before render
+     * (region mode passes the rectangle's top-left so the overlay still
+     * lines up on the full screenshot).
+     *
+     * When [aggregateToSingleItem] is true the result is collapsed into
+     * ONE LensOverlayView.Item that uses [aggregateBounds] (the rectangle
+     * the user drew); matches the ML Kit region path's "one selection =
+     * one chip" UX. [renderBitmap] is the bitmap the overlay is drawn
+     * over — usually the same as [bitmap] for full-screen scans, but the
+     * caller passes the FULL screenshot for region mode while [bitmap]
+     * is the cropped sub-image we sent to vision.
+     */
+    private fun runLensVisionTranslate(
+        bitmap: Bitmap,
+        offsetX: Int,
+        offsetY: Int,
+        sourceLang: String?,
+        aggregateToSingleItem: Boolean = false,
+        aggregateBounds: android.graphics.Rect? = null,
+        renderBitmap: Bitmap? = null,
+        onSuccessRecycle: (() -> Unit)? = null,
+        onError: (String?) -> Unit,
+    ) {
+        val engine = TransKeyApp.engine
+        if (engine == null) {
+            onError(localized(R.string.bubble_panel_app_not_ready))
+            return
+        }
+        // Cap long edge for the upload to keep token cost predictable
+        // (vision input tokens scale with image pixels). 1600 px tracks
+        // the camera-service compressForVision long-edge cap so behaviour
+        // stays consistent between camera and Lens.
+        val maxEdge = 1600
+        val origW = bitmap.width
+        val origH = bitmap.height
+        val maxSide = maxOf(origW, origH)
+        val upload = if (maxSide > maxEdge) {
+            val scale = maxEdge.toFloat() / maxSide
+            try {
+                Bitmap.createScaledBitmap(
+                    bitmap,
+                    (origW * scale).toInt().coerceAtLeast(1),
+                    (origH * scale).toInt().coerceAtLeast(1),
+                    true,
+                )
+            } catch (e: Throwable) {
+                android.util.Log.w("TKBubble", "lens-vision: scale failed: ${e.message}")
+                bitmap
+            }
+        } else bitmap
+        // Encode to JPEG q=85: balance between upload size and OCR
+        // legibility. Quality below ~80 starts chewing fine-print
+        // characters on dense menus; above 85 only adds bytes.
+        val baos = java.io.ByteArrayOutputStream()
+        upload.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+        if (upload !== bitmap && !upload.isRecycled) upload.recycle()
+        val b64 = android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP)
+        val target = ScreenCaptureManager.targetLang
+
+        val channel = io.flutter.plugin.common.MethodChannel(
+            engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+        )
+        val args = mapOf<String, Any?>(
+            "imageBase64" to b64,
+            "targetLang"  to target,
+            "sourceLang"  to (sourceLang ?: ""),
+            // Pass the ORIGINAL bitmap dims (not the downscaled upload
+            // dims) so the server hands us boxes in coords that match
+            // the bitmap LensOverlayView will paint over.
+            "imageWidth"  to origW,
+            "imageHeight" to origH,
+        )
+        android.util.Log.w("TKBubble", "lens-vision: ${origW}x${origH} src=$sourceLang target=$target")
+        channel.invokeMethod("lensVisionTranslate", args, object : io.flutter.plugin.common.MethodChannel.Result {
+            override fun success(result: Any?) {
+                handler.post {
+                    val map = result as? Map<*, *>
+                    val rawBlocks = map?.get("blocks") as? List<*>
+                    val err = map?.get("error") as? String
+                    if (err != null) {
+                        android.util.Log.w("TKBubble", "lens-vision: server error=$err")
+                        onError(localized(R.string.bubble_panel_translation_failed))
+                        return@post
+                    }
+                    val items = mutableListOf<LensOverlayView.Item>()
+                    rawBlocks?.forEach { raw ->
+                        val b = raw as? Map<*, *> ?: return@forEach
+                        val original = (b["original"] as? String).orEmpty()
+                        val translation = (b["translation"] as? String).orEmpty()
+                        val ymin = (b["ymin"] as? Number)?.toInt()
+                        val xmin = (b["xmin"] as? Number)?.toInt()
+                        val ymax = (b["ymax"] as? Number)?.toInt()
+                        val xmax = (b["xmax"] as? Number)?.toInt()
+                        if (ymin == null || xmin == null || ymax == null || xmax == null) return@forEach
+                        if (xmax <= xmin || ymax <= ymin) return@forEach
+                        items.add(LensOverlayView.Item(
+                            original,
+                            translation,
+                            android.graphics.Rect(
+                                xmin + offsetX, ymin + offsetY,
+                                xmax + offsetX, ymax + offsetY,
+                            ),
+                        ))
+                    }
+                    if (items.isEmpty()) {
+                        hideLensProgress()
+                        ScreenCaptureManager.clearAll()
+                        restoreBubbleVisibility()
+                        val rb = renderBitmap ?: bitmap
+                        if (!rb.isRecycled) rb.recycle()
+                        Toast.makeText(this@BubbleService, localized(R.string.bubble_scan_empty), Toast.LENGTH_LONG).show()
+                        return@post
+                    }
+                    val finalItems = if (aggregateToSingleItem && aggregateBounds != null) {
+                        val joinedOriginal = items.joinToString(" ") { it.original }.trim()
+                        val joinedTranslation = items.joinToString(" ") { it.translation }.trim()
+                        listOf(LensOverlayView.Item(joinedOriginal, joinedTranslation, aggregateBounds))
+                    } else items
+                    onSuccessRecycle?.invoke()
+                    hideLensProgress()
+                    showLensOverlay(renderBitmap ?: bitmap, finalItems)
+                }
+            }
+            override fun error(code: String, message: String?, details: Any?) {
+                handler.post { onError(message) }
+            }
+            override fun notImplemented() {
+                handler.post { onError(localized(R.string.bubble_panel_app_not_ready)) }
+            }
+        })
+    }
+
     private fun handleRegionReady() {
         val bitmap = ScreenCaptureManager.screenshot
         if (bitmap == null) {
@@ -1429,6 +1606,39 @@ class BubbleService : Service() {
             return
         }
         showLensProgress()
+        // Region mode + unsupported script: route the CROPPED bitmap
+        // through vision. We keep the full screenshot (`bitmap`) live for
+        // the underlying Lens overlay; the cropped pixels are only used
+        // for the network call. Server returns boxes in the cropped's
+        // pixel space, then runLensVisionTranslate adds rect.left/top so
+        // the chips line up with the full screenshot beneath.
+        val regionHint = ScreenCaptureManager.languageHint
+        if (OcrHelper.needsVisionForSource(regionHint)) {
+            // Aggregate into a single overlay item (matches the ML Kit
+            // region behaviour: the user-drawn box is treated as ONE
+            // unit, so one chip covers the whole selection).
+            runLensVisionTranslate(
+                bitmap = cropped,
+                offsetX = rect.left,
+                offsetY = rect.top,
+                sourceLang = if (regionHint.isNullOrEmpty()) null else regionHint,
+                aggregateToSingleItem = true,
+                aggregateBounds = rect,
+                renderBitmap = bitmap, // overlay sits on the FULL screenshot
+                onError = { msg ->
+                    handler.post {
+                        hideLensProgress()
+                        ScreenCaptureManager.clearAll()
+                        restoreBubbleVisibility()
+                        if (!cropped.isRecycled) cropped.recycle()
+                        if (!bitmap.isRecycled) bitmap.recycle()
+                        Toast.makeText(this, msg ?: localized(R.string.bubble_panel_translation_failed), Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSuccessRecycle = { if (!cropped.isRecycled) cropped.recycle() },
+            )
+            return
+        }
         OcrHelper.recognizeBlocks(cropped, ScreenCaptureManager.languageHint) { blocks ->
             handler.post {
                 // The cropped bitmap was only needed for OCR — recycle it

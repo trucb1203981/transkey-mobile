@@ -1416,6 +1416,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         'scene': scene,
         if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
           'sourceLang': sourceLang,
+        // Ask the server (Gemini-routed) for per-block bounding boxes so
+        // the result overlay can position each translation chip OVER the
+        // matching source region — instead of the strip-distribution
+        // fallback below that fakes evenly-spaced rows. Pass the
+        // ORIGINAL capture dimensions: boxes come back normalized 0-1000
+        // and the server scales them to whatever `imageWidth/Height` we
+        // send, so we hand it the same coord space the overlay later
+        // renders chips in (`_capturedImageSize`).
+        'withBoxes': true,
+        'imageWidth': size.width.round(),
+        'imageHeight': size.height.round(),
       });
       if (!mounted) return;
       final data = response.data as Map?;
@@ -1505,6 +1516,62 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           _step = _resultStepRespectingBatch();
         });
         return;
+      }
+
+      // Per-block AR overlay path. Server returns `blocks[]` when we
+      // pass withBoxes=true; each block already has its bounding box
+      // scaled to the original capture's pixel coords (we sent `size`),
+      // so we can build OcrBlocks directly and the result overlay will
+      // position each chip over the actual text region — replacing the
+      // strip-distribution hack below for every vision capture that the
+      // server's box pipeline can serve (currently any image when the
+      // Gemini-first box route succeeds). Falls through to the strip
+      // / single-block code if blocks come back empty (e.g. an outage
+      // where only Llama-4 served, returning no usable boxes).
+      final rawBlocks = data?['blocks'];
+      if (rawBlocks is List && rawBlocks.isNotEmpty) {
+        final visionBlocks = <OcrBlock>[];
+        final visionTranslations = <String>[];
+        for (final b in rawBlocks) {
+          if (b is! Map) continue;
+          final original = (b['original'] as String?)?.trim() ?? '';
+          final trVi = (b['translation'] as String?)?.trim() ?? '';
+          if (original.isEmpty && trVi.isEmpty) continue;
+          final box = b['box'];
+          if (box is! List || box.length != 4) continue;
+          // Server convention: [ymin, xmin, ymax, xmax] in pixels of the
+          // dimensions we POSTed (matches `size` for camera captures).
+          double n(int i) => (box[i] is num) ? (box[i] as num).toDouble() : 0.0;
+          final ymin = n(0), xmin = n(1), ymax = n(2), xmax = n(3);
+          if (xmax <= xmin || ymax <= ymin) continue;
+          visionBlocks.add(OcrBlock(
+            text: original,
+            boundingBox: Rect.fromLTRB(xmin, ymin, xmax, ymax),
+            confidence: mappedConfidence,
+          ));
+          visionTranslations.add(trVi);
+        }
+        if (visionBlocks.isNotEmpty) {
+          setState(() {
+            _capturedPath = path;
+            _capturedImageSize = size;
+            _blocks = visionBlocks;
+            _translations = visionTranslations;
+            _error = null;
+            _step = _resultStepRespectingBatch();
+          });
+          ref.read(trackingServiceProvider).event('camera_capture', properties: {
+            'scene':             scene,
+            'source_lang':
+                ref.read(languageSettingsProvider).valueOrNull?.sourceLang ?? 'auto',
+            'target_lang':       targetLang,
+            'block_count':       visionBlocks.length,
+            'total_chars':       transcription.length,
+            'path':              'vision_boxes',
+            'vision_confidence': visionConfidence ?? 'unknown',
+          });
+          return;
+        }
       }
 
       // Per-line split for menu / screenshot — match what the user expects
