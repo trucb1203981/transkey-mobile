@@ -15,6 +15,17 @@ import '../diagnostics/app_log.dart';
 String get kBaseUrl =>
     dotenv.env['TRANSKEY_API_URL'] ?? 'https://api.transkey.app';
 
+/// Endpoints that mint a NEW session from credentials (not from an existing
+/// token). The header interceptor must NOT attach a stale bearer here, and
+/// the refresh interceptor must NOT try to refresh on their 401 (a 401 means
+/// "wrong credentials", not "expired session"). Mirrors the server's
+/// credential-attempt list in api_errors.dart.
+const _credentialPaths = {
+  '/auth/login',
+  '/auth/register',
+  '/auth/google/mobile',
+};
+
 class ApiClient {
   ApiClient({
     required DeviceIdService deviceId,
@@ -95,9 +106,19 @@ class _HeadersInterceptor extends Interceptor {
       _sessionLoaded = true;
     }
     final token = _cachedSession?.accessToken;
+    // NEVER attach a bearer token to a credential-attempt endpoint. These
+    // mint a brand-new session from email/password (or a Google idToken),
+    // so any token we hold is irrelevant — and attaching a STALE one is
+    // actively harmful: if a prior logout's secure-storage delete timed
+    // out, `load()` above still returns the old session, and sending that
+    // expired/rotated token with /auth/login can make the server reject
+    // the request → user "can't log in with the correct password". Keep
+    // login isolated from whatever session state is lying around.
+    final isCredentialAttempt = _credentialPaths.contains(options.path);
     // Respect any Authorization already set on the request (e.g. refresh
     // interceptor passing a known-good token explicitly).
-    if (token != null &&
+    if (!isCredentialAttempt &&
+        token != null &&
         token.isNotEmpty &&
         !options.headers.containsKey('Authorization')) {
       options.headers['Authorization'] = 'Bearer $token';
@@ -154,6 +175,17 @@ class _AuthRefreshInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     if (err.response?.statusCode != 401) {
+      handler.next(err);
+      return;
+    }
+
+    // A 401 from a credential-attempt endpoint means "wrong email/password"
+    // (or rejected Google idToken) — NOT an expired session. Do NOT trigger
+    // a token refresh or forceLogout here: there is no session to refresh,
+    // and firing onAuthFailed() would spuriously clear state mid-login and
+    // surface a confusing "session expired" instead of "invalid credentials".
+    // Let the original 401 propagate so the UI shows the right message.
+    if (_credentialPaths.contains(err.requestOptions.path)) {
       handler.next(err);
       return;
     }

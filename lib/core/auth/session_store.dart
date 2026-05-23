@@ -118,6 +118,20 @@ class SessionStore {
       await prefs.remove(_kSessionKey);
       return;
     }
+    // Neutralise BEFORE deleting: on some Android skins (MIUI/ColorOS) the
+    // Keystore-backed delete intermittently times out, leaving the OLD
+    // token in secure storage. A later login then reads that stale token on
+    // cold start and gets bounced back to the login screen. Overwriting the
+    // value with "" first means even a timed-out delete can't resurrect a
+    // usable token — write and delete are two independent chances to clear,
+    // and `_readRaw` treats an empty value as absent (falls through to prefs).
+    try {
+      await _storage
+          .write(key: _kSessionKey, value: '')
+          .timeout(_storageTimeout);
+    } catch (e) {
+      debugPrint('[SessionStore] secure tombstone write failed: $e');
+    }
     try {
       await _storage.delete(key: _kSessionKey).timeout(_storageTimeout);
     } catch (e) {
@@ -137,7 +151,14 @@ class SessionStore {
       final fromSecure = await _storage
           .read(key: _kSessionKey)
           .timeout(_storageTimeout);
-      if (fromSecure != null) return fromSecure;
+      // Treat an empty value as ABSENT, not as a real session. clear()
+      // writes "" as a tombstone, and an empty/whitespace blob can never be
+      // a valid JSON session anyway — falling through to prefs here prevents
+      // that tombstone from shadowing a freshly-saved session when a later
+      // save() had to fall back to prefs (secure write timed out).
+      if (fromSecure != null && fromSecure.trim().isNotEmpty) {
+        return fromSecure;
+      }
     } catch (e) {
       debugPrint('[SessionStore] secure read failed, falling back: $e');
     }
