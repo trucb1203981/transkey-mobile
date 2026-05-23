@@ -796,14 +796,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get upgradeFeatureColumn => 'Tính năng';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · \$4/tháng';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · \$6/tháng';
-
-  @override
   String get upgradeFooterHint =>
       '📱 Mobile: tiết kiệm nhất nếu chỉ dùng điện thoại\n💻 Pro: dùng được trên cả điện thoại và máy tính';
 
@@ -1218,6 +1210,62 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraLowQuality => 'Chất lượng thấp';
 
   @override
+  String get cameraConfidenceReliable => 'Tin cậy';
+
+  @override
+  String get cameraConfidenceCaution => 'Cần kiểm tra';
+
+  @override
+  String get cameraConfidenceUnreliable => 'Không đáng tin';
+
+  @override
+  String get cameraHoldSteady => 'Giữ máy yên';
+
+  @override
+  String get cameraCopyTranslation => 'Sao chép bản dịch';
+
+  @override
+  String get cameraCopyOriginal => 'Sao chép bản gốc';
+
+  @override
+  String get cameraRetryBlock => 'Dịch lại';
+
+  @override
+  String get cameraSaveBlock => 'Lưu vào sổ tay';
+
+  @override
+  String get cameraSavingPhrasebook => 'Đang lưu…';
+
+  @override
+  String get cameraBlockRetrying => 'Đang dịch lại…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return 'Đang dịch ảnh $current/$total…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => 'Thêm ghi chú (tuỳ chọn)';
+
+  @override
+  String get cameraSaveNoteHint => 'ví dụ: gần khách sạn, rất cay';
+
+  @override
+  String get cameraSaveSkipNote => 'Bỏ qua';
+
+  @override
+  String get cameraCopyLineHeader => 'SAO CHÉP TỪNG DÒNG';
+
+  @override
+  String get cameraShare => 'Chia sẻ';
+
+  @override
+  String get cameraShareSubject => 'Dịch bởi TransKey';
+
+  @override
+  String get cameraShareFailed => 'Không chia sẻ được. Thử lại.';
+
+  @override
   String get cameraTranslating => 'Đang dịch...';
 
   @override
@@ -1280,6 +1328,14 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraSceneScreenshot => 'Ảnh màn hình';
 
   @override
+  String get cameraSceneOther => 'Khác';
+
+  @override
+  String cameraDetected(String scene) {
+    return 'Phát hiện: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => 'Đây là gì?';
 
   @override
@@ -1296,6 +1352,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => 'Không có giải thích.';
+
+  @override
+  String get cameraExplainStaleBadge => 'Đã lưu — có thể đã cũ';
 
   @override
   String get cameraExplainError => 'Không lấy được giải thích. Thử lại.';

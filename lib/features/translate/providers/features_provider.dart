@@ -1,7 +1,33 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../models/language.dart';
+
+/// Shared-prefs keys mirrored to the Android bubble so the native
+/// [ModePicker.kt] can render lock icons on plan-gated entries without
+/// a method-channel round-trip to Dart on every render. Updated by
+/// [FeaturesNotifier.fetch] every time /features resolves. Each entry
+/// in the bubble that maps to a paid feature reads its corresponding
+/// flag; missing key → false (locked) since [getBoolean] defaults to
+/// our pessimistic `false` for paid features.
+///
+/// Keep these names in sync with the Kotlin side (see
+/// [BubbleService.kt] → [readFeatureEnabled]).
+///
+/// NOTE: NO `flutter.` prefix here — the shared_preferences plugin
+/// auto-prefixes every key with `flutter.` when persisting to native
+/// Android SharedPreferences. Adding the prefix on the Dart side
+/// would double it (`flutter.flutter.tk_feature_camera`) and the
+/// bubble's read would never find it, leaving Pro users with a
+/// locked entry in the popup.
+const _kSharedCameraFlagKey   = 'tk_feature_camera';
+const _kSharedLensFlagKey     = 'tk_feature_lens';
+const _kSharedReplyFlagKey    = 'tk_feature_reply';
+const _kSharedSummarizeKey    = 'tk_feature_summarize';
+const _kSharedExplainKey      = 'tk_feature_explain';
+const _kSharedRefineKey       = 'tk_feature_refine';
 
 class FeatureFlags {
   const FeatureFlags({
@@ -152,6 +178,26 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
         flags: flags,
         fetchedAt: DateTime.now(),
       );
+      // Mirror plan-gated feature flags to SharedPreferences so the
+      // Android bubble (Kotlin) can render lock icons on entries the
+      // user's plan doesn't include. The bubble runs OUTSIDE the
+      // Flutter activity (foreground service overlay) so a method-
+      // channel call would race the engine startup; reading prefs is
+      // synchronous and survives process restarts.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_kSharedCameraFlagKey, flags.camera);
+        await prefs.setBool(_kSharedLensFlagKey, flags.lens);
+        await prefs.setBool(_kSharedReplyFlagKey, flags.replyTranslate);
+        await prefs.setBool(_kSharedSummarizeKey, flags.summarize);
+        await prefs.setBool(_kSharedExplainKey, flags.explain);
+        await prefs.setBool(_kSharedRefineKey, flags.refine);
+      } catch (e) {
+        // Persistence is best-effort — if it fails the bubble falls
+        // back to "no gate" (current behaviour), which the server
+        // catches with a 403 anyway.
+        debugPrint('[Features] persist feature flags failed: $e');
+      }
     } catch (_) {
       // Keep previous flags on error
       state = current.copyWith(isLoading: false);

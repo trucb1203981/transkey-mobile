@@ -799,14 +799,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get upgradeFeatureColumn => 'ฟีเจอร์';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · \$4/mo';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · \$6/mo';
-
-  @override
   String get upgradeFooterHint =>
       '📱 Mobile: คุ้มที่สุดถ้าใช้แค่บนมือถือ\n💻 Pro: ใช้ได้ทั้งมือถือและเดสก์ท็อป';
 
@@ -1218,6 +1210,62 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraLowQuality => 'คุณภาพต่ำ';
 
   @override
+  String get cameraConfidenceReliable => 'เชื่อถือได้';
+
+  @override
+  String get cameraConfidenceCaution => 'ควรตรวจสอบ';
+
+  @override
+  String get cameraConfidenceUnreliable => 'เชื่อถือไม่ได้';
+
+  @override
+  String get cameraHoldSteady => 'ถือให้นิ่ง';
+
+  @override
+  String get cameraCopyTranslation => 'คัดลอกคำแปล';
+
+  @override
+  String get cameraCopyOriginal => 'คัดลอกต้นฉบับ';
+
+  @override
+  String get cameraRetryBlock => 'แปลใหม่';
+
+  @override
+  String get cameraSaveBlock => 'บันทึกในสมุดวลี';
+
+  @override
+  String get cameraSavingPhrasebook => 'กำลังบันทึก…';
+
+  @override
+  String get cameraBlockRetrying => 'กำลังแปลใหม่…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return 'กำลังแปลภาพที่ $current จาก $total…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => 'เพิ่มบันทึก (ไม่จำเป็น)';
+
+  @override
+  String get cameraSaveNoteHint => 'เช่น ใกล้โรงแรม, เผ็ดมาก';
+
+  @override
+  String get cameraSaveSkipNote => 'ข้าม';
+
+  @override
+  String get cameraCopyLineHeader => 'คัดลอกแต่ละบรรทัด';
+
+  @override
+  String get cameraShare => 'แชร์';
+
+  @override
+  String get cameraShareSubject => 'แปลโดย TransKey';
+
+  @override
+  String get cameraShareFailed => 'แชร์ไม่สำเร็จ ลองอีกครั้ง';
+
+  @override
   String get cameraTranslating => 'กำลังแปล...';
 
   @override
@@ -1279,6 +1327,14 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraSceneScreenshot => 'ภาพหน้าจอ';
 
   @override
+  String get cameraSceneOther => 'อื่นๆ';
+
+  @override
+  String cameraDetected(String scene) {
+    return 'ตรวจพบ: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => 'นี่คืออะไร?';
 
   @override
@@ -1295,6 +1351,9 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => 'ไม่มีคำอธิบาย';
+
+  @override
+  String get cameraExplainStaleBadge => 'บันทึกออฟไลน์ — อาจล้าสมัย';
 
   @override
   String get cameraExplainError => 'ไม่สามารถดึงคำอธิบาย ลองใหม่';

@@ -5,12 +5,15 @@ import '../../../shared/theme/app_theme.dart';
 import '../models/translate_models.dart';
 import '../providers/features_provider.dart';
 
-/// Row of feature actions (Translate / Reply / Summarize / Explain /
-/// Refine) with a Camera button on the left. Translate is the primary
-/// (filled purple). Each non-translate button shows a padlock when the
-/// CURRENT user's plan doesn't enable it (per [features]) so the gate
-/// is visible BEFORE they tap; the host then routes through [onAction]
-/// to either run the feature or show the upsell.
+/// Row of feature actions (Translate / Summarize / Explain / Refine /
+/// Reply) with a Camera button on the left. Translate is the primary
+/// (filled purple). Mode order matches the bubble mode picker + result
+/// panel tabs (BubbleService.ALL_MODES) so users see one consistent
+/// ordering across home, popup, and panel. Each non-translate button
+/// shows a padlock when the CURRENT user's plan doesn't enable it
+/// (per [features]) so the gate is visible BEFORE they tap; the host
+/// then routes through [onAction] to either run the feature or show
+/// the upsell.
 class FeatureButtons extends StatelessWidget {
   const FeatureButtons({
     super.key,
@@ -51,14 +54,6 @@ class FeatureButtons extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.sm),
         _FeatureBtn(
-          icon: Icons.reply_outlined,
-          label: l.reply,
-          isDark: isDark,
-          locked: !features.replyTranslate,
-          onTap: () => onAction(TranslateMode.reply),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _FeatureBtn(
           icon: Icons.summarize_outlined,
           label: l.summarize,
           isDark: isDark,
@@ -80,6 +75,14 @@ class FeatureButtons extends StatelessWidget {
           isDark: isDark,
           locked: !features.refine,
           onTap: () => onAction(TranslateMode.refine),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _FeatureBtn(
+          icon: Icons.reply_outlined,
+          label: l.reply,
+          isDark: isDark,
+          locked: !features.replyTranslate,
+          onTap: () => onAction(TranslateMode.reply),
         ),
       ],
     );

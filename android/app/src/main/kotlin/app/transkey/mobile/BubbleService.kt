@@ -815,17 +815,27 @@ class BubbleService : Service() {
     // moved to ResultPanelExtensions.kt
 
     internal fun speakOutput() {
+        val engine = tts ?: return
+        // Tap-to-stop toggle: if the engine is already mid-utterance, the
+        // user pressed the button to interrupt — kill playback instead of
+        // restarting it. Without this, the only way to stop was to wait
+        // out the full read (or close the panel) because QUEUE_FLUSH just
+        // restarts the same audio from the top.
+        if (engine.isSpeaking) {
+            engine.stop()
+            return
+        }
         val text = currentOutput?.takeIf { it.isNotEmpty() } ?: return
         if (!ttsReady) { Toast.makeText(this, localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show(); return }
         val locale = langToLocale(currentTargetLang)
-        tts?.language = locale
+        engine.language = locale
         // Match the speed the user picked inside the app's Settings →
         // Read aloud. Flutter writes it via shared_preferences as
         // flutter.tk_tts_rate (double). Default to normal speed when unset.
         val rate = readTtsRate().toFloat()
-        tts?.setSpeechRate(rate)
+        engine.setSpeechRate(rate)
         @Suppress("DEPRECATION")
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null)
+        engine.speak(text, TextToSpeech.QUEUE_FLUSH, null)
     }
 
     internal fun readTtsRate(): Double {
@@ -1043,6 +1053,84 @@ class BubbleService : Service() {
             android.util.Log.w("TKBubble", "openCamera bring-to-front failed: ${error.message}")
         }
     }
+
+    /**
+     * Plan-gate signal for the bubble's Camera mode entry. Mirrors the
+     * `camera` flag from /features, persisted as a SharedPreferences
+     * bool by Dart's featuresProvider after every fetch. Returns false
+     * (locked) when:
+     *   - the key is missing entirely (free defaults / cold start /
+     *     pre-features-resolve user)
+     *   - or it's been explicitly persisted as false (plan doesn't
+     *     allow Camera)
+     *
+     * Read from SharedPreferences instead of a method-channel round-
+     * trip to Dart so the picker still renders correctly when the
+     * Flutter engine hasn't fully come up yet (the bubble runs as an
+     * overlay foreground service, can outlive the activity).
+     */
+    internal fun readCameraFeatureEnabled(): Boolean =
+        readFeatureEnabled("tk_feature_camera")
+
+    /**
+     * Read a mirrored feature flag from SharedPreferences. The Flutter
+     * side persists each plan-gated flag (camera, lens, reply, summarize,
+     * explain, refine) on every /features fetch; the bubble reads them
+     * here to render lock icons on entries the user's plan doesn't
+     * include. Missing key OR wrong type → false (locked) — pessimistic
+     * default keeps free users from briefly seeing unlocked paid
+     * features during a cold start.
+     *
+     * Pass the key WITHOUT the `flutter.` prefix; this helper adds it
+     * since the shared_preferences plugin auto-prefixes on the Dart side.
+     */
+    internal fun readFeatureEnabled(key: String): Boolean {
+        return try {
+            prefs.getBoolean("flutter.$key", false)
+        } catch (_: ClassCastException) {
+            false
+        }
+    }
+
+    /**
+     * Bring the Flutter activity foreground and show the upgrade nudge
+     * sheet for [featureName]. Same two-step pattern as the per-feature
+     * open methods: invoke the Dart-side route then surface the
+     * activity. Surfaces the SAME UpgradeNudgeSheet the in-app flow uses
+     * when a free user hits a locked feature, so the upsell copy stays
+     * consistent across entry points.
+     *
+     * [featureName] is a human-readable label (e.g. "Camera",
+     * "Lens", "Summarize") — Flutter passes it straight into
+     * `UpgradeNudgeSheet(featureName: ...)` for the headline copy.
+     */
+    internal fun openFeatureUpsell(featureName: String) {
+        val engine = TransKeyApp.engine
+        if (engine != null) {
+            try {
+                io.flutter.plugin.common.MethodChannel(
+                    engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+                ).invokeMethod("showFeatureUpsell", mapOf("featureName" to featureName))
+            } catch (error: Exception) {
+                android.util.Log.w("TKBubble", "showFeatureUpsell invoke failed: ${error.message}")
+            }
+        }
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                )
+            }
+            startActivity(intent)
+        } catch (error: Exception) {
+            android.util.Log.w("TKBubble", "openFeatureUpsell bring-to-front failed: ${error.message}")
+        }
+    }
+
+    /** Legacy alias kept for the existing Camera entry call site. */
+    internal fun openCameraUpsell() = openFeatureUpsell("Camera")
 
     /**
      * Bring the Flutter activity foreground and open the "What is this?"

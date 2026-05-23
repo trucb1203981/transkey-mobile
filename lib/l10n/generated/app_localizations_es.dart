@@ -805,14 +805,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get upgradeFeatureColumn => 'Función';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · $price/mes';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · 6 \$/mes';
-
-  @override
   String get upgradeFooterHint =>
       '📱 Mobile: mejor valor si solo usa su teléfono\n💻 Pro: funciona en teléfono y escritorio';
 
@@ -1234,6 +1226,62 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cameraLowQuality => 'Baja calidad';
 
   @override
+  String get cameraConfidenceReliable => 'Fiable';
+
+  @override
+  String get cameraConfidenceCaution => 'Verificar';
+
+  @override
+  String get cameraConfidenceUnreliable => 'No fiable';
+
+  @override
+  String get cameraHoldSteady => 'Mantén firme';
+
+  @override
+  String get cameraCopyTranslation => 'Copiar traducción';
+
+  @override
+  String get cameraCopyOriginal => 'Copiar original';
+
+  @override
+  String get cameraRetryBlock => 'Traducir de nuevo';
+
+  @override
+  String get cameraSaveBlock => 'Guardar en el cuaderno';
+
+  @override
+  String get cameraSavingPhrasebook => 'Guardando…';
+
+  @override
+  String get cameraBlockRetrying => 'Traduciendo de nuevo…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return 'Traduciendo $current de $total…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => 'Añadir nota (opcional)';
+
+  @override
+  String get cameraSaveNoteHint => 'p. ej., cerca del hotel, muy picante';
+
+  @override
+  String get cameraSaveSkipNote => 'Omitir';
+
+  @override
+  String get cameraCopyLineHeader => 'COPIAR LÍNEA';
+
+  @override
+  String get cameraShare => 'Compartir';
+
+  @override
+  String get cameraShareSubject => 'Traducido con TransKey';
+
+  @override
+  String get cameraShareFailed => 'No se pudo compartir. Inténtalo de nuevo.';
+
+  @override
   String get cameraTranslating => 'Traduciendo...';
 
   @override
@@ -1296,6 +1344,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cameraSceneScreenshot => 'Captura de pantalla';
 
   @override
+  String get cameraSceneOther => 'Otro';
+
+  @override
+  String cameraDetected(String scene) {
+    return 'Detectado: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => '¿Qué es esto?';
 
   @override
@@ -1313,6 +1369,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => 'No hay explicación disponible.';
+
+  @override
+  String get cameraExplainStaleBadge =>
+      'Guardado sin conexión — puede estar desactualizado';
 
   @override
   String get cameraExplainError =>

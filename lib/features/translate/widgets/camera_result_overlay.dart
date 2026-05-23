@@ -55,6 +55,7 @@ class CameraResultOverlay extends StatefulWidget {
     this.showOriginalAlways = false,
     this.overlayOpacity = 0.80,
     this.onExplain,
+    this.onBlockTap,
   });
 
   final List<OcrBlock> blocks;
@@ -66,23 +67,31 @@ class CameraResultOverlay extends StatefulWidget {
   /// When true, also drop blocks flagged [OcrBlock.isLowConfidence] —
   /// keeps only "good" quality.
   final bool hideLowConfidence;
-  /// When true, render the source text under every translation card,
-  /// not only when expanded.
+  /// When true, render the source text under every translation card.
   final bool showOriginalAlways;
   /// Card background opacity (0.4–1.0).
   final double overlayOpacity;
-  /// "What is this?" handler. When non-null, each card gains a
-  /// long-press shortcut and an explicit explain button in its expanded
-  /// state. Receives the OCR block (callers typically forward to
-  /// WhatIsThisSheet.show with block.text).
+  /// "What is this?" handler — fired by long-press on a card. Receives
+  /// the OCR block (callers typically forward to WhatIsThisSheet.show
+  /// with block.text). Still useful even though the action sheet from
+  /// [onBlockTap] also offers Explain: long-press is a one-gesture
+  /// shortcut for power users.
   final ValueChanged<OcrBlock>? onExplain;
+  /// Per-block action handler — fired by a clean tap on a card. Receives
+  /// the block index (into [blocks] / [translations]), the block itself,
+  /// and the current translation string so the caller can open an
+  /// action sheet without re-deriving them. Replaces the previous
+  /// tap-to-expand behaviour: the sheet hosts everything the expand
+  /// state used to (full original text, "What is this?" pill) plus the
+  /// new Copy / Retry / Save actions.
+  final void Function(int index, OcrBlock block, String translation)?
+      onBlockTap;
 
   @override
   State<CameraResultOverlay> createState() => _CameraResultOverlayState();
 }
 
 class _CameraResultOverlayState extends State<CameraResultOverlay> {
-  final Set<int> _expanded = <int>{};
   bool _overlayVisible = true;
 
   // User-applied drag deltas, keyed by block index. Persists for the
@@ -220,18 +229,26 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                   showOriginal: widget.showOriginal,
                   showOriginalAlways: widget.showOriginalAlways,
                   overlayOpacity: widget.overlayOpacity,
-                  expanded: _expanded.contains(card.index),
                   // Half-fade the card center to signal "drop here = delete"
                   // when the trash zone is armed for this exact card.
                   fadedForDelete:
                       _draggingIndex == card.index && _overTrash,
-                  onTap: () => setState(() {
-                    if (_expanded.contains(card.index)) {
-                      _expanded.remove(card.index);
-                    } else {
-                      _expanded.add(card.index);
-                    }
-                  }),
+                  // Clean tap → action sheet via parent. Fallback to
+                  // a noop when no handler is wired so existing call
+                  // sites (e.g. unit tests / preview widgets) don't
+                  // require the new callback.
+                  onTap: () {
+                    final handler = widget.onBlockTap;
+                    if (handler == null) return;
+                    final idx = card.index;
+                    handler(
+                      idx,
+                      widget.blocks[idx],
+                      idx < widget.translations.length
+                          ? widget.translations[idx]
+                          : '',
+                    );
+                  },
                   onDragStart: () =>
                       setState(() => _draggingIndex = card.index),
                   onDrag: (delta) {
@@ -256,7 +273,6 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                       setState(() {
                         _dismissed.add(card.index);
                         _dragOffsets.remove(card.index);
-                        _expanded.remove(card.index);
                         _draggingIndex = null;
                         _overTrash = false;
                       });
@@ -581,7 +597,6 @@ class _BlockCard extends StatelessWidget {
     required this.showOriginal,
     required this.showOriginalAlways,
     required this.overlayOpacity,
-    required this.expanded,
     required this.onTap,
     required this.onDrag,
     required this.wasShifted,
@@ -599,7 +614,6 @@ class _BlockCard extends StatelessWidget {
   final bool showOriginal;
   final bool showOriginalAlways;
   final double overlayOpacity;
-  final bool expanded;
   final VoidCallback onTap;
   /// Called with the per-frame drag delta while the user pans on the
   /// card. Parent state aggregates these into a per-block offset.
@@ -718,10 +732,12 @@ class _BlockCard extends StatelessWidget {
                         : FontWeight.normal,
                     height: 1.25,
                   ),
-                  maxLines: expanded ? null : _kCardMaxLines,
-                  overflow: expanded ? null : TextOverflow.ellipsis,
+                  // Always truncated on the card. Full text lives in the
+                  // action sheet that opens on tap.
+                  maxLines: _kCardMaxLines,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if ((expanded || showOriginalAlways) && isTranslated)
+                if (showOriginalAlways && isTranslated)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Container(
@@ -741,51 +757,8 @@ class _BlockCard extends StatelessWidget {
                           fontSize: 11,
                           fontStyle: FontStyle.italic,
                         ),
-                        maxLines: expanded ? 4 : 2,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                // Expanded action: "What is this?" pill. Sits below the
-                // original-text row so the user reads the source first,
-                // then can ask the model to identify it (matches the
-                // mental flow: "this is the original" → "what is it?").
-                if (expanded && onExplain != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: onExplain,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              width: 0.5,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.psychology_outlined,
-                                  size: 11, color: Colors.white),
-                              const SizedBox(width: 4),
-                              Text(
-                                AppLocalizations.of(context)!.cameraWhatIsThis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
                   ),

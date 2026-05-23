@@ -5,8 +5,10 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
+import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Text quality based on OCR confidence.
@@ -78,6 +80,30 @@ class CameraService {
   /// lets the live preview detect CJK, not just Latin.
   final List<TextRecognizer> _streamRecognizers = [];
 
+  // ── Blur detection (live preview) ─────────────────────────────────
+  //
+  // Runs alongside OCR at a higher cadence (250 ms vs 1 s) so the
+  // "Hold steady" overlay reacts within a couple of motion frames
+  // instead of trailing a full OCR cycle behind. Computed on the Y
+  // plane only (luma), downsampled, single-pass running variance —
+  // sub-ms per frame even on mid-range devices.
+  DateTime _lastBlurTime = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _blurInterval = Duration(milliseconds: 250);
+
+  /// Laplacian-variance threshold below which the current preview
+  /// frame is treated as blurry. Calibrated empirically against the
+  /// downsampled (8×) Y-plane. Sharp natural scenes land at 300+,
+  /// hand-held but in-focus typically 100-250, motion blur or
+  /// out-of-focus 20-60. 80 is the rough boundary where ML Kit OCR
+  /// recall starts degrading sharply.
+  static const double _blurThreshold = 80.0;
+
+  /// Last reported blur state — so we only fire the callback on edge
+  /// transitions, not every frame. Starts as `false` (assumed sharp)
+  /// so the overlay doesn't flash on stream startup before we have
+  /// any real frame data.
+  bool _lastBlurState = false;
+
   // Zoom — populated during [init]. Pinch-to-zoom in the camera screen
   // clamps to [minZoom, maxZoom]; current value is tracked so we don't
   // call setZoomLevel for sub-pixel changes.
@@ -132,28 +158,162 @@ class CameraService {
   }
 
   /// Capture a single frame and return the file path.
+  ///
+  /// CameraX on Android 0.11.x doesn't reliably bake an EXIF orientation
+  /// tag into the JPEG when the device is held landscape with no
+  /// orientation lock — the file is written portrait-dimensioned but
+  /// contains landscape pixel content, leaving the sign sideways for
+  /// every downstream consumer (Image.file display, ML Kit OCR, vision
+  /// LLM). We compensate here so callers always see an upright JPEG:
+  ///   1. Read [CameraValue.deviceOrientation] at capture time — the
+  ///      plugin tracks this even when the activity doesn't recreate.
+  ///   2. Rotate the saved JPEG to portrait-up if the device wasn't
+  ///      already in portrait-up, writing the rotated bytes back over
+  ///      the same path so downstream code stays oblivious.
+  /// If the rotation step fails for any reason (decode error, disk
+  /// write, isolate crash), we return the original path — wrong
+  /// orientation is still better than a broken capture.
   Future<String> captureImage() async {
     if (_controller == null || !_controller!.value.isInitialized) {
       throw StateError('Camera not initialised');
     }
     if (_isStreaming) await stopTextStream();
     final xFile = await _controller!.takePicture();
+
+    // Plugin's own deviceOrientation reports portraitUp even when the
+    // device is held landscape (verified on real devices when the
+    // activity has configChanges="orientation"). Fall back to the
+    // native sensor reading first; only use the plugin value if the
+    // native call fails.
+    DeviceOrientation orientation;
+    try {
+      final native = await NativeDeviceOrientationCommunicator()
+          .orientation(useSensor: true);
+      orientation = _mapNativeToFlutter(native) ??
+          _controller!.value.deviceOrientation;
+    } catch (_) {
+      orientation = _controller!.value.deviceOrientation;
+    }
+
+    final degrees = _rotationDegreesForOrientation(orientation);
+    if (degrees != 0) {
+      try {
+        await compute(
+          _rotateJpegFileIsolate,
+          _RotateJpegArgs(path: xFile.path, degrees: degrees),
+        );
+      } catch (e) {
+        // Don't fail the capture — downstream still gets a JPEG, just
+        // possibly sideways. Logged so we can see if this path matters
+        // in field metrics.
+        debugPrint('[CameraService] orientation normalize failed: $e');
+      }
+    }
     return xFile.path;
   }
 
+  /// Maps the device orientation reported by the plugin to the angle
+  /// needed to rotate the captured JPEG into upright portrait. The
+  /// `image` package treats positive angles as clockwise, so the
+  /// chosen signs follow that convention.
+  ///
+  /// Reasoning: when the activity has configChanges="orientation"
+  /// (we do) the camera plugin keeps rotating sensor data INTO
+  /// portrait dimensions even though the user is holding the phone
+  /// landscape — the JPEG ends up portrait-dimensioned with the
+  /// landscape scene rotated 90° sideways inside it. We undo that
+  /// here by applying the OPPOSITE rotation to what the device was
+  /// actually held at:
+  ///   - portraitUp     → 0   (plugin's portrait label matches reality)
+  ///   - portraitDown   → 180 (phone upside down — scene reads inverted)
+  ///   - landscapeLeft  → -90 (home on LEFT, device rotated 90° CW
+  ///                           from portrait → rotate scene 90° CCW
+  ///                           to put it back upright)
+  ///   - landscapeRight → 90  (home on RIGHT, device rotated 90° CCW
+  ///                           → rotate scene 90° CW)
+  int _rotationDegreesForOrientation(DeviceOrientation orientation) {
+    switch (orientation) {
+      case DeviceOrientation.portraitUp:
+        return 0;
+      case DeviceOrientation.portraitDown:
+        return 180;
+      // Empirically verified on a real device: the plugin pre-rotates
+      // sensor pixels assuming portraitUp, so when the device is
+      // actually held landscape we have to UNDO that rotation — and
+      // the undo direction is opposite of the device tilt. landscapeLeft
+      // (device tilted CW from portrait) needs CCW undo; landscapeRight
+      // (device tilted CCW) needs CW undo. With the older +90/-90
+      // pairing the result still landed sideways (sky ended up on the
+      // wrong edge), so we go with the flipped signs here.
+      case DeviceOrientation.landscapeLeft:
+        return -90;
+      case DeviceOrientation.landscapeRight:
+        return 90;
+    }
+  }
+
+  /// Translate the native_device_orientation enum value to Flutter's
+  /// own DeviceOrientation. Returns null on `unknown` so the caller
+  /// can fall back to the plugin's (probably-wrong) value rather than
+  /// silently picking portraitUp.
+  DeviceOrientation? _mapNativeToFlutter(NativeDeviceOrientation n) {
+    switch (n) {
+      case NativeDeviceOrientation.portraitUp:
+        return DeviceOrientation.portraitUp;
+      case NativeDeviceOrientation.portraitDown:
+        return DeviceOrientation.portraitDown;
+      case NativeDeviceOrientation.landscapeLeft:
+        return DeviceOrientation.landscapeLeft;
+      case NativeDeviceOrientation.landscapeRight:
+        return DeviceOrientation.landscapeRight;
+      case NativeDeviceOrientation.unknown:
+        return null;
+    }
+  }
+
   /// Downscale + re-encode a captured JPEG before it's base64'd and POSTed
-  /// to the vision LLM. A full-res capture (several MB) costs more vision
-  /// input tokens and uploads slower over mobile data without reading signs
-  /// or menus any better — vision OCR is fine at ~1600 px. Caps the long
-  /// edge at 1600 px and re-encodes at quality 82 (≈250-450 KB). Runs in an
-  /// isolate (decode/resize is CPU-heavy). Returns the original bytes on any
-  /// failure so capture never breaks because of compression.
-  Future<Uint8List> compressForVision(Uint8List bytes) async {
+  /// to the vision LLM. A full-res capture (several MB) costs more
+  /// vision input tokens and uploads slower over mobile data without
+  /// improving recognition past a point. The long-edge cap is now
+  /// SCENE-AWARE because the tradeoff differs:
+  ///   - document / menu: small body text + descriptions matter
+  ///     (allergens, ingredients, footnotes) → bump to 2048 px so a
+  ///     dense paragraph stays readable
+  ///   - sign: text is huge by design (storefronts, road signs) →
+  ///     1200 px is plenty and saves ~50% bandwidth + tokens
+  ///   - screenshot / auto: balanced default at 1600 px
+  /// Quality stays at 82 (≈ 250-650 KB depending on scene). Runs in an
+  /// isolate (decode/resize is CPU-heavy). Returns the original bytes
+  /// on any failure so capture never breaks because of compression.
+  Future<Uint8List> compressForVision(
+    Uint8List bytes, {
+    String scene = 'auto',
+  }) async {
     try {
-      final out = await compute(_compressForVisionIsolate, bytes);
+      final out = await compute(
+        _compressForVisionIsolate,
+        _CompressArgs(bytes: bytes, maxEdge: _maxEdgeForScene(scene)),
+      );
       return out ?? bytes;
     } catch (_) {
       return bytes;
+    }
+  }
+
+  /// Long-edge cap (px) the vision compression isolate should target
+  /// for a given scene. Exposed as a tiny pure function so tests can
+  /// pin the values per scene without booting the isolate.
+  static int _maxEdgeForScene(String scene) {
+    switch (scene) {
+      case 'document':
+      case 'menu':
+        return 2048;
+      case 'sign':
+        return 1200;
+      case 'screenshot':
+      case 'auto':
+      default:
+        return 1600;
     }
   }
 
@@ -198,12 +358,20 @@ class CameraService {
 
   /// Start live camera stream with periodic OCR.
   /// [onBlocks] is called with detected text blocks every ~800ms.
+  ///
+  /// Optional [onBlurChange] fires when the preview transitions between
+  /// sharp and blurry (edge-triggered, not per-frame) so the camera
+  /// screen can toggle a "Hold steady" overlay. Computed on luma at
+  /// ~4 Hz independently of OCR — the user wants instant feedback when
+  /// they steady the phone, not a 1 s lag.
   Future<void> startTextStream(
-    void Function(List<OcrBlock> blocks) onBlocks,
-  ) async {
+    void Function(List<OcrBlock> blocks) onBlocks, {
+    void Function(bool isBlurry)? onBlurChange,
+  }) async {
     if (_controller == null || _isStreaming) return;
     _isStreaming = true;
     _isProcessing = false;
+    _lastBlurState = false;
 
     // Spin up one recognizer per script so the live preview detects CJK +
     // Latin (and Devanagari), not just Latin. Reused across frames.
@@ -214,9 +382,32 @@ class CameraService {
     }
 
     await _controller!.startImageStream((image) async {
-      if (!_isStreaming || _isProcessing) return;
+      if (!_isStreaming) return;
 
       final now = DateTime.now();
+
+      // Blur check runs faster than OCR and independent of the OCR
+      // _isProcessing gate, so the overlay stays responsive even while
+      // an OCR pass is in flight. Skipping when an earlier blur check
+      // is itself in-flight would just drop frames here; the math is
+      // cheap enough to run inline.
+      if (onBlurChange != null &&
+          now.difference(_lastBlurTime) >= _blurInterval) {
+        _lastBlurTime = now;
+        try {
+          final variance = _computeBlurVariance(image);
+          final isBlurry = variance < _blurThreshold;
+          if (isBlurry != _lastBlurState) {
+            _lastBlurState = isBlurry;
+            onBlurChange(isBlurry);
+          }
+        } catch (_) {
+          // Frame format edge cases (corrupt plane / stride mismatch)
+          // shouldn't kill the stream.
+        }
+      }
+
+      if (_isProcessing) return;
       if (now.difference(_lastOcrTime) < _ocrInterval) return;
 
       _isProcessing = true;
@@ -267,6 +458,65 @@ class CameraService {
       } catch (_) {}
     }
     _streamRecognizers.clear();
+  }
+
+  /// Variance of a Laplacian applied to the downsampled luma plane —
+  /// the standard "is this image blurry?" metric. Higher = sharper.
+  ///
+  /// Design notes:
+  ///   - **Y plane only.** Luma is where text edges live; chroma adds
+  ///     noise without signal. Both iOS (BGRA) and Android (YUV) give
+  ///     the Y plane in `image.planes[0]`.
+  ///   - **8× downsample.** A 1280×720 frame would be 920k pixels; we
+  ///     stride by 8 in each axis (≈14k samples). Sub-ms on mid-range
+  ///     phones, no perceptible accuracy loss for the
+  ///     sharp-vs-blurry question.
+  ///   - **Single-pass variance** using sum and sum-of-squares. Avoids
+  ///     allocating a list of laplacian values per frame.
+  ///   - **iOS quirk.** On iOS the Y plane is actually the full BGRA
+  ///     buffer, so we approximate luma by reading the green channel
+  ///     (best single-channel proxy for luminance). On Android the
+  ///     plane really is Y.
+  double _computeBlurVariance(CameraImage image) {
+    final plane = image.planes[0];
+    final bytes = plane.bytes;
+    final width = image.width;
+    final height = image.height;
+    final bytesPerRow = plane.bytesPerRow;
+
+    // On iOS the single plane is BGRA8888 (4 bytes per pixel); read the
+    // green channel as luma. On Android it's 1 byte per pixel luma.
+    final pixelStride = Platform.isIOS ? 4 : 1;
+    final pixelOffset = Platform.isIOS ? 1 : 0; // G in BGRA
+
+    const stride = 8;
+    if (width < stride * 3 || height < stride * 3) return 0;
+
+    int sampleAt(int x, int y) =>
+        bytes[y * bytesPerRow + x * pixelStride + pixelOffset];
+
+    var sum = 0.0;
+    var sumSq = 0.0;
+    var count = 0;
+    final maxX = width - stride;
+    final maxY = height - stride;
+    for (var y = stride; y < maxY; y += stride) {
+      for (var x = stride; x < maxX; x += stride) {
+        // 4-neighbour Laplacian kernel: ∇²f ≈ f(↑)+f(↓)+f(←)+f(→) − 4·f(·)
+        // Range is [-1020, 1020] for 8-bit luma; fits in a Dart int.
+        final l = sampleAt(x, y - stride) +
+            sampleAt(x, y + stride) +
+            sampleAt(x - stride, y) +
+            sampleAt(x + stride, y) -
+            4 * sampleAt(x, y);
+        sum += l;
+        sumSq += l * l;
+        count++;
+      }
+    }
+    if (count == 0) return 0;
+    final mean = sum / count;
+    return sumSq / count - mean * mean;
   }
 
   /// Convert [CameraImage] to [InputImage] for ML Kit.
@@ -1306,18 +1556,22 @@ bool _runPreprocessIsolate(_PreprocessArgs args) {
   }
 }
 
-/// Long-edge cap for the vision upload. 1600 px keeps small menu text legible
-/// while bounding payload + vision token cost. (OCR-mode captures don't go
-/// through here — they OCR on-device and only the text is uploaded.)
-const int _visionMaxEdge = 1600;
+/// Isolate args for [_compressForVisionIsolate]. The max edge is now
+/// per-call (scene-aware) instead of a fixed constant — see the
+/// caller's `_maxEdgeForScene` switch for the per-scene values.
+class _CompressArgs {
+  _CompressArgs({required this.bytes, required this.maxEdge});
+  final Uint8List bytes;
+  final int maxEdge;
+}
 
 /// Isolate entry point: decode the captured JPEG, bake EXIF orientation into
-/// pixels, downscale so the long edge is ≤ [_visionMaxEdge], re-encode JPEG
+/// pixels, downscale so the long edge is ≤ [args.maxEdge], re-encode JPEG
 /// at quality 82. Returns null on failure so the caller can fall back to the
 /// original bytes.
-Uint8List? _compressForVisionIsolate(Uint8List bytes) {
+Uint8List? _compressForVisionIsolate(_CompressArgs args) {
   try {
-    final decoded = img.decodeImage(bytes);
+    final decoded = img.decodeImage(args.bytes);
     if (decoded == null) return null;
 
     // Phone captures can carry an EXIF orientation tag instead of rotated
@@ -1327,18 +1581,65 @@ Uint8List? _compressForVisionIsolate(Uint8List bytes) {
 
     final maxSide =
         working.width > working.height ? working.width : working.height;
-    if (maxSide > _visionMaxEdge) {
-      final scale = _visionMaxEdge / maxSide;
+    if (maxSide > args.maxEdge) {
+      final scale = args.maxEdge / maxSide;
       working = img.copyResize(
         working,
         width: (working.width * scale).round(),
         height: (working.height * scale).round(),
-        interpolation: img.Interpolation.linear,
+        // Area-averaging beats bilinear for DOWNSCALING text: it averages
+        // every source pixel that maps into a target pixel, so thin glyph
+        // strokes survive instead of aliasing into noise. Bilinear samples
+        // only 4 neighbours and blurs small characters, which the vision
+        // OCR then misreads — letting us keep the same legibility at a
+        // smaller (cheaper) resolution.
+        interpolation: img.Interpolation.average,
       );
     }
 
     return img.encodeJpg(working, quality: 82);
   } catch (_) {
     return null;
+  }
+}
+
+/// Isolate args for [_rotateJpegFileIsolate]. A plain class instead of a
+/// record because compute() requires top-level message types that
+/// survive the isolate boundary, and Dart records currently can't
+/// declare a public-name top-level type alias the way classes can.
+class _RotateJpegArgs {
+  _RotateJpegArgs({required this.path, required this.degrees});
+  final String path;
+  final int degrees;
+}
+
+/// Isolate entry: decode the JPEG at [args.path], rotate by
+/// [args.degrees], re-encode at quality 92 (preserves OCR detail), and
+/// write the rotated bytes back over the original path. Returns true on
+/// success, false on any failure so the caller can decide whether to
+/// surface or swallow. We don't throw because the camera capture must
+/// not break just because orientation normalization couldn't run.
+///
+/// Quality 92: the file feeds BOTH ML Kit OCR (which is sensitive to
+/// JPEG artifacts at low quality on small characters) AND the result
+/// overlay's [Image.file] preview. The vision path re-encodes at q82
+/// downstream after downscaling, so re-encoding here at 92 doesn't
+/// fight that — the second pass operates on already-rotated pixels.
+bool _rotateJpegFileIsolate(_RotateJpegArgs args) {
+  try {
+    final file = File(args.path);
+    final bytes = file.readAsBytesSync();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return false;
+    // bakeOrientation first in case EXIF IS set (rare on the failing
+    // captures but possible on the working ones); applying it before
+    // our manual rotation keeps the two compatible.
+    final baked = img.bakeOrientation(decoded);
+    final rotated = img.copyRotate(baked, angle: args.degrees);
+    final out = img.encodeJpg(rotated, quality: 92);
+    file.writeAsBytesSync(out, flush: true);
+    return true;
+  } catch (_) {
+    return false;
   }
 }

@@ -10,12 +10,14 @@ import '../../../shared/theme/app_theme.dart';
 import 'drag_handle.dart';
 
 /// Format a plan's monthly price as a "$X" label. Trims trailing zeros so
-/// `4.0` → `$4` and `3.5` → `$3.5`. The localized "/month" suffix is left
-/// to the ARB template that consumes this string (e.g. nudgePriceMobile).
-String _formatDollar(num? amount, num fallback) {
-  final value = amount ?? fallback;
+/// `4.0` → `$4` and `3.5` → `$3.5`. Returns `…` while the price is null
+/// (API in flight or plan missing) — no hardcoded fallback so the label
+/// can never silently lie after a server-side price change. The localized
+/// "/month" suffix is left to the ARB template consuming this string.
+String _formatDollar(num? amount) {
+  if (amount == null) return '…';
   final str =
-      value % 1 == 0 ? value.toInt().toString() : value.toString();
+      amount % 1 == 0 ? amount.toInt().toString() : amount.toString();
   return '\$$str';
 }
 
@@ -120,18 +122,15 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
     final l = AppLocalizations.of(context)!;
 
     // Pull live prices from the /plans API so the labels stay in sync with
-    // what the server actually charges. Falls back to the historical defaults
-    // when the API hasn't resolved yet (mobile = $4, pro = $6); the templates
+    // what the server actually charges. `_formatDollar` renders `…` while
+    // the API is in flight or the plan is missing — no hardcoded fallback
+    // (previously $4 / $6 silently lied after a price change). The templates
     // wrap whatever we pass with the locale's "/month" suffix.
     final plansList = ref.watch(plansProvider).valueOrNull;
-    final mobilePrice = _formatDollar(
-      planByKey(plansList, 'mobile')?.priceMonthly,
-      4,
-    );
-    final proPrice = _formatDollar(
-      planByKey(plansList, 'pro')?.priceMonthly,
-      6,
-    );
+    final mobilePrice =
+        _formatDollar(planByKey(plansList, 'mobile')?.priceMonthly);
+    final proPrice =
+        _formatDollar(planByKey(plansList, 'pro')?.priceMonthly);
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -186,24 +185,30 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
               color: AppColors.amber,
               onTap: () => _checkout('pro'),
             ),
-            const SizedBox(height: AppSpacing.md),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton(
-                onPressed: _isLoading ? null : _activateTrial,
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primary,
-                        ),
-                      )
-                    : Text(l.upgradeTryFreeDays),
+            // Trial CTA — only render when the server returns a `trial`
+            // plan in /plans for this platform. Trial is desktop-only by
+            // business rule, so on mobile this whole button hides
+            // automatically (catalog-driven, no client platform check).
+            if (planByKey(plansList, 'trial') != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : _activateTrial,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        )
+                      : Text(l.upgradeTryFreeDays),
+                ),
               ),
-            ),
+            ],
           ],
 
           const SizedBox(height: AppSpacing.md),

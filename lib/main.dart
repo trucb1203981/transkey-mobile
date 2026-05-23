@@ -180,6 +180,31 @@ void _wireBubbleChannel() {
       }
       return null;
     }
+    // NOTE: legacy `showCameraUpsell` handler was removed — the Camera
+    // bubble path now routes through `showFeatureUpsell("Camera")` like
+    // every other gated feature, keeping a single navigation flow.
+    if (call.method == 'showFeatureUpsell') {
+      // Generic upsell entry point — bubble passes the human-readable
+      // feature name (e.g. "Lens", "Summarize") for tracking. Route to
+      // the full /upgrade SCREEN (not a sheet) so the user lands on a
+      // dedicated upgrade page with full plan comparison; a sheet over
+      // whatever screen was last visible (often Settings) reads as
+      // "the bubble dropped me on Settings — bug?" rather than a clear
+      // upgrade prompt.
+      try {
+        final args = call.arguments as Map?;
+        final featureName = (args?['featureName'] as String?) ?? 'Feature';
+        _rootContainer.read(trackingServiceProvider).event(
+              'bubble_feature_upsell',
+              properties: {'feature': featureName},
+            );
+        final router = _rootContainer.read(routerProvider);
+        router.push('/upgrade');
+      } catch (error) {
+        debugPrint('[bubbleChannel] showFeatureUpsell failed: $error');
+      }
+      return null;
+    }
     if (call.method == 'openExplain') {
       // Bubble Lens overlay long-press hands us the source-language text of
       // the tapped region. Route to a thin /explain screen that opens the

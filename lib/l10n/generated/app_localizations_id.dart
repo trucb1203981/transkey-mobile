@@ -804,14 +804,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get upgradeFeatureColumn => 'Fitur';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · \$4/mo';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · \$6/mo';
-
-  @override
   String get upgradeFooterHint =>
       '📱 Mobile: paling hemat jika Anda hanya pakai ponsel\n💻 Pro: bekerja di ponsel maupun desktop';
 
@@ -1231,6 +1223,62 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraLowQuality => 'Kualitas rendah';
 
   @override
+  String get cameraConfidenceReliable => 'Tepercaya';
+
+  @override
+  String get cameraConfidenceCaution => 'Periksa lagi';
+
+  @override
+  String get cameraConfidenceUnreliable => 'Tidak tepercaya';
+
+  @override
+  String get cameraHoldSteady => 'Tahan stabil';
+
+  @override
+  String get cameraCopyTranslation => 'Salin terjemahan';
+
+  @override
+  String get cameraCopyOriginal => 'Salin teks asli';
+
+  @override
+  String get cameraRetryBlock => 'Terjemahkan lagi';
+
+  @override
+  String get cameraSaveBlock => 'Simpan ke buku frasa';
+
+  @override
+  String get cameraSavingPhrasebook => 'Menyimpan…';
+
+  @override
+  String get cameraBlockRetrying => 'Menerjemahkan lagi…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return 'Menerjemahkan $current dari $total…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => 'Tambahkan catatan (opsional)';
+
+  @override
+  String get cameraSaveNoteHint => 'mis. dekat hotel, sangat pedas';
+
+  @override
+  String get cameraSaveSkipNote => 'Lewati';
+
+  @override
+  String get cameraCopyLineHeader => 'SALIN BARIS';
+
+  @override
+  String get cameraShare => 'Bagikan';
+
+  @override
+  String get cameraShareSubject => 'Diterjemahkan oleh TransKey';
+
+  @override
+  String get cameraShareFailed => 'Gagal membagikan. Coba lagi.';
+
+  @override
   String get cameraTranslating => 'Menerjemahkan...';
 
   @override
@@ -1293,6 +1341,14 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraSceneScreenshot => 'Tangkapan layar';
 
   @override
+  String get cameraSceneOther => 'Lainnya';
+
+  @override
+  String cameraDetected(String scene) {
+    return 'Terdeteksi: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => 'Apa ini?';
 
   @override
@@ -1309,6 +1365,10 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => 'Tidak ada penjelasan.';
+
+  @override
+  String get cameraExplainStaleBadge =>
+      'Disimpan offline — mungkin kedaluwarsa';
 
   @override
   String get cameraExplainError =>

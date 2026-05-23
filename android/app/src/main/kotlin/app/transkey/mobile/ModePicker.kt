@@ -20,7 +20,29 @@ import app.transkey.mobile.BubbleService.Companion.ACTION_READ_CLIPBOARD
 import app.transkey.mobile.BubbleService.Companion.ALL_MODES
 import app.transkey.mobile.BubbleService.Companion.EXTRA_MODE
 import app.transkey.mobile.BubbleService.Companion.LANG_LABELS
+import app.transkey.mobile.BubbleService.Companion.MODE_EXPLAIN
+import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
+import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
+import app.transkey.mobile.BubbleService.Companion.MODE_SUMMARIZE
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
+
+/**
+ * Plan-gate lookup for the bubble's feature entries. Each mode that
+ * costs money on at least one tier has a SharedPreferences key mirrored
+ * by `featuresProvider.dart`. `MODE_TRANSLATE` is always free → null.
+ * The display name is what we pass to `openFeatureUpsell` so the
+ * upgrade-nudge sheet's headline matches the picker label the user
+ * just tapped.
+ */
+private data class ModeGate(val prefsKey: String, val displayName: String)
+
+private fun modeGateFor(mode: String): ModeGate? = when (mode) {
+    MODE_SUMMARIZE -> ModeGate("tk_feature_summarize", "Summarize")
+    MODE_EXPLAIN   -> ModeGate("tk_feature_explain",   "Explain")
+    MODE_REFINE    -> ModeGate("tk_feature_refine",    "Refine")
+    MODE_REPLY     -> ModeGate("tk_feature_reply",     "Reply")
+    else           -> null  // MODE_TRANSLATE is always available
+}
 
 /**
  * Bubble's primary action menu — shown when the user taps the floating
@@ -145,7 +167,18 @@ internal fun BubbleService.showModePicker() {
         val isPrimary = mode == MODE_TRANSLATE
         val primaryBg = "#7C6EFA"
         val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
-        val fgColor = if (isPrimary) Color.WHITE else accent
+        // Plan gate per mode: TRANSLATE is always free; the other 4
+        // (SUMMARIZE / EXPLAIN / REFINE / REPLY) are mirrored from
+        // /features into SharedPreferences. Locked → dimmed column +
+        // muted icon/label + tap opens the upgrade-nudge sheet instead
+        // of running the action (server still 403s as a backstop).
+        val gate = modeGateFor(mode)
+        val isLocked = gate != null && !readFeatureEnabled(gate.prefsKey)
+        val fgColor = when {
+            isPrimary -> Color.WHITE
+            isLocked  -> mutedCol
+            else      -> accent
+        }
 
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -154,22 +187,47 @@ internal fun BubbleService.showModePicker() {
             background = GradientDrawable().apply {
                 setColor(Color.parseColor(if (isPrimary) primaryBg else subduedBg))
                 cornerRadius = 14 * dp
+                if (isLocked) alpha = 160  // ~63% opacity so the lock state reads at a glance
             }
             isClickable = true
             isFocusable = true
             setOnClickListener {
                 hideModePicker()
-                onTranslateModePicked(mode)
+                if (isLocked && gate != null) {
+                    openFeatureUpsell(gate.displayName)
+                } else {
+                    onTranslateModePicked(mode)
+                }
             }
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 .apply { marginEnd = if (index < ALL_MODES.size - 1) (6 * dp).toInt() else 0 }
         }
-        // Icon on top
-        column.addView(ImageView(this).apply {
+        // Icon on top — overlay a small 🔒 emoji-as-TextView on the
+        // bottom-right when locked so the row's identity (mode icon)
+        // stays visible alongside the lock state.
+        val iconHolder = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams((20 * dp).toInt(), (20 * dp).toInt())
+        }
+        iconHolder.addView(ImageView(this).apply {
             setImageResource(modeIcon(mode))
             setColorFilter(fgColor)
-            layoutParams = LinearLayout.LayoutParams((18 * dp).toInt(), (18 * dp).toInt())
+            layoutParams = FrameLayout.LayoutParams(
+                (18 * dp).toInt(), (18 * dp).toInt(), Gravity.CENTER,
+            )
         })
+        if (isLocked) {
+            iconHolder.addView(TextView(this).apply {
+                text = "🔒"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                gravity = Gravity.CENTER
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM or Gravity.END,
+                )
+            })
+        }
+        column.addView(iconHolder)
         // Label below — tiny enough to fit one line for all known
         // locales (Vietnamese "Tinh chỉnh" being the longest)
         column.addView(TextView(this).apply {
@@ -237,12 +295,25 @@ internal fun BubbleService.showModePicker() {
         }
     })
 
-    // "Scan screen (OCR)" — full-screen Lens flow. Captures the
-    // whole frame, OCRs everything that passes the content heuristic,
-    // and renders translated blocks at their original positions.
+    // "Scan screen (OCR)" + "Translate selected area" — both share the
+    // Lens MediaProjection pipeline (region OCR + translate-batch), so
+    // they're plan-gated by the same `lens` flag. When locked: prefix
+    // with 🔒, muted color, tap opens the upgrade-nudge sheet labelled
+    // "Lens" instead of starting the capture flow.
+    val lensEnabled = readFeatureEnabled("tk_feature_lens")
+    val lensColor = if (lensEnabled) accent else mutedCol
+
+    // Icon is 📱 (phone) — the action captures THIS phone's screen,
+    // not a desktop monitor (🖥️ misread as PC). Pairs visually with
+    // 📸 below so phone-screen vs physical-camera capture stays
+    // distinct at a glance.
     card.addView(TextView(this).apply {
-        text = "📷  ${localized(R.string.bubble_scan_screen)}"
-        setTextColor(accent)
+        text = if (lensEnabled) {
+            "📱  ${localized(R.string.bubble_scan_screen)}"
+        } else {
+            "🔒📱  ${localized(R.string.bubble_scan_screen)}"
+        }
+        setTextColor(lensColor)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER
@@ -251,7 +322,8 @@ internal fun BubbleService.showModePicker() {
         isFocusable = true
         setOnClickListener {
             hideModePicker()
-            showScanModeChooser(isRegion = false)
+            if (lensEnabled) showScanModeChooser(isRegion = false)
+            else openFeatureUpsell("Lens")
         }
     })
 
@@ -260,9 +332,17 @@ internal fun BubbleService.showModePicker() {
     // out the rest of the screen (chat header, ads, app chrome).
     // Cheaper to translate AND avoids translating things the user
     // doesn't care about.
+    //
+    // Icon was 🎯 (target) — read as "aim" or "goal", not "crop".
+    // Swapped to ✂️ (scissors) so the action self-documents as
+    // "cut out a region".
     card.addView(TextView(this).apply {
-        text = "🎯  ${localized(R.string.bubble_lens_region)}"
-        setTextColor(accent)
+        text = if (lensEnabled) {
+            "✂️  ${localized(R.string.bubble_lens_region)}"
+        } else {
+            "🔒✂️  ${localized(R.string.bubble_lens_region)}"
+        }
+        setTextColor(lensColor)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER
@@ -271,15 +351,31 @@ internal fun BubbleService.showModePicker() {
         isFocusable = true
         setOnClickListener {
             hideModePicker()
-            showScanModeChooser(isRegion = true)
+            if (lensEnabled) showScanModeChooser(isRegion = true)
+            else openFeatureUpsell("Lens")
         }
     })
 
     // "Camera translate" — opens the Flutter camera screen for
     // snapshot-mode OCR on live camera feed (menus, signs, etc.).
+    // Plan gate: read the mirrored `flutter.tk_feature_camera` bool
+    // that featuresProvider persists on every /features fetch. When
+    // false (free plan / camera disabled), render the entry with a
+    // lock icon + dimmed colour + a tap that opens the Flutter
+    // upgrade nudge sheet instead of the camera screen. Server
+    // would still 403 on the API call, but the lock state surfaces
+    // the gate BEFORE the user wastes a tap.
+    val cameraEnabled = readCameraFeatureEnabled()
     card.addView(TextView(this).apply {
-        text = "📷  ${localized(R.string.bubble_camera)}"
-        setTextColor(accent)
+        text = if (cameraEnabled) {
+            "📸  ${localized(R.string.bubble_camera)}"
+        } else {
+            // Keep the camera glyph even when locked so the row's
+            // identity is unambiguous; lock prefix communicates the
+            // "needs upgrade" state.
+            "🔒📸  ${localized(R.string.bubble_camera)}"
+        }
+        setTextColor(if (cameraEnabled) accent else mutedCol)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER
@@ -288,7 +384,11 @@ internal fun BubbleService.showModePicker() {
         isFocusable = true
         setOnClickListener {
             hideModePicker()
-            openCameraScreen()
+            if (cameraEnabled) {
+                openCameraScreen()
+            } else {
+                openCameraUpsell()
+            }
         }
     })
 

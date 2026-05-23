@@ -778,14 +778,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get upgradeFeatureColumn => '功能';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · \$4/月';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · \$6/月';
-
-  @override
   String get upgradeFooterHint => '📱 Mobile:只用手机的最佳性价比\n💻 Pro:手机和桌面通用';
 
   @override
@@ -1169,6 +1161,62 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraLowQuality => '质量低';
 
   @override
+  String get cameraConfidenceReliable => '可靠';
+
+  @override
+  String get cameraConfidenceCaution => '需核对';
+
+  @override
+  String get cameraConfidenceUnreliable => '不可靠';
+
+  @override
+  String get cameraHoldSteady => '保持稳定';
+
+  @override
+  String get cameraCopyTranslation => '复制译文';
+
+  @override
+  String get cameraCopyOriginal => '复制原文';
+
+  @override
+  String get cameraRetryBlock => '重新翻译';
+
+  @override
+  String get cameraSaveBlock => '保存到短语集';
+
+  @override
+  String get cameraSavingPhrasebook => '保存中…';
+
+  @override
+  String get cameraBlockRetrying => '正在重新翻译…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return '正在翻译第 $current/$total 张…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => '添加备注（可选）';
+
+  @override
+  String get cameraSaveNoteHint => '例如：酒店附近、很辣';
+
+  @override
+  String get cameraSaveSkipNote => '跳过';
+
+  @override
+  String get cameraCopyLineHeader => '按行复制';
+
+  @override
+  String get cameraShare => '分享';
+
+  @override
+  String get cameraShareSubject => '由 TransKey 翻译';
+
+  @override
+  String get cameraShareFailed => '分享失败，请重试。';
+
+  @override
   String get cameraTranslating => '翻译中...';
 
   @override
@@ -1227,6 +1275,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraSceneScreenshot => '屏幕截图';
 
   @override
+  String get cameraSceneOther => '其他';
+
+  @override
+  String cameraDetected(String scene) {
+    return '已识别: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => '这是什么?';
 
   @override
@@ -1243,6 +1299,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => '无可用解释。';
+
+  @override
+  String get cameraExplainStaleBadge => '已离线保存 — 可能已过时';
 
   @override
   String get cameraExplainError => '无法获取解释。请重试。';

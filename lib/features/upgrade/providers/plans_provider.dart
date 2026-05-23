@@ -2,6 +2,63 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/dio_client.dart';
+import '../../../core/locale/locale_provider.dart';
+
+/// Pick a localized string out of a server JSONB i18n map. Server stores
+/// `{ "vi": "...", "en": "...", ... }`; client picks the APP locale the
+/// user chose in settings, then falls back to English, then to the first
+/// non-empty value. Returns null if [raw] is neither a String nor a
+/// usable Map.
+///
+/// IMPORTANT: pass the APP locale (from `localeProvider`), NOT the
+/// device locale — they diverge whenever the user picks an app language
+/// different from the OS one. Same fallback chain as the admin's
+/// `pickLocalized()` helper — keeps every consumer (admin Vue, mobile
+/// Dart, desktop Electron) in sync.
+String? _pickLocalized(dynamic raw, String locale) {
+  if (raw is String) return raw.isEmpty ? null : raw;
+  if (raw is Map) {
+    for (final key in [locale, 'en']) {
+      final v = raw[key];
+      if (v is String && v.isNotEmpty) return v;
+    }
+    for (final v in raw.values) {
+      if (v is String && v.isNotEmpty) return v;
+    }
+  }
+  return null;
+}
+
+/// Parse the server's `highlights` field. Two historical shapes:
+/// (1) `List<String>` — legacy, plain bullet text.
+/// (2) `Map<String, List<{ "text": "...", "type": "item|item_off" }>>` —
+///     current shape, localized + includes off-state for "X" bullets.
+/// We collapse (2) by picking the locale's array and extracting `text`
+/// (consumers don't yet render the on/off distinction).
+List<String> _parseHighlights(dynamic raw, String locale) {
+  if (raw is List) {
+    return raw.map((e) => e?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+  }
+  if (raw is Map) {
+    dynamic list;
+    for (final key in [locale, 'en']) {
+      final v = raw[key];
+      if (v is List) { list = v; break; }
+    }
+    list ??= raw.values.firstWhere((v) => v is List, orElse: () => const []);
+    if (list is List) {
+      return list
+          .map((e) {
+            if (e is String) return e;
+            if (e is Map) return (e['text'] as String?) ?? '';
+            return '';
+          })
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+  }
+  return const <String>[];
+}
 
 /// One row from the server's /plans table — public, marketing-facing.
 /// Prices are stored on the server in major currency units (e.g. dollars)
@@ -40,12 +97,7 @@ class PlanInfo {
   // Feature flag map: { 'reply' → true, 'summarize' → false, ... }
   final Map<String, bool> features;
 
-  factory PlanInfo.fromMap(Map<String, dynamic> map) {
-    final rawHighlights = map['highlights'];
-    final highlights = switch (rawHighlights) {
-      List<dynamic> list => list.map((e) => e.toString()).toList(),
-      _ => const <String>[],
-    };
+  factory PlanInfo.fromMap(Map<String, dynamic> map, String locale) {
     final rawFeatures = map['features'];
     final features = switch (rawFeatures) {
       Map<String, dynamic> m => m.map(
@@ -53,18 +105,28 @@ class PlanInfo {
         ),
       _ => const <String, bool>{},
     };
+    // Server returns NUMERIC(10,2) prices either as a JSON number OR a
+    // string ("6.00"). Tolerate both — `num.tryParse` returns null on
+    // garbage so a malformed value renders as "missing" instead of
+    // crashing the whole fetch.
+    num? parsePrice(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v;
+      if (v is String) return num.tryParse(v);
+      return null;
+    }
     return PlanInfo(
       plan: map['plan'] as String,
-      displayName: (map['display_name'] as String?) ?? (map['plan'] as String),
+      displayName: _pickLocalized(map['display_name'], locale) ?? (map['plan'] as String),
       sortOrder: (map['sort_order'] as num?)?.toInt() ?? 0,
       reqLimit: (map['req_limit'] as num?)?.toInt(),
       charLimit: (map['char_limit'] as num?)?.toInt(),
-      description: map['description'] as String?,
-      priceMonthly: map['price_monthly'] as num?,
-      price3Month: map['price_3month'] as num?,
-      price6Month: map['price_6month'] as num?,
-      priceAnnual: map['price_annual'] as num?,
-      highlights: highlights,
+      description: _pickLocalized(map['description'], locale),
+      priceMonthly: parsePrice(map['price_monthly']),
+      price3Month: parsePrice(map['price_3month']),
+      price6Month: parsePrice(map['price_6month']),
+      priceAnnual: parsePrice(map['price_annual']),
+      highlights: _parseHighlights(map['highlights'], locale),
       glossaryLimit: (map['glossary_limit'] as num?)?.toInt(),
       features: features,
     );
@@ -74,10 +136,17 @@ class PlanInfo {
 class PlansNotifier extends AsyncNotifier<List<PlanInfo>> {
   @override
   Future<List<PlanInfo>> build() async {
-    return _fetch();
+    // ref.watch on localeProvider so the plans list auto-refetches with
+    // localized strings whenever the user changes app language in
+    // Settings. The server is the source of truth for display_name /
+    // description / highlights (all stored as JSONB i18n maps), so we
+    // re-pick on every locale change instead of caching one snapshot.
+    final localeAsync = ref.watch(localeProvider);
+    final locale = localeAsync.valueOrNull?.languageCode ?? 'en';
+    return _fetch(locale);
   }
 
-  Future<List<PlanInfo>> _fetch() async {
+  Future<List<PlanInfo>> _fetch(String locale) async {
     try {
       final api = ref.read(apiClientProvider);
       // X-Platform header (set by the API client) filters mobile-only plans
@@ -85,7 +154,7 @@ class PlansNotifier extends AsyncNotifier<List<PlanInfo>> {
       final response = await api.dio.get('/plans');
       final list = response.data as List<dynamic>;
       return list
-          .map((e) => PlanInfo.fromMap(e as Map<String, dynamic>))
+          .map((e) => PlanInfo.fromMap(e as Map<String, dynamic>, locale))
           .toList();
     } catch (e) {
       debugPrint('[Plans] Fetch failed: $e');
@@ -96,7 +165,9 @@ class PlansNotifier extends AsyncNotifier<List<PlanInfo>> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     try {
-      state = AsyncData(await _fetch());
+      final locale =
+          ref.read(localeProvider).valueOrNull?.languageCode ?? 'en';
+      state = AsyncData(await _fetch(locale));
     } catch (e, st) {
       state = AsyncError(e, st);
     }

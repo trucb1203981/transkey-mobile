@@ -805,14 +805,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get upgradeFeatureColumn => 'الميزة';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · \$4/mo';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · \$6/mo';
-
-  @override
   String get upgradeFooterHint =>
       '📱 Mobile: الأفضل من حيث القيمة إذا كنت تستخدم الهاتف فقط\n💻 Pro: يعمل على الهاتف وسطح المكتب';
 
@@ -1226,6 +1218,62 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraLowQuality => 'جودة منخفضة';
 
   @override
+  String get cameraConfidenceReliable => 'موثوق';
+
+  @override
+  String get cameraConfidenceCaution => 'تحقّق';
+
+  @override
+  String get cameraConfidenceUnreliable => 'غير موثوق';
+
+  @override
+  String get cameraHoldSteady => 'ثبّت الكاميرا';
+
+  @override
+  String get cameraCopyTranslation => 'نسخ الترجمة';
+
+  @override
+  String get cameraCopyOriginal => 'نسخ النص الأصلي';
+
+  @override
+  String get cameraRetryBlock => 'ترجم مرة أخرى';
+
+  @override
+  String get cameraSaveBlock => 'حفظ في الدليل';
+
+  @override
+  String get cameraSavingPhrasebook => 'جارٍ الحفظ…';
+
+  @override
+  String get cameraBlockRetrying => 'جارٍ الترجمة مرة أخرى…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return 'ترجمة $current من $total…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => 'أضف ملاحظة (اختياري)';
+
+  @override
+  String get cameraSaveNoteHint => 'مثلاً: قرب الفندق، حار جداً';
+
+  @override
+  String get cameraSaveSkipNote => 'تخطّي';
+
+  @override
+  String get cameraCopyLineHeader => 'نسخ السطر';
+
+  @override
+  String get cameraShare => 'مشاركة';
+
+  @override
+  String get cameraShareSubject => 'ترجمت بواسطة TransKey';
+
+  @override
+  String get cameraShareFailed => 'تعذّرت المشاركة. حاول مرة أخرى.';
+
+  @override
   String get cameraTranslating => 'جاري الترجمة...';
 
   @override
@@ -1287,6 +1335,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraSceneScreenshot => 'لقطة شاشة';
 
   @override
+  String get cameraSceneOther => 'أخرى';
+
+  @override
+  String cameraDetected(String scene) {
+    return 'تم اكتشاف: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => 'ما هذا؟';
 
   @override
@@ -1303,6 +1359,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => 'لا يوجد شرح متاح.';
+
+  @override
+  String get cameraExplainStaleBadge => 'محفوظ دون اتصال — قد يكون قديماً';
 
   @override
   String get cameraExplainError => 'تعذر جلب الشرح. حاول مرة أخرى.';

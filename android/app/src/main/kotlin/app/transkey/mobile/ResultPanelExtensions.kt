@@ -387,6 +387,19 @@ internal fun BubbleService.showResultPanel(
                 isFocusable = true
                 setOnClickListener {
                     if (isTranslating) return@setOnClickListener
+                    // Translate tab is the panel's primary entry — users
+                    // expect tapping it to translate THE LATEST CLIPBOARD,
+                    // not re-translate the previous source (the "I copied
+                    // new text but still see the old translation" bug).
+                    // Route through ShareActivity like the bubble menu so a
+                    // fresh primaryClip read happens with focus. The other
+                    // tabs (Reply / Summarize / Explain / Refine) keep the
+                    // "switch mode on the same text" behaviour — that's the
+                    // useful follow-up flow after a translation.
+                    if (mode == MODE_TRANSLATE) {
+                        onTranslateModePicked(mode)
+                        return@setOnClickListener
+                    }
                     val src = currentSourceText ?: return@setOnClickListener
                     handleTranslateRequest(src, mode)
                 }

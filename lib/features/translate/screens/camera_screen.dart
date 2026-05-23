@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -19,6 +23,8 @@ import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../translate/providers/camera_settings_provider.dart';
 import '../../translate/providers/features_provider.dart';
 import '../../translate/providers/language_settings_provider.dart';
+import '../services/translation_cache.dart';
+import '../widgets/block_action_sheet.dart';
 import '../widgets/camera_live_overlay.dart';
 import '../widgets/camera_result_overlay.dart';
 import '../widgets/camera_settings_sheet.dart';
@@ -48,6 +54,43 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   List<String> _translations = [];
   String? _error;
 
+  /// Server's self-assessed quality for the current vision capture
+  /// ("high" | "medium" | "low"), or null when the result came from ML
+  /// Kit OCR (which has per-block confidence already surfaced on each
+  /// card). The result screen renders a top-left chip when non-null so
+  /// the user always knows whether to trust the AI read — critical
+  /// for the sign scene (a misread STOP sign isn't a small UX issue).
+  String? _visionConfidence;
+
+  /// Server's guess at what the image actually is ("menu" / "sign" /
+  /// "document" / "screenshot" / "other"), independent of the scene the
+  /// user pre-selected. Surfaced as a small "Detected: …" chip below
+  /// the confidence chip — but only when the user-selected scene is
+  /// `auto`, otherwise the chip is redundant noise (they already know
+  /// what they picked).
+  String? _detectedScene;
+
+  /// Server-detected source language for the current capture (ISO 639-1
+  /// 2-letter code, lowercase). Vision path: the LLM returns it as part
+  /// of the /translate-image JSON. ML Kit path: /translate-batch
+  /// derives it from the input text via script-class detection. Used
+  /// by the per-block action sheet to drive a TTS playback button —
+  /// without this the speaker would default to English even on a CJK
+  /// menu, picking the wrong accent silently.
+  String? _captureSourceLang;
+
+  /// True when the result screen should render the "Detected: …" chip.
+  /// Gated by the user's active scene being `auto` so we only surface
+  /// the AI's guess in the case the user actually delegated detection
+  /// to it. When `_detectedScene` is "other" we also hide — that label
+  /// tells the user nothing they can act on.
+  bool get _showDetectedSceneChip {
+    if (_detectedScene == null || _detectedScene == 'other') return false;
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+    return scene == CameraScene.auto;
+  }
+
   // Pinch-to-zoom — pinned to the camera service's clamped range.
   // [_zoomBaseline] is the zoom level at the start of a scale gesture so
   // we can compute the new level as baseline * gesture.scale.
@@ -59,6 +102,41 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   // to continuous AF a few seconds after the tap.
   Offset? _focusRingPos;
   Timer? _focusResetTimer;
+
+  // Blur overlay state. CameraService fires onBlurChange on every
+  // sharp↔blurry edge; we debounce only the "blurry → show overlay"
+  // direction (500 ms) so quick motion glitches don't flicker the
+  // hint, while the "sharp → hide overlay" direction is immediate
+  // (no reason to keep nagging once the user has steadied).
+  bool _isBlurry = false;
+  Timer? _blurDebounce;
+
+  /// Anchors the RepaintBoundary that wraps the result body so the
+  /// Share action can rasterise it to a PNG without dragging the
+  /// rest of the Scaffold (top bar, action chips) into the
+  /// screenshot. Set on the inner sub-tree, not on _buildResult
+  /// itself, so the boundary is created once per capture and
+  /// re-rendered cheaply when state inside it changes.
+  final GlobalKey _resultRepaintKey = GlobalKey();
+
+  /// Snapshots of all captures in the current gallery-batch flow. In
+  /// single-capture mode this stays a 1-element list mirroring the
+  /// active singletons (`_capturedPath`, `_blocks`, etc.) — the
+  /// arrow nav at the top of the result screen only renders when
+  /// length > 1. Each entry is a frozen copy of the per-capture
+  /// state we restore into the singletons on prev/next swap.
+  final List<_BatchSnapshot> _batchQueue = [];
+  int _activeBatchIndex = 0;
+
+  /// True while [_pickFromGallery] is processing a multi-pick batch.
+  /// Used by [_processImage] / [_translateAndShow] / [_captureWithVision]
+  /// to suppress the `_step = _CameraStep.result` transition between
+  /// images — we want to stay on the translating spinner all the way
+  /// through the batch and only flip to result once the FIRST image's
+  /// snapshot is restored.
+  bool _isBatchProcessing = false;
+  int _batchTotal = 0;
+  int _batchDone = 0;
 
   @override
   void initState() {
@@ -124,17 +202,41 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   void _startStream() {
-    _cameraService.startTextStream((blocks) {
-      if (mounted && _step == _CameraStep.preview) {
-        setState(() => _liveBlocks = blocks);
-      }
-    });
+    _cameraService.startTextStream(
+      (blocks) {
+        if (mounted && _step == _CameraStep.preview) {
+          setState(() => _liveBlocks = blocks);
+        }
+      },
+      onBlurChange: _handleBlurChange,
+    );
+  }
+
+  /// Edge-triggered callback from CameraService; debounce the
+  /// blurry → visible transition so a brief shake doesn't pop the
+  /// overlay, but hide instantly when the user steadies.
+  void _handleBlurChange(bool isBlurry) {
+    _blurDebounce?.cancel();
+    if (isBlurry) {
+      _blurDebounce = Timer(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        if (_step != _CameraStep.preview) return;
+        if (_isBlurry) return;
+        setState(() => _isBlurry = true);
+      });
+    } else if (_isBlurry) {
+      setState(() => _isBlurry = false);
+    }
   }
 
   @override
   void dispose() {
     _focusResetTimer?.cancel();
+    _blurDebounce?.cancel();
     _cameraService.dispose();
+    // Per-session scope: cache must not leak into a later camera open
+    // (different scene, prompt update on app launch, etc.).
+    TranslationCache.instance.clear();
     super.dispose();
   }
 
@@ -149,7 +251,60 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           _buildBody(l),
           _buildTopBar(l),
           if (_step == _CameraStep.preview) _buildBottomControls(l),
+          if (_step == _CameraStep.preview && _isBlurry) _buildBlurOverlay(l),
         ],
+      ),
+    );
+  }
+
+  /// Top-center hint shown when the preview has been blurry for at
+  /// least the debounce window. Anchored just below the top bar so
+  /// it's instantly visible without occluding the captured subject
+  /// in the middle of the frame.
+  Widget _buildBlurOverlay(AppLocalizations l) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 56),
+          child: Center(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: 1.0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.amber.withValues(alpha: 0.55),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.pan_tool_alt_outlined,
+                        color: Colors.amberAccent, size: 16),
+                    const SizedBox(width: 7),
+                    Text(
+                      l.cameraHoldSteady,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -255,6 +410,150 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     });
   }
 
+  /// CameraResultOverlay wrapped in a Builder so the RepaintBoundary
+  /// above (which only re-renders this subtree on actual state changes
+  /// inside it) gets a stable identity per capture. Pulled out of the
+  /// inline build so the per-capture key (`ValueKey(_capturedPath)`)
+  /// stays attached even after I moved the overlay into the
+  /// share-screenshot subtree.
+  Widget _buildShareableOverlay(CameraSettings settings) {
+    return CameraResultOverlay(
+      // Per-capture Key forces a FRESH State instance every time the
+      // captured file changes. Without this, drag offsets from a
+      // previous capture would apply to the new translations.
+      key: ValueKey(_capturedPath),
+      blocks: _blocks,
+      translations: _translations,
+      imageSize: _capturedImageSize!,
+      hideLowConfidence: settings.hideLowConfidence,
+      showOriginalAlways: settings.showOriginalAlways,
+      overlayOpacity: settings.overlayOpacity,
+      onExplain: _explainBlock,
+      onBlockTap: _openBlockActionSheet,
+    );
+  }
+
+  /// `_CameraStep.result` for normal single-capture flows; stays on
+  /// `translating` while a multi-pick batch is in flight so we don't
+  /// flash each intermediate image's result before the batch finishes.
+  /// Used in place of literal `_step = _CameraStep.result` at every
+  /// site that transitions out of the translating spinner.
+  _CameraStep _resultStepRespectingBatch() =>
+      _isBatchProcessing ? _CameraStep.translating : _CameraStep.result;
+
+  /// Frozen snapshot of every per-capture singleton, used by the
+  /// multi-pick batch flow to swap between processed gallery images
+  /// without re-running OCR / vision. Caller restores via
+  /// [_restoreFromSnapshot] after switching [_activeBatchIndex].
+  _BatchSnapshot _snapshotActive() {
+    return _BatchSnapshot(
+      path: _capturedPath!,
+      imageSize: _capturedImageSize!,
+      blocks: List<OcrBlock>.from(_blocks),
+      translations: List<String>.from(_translations),
+      visionConfidence: _visionConfidence,
+      detectedScene: _detectedScene,
+      sourceLang: _captureSourceLang,
+      error: _error,
+    );
+  }
+
+  /// Inverse of [_snapshotActive]: copy a captured page's state back
+  /// into the singletons that the result UI reads from. Callers wrap
+  /// in setState so the rebuild picks up the swap.
+  void _restoreFromSnapshot(_BatchSnapshot s) {
+    _capturedPath = s.path;
+    _capturedImageSize = s.imageSize;
+    _blocks = s.blocks;
+    _translations = s.translations;
+    _visionConfidence = s.visionConfidence;
+    _detectedScene = s.detectedScene;
+    _captureSourceLang = s.sourceLang;
+    _error = s.error;
+  }
+
+  /// Switch the displayed result to a different page in the batch.
+  /// Saves the active singletons back into [_batchQueue] first so any
+  /// edits the user made (block dismissals, retried translations) are
+  /// preserved on next visit. Out-of-range targets become no-ops.
+  void _switchBatch(int newIndex) {
+    if (newIndex == _activeBatchIndex) return;
+    if (newIndex < 0 || newIndex >= _batchQueue.length) return;
+    setState(() {
+      _batchQueue[_activeBatchIndex] = _snapshotActive();
+      _activeBatchIndex = newIndex;
+      _restoreFromSnapshot(_batchQueue[_activeBatchIndex]);
+    });
+  }
+
+  /// Show the per-block action sheet (Copy / Retry / Explain / Save).
+  /// Wired from [CameraResultOverlay.onBlockTap].
+  void _openBlockActionSheet(int index, OcrBlock block, String translation) {
+    final langs = ref.read(languageSettingsProvider).valueOrNull;
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+    // Source-lang resolution order for the TTS button in the sheet:
+    //   1. The capture's server-detected lang (most accurate — based on
+    //      what was actually OCR'd / vision-read).
+    //   2. The user's pinned sourceLang IF non-"auto" (backstop when
+    //      server didn't return a detection).
+    //   3. null → TTS button hides.
+    final pinnedSrc = langs?.sourceLang;
+    final ttsLang = _captureSourceLang ??
+        ((pinnedSrc != null && pinnedSrc.toLowerCase() != 'auto')
+            ? pinnedSrc
+            : null);
+    BlockActionSheet.show(
+      context,
+      block: block,
+      translation: translation,
+      scene: scene.id,
+      targetLang: langs?.targetLang ?? 'en',
+      sourceLang: pinnedSrc,
+      ttsLang: ttsLang,
+      onRetry: () => _retryBlock(index, block),
+      onExplain: () => _explainBlock(block),
+    );
+  }
+
+  /// Re-translate ONE block in place. Bypasses the per-session cache
+  /// (otherwise we'd just return the same answer the user is unhappy
+  /// with) and updates [_translations] when the server replies. UX:
+  /// optimistic snackbar while in flight, swap when it lands, error
+  /// snackbar on failure — no full-screen spinner because the rest of
+  /// the result is still useful while one card refreshes.
+  Future<void> _retryBlock(int index, OcrBlock block) async {
+    if (!mounted) return;
+    final l = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l.cameraBlockRetrying),
+        duration: const Duration(seconds: 6),
+      ),
+    );
+    final fresh = await _translateBatch([block.text], forceRefresh: true);
+    if (!mounted) return;
+    messenger.hideCurrentSnackBar();
+    if (fresh.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l.cameraNoText),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    final updated = fresh.first;
+    if (index < 0 || index >= _translations.length) return;
+    setState(() {
+      _translations = [
+        for (var i = 0; i < _translations.length; i++)
+          if (i == index) updated else _translations[i],
+      ];
+    });
+  }
+
   /// Open the "What is this?" sheet for a single live-preview block.
   /// Pauses the OCR stream while the sheet is open so the box overlay
   /// doesn't shift around under the modal; resumes on close.
@@ -271,6 +570,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildTranslating(AppLocalizations l) {
+    // Replace the generic spinner label with batch progress when a
+    // multi-pick gallery flow is in flight. _batchTotal can be 0 in
+    // single-capture mode (no batch ever started), in which case we
+    // fall back to the original label.
+    final showBatchProgress = _isBatchProcessing && _batchTotal > 0;
+    final label = showBatchProgress
+        ? l.cameraBatchProgress(_batchDone + 1, _batchTotal)
+        : l.cameraTranslating;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -285,7 +592,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                 const CircularProgressIndicator(color: Colors.white),
                 const SizedBox(height: 12),
                 Text(
-                  l.cameraTranslating,
+                  label,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ],
@@ -305,41 +612,83 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Center(
-          child: Image.file(File(_capturedPath!), fit: BoxFit.contain),
-        ),
-        if (_blocks.isNotEmpty && _translations.isNotEmpty)
-          CameraResultOverlay(
-            // Per-capture Key forces a FRESH State instance every time
-            // the captured file changes. Without this, internal state
-            // (_expanded set, _dragOffsets map, _overlayVisible toggle)
-            // bleeds across captures: a block expanded by index in
-            // capture N would auto-expand the block at the same index
-            // in capture N+1, and drag offsets from previous scene
-            // would apply to the new translations. Mode-switch bug
-            // surfaced when user changed scene → captured again →
-            // unrelated card was pre-expanded / pre-dragged.
-            key: ValueKey(_capturedPath),
-            blocks: _blocks,
-            translations: _translations,
-            imageSize: _capturedImageSize!,
-            hideLowConfidence: settings.hideLowConfidence,
-            showOriginalAlways: settings.showOriginalAlways,
-            overlayOpacity: settings.overlayOpacity,
-            // "What is this?" per-card: same handler the live preview
-            // uses (stop stream, show sheet, restart on close). The
-            // stream-stop is a no-op here because we're already in
-            // result mode, and the restart guard checks _step.
-            onExplain: _explainBlock,
+        // Shareable sub-tree: everything users want in the exported PNG
+        // (captured image, translation overlay, confidence chips). Top
+        // bar + discoverability hint + action chip row stay OUTSIDE the
+        // boundary so a screenshot from the Share action doesn't bake
+        // its own button into the export.
+        RepaintBoundary(
+          key: _resultRepaintKey,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(
+                color: Colors.black,
+                child: Center(
+                  child: Image.file(
+                      File(_capturedPath!), fit: BoxFit.contain),
+                ),
+              ),
+              if (_blocks.isNotEmpty && _translations.isNotEmpty)
+                _buildShareableOverlay(settings),
+              if (_error != null)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    color: Colors.black54,
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              if (_visionConfidence != null || _showDetectedSceneChip)
+                Positioned(
+                  top: 0,
+                  left: 16,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 56),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_visionConfidence != null)
+                            _ConfidenceChip(level: _visionConfidence!),
+                          if (_showDetectedSceneChip) ...[
+                            const SizedBox(height: 6),
+                            _DetectedSceneChip(scene: _detectedScene!),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        if (_error != null)
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.black54,
-              child: Text(
-                _error!,
-                style: const TextStyle(color: Colors.white),
+        ),
+        // Multi-pick batch nav — shown only when the gallery flow
+        // produced more than one image. Centered horizontally at the
+        // top so it doesn't fight either confidence chip (left) or
+        // the close X (also left in the top bar — different row).
+        // Outside the RepaintBoundary so a Share screenshot doesn't
+        // bake "2 / 4" + arrow controls into the exported PNG.
+        if (_batchQueue.length > 1)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 56),
+                child: Center(
+                  child: _BatchPageNav(
+                    currentIndex: _activeBatchIndex,
+                    total: _batchQueue.length,
+                    onPrev: () => _switchBatch(_activeBatchIndex - 1),
+                    onNext: () => _switchBatch(_activeBatchIndex + 1),
+                  ),
+                ),
               ),
             ),
           ),
@@ -394,11 +743,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                 label: AppLocalizations.of(context)!.cameraRetake,
                 onTap: _retake,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               _ActionChip(
                 icon: Icons.copy,
                 label: AppLocalizations.of(context)!.cameraCopyAll,
                 onTap: _copyAll,
+              ),
+              const SizedBox(width: 12),
+              _ActionChip(
+                icon: Icons.ios_share,
+                label: AppLocalizations.of(context)!.cameraShare,
+                onTap: _shareResult,
               ),
             ],
           ),
@@ -636,7 +991,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     // [_capturedPath] is still null at this point so [_buildTranslating]
     // falls back to the spinner-over-black layout until the picture is
     // ready, then the captured frame is drawn behind the spinner.
-    setState(() => _step = _CameraStep.translating);
+    setState(() {
+      _step = _CameraStep.translating;
+      // Clear last capture's vision rating — if this capture routes to
+      // ML Kit, the chip should stay hidden; if it routes to vision,
+      // _captureWithVision will repopulate.
+      _visionConfidence = null;
+      _detectedScene = null;
+      _captureSourceLang = null;
+      // Single-shutter capture replaces any prior multi-pick batch.
+      _batchQueue.clear();
+      _activeBatchIndex = 0;
+      _isBatchProcessing = false;
+      _batchTotal = 0;
+      _batchDone = 0;
+    });
 
     // Stop stream — will re-run full OCR on the captured image.
     await _cameraService.stopTextStream();
@@ -656,10 +1025,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   /// or when the lighting at the moment is bad and they'd rather use a
   /// clearer photo from before.
   Future<void> _pickFromGallery() async {
-    final XFile? picked;
+    // Multi-pick: a restaurant menu is typically 2–4 pages — making the
+    // user re-enter the gallery picker for each one is painful. We
+    // process them all sequentially below and surface arrow nav at the
+    // top of the result so they can flip between pages without re-
+    // capturing. Single pick is still the common case and stays a
+    // 1-element batch with no nav UI shown.
+    final List<XFile> picked;
     try {
-      picked = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
+      picked = await ImagePicker().pickMultiImage(
         // Cap dimensions to 1600 px so OCR + (optional) vision upload run
         // fast on a gallery pick — going larger only adds latency without
         // improving recognition (ML Kit's detection grid plateaus before
@@ -672,23 +1046,79 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       debugPrint('[Camera] Gallery pick failed: $e');
       return;
     }
-    if (picked == null) return; // user cancelled
+    if (picked.isEmpty) return; // user cancelled
     if (!mounted) return;
-    ref.read(trackingServiceProvider).event('gallery_pick');
-    setState(() => _step = _CameraStep.translating);
+    ref.read(trackingServiceProvider).event('gallery_pick', properties: {
+      'count': picked.length,
+    });
+    setState(() {
+      _step = _CameraStep.translating;
+      _visionConfidence = null;
+      _detectedScene = null;
+      _captureSourceLang = null;
+      _batchQueue.clear();
+      _activeBatchIndex = 0;
+      _isBatchProcessing = picked.length > 1;
+      _batchTotal = picked.length;
+      _batchDone = 0;
+    });
     await _cameraService.stopTextStream();
-    try {
-      // Fast OCR for gallery: single pass instead of the 3-pass live-
-      // capture pipeline. User picked the photo themselves — it's almost
-      // always clear enough that contrast/binarize variants add latency
-      // (4-6 s on a 1600 px image) without finding more text. The empty-
-      // result vision fallback in _processImage still catches truly
-      // hard cases (handwriting, stylized) so we don't lose quality.
-      await _processImage(picked.path, aggressivePasses: false);
-    } catch (e) {
-      debugPrint('[Camera] Gallery process failed: $e');
-      _recoverToPreview();
+
+    for (var i = 0; i < picked.length; i++) {
+      if (!mounted) return;
+      try {
+        // Gallery uses the SAME 3-pass aggressive OCR pipeline as live
+        // captures. Earlier we ran single-pass here to save 4-6 s per
+        // image on the theory that "user picked it, so it's clean" —
+        // but real-world testing showed gallery picks of menu photos
+        // (especially screenshots-of-a-menu) regressed badly vs
+        // capturing the same menu live with the same scene picked.
+        // The latency cost is worth it: gallery flow is already a
+        // "I have time, do it properly" path, and the multi-pass
+        // recall delta on dish names is large.
+        await _processImage(picked[i].path, aggressivePasses: true);
+        if (!mounted) return;
+        // Snapshot the just-processed image's singletons before moving
+        // on to the next one. Without this, image N+1's writes would
+        // overwrite image N's blocks / translations and the result
+        // batch would only retain the LAST page.
+        if (_capturedPath != null && _capturedImageSize != null) {
+          _batchQueue.add(_snapshotActive());
+        }
+        setState(() {
+          _batchDone = i + 1;
+          // Reset between images so half-finished N+1 state can't show
+          // through as we start the next pass (the spinner background
+          // image stays unchanged until next process sets it).
+          if (i < picked.length - 1) {
+            _blocks = [];
+            _translations = [];
+            _error = null;
+            _visionConfidence = null;
+            _detectedScene = null;
+            _captureSourceLang = null;
+          }
+        });
+      } catch (e) {
+        debugPrint('[Camera] Gallery batch item $i failed: $e');
+      }
     }
+
+    if (!mounted) return;
+    setState(() => _isBatchProcessing = false);
+
+    if (_batchQueue.isEmpty) {
+      _recoverToPreview();
+      return;
+    }
+    // Restore the FIRST batch item into the visible singletons; arrow
+    // nav lets the user step through the rest. Single-pick (length=1)
+    // falls through here too — no nav shown but the path stays uniform.
+    setState(() {
+      _activeBatchIndex = 0;
+      _restoreFromSnapshot(_batchQueue[0]);
+      _step = _resultStepRespectingBatch();
+    });
   }
 
   /// Shared pipeline for live captures + gallery picks: load bytes, decode
@@ -732,15 +1162,24 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
     // ML Kit's on-device OCR only supports 5 scripts: Latin, Chinese,
     // Japanese, Korean, Devanagari. A traveller in Thailand / the Middle
-    // East / Russia / Greece etc. scans a script ML Kit literally cannot
-    // read (Thai, Arabic, Cyrillic, Greek, Hebrew, Khmer, …). If the user
-    // pinned such a source language, skip ML Kit entirely and go straight
-    // to the vision LLM — it reads any script. (When source is "auto" we
-    // still try ML Kit first and lean on the weak-result fallback below.)
+    // East etc. scans a script ML Kit literally cannot read (Thai,
+    // Arabic, Cyrillic, Greek, Hebrew, Khmer, …). When the user has
+    // EXPLICITLY pinned source to such a language, skip ML Kit entirely
+    // and go straight to vision — ML Kit can't help, and worse: any
+    // Latin scraps it does pick up (background prices, English logos,
+    // "WiFi" stickers, etc.) can mask the real non-Latin content from
+    // the weak-result fallback below, leading to either garbage Latin
+    // translations or — when the vision retry path also gives up — a
+    // blank "No text found" on what is actually a fully-readable menu.
+    // Respecting the user's source pick costs us the mixed-script case
+    // (a Thai storefront with a Latin logo) — but in that case the user
+    // can switch to source=auto, which is the path that stays on the
+    // ML-Kit-first pipeline below.
     final sourceLang =
         ref.read(languageSettingsProvider).valueOrNull?.sourceLang;
-    if (_sourceNeedsVision(sourceLang)) {
-      debugPrint('[Camera] source=$sourceLang not ML-Kit-readable — vision');
+    final sourceWantsVision = _sourceNeedsVision(sourceLang);
+
+    if (sourceWantsVision) {
       ref.read(trackingServiceProvider).event('vision_fallback', properties: {
         'reason':      'source_vision_only',
         'scene':       scene.id,
@@ -776,19 +1215,46 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     // plain isEmpty check below wouldn't catch them. When the TOTAL text
     // found is tiny, treat it as "OCR basically failed on a hard image"
     // and escalate to the vision LLM, which reads stylized signs like a
-    // human. 12 chars is comfortably below any real menu/document capture
-    // but above a single short word the OCR genuinely nailed.
+    // human. 12 chars is the baseline minimum below which any "result"
+    // is almost certainly garbage; the confidence + scene checks below
+    // refine that for the legitimately-short cases.
     final totalChars = blocks.fold<int>(
       0,
       (sum, b) => sum + b.text.replaceAll(RegExp(r'\s'), '').length,
     );
 
-    if (blocks.isEmpty || totalChars < 12) {
-      debugPrint('[Camera] OCR weak ($totalChars chars) — vision fallback');
+    // Per-scene char threshold below which we suspect ML Kit missed
+    // most of the content. Signs are legitimately short ("STOP",
+    // "EXIT", "営業中"); menus / documents / screenshots are almost
+    // never that short, so a tiny result there really does mean OCR
+    // failed.
+    final shortThreshold = _shortTextThresholdForScene(scene.id);
+
+    // A high-confidence ML Kit block carries enough signal on its
+    // own — a "¥980" price tag or a "SALE" sign is short but the
+    // OCR confidence is high. Falling back to vision in that case
+    // wastes a round-trip + tokens. Only fire the fallback when the
+    // short result is ALSO low-confidence (suggesting ML Kit guessed
+    // at noise rather than reading something real).
+    final hasHighConfBlock = blocks.any(
+      (b) => b.confidence != null && b.confidence! >= 0.7,
+    );
+
+    final shouldFallbackToVision = blocks.isEmpty ||
+        (totalChars < shortThreshold && !hasHighConfBlock);
+
+    if (shouldFallbackToVision) {
+      debugPrint(
+        '[Camera] OCR weak (chars=$totalChars, '
+        'hasHighConf=$hasHighConfBlock, scene=${scene.id}, '
+        'sourceVision=$sourceWantsVision) — vision fallback',
+      );
       ref.read(trackingServiceProvider).event('vision_fallback', properties: {
-        'reason':      'weak_ocr',
-        'scene':       scene.id,
-        'total_chars': totalChars,
+        'reason':            sourceWantsVision ? 'source_vision_only' : 'weak_ocr',
+        'scene':             scene.id,
+        'total_chars':       totalChars,
+        'has_high_conf':     hasHighConfBlock,
+        if (sourceWantsVision) 'source_lang': sourceLang,
       });
       // Carry the user's selected scene into the vision path. This is the
       // critical bit for handwritten / chalkboard menus: with scene=menu,
@@ -815,7 +1281,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       'path':         'mlkit',
     });
 
-    _translateAndShow();
+    // MUST await: the gallery-batch flow snapshots singletons in
+    // [_pickFromGallery] immediately after _processImage returns. With
+    // fire-and-forget, the snapshot grabs blocks but EMPTY translations
+    // (the network call's still in flight), and by the time it
+    // resolves it writes to whichever image's singletons are now live
+    // → translations end up on the wrong page. Single capture's UX is
+    // unchanged: the translating spinner stays up until done either
+    // way.
+    await _translateAndShow();
   }
 
   /// ISO 639-1 codes whose script ML Kit's on-device recognizer cannot read
@@ -836,6 +1310,52 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     'km', 'lo', 'my', // Khmer / Lao / Myanmar
     'am', 'ti', // Ethiopic
   };
+
+  /// Map the server's per-image self-assessed confidence ("high" | "medium"
+  /// | "low") onto the same 0..1 scale ML Kit OCR uses, so the existing
+  /// low-confidence UI (amber tint + warning badge) fires uniformly across
+  /// both code paths. The chosen thresholds:
+  ///
+  ///   - "low"               → 0.30  always badge (below [kOcrLowConfidenceBadge])
+  ///   - "medium" + sign     → 0.45  badge — safety bias for road signs /
+  ///                                 prohibition signs, where a "medium"
+  ///                                 mis-read can be actively dangerous
+  ///   - "medium" (other)    → 0.70  no badge — "okay-ish" is acceptable for
+  ///                                 menus / docs that the user can re-shoot
+  ///                                 trivially
+  ///   - "high" / null       → 1.0   full trust
+  ///
+  /// Null / unknown is treated as high — the server only OMITS the field on
+  /// legacy responses where this client previously assumed 1.0 anyway, so
+  /// we don't want to suddenly badge every result on older API versions.
+  double _mapVisionConfidenceToScore(String? confidence, String scene) {
+    switch (confidence) {
+      case 'low':
+        return 0.30;
+      case 'medium':
+        return scene == 'sign' ? 0.45 : 0.70;
+      case 'high':
+      default:
+        return 1.0;
+    }
+  }
+
+  /// Per-scene minimum total chars below which a ML Kit result is
+  /// considered "OCR basically failed". The default (auto / document /
+  /// menu / screenshot) keeps the legacy 12-char floor — those scenes
+  /// rarely produce a legitimately tiny result. Signs DO ("STOP",
+  /// "EXIT", "営業中", "¥980"), so the sign threshold drops to 3:
+  /// combined with the confidence check at the call site, a 3-char
+  /// high-confidence read is accepted instead of triggering an
+  /// unnecessary vision round-trip.
+  int _shortTextThresholdForScene(String sceneId) {
+    switch (sceneId) {
+      case 'sign':
+        return 3;
+      default:
+        return 12;
+    }
+  }
 
   /// True when [sourceLang] is a concrete (non-auto) language whose script
   /// ML Kit can't OCR — caller should route the capture to vision instead.
@@ -872,35 +1392,117 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     Uint8List bytes,
     Size size, {
     required String scene,
+    bool isRetry = false,
   }) async {
     try {
       final langSettings = ref.read(languageSettingsProvider).valueOrNull;
       final targetLang = langSettings?.targetLang ?? 'en';
+      // User-pinned source language. When concrete (non-'auto') the server
+      // injects ONLY that language's food-translation traps + few-shot,
+      // keeping the vision prompt lean instead of shipping every language's
+      // block on every request. Omitted when 'auto' so the server stays on
+      // its compact base prompt.
+      final sourceLang = langSettings?.sourceLang;
       final api = ref.read(apiClientProvider);
       // Downscale + recompress before upload: a full-res capture costs more
       // vision tokens and uploads slower without reading the sign any better.
-      final compressed = await _cameraService.compressForVision(bytes);
+      final compressed =
+          await _cameraService.compressForVision(bytes, scene: scene);
       final imageBase64 = base64Encode(compressed);
 
       final response = await api.dio.post('/translate-image', data: {
         'imageBase64': imageBase64,
         'targetLang': targetLang,
         'scene': scene,
+        if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
+          'sourceLang': sourceLang,
       });
       if (!mounted) return;
       final data = response.data as Map?;
       final transcription = (data?['transcription'] as String?) ?? '';
       final translation = (data?['translation'] as String?) ?? '';
+      // Server self-assesses confidence per image ("high" | "medium" | "low").
+      // We map this onto the same numeric scale ML Kit blocks use so the
+      // existing low-confidence UI (amber tint + warning badge) fires
+      // automatically — see OcrBlock.isLowConfidence. The user MUST be able
+      // to tell when a vision read is shaky: low-confidence sign translations
+      // can be actively dangerous (a "STOP" misread as "SLOP", a "No entry"
+      // dropped entirely), so silently rendering them with full trust — as
+      // the previous `confidence: 1.0` did — is the bug we're fixing here.
+      final visionConfidence = (data?['confidence'] as String?)?.toLowerCase();
+      final mappedConfidence =
+          _mapVisionConfidenceToScore(visionConfidence, scene);
+      // Stash for the result screen's chip — null when the server didn't
+      // include the field so the chip stays hidden on legacy responses
+      // rather than misleading the user with a fabricated rating.
+      _visionConfidence = (visionConfidence == 'high' ||
+              visionConfidence == 'medium' ||
+              visionConfidence == 'low')
+          ? visionConfidence
+          : null;
+      // Server's content-type guess. Whitelist to the values our prompt
+      // tells the model to use; anything else (legacy server, model
+      // hallucination) becomes null so the chip stays hidden.
+      final rawDetected = (data?['detectedScene'] as String?)?.toLowerCase();
+      _detectedScene = const {'menu', 'sign', 'document', 'screenshot', 'other'}
+              .contains(rawDetected)
+          ? rawDetected
+          : null;
+      // Server's detected source language (lowercase 2-letter ISO 639-1).
+      // Strict regex check — the model occasionally hands back full names
+      // or locale-tagged codes, those would confuse the TTS voice pick.
+      final rawSrcLang = (data?['sourceLang'] as String?)?.toLowerCase();
+      _captureSourceLang =
+          (rawSrcLang != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrcLang))
+              ? rawSrcLang
+              : null;
+      // Surface low/medium confidence in telemetry for monitoring — separate
+      // from `camera_capture` so we can chart it without scene-filtering.
+      if (visionConfidence == 'low' || visionConfidence == 'medium') {
+        ref.read(trackingServiceProvider).event('vision_confidence_warn',
+            properties: {
+              'confidence': visionConfidence,
+              'scene':      scene,
+            });
+      }
       final l = AppLocalizations.of(context)!;
 
       if (transcription.trim().isEmpty && translation.trim().isEmpty) {
+        // Auto-retry once with scene=auto — auto is the most permissive
+        // framing (no menu/sign/document constraints), so a strict-scene
+        // miss often becomes a hit when re-routed. Previously we retried
+        // with scene=sign, but that forced PLACE IDENTIFICATION on
+        // anything (menus, documents, screenshots), and the model would
+        // correctly refuse to identify a "place" when the image isn't a
+        // sign — leading to a second empty result and a wrong "No text
+        // found" error on otherwise-readable content. Skip the retry when
+        // already-auto (would just be a duplicate call) or when this IS
+        // the retry (prevent infinite loop). The retry shares the same
+        // captured JPEG — no second shutter sound, no perceptible extra
+        // latency beyond the second LLM round-trip.
+        if (!isRetry && scene != 'auto') {
+          ref.read(trackingServiceProvider).event('vision_retry_auto',
+              properties: {
+                'original_scene': scene,
+              });
+          // Make sure the spinner stays visible while we hit the
+          // server again — _step might already be `result`-bound
+          // from a state we set above (it isn't right now, but
+          // being explicit keeps this safe to refactor).
+          if (mounted && _step != _CameraStep.translating) {
+            setState(() => _step = _CameraStep.translating);
+          }
+          await _captureWithVision(path, bytes, size,
+              scene: 'auto', isRetry: true);
+          return;
+        }
         setState(() {
           _capturedPath = path;
           _capturedImageSize = size;
           _blocks = [];
           _translations = [];
           _error = l.cameraNoText;
-          _step = _CameraStep.result;
+          _step = _resultStepRespectingBatch();
         });
         return;
       }
@@ -941,7 +1543,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               size.width,
               stripHeight,
             ),
-            confidence: 1.0,
+            // Vision returns one confidence per image — each line shares it.
+            confidence: mappedConfidence,
           ));
         }
         setState(() {
@@ -950,16 +1553,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           _blocks = blocks;
           _translations = dstLines;
           _error = null;
-          _step = _CameraStep.result;
+          _step = _resultStepRespectingBatch();
         });
         ref.read(trackingServiceProvider).event('camera_capture', properties: {
-          'scene':        scene,
+          'scene':           scene,
           'source_lang':
               ref.read(languageSettingsProvider).valueOrNull?.sourceLang ?? 'auto',
-          'target_lang':  targetLang,
-          'block_count':  blocks.length,
-          'total_chars':  transcription.length,
-          'path':         'vision_per_line',
+          'target_lang':     targetLang,
+          'block_count':     blocks.length,
+          'total_chars':     transcription.length,
+          'path':            'vision_per_line',
+          'vision_confidence': visionConfidence ?? 'unknown',
         });
         return;
       }
@@ -969,7 +1573,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       final block = OcrBlock(
         text: transcription.isNotEmpty ? transcription : translation,
         boundingBox: Rect.fromLTWH(0, 0, size.width, size.height),
-        confidence: 1.0,
+        confidence: mappedConfidence,
       );
       setState(() {
         _capturedPath = path;
@@ -977,16 +1581,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _blocks = [block];
         _translations = [translation];
         _error = null;
-        _step = _CameraStep.result;
+        _step = _resultStepRespectingBatch();
       });
       ref.read(trackingServiceProvider).event('camera_capture', properties: {
-        'scene':        scene,
+        'scene':           scene,
         'source_lang':
             ref.read(languageSettingsProvider).valueOrNull?.sourceLang ?? 'auto',
-        'target_lang':  targetLang,
-        'block_count':  1,
-        'total_chars':  transcription.length,
-        'path':         'vision',
+        'target_lang':     targetLang,
+        'block_count':     1,
+        'total_chars':     transcription.length,
+        'path':            'vision',
+        'vision_confidence': visionConfidence ?? 'unknown',
       });
     } catch (error) {
       debugPrint('[Camera] Vision capture failed: $error');
@@ -1002,7 +1607,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _blocks = [];
         _translations = [];
         _error = l.cameraExplainError;
-        _step = _CameraStep.result;
+        _step = _resultStepRespectingBatch();
       });
     }
   }
@@ -1014,55 +1619,183 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       if (!mounted) return;
       setState(() {
         _translations = translations;
-        _step = _CameraStep.result;
+        _step = _resultStepRespectingBatch();
       });
     } catch (e) {
       debugPrint('[Camera] Translate failed: $e');
       if (!mounted) return;
       setState(() {
         _error = e.toString();
-        _step = _CameraStep.result;
+        _step = _resultStepRespectingBatch();
       });
     }
   }
 
-  Future<List<String>> _translateBatch(List<String> texts) async {
+  Future<List<String>> _translateBatch(
+    List<String> texts, {
+    bool forceRefresh = false,
+  }) async {
+    final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+    final targetLang = langSettings?.targetLang ?? 'en';
+    final sourceLang = langSettings?.sourceLang ?? 'auto';
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+
+    // Probe the per-session cache before hitting the network. When the
+    // camera is steady between captures the OCR text usually repeats
+    // verbatim (or near-verbatim — see TranslationCache fuzzy match);
+    // serving those from cache turns a ~1-2 s round-trip into ~0 ms
+    // and saves the user's translation quota.
+    //
+    // [forceRefresh] skips the lookup (used by per-block retry): the
+    // whole point of "Translate again" is to get a NEW result, so
+    // serving the cached one defeats the action.
+    final results = List<String?>.filled(texts.length, null);
+    final missIndices = <int>[];
+    final missTexts = <String>[];
+    var cacheHits = 0;
+    for (var i = 0; i < texts.length; i++) {
+      final cached = forceRefresh
+          ? null
+          : TranslationCache.instance.lookup(
+              text: texts[i],
+              sourceLang: sourceLang,
+              targetLang: targetLang,
+              scene: scene.id,
+            );
+      if (cached != null) {
+        results[i] = cached;
+        cacheHits++;
+      } else {
+        missIndices.add(i);
+        missTexts.add(texts[i]);
+      }
+    }
+
+    if (texts.isNotEmpty) {
+      // Fire BEFORE any await so the event lands even if /translate-batch
+      // throws — we want to see hit-rate trends regardless of network
+      // outcome.
+      ref.read(trackingServiceProvider).event('translate_cache', properties: {
+        'hits':   cacheHits,
+        'total':  texts.length,
+        'scene':  scene.id,
+      });
+    }
+
+    // All-hit fast path: skip the API entirely. This is the
+    // "camera-steady retake" win the cache exists for.
+    if (missTexts.isEmpty) {
+      return results.cast<String>();
+    }
+
     try {
       final session = await SessionStore().load();
-      if (session == null) return texts;
-
-      final langSettings = ref.read(languageSettingsProvider).valueOrNull;
-      final targetLang = langSettings?.targetLang ?? 'en';
-      final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
-          CameraScene.auto;
+      if (session == null) {
+        // No session: misses can't translate, return originals so the
+        // result overlay still renders the OCR text.
+        for (final idx in missIndices) {
+          results[idx] = texts[idx];
+        }
+        return results.cast<String>();
+      }
 
       final api = ref.read(apiClientProvider);
-      final response = await api.dio.post('/translate-batch', data: {
-        'texts': texts,
-        'targetLang': targetLang,
-        'appHint': 'camera',
-        // Server uses this to inject scene-specific guidance into the
-        // batch prompt (menu-vs-document priorities differ a lot).
-        'scene': scene.id,
-      });
 
-      final data = response.data as Map?;
-      final raw = data?['translations'] as List?;
-      if (raw == null) return texts;
-
-      final out = <String>[];
-      for (var i = 0; i < texts.length; i++) {
-        final value = i < raw.length ? raw[i] : null;
-        out.add(
-          value is String && value.trim().isNotEmpty ? value : texts[i],
+      // Chunk to /translate-batch's server-side limit (ArrayMaxSize(60)).
+      // A dense menu / document capture can produce 100+ OCR blocks; the
+      // unchunked code path used to send them all and eat a 400 silently
+      // (the user saw a failed translate with no idea why). We split
+      // into chunks of [_batchChunkSize], run them in PARALLEL so the
+      // user doesn't pay 2-3x latency for a wide capture, then stitch
+      // the results back in the original miss order. One chunk failing
+      // doesn't poison the others — its misses fall back to the OCR
+      // text individually.
+      final chunkRanges = <(int start, int end)>[];
+      for (var i = 0; i < missTexts.length; i += _batchChunkSize) {
+        chunkRanges.add(
+          (i, math.min(i + _batchChunkSize, missTexts.length)),
         );
       }
-      return out;
+
+      final chunkResults = await Future.wait(chunkRanges.map((range) async {
+        final (start, end) = range;
+        try {
+          final response = await api.dio.post('/translate-batch', data: {
+            // Send only the misses — server cost scales with payload,
+            // so partial hits still cut tokens proportionally.
+            'texts': missTexts.sublist(start, end),
+            'targetLang': targetLang,
+            'appHint': 'camera',
+            // Server uses this to inject scene-specific guidance into
+            // the batch prompt (menu-vs-document priorities differ a lot).
+            'scene': scene.id,
+          });
+          final data = response.data as Map?;
+          // Adopt the server's detected source language from the FIRST
+          // chunk that reports it — every chunk of one capture shares
+          // the same source, so we don't gain anything by checking
+          // later chunks too. Only set when null to avoid clobbering
+          // a value already populated by the vision path (mixed case
+          // where vision ran AND batch ran — but that doesn't happen
+          // in the current flow, so this is defence-in-depth).
+          if (_captureSourceLang == null) {
+            final rawSrc =
+                (data?['detectedSourceLang'] as String?)?.toLowerCase();
+            if (rawSrc != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrc)) {
+              _captureSourceLang = rawSrc;
+            }
+          }
+          return data?['translations'] as List?;
+        } catch (e) {
+          debugPrint('[Camera] Translate chunk failed ($start-$end): $e');
+          return null;
+        }
+      }));
+
+      for (var c = 0; c < chunkRanges.length; c++) {
+        final (start, end) = chunkRanges[c];
+        final raw = chunkResults[c];
+        for (var k = 0; k < end - start; k++) {
+          final missIdx = start + k;
+          final origIdx = missIndices[missIdx];
+          final originalText = texts[origIdx];
+          final value = (raw != null && k < raw.length) ? raw[k] : null;
+          final translation = value is String && value.trim().isNotEmpty
+              ? value
+              : originalText;
+          results[origIdx] = translation;
+          // Don't cache the fallback-to-original case — TranslationCache
+          // would do the same comparison and skip, but bailing here is
+          // cheaper and clearer.
+          if (translation != originalText) {
+            TranslationCache.instance.store(
+              text: originalText,
+              sourceLang: sourceLang,
+              targetLang: targetLang,
+              scene: scene.id,
+              translation: translation,
+            );
+          }
+        }
+      }
+      return results.cast<String>();
     } catch (e) {
       debugPrint('[Camera] Translate failed: $e');
-      return texts;
+      for (final idx in missIndices) {
+        results[idx] = texts[idx];
+      }
+      return results.cast<String>();
     }
   }
+
+  /// Max texts per `/translate-batch` request. Mirrors the server DTO's
+  /// `ArrayMaxSize(60)` exactly — we cap at the limit, not below, so a
+  /// dense capture with N blocks costs `ceil(N / 60)` quota counts
+  /// rather than `ceil(N / 50)`. Server failing at the exact boundary
+  /// would mean an off-by-one in class-validator, which we'd want to
+  /// catch in dev anyway.
+  static const int _batchChunkSize = 60;
 
   void _retake() {
     setState(() {
@@ -1073,8 +1806,70 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       _translations = [];
       _liveBlocks = [];
       _error = null;
+      _visionConfidence = null;
+      _detectedScene = null;
+      _captureSourceLang = null;
+      // Drop the multi-pick batch on retake — going back to live
+      // preview implies the user is starting over, not continuing to
+      // edit the previous result set.
+      _batchQueue.clear();
+      _activeBatchIndex = 0;
+      _isBatchProcessing = false;
+      _batchTotal = 0;
+      _batchDone = 0;
     });
     _startStream();
+  }
+
+  /// Rasterise the shareable subtree (captured image + translation
+  /// overlay + chips) to a PNG and hand it to the OS share sheet. The
+  /// shared file lives in the app's temp directory under a millis-
+  /// suffixed name so back-to-back shares don't clobber each other
+  /// (the system share sheet hangs on to the path past the dialog
+  /// dismissal).
+  Future<void> _shareResult() async {
+    final l = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final boundary = _resultRepaintKey.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) {
+        debugPrint('[Camera] Share: no render boundary');
+        return;
+      }
+      // pixelRatio=3.0: matches a typical phone's logical→physical
+      // ratio so the exported PNG is sharp on every receiving device,
+      // not "screen-resolution" tiny.
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      if (byteData == null) {
+        debugPrint('[Camera] Share: toByteData returned null');
+        return;
+      }
+      final bytes = byteData.buffer.asUint8List();
+      final tempDir = await getTemporaryDirectory();
+      final filename =
+          'transkey_share_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File('${tempDir.path}/$filename');
+      await file.writeAsBytes(bytes, flush: true);
+      ref.read(trackingServiceProvider).event('camera_share');
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'image/png')],
+          subject: l.cameraShareSubject,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[Camera] Share failed: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l.cameraShareFailed),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _copyAll() {
@@ -1223,6 +2018,238 @@ class _ZoomPresetPill extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Compact pill that surfaces the server's self-assessed confidence on
+/// a vision capture. Sits at top-left of the result screen.
+///
+/// Color signals the level at a glance — even before the user reads
+/// the label:
+///   - high   → green : the AI is confident, trust the translation
+///   - medium → amber : double-check before acting on it
+///   - low    → red   : likely wrong, prefer retake
+///
+/// Each level has its own icon as a redundant cue for accessibility
+/// (color-blind users) and for languages whose label sits at the edge
+/// of single-word fit.
+/// Compact prev / next pager shown at the top of the result screen
+/// during a multi-pick gallery batch (2+ images). Tap arrows to walk
+/// through the processed pages without re-shooting; current position
+/// rendered as "2 / 4" between them. Disabled state at the ends so
+/// users don't have to learn an invisible boundary.
+class _BatchPageNav extends StatelessWidget {
+  const _BatchPageNav({
+    required this.currentIndex,
+    required this.total,
+    required this.onPrev,
+    required this.onNext,
+  });
+  final int currentIndex;
+  final int total;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final canPrev = currentIndex > 0;
+    final canNext = currentIndex < total - 1;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left, size: 22),
+            color: canPrev ? Colors.white : Colors.white38,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: canPrev ? onPrev : null,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              '${currentIndex + 1} / $total',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, size: 22),
+            color: canNext ? Colors.white : Colors.white38,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: canNext ? onNext : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Frozen state of one processed capture, used to swap between pages
+/// in a multi-pick gallery batch without re-running OCR / vision. The
+/// fields mirror the per-capture singletons on [_CameraScreenState];
+/// see [_snapshotActive] / [_restoreFromSnapshot] for the round-trip.
+class _BatchSnapshot {
+  _BatchSnapshot({
+    required this.path,
+    required this.imageSize,
+    required this.blocks,
+    required this.translations,
+    this.visionConfidence,
+    this.detectedScene,
+    this.sourceLang,
+    this.error,
+  });
+  final String path;
+  final ui.Size imageSize;
+  List<OcrBlock> blocks;
+  List<String> translations;
+  String? visionConfidence;
+  String? detectedScene;
+  String? sourceLang;
+  String? error;
+}
+
+class _ConfidenceChip extends StatelessWidget {
+  const _ConfidenceChip({required this.level});
+  final String level;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final String label;
+    final Color bg;
+    final IconData icon;
+    switch (level) {
+      case 'high':
+        label = l.cameraConfidenceReliable;
+        // Tailwind green-700 — readable on bright photo backgrounds.
+        bg = const Color(0xFF15803D);
+        icon = Icons.verified_outlined;
+        break;
+      case 'medium':
+        label = l.cameraConfidenceCaution;
+        bg = const Color(0xFFB45309); // amber-700
+        icon = Icons.warning_amber_rounded;
+        break;
+      case 'low':
+        label = l.cameraConfidenceUnreliable;
+        bg = const Color(0xFFB91C1C); // red-700
+        icon = Icons.error_outline;
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        // Slight transparency so the chip reads as an overlay, not a
+        // solid UI element competing with the photo behind it.
+        color: bg.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Detected: <scene>" chip surfacing the server's content-type guess.
+/// Rendered below the confidence chip when the user's selected scene
+/// is `auto`. The chip is a soft confirmation — same dark-pill style as
+/// the explain hint, NOT colour-coded like the confidence chip, so it
+/// reads as informational metadata rather than another warning level.
+class _DetectedSceneChip extends StatelessWidget {
+  const _DetectedSceneChip({required this.scene});
+  final String scene;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final String sceneLabel;
+    final IconData icon;
+    switch (scene) {
+      case 'menu':
+        sceneLabel = l.cameraSceneMenu;
+        icon = Icons.restaurant_menu_outlined;
+        break;
+      case 'sign':
+        sceneLabel = l.cameraSceneSign;
+        icon = Icons.storefront_outlined;
+        break;
+      case 'document':
+        sceneLabel = l.cameraSceneDocument;
+        icon = Icons.description_outlined;
+        break;
+      case 'screenshot':
+        sceneLabel = l.cameraSceneScreenshot;
+        icon = Icons.phone_iphone_outlined;
+        break;
+      default:
+        sceneLabel = l.cameraSceneOther;
+        icon = Icons.help_outline;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white.withValues(alpha: 0.85), size: 12),
+          const SizedBox(width: 5),
+          Text(
+            l.cameraDetected(sceneLabel),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.92),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }

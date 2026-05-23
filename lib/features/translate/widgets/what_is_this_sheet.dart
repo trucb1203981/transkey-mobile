@@ -74,6 +74,10 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
   bool _loading = true;
   bool _saving = false;
   bool _saved = false;
+  /// True when [_explanation] came from the cache past its TTL — used
+  /// as an offline fallback when the network call failed. UI shows a
+  /// "may be outdated" badge so the user knows the result isn't fresh.
+  bool _isStaleData = false;
   _RecognizedResult? _recognized;
   String _targetLang = 'en';
   String _scene = 'auto';
@@ -130,6 +134,7 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
       _explanation = null;
       _recognized = null;
       _saved = false;
+      _isStaleData = false;
     });
     try {
       final langSettings = ref.read(languageSettingsProvider).valueOrNull;
@@ -149,8 +154,16 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
           ? pinnedSourceLang
           : null;
 
-      final clipped = _sourceText.length > 500
-          ? _sourceText.substring(0, 500)
+      // Server's /explain DTO now accepts 1000 chars (was 500); bump
+      // the client clip to match so menu paragraphs / multi-line signs
+      // / dense document fragments get explained in full rather than
+      // silently chopped at the old 500-char boundary. Anything past
+      // 1000 still gets truncated as a safety net so we never let a
+      // pathological capture (a whole document of text in one block)
+      // through to the LLM — that would be expensive AND slow without
+      // adding signal.
+      final clipped = _sourceText.length > 1000
+          ? _sourceText.substring(0, 1000)
           : _sourceText;
 
       // Reuse a prior result for the same text/lang/scene instead of
@@ -198,6 +211,53 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
         _canonicalController.text = recognized?.phrase ?? _sourceText;
       });
     } catch (e) {
+      if (!mounted) return;
+      // Stale fallback: when the network call fails (offline, slow,
+      // server unreachable), try to surface a previously-cached result
+      // EVEN IF it has expired. The 7-day TTL is fine for normal usage
+      // but a traveller might genuinely be offline past it; showing
+      // day-1 explain on day 10 with a "may be outdated" badge is
+      // strictly better than a hard error.
+      try {
+        final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+        final targetLang = langSettings?.targetLang ?? 'en';
+        final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+            CameraScene.auto;
+        final pinnedSrc = langSettings?.sourceLang;
+        final fallbackSrc = (pinnedSrc != null &&
+                pinnedSrc.isNotEmpty &&
+                pinnedSrc.toLowerCase() != 'auto')
+            ? pinnedSrc
+            : null;
+        final clipped = _sourceText.length > 1000
+            ? _sourceText.substring(0, 1000)
+            : _sourceText;
+        final cacheKey =
+            ExplainCache.instance.key(clipped, targetLang, scene.id);
+        final stale = await ExplainCache.instance.getStale(cacheKey);
+        if (stale != null && mounted) {
+          final recognized = _parseRecognized(stale.explanation);
+          setState(() {
+            _loading = false;
+            _explanation = stale.explanation;
+            _recognized = recognized;
+            _ttsLang = stale.detectedSourceLang ?? fallbackSrc;
+            _canonicalController.text =
+                recognized?.phrase ?? _suggestedCanonical(_sourceText);
+            _isStaleData = stale.isStale;
+            _error = null;
+          });
+          ref.read(trackingServiceProvider).event('explain_stale_fallback',
+              properties: {
+                'is_stale':   stale.isStale,
+                'target_lang': targetLang,
+              });
+          return;
+        }
+      } catch (_) {
+        // If even the stale fallback path errors (e.g. cache load
+        // failed), fall through to the error UI below.
+      }
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -616,7 +676,40 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
                       ),
                     ],
                   )
-                else
+                else ...[
+                  if (_isStaleData)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: Colors.amber.withValues(alpha: 0.5),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cloud_off_outlined,
+                                size: 14, color: Colors.amberAccent),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                l.cameraExplainStaleBadge,
+                                style: const TextStyle(
+                                  color: Colors.amberAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   Text(
                     (_explanation == null || _explanation!.trim().isEmpty)
                         ? l.cameraExplainEmpty
@@ -627,6 +720,7 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
                       height: 1.5,
                     ),
                   ),
+                ],
                 // Disclaimer for menu / sign / auto scenes — the AI may
                 // recover the wrong dish or misread a sign's intent, so
                 // for travel-critical use cases (ordering food, obeying

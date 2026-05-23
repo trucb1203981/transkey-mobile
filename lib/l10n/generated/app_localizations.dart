@@ -1610,18 +1610,6 @@ abstract class AppLocalizations {
   /// **'Feature'**
   String get upgradeFeatureColumn;
 
-  /// No description provided for @upgradeMobilePrice.
-  ///
-  /// In en, this message translates to:
-  /// **'📱 Mobile · \$4/mo'**
-  String upgradeMobilePrice(Object price);
-
-  /// No description provided for @upgradeProPrice.
-  ///
-  /// In en, this message translates to:
-  /// **'💻 Pro · \$6/mo'**
-  String get upgradeProPrice;
-
   /// No description provided for @upgradeFooterHint.
   ///
   /// In en, this message translates to:
@@ -2342,6 +2330,114 @@ abstract class AppLocalizations {
   /// **'Low quality'**
   String get cameraLowQuality;
 
+  /// No description provided for @cameraConfidenceReliable.
+  ///
+  /// In en, this message translates to:
+  /// **'Reliable'**
+  String get cameraConfidenceReliable;
+
+  /// No description provided for @cameraConfidenceCaution.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get cameraConfidenceCaution;
+
+  /// No description provided for @cameraConfidenceUnreliable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unreliable'**
+  String get cameraConfidenceUnreliable;
+
+  /// No description provided for @cameraHoldSteady.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold steady'**
+  String get cameraHoldSteady;
+
+  /// No description provided for @cameraCopyTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy translation'**
+  String get cameraCopyTranslation;
+
+  /// No description provided for @cameraCopyOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy original'**
+  String get cameraCopyOriginal;
+
+  /// No description provided for @cameraRetryBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate again'**
+  String get cameraRetryBlock;
+
+  /// No description provided for @cameraSaveBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to phrasebook'**
+  String get cameraSaveBlock;
+
+  /// No description provided for @cameraSavingPhrasebook.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get cameraSavingPhrasebook;
+
+  /// No description provided for @cameraBlockRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Translating again…'**
+  String get cameraBlockRetrying;
+
+  /// Progress label shown during a multi-pick gallery batch. {current} is the 1-based index of the image currently being processed.
+  ///
+  /// In en, this message translates to:
+  /// **'Translating {current} of {total}…'**
+  String cameraBatchProgress(int current, int total);
+
+  /// No description provided for @cameraSaveNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note (optional)'**
+  String get cameraSaveNoteLabel;
+
+  /// No description provided for @cameraSaveNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. near the hotel, very spicy'**
+  String get cameraSaveNoteHint;
+
+  /// No description provided for @cameraSaveSkipNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get cameraSaveSkipNote;
+
+  /// No description provided for @cameraCopyLineHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'COPY LINE'**
+  String get cameraCopyLineHeader;
+
+  /// No description provided for @cameraShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get cameraShare;
+
+  /// No description provided for @cameraShareSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated by TransKey'**
+  String get cameraShareSubject;
+
+  /// No description provided for @cameraShareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t share. Try again.'**
+  String get cameraShareFailed;
+
   /// No description provided for @cameraTranslating.
   ///
   /// In en, this message translates to:
@@ -2456,6 +2552,18 @@ abstract class AppLocalizations {
   /// **'Screenshot'**
   String get cameraSceneScreenshot;
 
+  /// No description provided for @cameraSceneOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get cameraSceneOther;
+
+  /// Badge label confirming what the AI thinks the captured image is (placeholder is a localized scene name).
+  ///
+  /// In en, this message translates to:
+  /// **'Detected: {scene}'**
+  String cameraDetected(String scene);
+
   /// No description provided for @cameraWhatIsThis.
   ///
   /// In en, this message translates to:
@@ -2491,6 +2599,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No explanation available.'**
   String get cameraExplainEmpty;
+
+  /// No description provided for @cameraExplainStaleBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved offline — may be outdated'**
+  String get cameraExplainStaleBadge;
 
   /// No description provided for @cameraExplainError.
   ///

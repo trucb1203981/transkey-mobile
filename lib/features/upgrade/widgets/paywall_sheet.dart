@@ -135,14 +135,15 @@ class _PaywallSheetState extends ConsumerState<PaywallSheet> {
     final theme = Theme.of(context);
 
     // Entry-level price = the cheapest paid tier (currently mobile). Pulled
-    // from /plans so the "From $X/month" copy tracks any price change without
-    // an app update. Falls back to $4 if the API hasn't resolved yet.
-    final mobilePrice =
-        ref.watch(plansProvider).valueOrNull;
-    final entryPrice = planByKey(mobilePrice, 'mobile')?.priceMonthly ?? 4;
-    final entryPriceLabel = entryPrice % 1 == 0
-        ? '\$${entryPrice.toInt()}'
-        : '\$$entryPrice';
+    // from /plans so the "From $X/month" copy always reflects the current
+    // server price. Renders `…` while the API is in flight or if the plan
+    // is missing from the response — no stale hardcoded fallback (was $4)
+    // that could silently lie after a price change.
+    final plansList = ref.watch(plansProvider).valueOrNull;
+    final entryPrice = planByKey(plansList, 'mobile')?.priceMonthly;
+    final entryPriceLabel = entryPrice == null
+        ? '…'
+        : (entryPrice % 1 == 0 ? '\$${entryPrice.toInt()}' : '\$$entryPrice');
 
     return SafeArea(
       child: Padding(

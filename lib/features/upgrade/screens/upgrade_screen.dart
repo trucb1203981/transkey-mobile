@@ -42,10 +42,15 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     final l = AppLocalizations.of(context)!;
     final usage = ref.watch(usageProvider).valueOrNull;
     final plansAsync = ref.watch(plansProvider);
-    // Hide the 7-day-trial CTA once the user has used it — backend rejects a
-    // second attempt anyway, and showing the button leads to a confusing
-    // "Failed to activate trial" toast.
-    final canActivateTrial = !(usage?.trialUsed ?? false);
+    // Show the 7-day-trial CTA only when (a) the user hasn't used it yet
+    // AND (b) the server actually returns a `trial` plan in /plans for
+    // this platform. Trial is desktop-only by business rule (anti-abuse:
+    // tourists activating 7-day trial then dropping the app), so on
+    // mobile the trial plan is filtered out by PlatformGuard → the CTA
+    // should hide too. Pure catalog-driven gate; no hardcoded platform
+    // check on the client.
+    final hasTrialPlan = plansAsync.valueOrNull?.any((p) => p.plan == 'trial') ?? false;
+    final canActivateTrial = hasTrialPlan && !(usage?.trialUsed ?? false);
     // First-month half-price discount: badge on the Pro card + appended to
     // the checkout button so the price is honest.
     final hasDiscount = usage?.firstMonthDiscount ?? false;
@@ -97,7 +102,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                 children: [
                   Expanded(child: _planCard(
                     (freePlan?.displayName ?? l.planFree).toUpperCase(),
-                    _formatPrice(freePlan?.priceMonthly, 0),
+                    _formatPrice(freePlan?.priceMonthly),
                     null,
                     plan == 'free',
                     isDark,
@@ -113,7 +118,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(child: _planCard(
                     '📱 ${(mobilePlan?.displayName ?? l.planMobile).toUpperCase()}',
-                    _formatPrice(mobilePrice, 3),
+                    _formatPrice(mobilePrice),
                     l.upgradePopularBadge,
                     plan != 'free',
                     isDark,
@@ -128,7 +133,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(child: _planCard(
                     '⭐ ${(proPlan?.displayName ?? l.planPro).toUpperCase()}',
-                    _formatPrice(proPrice, 6),
+                    _formatPrice(proPrice),
                     hasDiscount ? l.discountFirstMonth : null,
                     plan == 'pro',
                     isDark,
@@ -166,14 +171,14 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                 children: [
                   Expanded(
                     child: _actionButton(
-                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice, 3)}',
+                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice)}',
                       onPressed: () => _checkout('mobile'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _actionButton(
-                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice, 6)}',
+                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice)}',
                       onPressed: () => _checkout('pro'),
                       isGold: true,
                     ),
@@ -185,14 +190,14 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                 children: [
                   Expanded(
                     child: _actionButton(
-                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice, 3)}',
+                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice)}',
                       onPressed: () => _checkout('mobile'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _actionButton(
-                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice, 6)}',
+                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice)}',
                       onPressed: () => _checkout('pro'),
                       isGold: true,
                     ),
@@ -201,7 +206,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
               ),
             ] else if (plan == 'mobile') ...[
               _actionButton(
-                label: '💻 ${l.upgradeToPro} · ${_formatPrice(proPrice, 6)}',
+                label: '💻 ${l.upgradeToPro} · ${_formatPrice(proPrice)}',
                 onPressed: () => _checkout('pro'),
                 isGold: true,
               ),
@@ -517,14 +522,16 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     }
   }
 
-  /// Render a monthly price label, e.g. `$3/mo`. Uses the API-returned
-  /// value when available, else [fallbackDollars]. `0` (free) and `null`
-  /// both render as `$0`.
-  String _formatPrice(num? price, num fallbackDollars) {
-    final value = price ?? fallbackDollars;
-    if (value == 0) return '\$0';
+  /// Render a monthly price label, e.g. `$3/mo`. Prices come from /plans;
+  /// when the API hasn't resolved yet OR the plan is missing from the
+  /// response, return `…` as a loading placeholder instead of a stale
+  /// hardcoded fallback (previously $3 mobile / $6 pro silently lied if
+  /// the team raised prices server-side).
+  String _formatPrice(num? price) {
+    if (price == null) return '…';
+    if (price == 0) return '\$0';
     // Trim trailing zeros — `3.0` → `3`, `3.50` → `3.5`.
-    final str = value % 1 == 0 ? value.toInt().toString() : value.toString();
+    final str = price % 1 == 0 ? price.toInt().toString() : price.toString();
     return '\$$str/mo';
   }
 

@@ -50,6 +50,19 @@ dependencies:
   # Lets the camera screen pick an existing photo from the device gallery
   # and run it through the same OCR + scene pipeline as a live capture.
   image_picker: ^1.1.2
+  # Direct read of the native OS device orientation (Android
+  # OrientationEventListener / iOS UIDeviceOrientation). The camera
+  # plugin's own CameraValue.deviceOrientation reports portraitUp even
+  # in landscape under our configChanges="orientation" setup, so we
+  # use this as the authoritative source at capture time to decide
+  # how to rotate the captured JPEG.
+  native_device_orientation: ^2.0.5
+  # Share the captured + translated camera result with other apps —
+  # users typically screenshot the result overlay and send it to a
+  # travel companion ("look at this menu I translated"). Single
+  # function used: Share.shareXFiles(<png>) wrapped by a Share button
+  # on the result action bar.
+  share_plus: ^11.0.0
 
   # Deep links
   app_links: ^6.3.0

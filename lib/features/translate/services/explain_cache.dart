@@ -9,10 +9,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// voice so a traveller can speak the dish/place name aloud. Entries cached
 /// before this field was added have [detectedSourceLang] == null — callers
 /// must fall back gracefully (e.g. disable TTS) rather than assume.
+///
+/// [isStale] is set when the entry was returned via [ExplainCache.getStale]
+/// AND its TTL has elapsed — the renderer should badge the result so the
+/// user knows it might be outdated (currently used as an offline fallback
+/// past the 7-day TTL: a traveller scans a dish on day 1, opens it on day
+/// 10 with no signal — better to show day-1 data than an error).
 class ExplainCacheHit {
-  const ExplainCacheHit({required this.explanation, this.detectedSourceLang});
+  const ExplainCacheHit({
+    required this.explanation,
+    this.detectedSourceLang,
+    this.isStale = false,
+  });
   final String explanation;
   final String? detectedSourceLang;
+  final bool isStale;
 }
 
 /// Disk-backed cache of `/explain` ("What is this?") results.
@@ -47,18 +58,34 @@ class ExplainCache {
       '$targetLang|$scene|$text';
 
   /// Returns the cached hit for [cacheKey], or null on miss/expired.
+  /// Note: expired entries are NOT removed here so they remain available
+  /// to [getStale] as an offline fallback. They get evicted by the LRU
+  /// cap during normal [put] traffic.
   Future<ExplainCacheHit?> get(String cacheKey) async {
     await _ensureLoaded();
     final entry = _mem![cacheKey];
     if (entry == null) return null;
-    if (_isExpired(entry)) {
-      _mem!.remove(cacheKey);
-      await _persist();
-      return null;
-    }
+    if (_isExpired(entry)) return null;
     return ExplainCacheHit(
       explanation: entry.explanation,
       detectedSourceLang: entry.detectedSourceLang,
+    );
+  }
+
+  /// Returns the cached hit for [cacheKey] regardless of TTL, with
+  /// `isStale` set when the entry has exceeded [_ttl]. Used by the
+  /// /explain UI as an offline / network-error fallback so the user
+  /// sees a (possibly outdated) result instead of a blank error
+  /// state — critical for the traveller use case where the app
+  /// might be offline for days at a time past the TTL.
+  Future<ExplainCacheHit?> getStale(String cacheKey) async {
+    await _ensureLoaded();
+    final entry = _mem![cacheKey];
+    if (entry == null) return null;
+    return ExplainCacheHit(
+      explanation: entry.explanation,
+      detectedSourceLang: entry.detectedSourceLang,
+      isStale: _isExpired(entry),
     );
   }
 
@@ -106,7 +133,9 @@ class ExplainCache {
       // corrupt or unavailable store — start empty
     }
     _mem = map;
-    if (_pruneExpired()) await _persist();
+    // Don't prune expired on load — keep them around for the offline
+    // stale-fallback path. The size cap (_enforceCap on put) bounds
+    // memory + disk growth regardless.
   }
 
   bool _isExpired(_ExplainEntry e) =>

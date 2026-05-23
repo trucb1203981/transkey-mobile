@@ -806,14 +806,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get upgradeFeatureColumn => 'Функция';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · \$4/mo';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · \$6/mo';
-
-  @override
   String get upgradeFooterHint =>
       '📱 Mobile: выгоднее, если вы пользуетесь только телефоном\n💻 Pro: работает и на телефоне, и на десктопе';
 
@@ -1233,6 +1225,62 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraLowQuality => 'Низкое качество';
 
   @override
+  String get cameraConfidenceReliable => 'Надёжно';
+
+  @override
+  String get cameraConfidenceCaution => 'Проверьте';
+
+  @override
+  String get cameraConfidenceUnreliable => 'Ненадёжно';
+
+  @override
+  String get cameraHoldSteady => 'Держите ровно';
+
+  @override
+  String get cameraCopyTranslation => 'Копировать перевод';
+
+  @override
+  String get cameraCopyOriginal => 'Копировать оригинал';
+
+  @override
+  String get cameraRetryBlock => 'Перевести снова';
+
+  @override
+  String get cameraSaveBlock => 'Сохранить в разговорник';
+
+  @override
+  String get cameraSavingPhrasebook => 'Сохранение…';
+
+  @override
+  String get cameraBlockRetrying => 'Повторный перевод…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return 'Перевод $current из $total…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => 'Добавить заметку (необязательно)';
+
+  @override
+  String get cameraSaveNoteHint => 'напр., рядом с отелем, очень острое';
+
+  @override
+  String get cameraSaveSkipNote => 'Пропустить';
+
+  @override
+  String get cameraCopyLineHeader => 'КОПИРОВАТЬ СТРОКУ';
+
+  @override
+  String get cameraShare => 'Поделиться';
+
+  @override
+  String get cameraShareSubject => 'Переведено в TransKey';
+
+  @override
+  String get cameraShareFailed => 'Не удалось поделиться. Попробуйте снова.';
+
+  @override
   String get cameraTranslating => 'Перевод...';
 
   @override
@@ -1295,6 +1343,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraSceneScreenshot => 'Скриншот';
 
   @override
+  String get cameraSceneOther => 'Другое';
+
+  @override
+  String cameraDetected(String scene) {
+    return 'Обнаружено: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => 'Что это?';
 
   @override
@@ -1312,6 +1368,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => 'Объяснение недоступно.';
+
+  @override
+  String get cameraExplainStaleBadge =>
+      'Сохранено офлайн — может быть устаревшим';
 
   @override
   String get cameraExplainError =>

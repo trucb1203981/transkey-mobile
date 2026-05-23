@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
@@ -104,7 +105,12 @@ class _HeadersInterceptor extends Interceptor {
 
     final fingerprint = await deviceId.getFingerprint();
     options.headers['X-Device-ID'] = fingerprint;
-    options.headers['X-Platform'] = 'mobile';
+    // Server's PlatformGuard only recognises `desktop|ios|android` —
+    // sending the generic `mobile` here gets normalised to `desktop`
+    // (fail-closed), which excludes the `mobile` plan (allowed_platforms
+    // = ios+android) from /plans for this client. Always send the actual
+    // OS so per-platform plan filtering works.
+    options.headers['X-Platform'] = Platform.isIOS ? 'ios' : 'android';
 
     handler.next(options);
   }

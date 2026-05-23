@@ -134,7 +134,7 @@ internal fun BubbleService.showScanDisclosure(mode: String = MODE_TRANSLATE) {
         isClickable = true
     }
     card.addView(TextView(this).apply {
-        text = "📷  ${localized(R.string.bubble_scan_disclosure_title)}"
+        text = "📱  ${localized(R.string.bubble_scan_disclosure_title)}"
         setTextColor(textCol)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
         typeface = Typeface.DEFAULT_BOLD

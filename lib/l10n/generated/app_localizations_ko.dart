@@ -782,14 +782,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get upgradeFeatureColumn => '기능';
 
   @override
-  String upgradeMobilePrice(Object price) {
-    return '📱 Mobile · \$4/월';
-  }
-
-  @override
-  String get upgradeProPrice => '💻 Pro · \$6/월';
-
-  @override
   String get upgradeFooterHint =>
       '📱 Mobile: 휴대폰만 사용한다면 최고의 가성비\n💻 Pro: 휴대폰과 데스크톱 모두 사용 가능';
 
@@ -1184,6 +1176,62 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraLowQuality => '품질 낮음';
 
   @override
+  String get cameraConfidenceReliable => '신뢰 가능';
+
+  @override
+  String get cameraConfidenceCaution => '확인 필요';
+
+  @override
+  String get cameraConfidenceUnreliable => '신뢰 불가';
+
+  @override
+  String get cameraHoldSteady => '흔들리지 마세요';
+
+  @override
+  String get cameraCopyTranslation => '번역 복사';
+
+  @override
+  String get cameraCopyOriginal => '원문 복사';
+
+  @override
+  String get cameraRetryBlock => '다시 번역';
+
+  @override
+  String get cameraSaveBlock => '문구장에 저장';
+
+  @override
+  String get cameraSavingPhrasebook => '저장 중…';
+
+  @override
+  String get cameraBlockRetrying => '다시 번역 중…';
+
+  @override
+  String cameraBatchProgress(int current, int total) {
+    return '$total장 중 $current번째 번역 중…';
+  }
+
+  @override
+  String get cameraSaveNoteLabel => '메모 추가 (선택)';
+
+  @override
+  String get cameraSaveNoteHint => '예: 호텔 근처, 매움';
+
+  @override
+  String get cameraSaveSkipNote => '건너뛰기';
+
+  @override
+  String get cameraCopyLineHeader => '줄 복사';
+
+  @override
+  String get cameraShare => '공유';
+
+  @override
+  String get cameraShareSubject => 'TransKey 번역';
+
+  @override
+  String get cameraShareFailed => '공유 실패. 다시 시도하세요.';
+
+  @override
   String get cameraTranslating => '번역 중...';
 
   @override
@@ -1243,6 +1291,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraSceneScreenshot => '스크린샷';
 
   @override
+  String get cameraSceneOther => '기타';
+
+  @override
+  String cameraDetected(String scene) {
+    return '감지됨: $scene';
+  }
+
+  @override
   String get cameraWhatIsThis => '이것은 무엇인가요?';
 
   @override
@@ -1259,6 +1315,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cameraExplainEmpty => '설명이 없습니다.';
+
+  @override
+  String get cameraExplainStaleBadge => '오프라인 저장본 — 오래된 정보일 수 있음';
 
   @override
   String get cameraExplainError => '설명을 가져올 수 없습니다. 다시 시도하세요.';

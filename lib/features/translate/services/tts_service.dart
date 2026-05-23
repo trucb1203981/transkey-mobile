@@ -161,9 +161,15 @@ class TtsNotifier extends Notifier<TtsState> {
   Future<void> speak(String text, {String lang = 'en', double? rate}) async {
     if (text.trim().isEmpty) return;
 
+    // Tap-to-stop toggle: if THIS exact text is currently playing, kill
+    // playback. Use stop() (not pause()) because Android's TTS engine
+    // ignores pause for a current in-flight utterance — it would keep
+    // talking until the sentence ended, leaving the user mashing the
+    // button. stop() also drops the queued audio, so the next tap starts
+    // from the beginning instead of resuming mid-word.
     final sameText = state.currentText == text.trim() && state.isPlaying;
     if (sameText) {
-      await pause();
+      await stop();
       return;
     }
 
