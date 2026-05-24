@@ -37,9 +37,9 @@ import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
  * upgrade-nudge sheet's headline matches the picker label the user
  * just tapped.
  */
-private data class ModeGate(val prefsKey: String, val displayName: String)
+internal data class ModeGate(val prefsKey: String, val displayName: String)
 
-private fun modeGateFor(mode: String): ModeGate? = when (mode) {
+internal fun modeGateFor(mode: String): ModeGate? = when (mode) {
     MODE_SUMMARIZE -> ModeGate("tk_feature_summarize", "Summarize")
     MODE_EXPLAIN   -> ModeGate("tk_feature_explain",   "Explain")
     MODE_REFINE    -> ModeGate("tk_feature_refine",    "Refine")

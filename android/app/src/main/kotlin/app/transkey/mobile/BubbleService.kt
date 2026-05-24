@@ -6,6 +6,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -426,8 +427,51 @@ class BubbleService : Service() {
     override fun onCreate() {
         super.onCreate()
         createBubbleNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildBubbleNotification())
+        // On Android 14+ a FGS that captures mic must declare the microphone
+        // type at startForeground time; declaring it only in the manifest is
+        // not enough. Start with specialUse only — `enterMicrophoneFgs()`
+        // escalates to specialUse|microphone right before SpeechRecognizer
+        // listens and `leaveMicrophoneFgs()` drops back, so we don't hold
+        // mic-typed FGS while idle (Play policy: only claim what's in use).
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildBubbleNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, buildBubbleNotification())
+        }
         tts = TextToSpeech(this) { status -> ttsReady = (status == TextToSpeech.SUCCESS) }
+    }
+
+    /**
+     * Escalate the FGS type to include `microphone` so SpeechRecognizer can
+     * capture audio while another app is foreground. No-op below Android 14
+     * where the type-enforcement was not yet introduced. Idempotent —
+     * safe to call multiple times for the same picker session.
+     */
+    internal fun enterMicrophoneFgs() {
+        if (Build.VERSION.SDK_INT < 34) return
+        startForeground(
+            NOTIFICATION_ID,
+            buildBubbleNotification(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+        )
+    }
+
+    /**
+     * Drop back to specialUse-only after the voice picker is dismissed.
+     * Called from `cancelVoice()` / `hideVoicePicker()` teardown paths.
+     */
+    internal fun leaveMicrophoneFgs() {
+        if (Build.VERSION.SDK_INT < 34) return
+        startForeground(
+            NOTIFICATION_ID,
+            buildBubbleNotification(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -650,6 +694,20 @@ class BubbleService : Service() {
             // capture pipeline doesn't paint into a stale overlay.
             if (modePickerView != null) hideModePicker()
             if (panel.view != null) hideResultPanel()
+            // Re-check the plan gate before repeating. lastLensAction may have
+            // been cached while the user was entitled, then their `lens` flag
+            // flipped to false (trial expiry / downgrade / server toggle) while
+            // this bubble session kept the cache alive. The mode picker locks
+            // the Lens row correctly, but double-tap bypasses the picker — so
+            // gate here too, else a now-free user re-runs a full capture+OCR
+            // (the server 403s the translate, but the MediaProjection + OCR
+            // work still fires). Locked → drop the stale cache and surface the
+            // upsell instead of scanning, matching the picker's behaviour.
+            if (!readFeatureEnabled("tk_feature_lens")) {
+                lastLensAction = null
+                openFeatureUpsell("Lens")
+                return
+            }
             android.util.Log.w("TKBubble", "bubble double-tap: repeating lens region=${cached.regionMode} mode=${cached.mode}")
             if (cached.regionMode) handleLensRegionRequest(cached.mode)
             else handleScanRequest(cached.mode)
@@ -767,6 +825,20 @@ class BubbleService : Service() {
     // ── Result panel ──
 
     internal fun handleTranslateRequest(text: String, mode: String) {
+        // Plan gate at the dispatch chokepoint. Every surface that lets the
+        // user pick a mode funnels through here (result-panel mode tabs, the
+        // type/voice input picker, and re-translate after a tone/lang change).
+        // The mode picker locks paid modes visually, but those other surfaces
+        // don't — so without this guard a free user could reach Summarize /
+        // Explain / Refine / Reply directly. Gate here as the single source of
+        // truth; the picker flow only ever forwards an already-unlocked mode so
+        // it never double-prompts. TRANSLATE has no gate (always free).
+        modeGateFor(mode)?.let { gate ->
+            if (!readFeatureEnabled(gate.prefsKey)) {
+                openFeatureUpsell(gate.displayName)
+                return
+            }
+        }
         android.util.Log.w("TKBubble", "handleTranslateRequest: mode=$mode textLen=${text.length} preview='${text.take(60).replace("\n", "⏎")}'")
         isTranslating = true
         currentSourceText = text
@@ -1143,6 +1215,16 @@ class BubbleService : Service() {
     @SuppressLint("ClickableViewAccessibility")
 
     internal fun handleScanRequest(mode: String = MODE_TRANSLATE) {
+        // Gate a paid scan sub-mode (e.g. Summarize) BEFORE capturing, so a
+        // locked feature never wastes a MediaProjection prompt + OCR. The lens
+        // flag itself is gated upstream (picker row + double-tap guard);
+        // TRANSLATE has no gate (always free). Don't cache a blocked action.
+        modeGateFor(mode)?.let { gate ->
+            if (!readFeatureEnabled(gate.prefsKey)) {
+                openFeatureUpsell(gate.displayName)
+                return
+            }
+        }
         ScreenCaptureManager.regionMode = false
         lastLensAction = LastLensAction(regionMode = false, mode = mode)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
@@ -1308,6 +1390,14 @@ class BubbleService : Service() {
      * only that sub-region is OCR'd + translated.
      */
     internal fun handleLensRegionRequest(mode: String = MODE_TRANSLATE) {
+        // Same per-mode gate as handleScanRequest — block a paid scan sub-mode
+        // before the region-capture flow starts. Don't cache a blocked action.
+        modeGateFor(mode)?.let { gate ->
+            if (!readFeatureEnabled(gate.prefsKey)) {
+                openFeatureUpsell(gate.displayName)
+                return
+            }
+        }
         ScreenCaptureManager.regionMode = true
         lastLensAction = LastLensAction(regionMode = true, mode = mode)
         if (prefs.getBoolean(KEY_SCAN_DISCLOSED, false)) {
@@ -1458,7 +1548,15 @@ class BubbleService : Service() {
         // the user which language to actually pick.
         val hint = ScreenCaptureManager.languageHint
         val forceVision = OcrHelper.needsVisionForSource(hint)
-        val emptyMlkitFallback = blocks.isEmpty()
+        // Hallucination gate: ML Kit's per-language recognizer doesn't refuse
+        // unknown scripts — feed it Arabic / Thai / etc. with pin=ja and it
+        // returns garbage Latin/digits PLUS the occasional fake kana char
+        // from misreading a curve. Blocks are non-empty so the empty-OCR
+        // path doesn't trigger, but the result has near-zero real pinned-
+        // script content. Treat that as "ML Kit failed" and let vision read
+        // what's actually there (so the server's sourceMismatch can fire).
+        val hallucinated = ocrLooksHallucinated(blocks, hint)
+        val emptyMlkitFallback = blocks.isEmpty() || hallucinated
         if (emptyMlkitFallback && !hint.isNullOrEmpty() && hint != "auto") {
             // Surface the wrong-pin signal early — vision is about to run
             // (~2-5s on Gemini) so the user understands why they're waiting.
@@ -1469,6 +1567,12 @@ class BubbleService : Service() {
                 Toast.LENGTH_SHORT,
             ).show()
         }
+        // Show the in-flight spinner BEFORE branching — both the vision
+        // fallback and the ML Kit batch path run an async translate that
+        // can take seconds. Previously showLensProgress() lived only on the
+        // batch path, so the vision route showed nothing during the wait
+        // and the user couldn't tell it was working.
+        showLensProgress()
         if (forceVision || emptyMlkitFallback) {
             runLensVisionTranslate(
                 bitmap = bitmap,
@@ -1487,19 +1591,6 @@ class BubbleService : Service() {
             )
             return
         }
-
-        if (blocks.isEmpty()) {
-            ScreenCaptureManager.clearAll()
-            restoreBubbleVisibility()
-            Toast.makeText(
-                this,
-                localized(R.string.bubble_scan_empty),
-                Toast.LENGTH_LONG,
-            ).show()
-            return
-        }
-
-        showLensProgress()
 
         val engine = TransKeyApp.engine
         if (engine == null) {
@@ -1587,7 +1678,7 @@ class BubbleService : Service() {
      * pending state, then progressive emit re-fills them under the new
      * source hint.
      */
-    private fun retranslateLens(newSource: String) {
+    internal fun retranslateLens(newSource: String) {
         val texts = lensTexts ?: return
         val overlay = lensOverlayView ?: return
         val target = lensTarget ?: ScreenCaptureManager.targetLang
@@ -1621,6 +1712,47 @@ class BubbleService : Service() {
             }
             override fun notImplemented() {}
         })
+    }
+
+    /**
+     * Detects the "ML Kit hallucinated" case: user pinned a CJK source
+     * but the screen is a different (unsupported) script. ML Kit's per-
+     * language recognizer doesn't refuse — it returns mostly Latin/digit
+     * noise PLUS an occasional fake kana char from misreading a curve,
+     * which (a) tricks the empty-OCR fallback into NOT running and (b)
+     * tricks the server's script detector into agreeing with the pin.
+     * Net effect: silently produces garbage instead of fall-throughing
+     * to vision OCR + showing the source-mismatch banner.
+     *
+     * Heuristic: when the pin is ja/zh/ko AND the share of OCR'd chars
+     * that are ACTUALLY in the pinned source's script falls below a
+     * language-specific floor, treat the OCR as failed and force the
+     * vision path. Latin / Cyrillic / etc. pins are skipped — there's
+     * no script-class to count for those, and ML Kit doesn't hallucinate
+     * the same way for Latin-based recognizers.
+     */
+    private fun ocrLooksHallucinated(blocks: List<OcrHelper.Block>, hint: String?): Boolean {
+        val pin = hint?.lowercase()?.split("-", "_")?.first() ?: return false
+        val threshold: Float = when (pin) {
+            "ja" -> 0.25f   // ja real screens have kana+han ≥ 25% of text
+            "zh" -> 0.50f   // zh is han-dominant
+            "ko" -> 0.30f   // ko mixes hangul + occasional han
+            else -> return false
+        }
+        val joined = blocks.joinToString(separator = "") { it.text }
+        val significant = joined.filter { c -> !c.isWhitespace() && !c.isISOControl() && c.code > 32 }
+        // Too little text to judge — fall back to existing empty-OCR check.
+        if (significant.length < 10) return false
+        val matching = significant.count { isInLangScript(it.code, pin) }
+        return matching.toFloat() / significant.length < threshold
+    }
+
+    private fun isInLangScript(cp: Int, lang: String): Boolean = when (lang) {
+        "ja" -> (cp in 0x3040..0x309F) || (cp in 0x30A0..0x30FF) ||
+                (cp in 0xFF66..0xFF9F) || (cp in 0x4E00..0x9FFF) || (cp in 0x3400..0x4DBF)
+        "zh" -> (cp in 0x4E00..0x9FFF) || (cp in 0x3400..0x4DBF)
+        "ko" -> (cp in 0xAC00..0xD7AF) || (cp in 0x4E00..0x9FFF)
+        else -> false
     }
 
     /**
@@ -1756,9 +1888,20 @@ class BubbleService : Service() {
                         val joinedTranslation = items.joinToString(" ") { it.translation }.trim()
                         listOf(LensOverlayView.Item(joinedOriginal, joinedTranslation, aggregateBounds))
                     } else dedupOverlappingItems(items)
+                    // Stash the vision-transcribed originals so the lang-chip
+                    // "switch source & re-translate" works after a vision scan
+                    // too — re-translate goes through the text batch path using
+                    // these already-transcribed strings (no re-OCR needed).
+                    lensTexts = finalItems.map { it.original }
+                    lensTarget = ScreenCaptureManager.targetLang
                     onSuccessRecycle?.invoke()
                     hideLensProgress()
                     showLensOverlay(renderBitmap ?: bitmap, finalItems)
+                    // Vision path returns FULLY-translated items in one shot
+                    // (no chunked progressive emit). Mark every chip processed
+                    // so the "Đang dịch X/Y" pill hides and chips render with
+                    // the white "done" background instead of pending amber.
+                    lensOverlayView?.markAllProcessed()
                 }
             }
             override fun error(code: String, message: String?, details: Any?) {

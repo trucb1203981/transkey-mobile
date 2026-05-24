@@ -5,6 +5,14 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Required on Android 14+ for the BubbleService to capture mic audio
+         (SpeechRecognizer) while the user is in another app. Without it, the
+         OS silently blocks audio recording from the FGS and SpeechRecognizer
+         returns empty results / never fires onResults — the symptom reported
+         as "voice doesn't recognize anything when triggered from the bubble
+         over another app". The service's foregroundServiceType below now
+         includes `microphone` alongside `specialUse`. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <!-- Runtime-requested when user taps the bubble's "Voice input" entry. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Camera translate: snapshot-mode OCR on live camera feed. -->
@@ -158,11 +166,17 @@
              PROPERTY_SPECIAL_USE_FGS_SUBTYPE property the system treats
              the FGS as misconfigured and aggressively reclaims it when
              the app is backgrounded (especially while another FGS like
-             mediaProjection is also active). -->
+             mediaProjection is also active).
+
+             `microphone` is added so the service can run SpeechRecognizer
+             when the user invokes voice from the bubble while another app
+             is foreground. The runtime escalation lives in BubbleService —
+             default state is specialUse only, voice picker open escalates
+             to specialUse|microphone, dismiss drops back. -->
         <service
             android:name=".BubbleService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="specialUse|microphone">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="floating-translation-overlay-bubble" />

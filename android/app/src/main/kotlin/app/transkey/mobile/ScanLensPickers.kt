@@ -254,6 +254,16 @@ internal fun BubbleService.hideLensProgress() {
 
 internal fun BubbleService.showLensOverlay(bitmap: Bitmap, items: List<LensOverlayView.Item>) {
     ensureWindowManager()
+    // Resolve current source/target into display labels for the always-on
+    // language chip so the user can verify (and catch a wrong pick the
+    // mismatch banner can't detect — Latin-vs-Latin source, or wrong target).
+    val labels = getEffectiveLangLabels()
+    val srcHint = ScreenCaptureManager.languageHint
+    val srcLabel = if (srcHint.isNullOrEmpty() || srcHint == "auto")
+        localized(R.string.bubble_tone_auto)
+    else (labels[srcHint] ?: srcHint)
+    val tgtCode = ScreenCaptureManager.targetLang
+    val tgtLabel = labels[tgtCode] ?: tgtCode
     val overlay = LensOverlayView(
         this, bitmap, items,
         // Outside tap = the "accidental dismiss" case — offer a quick undo
@@ -273,6 +283,21 @@ internal fun BubbleService.showLensOverlay(bitmap: Bitmap, items: List<LensOverl
         // lost.
         onBlockTap = { original, translation ->
             showLensDetailPopup(original, translation)
+        },
+        sourceLabel = srcLabel,
+        targetLabel = tgtLabel,
+        // Tap the chip → open the source-language picker ON TOP of the
+        // overlay (do NOT tear the overlay down — cancelling the picker
+        // must keep the current translation). Picking a language
+        // re-translates the SAME scan in place via the stashed texts.
+        onLangChipTap = {
+            showSourceLangPicker(onPicked = { newSource ->
+                val newLabel = if (newSource == "auto")
+                    localized(R.string.bubble_tone_auto)
+                else (getEffectiveLangLabels()[newSource] ?: newSource)
+                lensOverlayView?.setSourceLabel(newLabel)
+                retranslateLens(newSource)
+            })
         },
     )
     lensOverlayView = overlay

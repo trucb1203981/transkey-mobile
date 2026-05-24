@@ -1,5 +1,7 @@
 package app.transkey.mobile
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
@@ -48,7 +50,18 @@ class LensOverlayView(
     /// clean overlay, but long CJK→Latin translations that don't fit the
     /// chip are never lost — the user taps to read the whole thing.
     private val onBlockTap: ((original: String, translation: String) -> Unit)? = null,
+    /// Always-visible "source → target" labels so the user can SEE which
+    /// languages are active and catch a wrong pick the mismatch banner
+    /// can't detect (Latin-vs-Latin source, or a wrong TARGET). Tapping
+    /// the chip opens the language picker.
+    sourceLabel: String = "",
+    private val targetLabel: String = "",
+    private val onLangChipTap: (() -> Unit)? = null,
 ) : View(context) {
+
+    /// Mutable so an in-place re-translate (lang chip → pick new source)
+    /// can refresh the chip without rebuilding the overlay.
+    private var sourceLabel: String = sourceLabel
 
     data class Item(val original: String, val translation: String, val bounds: Rect)
 
@@ -83,6 +96,23 @@ class LensOverlayView(
         color = Color.parseColor("#FFF3CD")
         style = Paint.Style.FILL
     }
+    // Pending chips pulse between two amber shades in sync so a screen of
+    // half-translated (white) + half-pending (amber) chips reads clearly as
+    // "still working" instead of "half broken" to a first-time user. One
+    // shared animator drives all chips — cheap even with 100+ blocks.
+    private val pulseDim = Color.parseColor("#FFF3CD")
+    private val pulseBright = Color.parseColor("#FFE08A")
+    private val argbEval = ArgbEvaluator()
+    private var pulse = 0f
+    private val pulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = 850
+        repeatMode = ValueAnimator.REVERSE
+        repeatCount = ValueAnimator.INFINITE
+        addUpdateListener {
+            pulse = it.animatedValue as Float
+            invalidate()
+        }
+    }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#33000000")
         style = Paint.Style.STROKE
@@ -103,6 +133,18 @@ class LensOverlayView(
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
         textSize = context.resources.displayMetrics.density * 13f
+    }
+    // "source → target" language chip (top-left). Always visible so the
+    // user can self-check the active languages.
+    private val langChipRect = RectF()
+    private val langChipBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#E61A1A2E")
+        style = Paint.Style.FILL
+    }
+    private val langChipTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.LEFT
+        textSize = context.resources.displayMetrics.density * 12f
     }
 
     // Per-item "translation arrived from the server" flag. Starts false
@@ -172,6 +214,23 @@ class LensOverlayView(
         setBackgroundColor(Color.parseColor("#CC000000"))
         isClickable = true
         computeExpansionLimits()
+        updatePulseState()
+    }
+
+    /** Run the amber pulse only while chips are still pending; stop it the
+     *  moment everything is translated so we don't burn frames. */
+    private fun updatePulseState() {
+        if (processedCount < items.size) {
+            if (!pulseAnimator.isStarted) pulseAnimator.start()
+        } else if (pulseAnimator.isStarted) {
+            pulseAnimator.cancel()
+            invalidate()  // final frame so the last amber chip lands on white
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        pulseAnimator.cancel()  // never leak the animator past the overlay
     }
 
     /**
@@ -208,6 +267,7 @@ class LensOverlayView(
             expandedRect[i] = null
             dirty = true
         }
+        updatePulseState()
         if (dirty) invalidate()
     }
 
@@ -231,6 +291,14 @@ class LensOverlayView(
         processedCount = 0
         mismatchLabel = null
         onMismatchTap = null
+        updatePulseState()  // chips pending again → resume pulse
+        invalidate()
+    }
+
+    /** Update the source label shown in the lang chip (after the user
+     *  changes the source language from the chip's picker). */
+    fun setSourceLabel(label: String) {
+        sourceLabel = label
         invalidate()
     }
 
@@ -247,6 +315,7 @@ class LensOverlayView(
     fun markAllProcessed() {
         for (i in processed.indices) processed[i] = true
         processedCount = items.size
+        updatePulseState()  // all done → stop pulse
         invalidate()
     }
 
@@ -352,9 +421,15 @@ class LensOverlayView(
             // Cover original, then draw translation top-aligned (preserve
             // the anchor at top-left so the visual link to the source
             // location stays even when the box grows). Untranslated chips
-            // use an amber tint so the user can tell at a glance that
-            // those slots are still in flight.
-            val bgPaint = if (processed[i]) whitePaint else pendingPaint
+            // PULSE between two amber shades (synced across all pending
+            // chips) so a half-white / half-amber screen reads as "still
+            // working", not "half broken".
+            val bgPaint = if (processed[i]) {
+                whitePaint
+            } else {
+                pendingPaint.color = argbEval.evaluate(pulse, pulseDim, pulseBright) as Int
+                pendingPaint
+            }
             canvas.drawRect(drawRect, bgPaint)
             canvas.drawRect(drawRect, borderPaint)
             val drawY = if (finalBlockH > origBlockH) {
@@ -370,6 +445,34 @@ class LensOverlayView(
 
         drawProgressPill(canvas, viewW)
         drawMismatchBanner(canvas, viewW)
+        drawLangChip(canvas)
+    }
+
+    /**
+     * Top-left "source → target" pill. Always visible (when labels are
+     * provided) so the user can verify the active languages and notice a
+     * wrong pick. Tappable — opens the language picker.
+     */
+    private fun drawLangChip(canvas: Canvas) {
+        if (sourceLabel.isEmpty() || targetLabel.isEmpty()) {
+            langChipRect.setEmpty()
+            return
+        }
+        val density = resources.displayMetrics.density
+        val label = "$sourceLabel → $targetLabel"
+        val padH = 12f * density
+        val padV = 7f * density
+        val fm = langChipTextPaint.fontMetrics
+        val textH = -fm.ascent + fm.descent
+        val textW = langChipTextPaint.measureText(label)
+        val left = 12f * density
+        val top = 14f * density
+        val w = textW + padH * 2
+        val h = textH + padV * 2
+        val r = h / 2f
+        langChipRect.set(left, top, left + w, top + h)
+        canvas.drawRoundRect(langChipRect, r, r, langChipBgPaint)
+        canvas.drawText(label, left + padH, top + padV - fm.ascent, langChipTextPaint)
     }
 
     /**
@@ -517,13 +620,23 @@ class LensOverlayView(
         // existing tap behaviour by acting only on ACTION_UP below.
         gestureDetector.onTouchEvent(event)
         if (event.action != MotionEvent.ACTION_UP) return true
-        // Mismatch banner tap takes priority — it sits above the chips and
-        // re-runs translation with the detected language.
+        // Mismatch banner takes priority over the lang chip: when the scan is
+        // fully processed both sit at the same top margin and the (centered,
+        // often wide) banner can overlap the top-left chip — re-translating
+        // with the detected language is the more important action there.
         if (mismatchLabel != null && !mismatchBannerRect.isEmpty &&
             event.x in mismatchBannerRect.left..mismatchBannerRect.right &&
             event.y in mismatchBannerRect.top..mismatchBannerRect.bottom
         ) {
             onMismatchTap?.invoke()
+            return true
+        }
+        // Language chip (top-left) → open the picker to change source/target.
+        if (onLangChipTap != null && !langChipRect.isEmpty &&
+            event.x in langChipRect.left..langChipRect.right &&
+            event.y in langChipRect.top..langChipRect.bottom
+        ) {
+            onLangChipTap.invoke()
             return true
         }
         val idx = findItemIndexAt(event.x, event.y)

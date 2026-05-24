@@ -652,6 +652,13 @@ internal fun BubbleService.startVoiceRecognizer(initialMode: String) {
         },
     )
     voiceHelper = helper
+    // Android 14+ requires the FGS to declare `microphone` type while
+    // SpeechRecognizer is active — otherwise the OS silently blocks audio
+    // capture when the bubble is in the background (i.e. another app is
+    // foreground), which manifests as "voice doesn't recognize". Escalate
+    // here right before listening starts; `hideVoicePicker` / `cancelVoice`
+    // drop the type back to specialUse only.
+    enterMicrophoneFgs()
     helper.start()
 }
 
@@ -691,6 +698,10 @@ internal fun BubbleService.hideVoicePicker() {
     voiceMicIcon = null
     voiceStatusView = null
     voiceTranscriptView = null
+    // Universal teardown — fires on every voice-picker exit path
+    // (cancelVoice, onError-with-delay, onFinalResult). Drops the FGS
+    // type back to specialUse so we don't hold a mic-typed FGS while idle.
+    leaveMicrophoneFgs()
 }
 
 // ── Scan screen (MediaProjection + ML Kit OCR) ──

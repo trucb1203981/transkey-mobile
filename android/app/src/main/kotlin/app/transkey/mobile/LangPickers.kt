@@ -150,7 +150,7 @@ internal fun BubbleService.hideLangPicker() {
     langPickerView = null
 }
 
-internal fun BubbleService.showSourceLangPicker() {
+internal fun BubbleService.showSourceLangPicker(onPicked: ((String) -> Unit)? = null) {
     if (sourceLangPickerView != null) { hideSourceLangPicker(); return }
     ensureWindowManager()
     // Sync from prefs so the picker reflects any change made in Flutter UI.
@@ -213,7 +213,14 @@ internal fun BubbleService.showSourceLangPicker() {
                 writeSourceLang(lang)
                 hideSourceLangPicker()
                 updateLangChip()
-                currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
+                if (onPicked != null) {
+                    // Caller (e.g. Lens overlay lang chip) handles the
+                    // re-translate itself — don't fall into the bubble
+                    // text-translate path.
+                    onPicked(lang)
+                } else {
+                    currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
+                }
             }
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 .apply { marginEnd = if (idx % 3 != 2) (6 * dp).toInt() else 0 }
