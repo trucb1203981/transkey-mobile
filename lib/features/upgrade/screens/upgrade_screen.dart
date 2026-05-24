@@ -1,14 +1,17 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../checkout_flow.dart';
 import '../providers/plans_provider.dart';
 import '../providers/usage_provider.dart';
+import '../services/purchases_service.dart';
 
 class UpgradeScreen extends ConsumerStatefulWidget {
   const UpgradeScreen({super.key});
@@ -221,6 +224,23 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
               ),
               textAlign: TextAlign.center,
             ),
+            // Restore button — Play policy requires every app with paid
+            // subscriptions to offer an explicit "Restore purchases" entry
+            // so users coming back after a reinstall / device switch can
+            // re-link their entitlement without re-paying. Only relevant on
+            // Android (RC + Play Billing path); the other surfaces buy
+            // through LemonSqueezy on the web where the account is the
+            // restore mechanism, so we hide the button there to avoid a
+            // dead-end click.
+            if (Platform.isAndroid && PurchasesService.isReady) ...[
+              const SizedBox(height: AppSpacing.md),
+              Center(
+                child: TextButton(
+                  onPressed: _isLoading ? null : _restorePurchases,
+                  child: Text(l.upgradeRestoreButton),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.xl),
           ],
         ),
@@ -505,18 +525,16 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
   Future<void> _checkout(String plan) async {
     setState(() => _isLoading = true);
     try {
-      final api = ref.read(apiClientProvider);
-      final response = await api.dio.get('/auth/checkout', queryParameters: {'plan': plan});
-      final url = response.data['url'] as String?;
-      if (url != null) {
-        await launchUrl(Uri.parse(url));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.upgradeCheckoutFailed), backgroundColor: AppColors.red),
-        );
-      }
+      await startPlanCheckout(context, ref, plan);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _restorePurchases() async {
+    setState(() => _isLoading = true);
+    try {
+      await restorePlanPurchases(context, ref);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

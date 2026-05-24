@@ -590,5 +590,11 @@
   "cameraTip4Title": "Zum Entfernen ziehen",
   "cameraTip4Body": "Ziehen Sie eine Karte in den Papierkorb unten, um nicht benötigte Blöcke zu entfernen.",
   "cameraTip5Title": "Gespeichertes Foto scannen",
-  "cameraTip5Body": "Tippen Sie auf das Galerie-Symbol neben dem Auslöser, um ein vorhandenes Foto zu übersetzen."
+  "cameraTip5Body": "Tippen Sie auf das Galerie-Symbol neben dem Auslöser, um ein vorhandenes Foto zu übersetzen.",
+  "upgradePurchaseSuccess": "Abo aktiviert. Viel Spaß mit deinem neuen Plan!",
+  "upgradeRestoreSuccess": "Käufe wiederhergestellt – dein Abo ist aktiv.",
+  "upgradeRestoreNothing": "Keine früheren Käufe zum Wiederherstellen gefunden.",
+  "upgradePickProPeriod": "Pro-Plan auswählen",
+  "upgradePickMobilePeriod": "Mobile-Plan auswählen",
+  "upgradeRestoreButton": "Käufe wiederherstellen"
 }

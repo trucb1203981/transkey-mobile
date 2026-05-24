@@ -1467,4 +1467,24 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'แตะไอคอนแกลเลอรีข้างปุ่มชัตเตอร์เพื่อแปลรูปที่มีอยู่ในเครื่อง';
+
+  @override
+  String get upgradePurchaseSuccess =>
+      'เปิดใช้งานการสมัครสมาชิกแล้ว ขอให้สนุก!';
+
+  @override
+  String get upgradeRestoreSuccess =>
+      'กู้คืนการซื้อแล้ว — การสมัครสมาชิกของคุณใช้งานได้';
+
+  @override
+  String get upgradeRestoreNothing => 'ไม่พบการซื้อก่อนหน้านี้ที่จะกู้คืน';
+
+  @override
+  String get upgradePickProPeriod => 'เลือกแพ็กเกจ Pro';
+
+  @override
+  String get upgradePickMobilePeriod => 'เลือกแพ็กเกจ Mobile';
+
+  @override
+  String get upgradeRestoreButton => 'กู้คืนการซื้อ';
 }

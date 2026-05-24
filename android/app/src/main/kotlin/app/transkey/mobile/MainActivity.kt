@@ -119,6 +119,19 @@ class MainActivity : FlutterActivity() {
                         // just for one integer.
                         result.success(android.os.Build.VERSION.SDK_INT)
                     }
+                    "androidId" -> {
+                        // SSAID — stable across app reinstalls (resets only on
+                        // factory reset / a different signing key), no permission
+                        // needed. Used as the device-id seed so reinstalling does
+                        // NOT mint a new "device" and trip the per-account limit.
+                        // Can be null / all-zeros on some custom ROMs; Dart side
+                        // falls back to the Build.ID fingerprint then.
+                        val ssaid = Settings.Secure.getString(
+                            contentResolver,
+                            Settings.Secure.ANDROID_ID,
+                        )
+                        result.success(ssaid)
+                    }
                     "openAppDetails" -> {
                         // Android 13+ "restricted settings" gate lives on
                         // the per-app details page. Onboarding routes here

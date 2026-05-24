@@ -22,6 +22,7 @@ import 'features/translate/providers/features_provider.dart';
 import 'features/history/providers/history_provider.dart';
 import 'features/translate/providers/language_settings_provider.dart';
 import 'features/translate/models/translate_models.dart';
+import 'features/upgrade/services/purchases_service.dart';
 import 'shared/theme/app_theme.dart';
 import 'l10n/generated/app_localizations.dart';
 
@@ -70,6 +71,13 @@ void main() async {
           final session = next.valueOrNull?.session;
           tracking.setUserId(session?.userId);
           tracking.setUserPlan(session?.plan);
+          // Mirror the TransKey user id into RevenueCat so any in-app
+          // purchase the user makes through Play Billing reaches our
+          // /revenuecat/webhook with `app_user_id` = our users.id (the
+          // backend parses it back to int and updates that user's plan).
+          // No-op when RC isn't initialised yet (e.g. on iOS, or until
+          // REVENUECAT_API_KEY_ANDROID is set).
+          unawaited(PurchasesService.syncAuth(session?.userId));
           // Plan-upgrade detector: free → pro/trial fires
           // `upgrade_purchase_success`. The actual purchase happens on
           // LemonSqueezy + a webhook; the mobile observes the upgraded plan
@@ -109,6 +117,24 @@ void main() async {
       // fetch.
       unawaited(MobileAds.instance.initialize());
 
+      // Initialise RevenueCat for Google Play Billing. Safe no-op on iOS or
+      // when the API key env var isn't set yet — callers (upgrade screen)
+      // check PurchasesService.isReady before showing Buy UI.
+      //
+      // Race fix: the authStateProvider listener above fires immediately at
+      // startup and calls syncAuth(userId), but init() usually hasn't
+      // finished configuring RC yet, so that first syncAuth is a no-op
+      // (PurchasesService._configured is still false). Without re-syncing,
+      // RC stays anonymous for a restored session — a purchase then attaches
+      // to an anonymous app_user_id, the webhook can't map it to a user, and
+      // the plan never upgrades. So once init() resolves, sync the CURRENT
+      // session explicitly. Subsequent login/logout changes are still handled
+      // by the listener.
+      unawaited(PurchasesService.init().then((_) {
+        final session = _rootContainer.read(authStateProvider).valueOrNull?.session;
+        return PurchasesService.syncAuth(session?.userId);
+      }));
+
       runApp(UncontrolledProviderScope(
         container: _rootContainer,
         child: const TransKeyApp(),
@@ -139,6 +165,20 @@ void main() async {
 
 void _wireBubbleChannel() {
   _bubbleChannel.setMethodCallHandler((call) async {
+    if (call.method == 'bubbleStateChanged') {
+      // Native BubbleService just flipped its active state — sync the
+      // Riverpod state so the Settings toggle and any other UI watching
+      // bubbleManagerProvider reflects truth without polling.
+      final active = call.arguments as bool? ?? false;
+      try {
+        _rootContainer
+            .read(bubbleManagerProvider.notifier)
+            .syncState(active);
+      } catch (e) {
+        debugPrint('[bubbleChannel] bubbleStateChanged sync failed: $e');
+      }
+      return null;
+    }
     if (call.method == 'langChanged') {
       // Native bubble service just wrote a new source / target / reply
       // language to SharedPreferences. Reload the Dart-side cache so the

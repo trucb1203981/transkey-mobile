@@ -590,5 +590,11 @@
   "cameraTip4Title": "드래그로 삭제",
   "cameraTip4Body": "필요 없는 카드는 아래 휴지통 영역으로 드래그해 삭제하세요.",
   "cameraTip5Title": "저장된 사진 스캔",
-  "cameraTip5Body": "셔터 옆 갤러리 아이콘을 눌러 휴대폰에 있는 사진을 번역하세요."
+  "cameraTip5Body": "셔터 옆 갤러리 아이콘을 눌러 휴대폰에 있는 사진을 번역하세요.",
+  "upgradePurchaseSuccess": "구독이 활성화되었습니다. 새 요금제를 즐겨보세요!",
+  "upgradeRestoreSuccess": "구매가 복원되었습니다. 구독이 활성 상태입니다.",
+  "upgradeRestoreNothing": "복원할 이전 구매 내역이 없습니다.",
+  "upgradePickProPeriod": "Pro 요금제 선택",
+  "upgradePickMobilePeriod": "Mobile 요금제 선택",
+  "upgradeRestoreButton": "구매 복원"
 }

@@ -4,7 +4,7 @@
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">Выберите действие</string>
-    <string name="bubble_need_text">Сначала выделите или скопируйте текст, затем выберите действие ниже.</string>
+    <string name="bubble_need_text">Два быстрых способа:\n• Скопируйте текст → нажмите действие ниже\n• Или выделите текст → Поделиться → TransKey</string>
     <string name="bubble_need_copy">Сначала скопируйте текст, затем нажмите Кнопку TransKey.</string>
     <string name="bubble_accessibility_hint">Выделение + нажатие Кнопки TransKey пока не работает. Включите Спец. возможности, чтобы пропустить шаг копирования.</string>
     <string name="bubble_accessibility_enable">Настроить</string>

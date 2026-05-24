@@ -11,13 +11,33 @@ import '../tracking/tracking_service.dart';
 enum BubbleState { idle, loading, result, error }
 
 class BubbleManager extends StateNotifier<bool> {
-  BubbleManager(this._tracking) : super(false);
+  BubbleManager(this._tracking) : super(false) {
+    _seedInitialState();
+  }
 
   final TrackingService _tracking;
 
   static const _channel = MethodChannel('transkey/bubble');
 
   bool _hasPermission = false;
+
+  /// Read the actual running state from native on construction so the
+  /// in-app toggle is correct on cold start (e.g. system auto-resumed the
+  /// bubble before the user opened the app).
+  Future<void> _seedInitialState() async {
+    if (!Platform.isAndroid) return;
+    final running = await isRunning();
+    if (running != state) state = running;
+  }
+
+  /// Apply a native-driven state change (BubbleService broadcasts via the
+  /// `bubbleStateChanged` MethodChannel call when it flips the active
+  /// pref). Lets paths that don't go through [startBubble]/[stopBubble] —
+  /// keyboard-setup auto-start, drag-to-close, notification "Turn off",
+  /// system restart — still propagate to the UI.
+  void syncState(bool active) {
+    if (state != active) state = active;
+  }
 
   /// Check if we can draw over other apps (SYSTEM_ALERT_WINDOW).
   Future<bool> checkPermission() async {

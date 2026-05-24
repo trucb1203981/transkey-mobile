@@ -1478,4 +1478,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'Tap the gallery icon next to the shutter to translate a photo already on your phone.';
+
+  @override
+  String get upgradePurchaseSuccess =>
+      'Subscription activated. Enjoy your new plan!';
+
+  @override
+  String get upgradeRestoreSuccess =>
+      'Purchases restored — your subscription is active.';
+
+  @override
+  String get upgradeRestoreNothing => 'No previous purchases found to restore.';
+
+  @override
+  String get upgradePickProPeriod => 'Choose your Pro plan';
+
+  @override
+  String get upgradePickMobilePeriod => 'Choose your Mobile plan';
+
+  @override
+  String get upgradeRestoreButton => 'Restore purchases';
 }

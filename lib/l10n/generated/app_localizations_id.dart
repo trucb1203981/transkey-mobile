@@ -1483,4 +1483,25 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'Ketuk ikon galeri di samping rana untuk menerjemahkan foto yang sudah ada di ponsel.';
+
+  @override
+  String get upgradePurchaseSuccess =>
+      'Langganan diaktifkan. Selamat menikmati!';
+
+  @override
+  String get upgradeRestoreSuccess =>
+      'Pembelian dipulihkan — langganan Anda aktif.';
+
+  @override
+  String get upgradeRestoreNothing =>
+      'Tidak ada pembelian sebelumnya untuk dipulihkan.';
+
+  @override
+  String get upgradePickProPeriod => 'Pilih paket Pro';
+
+  @override
+  String get upgradePickMobilePeriod => 'Pilih paket Mobile';
+
+  @override
+  String get upgradeRestoreButton => 'Pulihkan pembelian';
 }

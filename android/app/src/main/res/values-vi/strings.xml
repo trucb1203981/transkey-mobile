@@ -3,7 +3,7 @@
     <string name="accessibility_service_description">TransKey có thể dán câu trả lời thẳng vào ô nhập đang được focus của bất kỳ app nào khi bạn nhấn "Dán trả lời" trên Nút TransKey. Văn bản chỉ được đọc hoặc ghi khi bạn kích hoạt — không theo dõi nền.</string>
 
     <string name="bubble_choose_action">Chọn hành động</string>
-    <string name="bubble_need_text">Chọn hoặc copy văn bản trước, rồi chọn hành động bên dưới.</string>
+    <string name="bubble_need_text">Hai cách dùng nhanh:\n• Copy text → chạm hành động bên dưới\n• Hoặc chọn text → Share → TransKey</string>
     <string name="bubble_need_copy">Copy text trước, rồi chạm Nút TransKey.</string>
     <string name="bubble_accessibility_hint">Bôi đen + chạm Nút TransKey chưa hoạt động. Bật Trợ năng (Accessibility) để dịch không cần Copy.</string>
     <string name="bubble_accessibility_enable">Thiết lập</string>

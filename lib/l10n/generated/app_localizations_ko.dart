@@ -1426,4 +1426,22 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cameraTip5Body => '셔터 옆 갤러리 아이콘을 눌러 휴대폰에 있는 사진을 번역하세요.';
+
+  @override
+  String get upgradePurchaseSuccess => '구독이 활성화되었습니다. 새 요금제를 즐겨보세요!';
+
+  @override
+  String get upgradeRestoreSuccess => '구매가 복원되었습니다. 구독이 활성 상태입니다.';
+
+  @override
+  String get upgradeRestoreNothing => '복원할 이전 구매 내역이 없습니다.';
+
+  @override
+  String get upgradePickProPeriod => 'Pro 요금제 선택';
+
+  @override
+  String get upgradePickMobilePeriod => 'Mobile 요금제 선택';
+
+  @override
+  String get upgradeRestoreButton => '구매 복원';
 }

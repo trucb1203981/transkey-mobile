@@ -1,12 +1,14 @@
 import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _kDeviceFingerprintKey = 'tk_device_fingerprint';
 const _kStorageTimeout = Duration(seconds: 4);
 const _kDeviceInfoTimeout = Duration(seconds: 3);
+const _kBubbleChannel = MethodChannel('transkey/bubble');
 
 class DeviceIdService {
   DeviceIdService({
@@ -84,6 +86,18 @@ class DeviceIdService {
       await prefs.setString('tk_web_device_id', newId);
       return newId;
     }
+    // Android: prefer SSAID. It survives reinstall (resets only on factory
+    // reset / a different signing key) so cài lại doesn't mint a new device.
+    // The Build.ID-based fingerprint below is the fallback for null/all-zero
+    // SSAID (some custom ROMs) — it dies on uninstall, hence only a fallback.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final ssaid = await _androidId();
+      if (ssaid != null &&
+          ssaid.isNotEmpty &&
+          ssaid.replaceAll('0', '').isNotEmpty) {
+        return 'ssaid_$ssaid';
+      }
+    }
     try {
       final info = await _deviceInfo.deviceInfo.timeout(_kDeviceInfoTimeout);
       final data = info.data;
@@ -97,6 +111,17 @@ class DeviceIdService {
       // same value instead of minting a new "device" each launch (which would
       // trip the Pro plan device limit).
       return _persistentFallbackId();
+    }
+  }
+
+  Future<String?> _androidId() async {
+    try {
+      return await _kBubbleChannel
+          .invokeMethod<String>('androidId')
+          .timeout(_kDeviceInfoTimeout);
+    } catch (e) {
+      debugPrint('[DeviceId] androidId channel failed: $e');
+      return null;
     }
   }
 

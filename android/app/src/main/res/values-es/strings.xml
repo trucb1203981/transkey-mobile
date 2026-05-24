@@ -3,7 +3,7 @@
     <string name="accessibility_service_description">TransKey puede pegar una respuesta directamente en el campo de texto activo de cualquier app cuando toca «Pegar respuesta» en la burbuja flotante. El texto solo se lee o escribe cuando activa una acción — sin seguimiento en segundo plano.</string>
 
     <string name="bubble_choose_action">Elegir acción</string>
-    <string name="bubble_need_text">Seleccione o copie texto primero, luego elija una acción.</string>
+    <string name="bubble_need_text">Dos formas rápidas:\n• Copia texto → toca una acción abajo\n• O selecciona texto → Compartir → TransKey</string>
     <string name="bubble_show_last_result">Mostrar último resultado</string>
     <string name="bubble_show_more">Mostrar más</string>
     <string name="bubble_show_less">Mostrar menos</string>

@@ -97,16 +97,33 @@ internal fun BubbleService.showModePicker() {
         typeface = Typeface.DEFAULT_BOLD
         setPadding(0, 0, 0, (8 * dp).toInt())
     })
+    // Amber tip card — surfaces the two reliable input paths up front.
+    // The Android text-selection action menu's PROCESS_TEXT entries get
+    // stripped by many apps (Chrome / Facebook / WebView / Compose
+    // custom toolbars), so we cannot rely on the system menu being the
+    // discovery path. The dim 11sp subtitle this replaced was easy to
+    // overlook — same amber palette as the result-panel a11y warning
+    // so the visual language is consistent.
+    val tipBg = if (isDark) Color.parseColor("#3A2E10") else Color.parseColor("#FFF6D6")
+    val tipFg = if (isDark) Color.parseColor("#FFD86E") else Color.parseColor("#7A5A00")
     card.addView(TextView(this).apply {
-        // Single subtitle: the picker's action rows translate the
-        // clipboard; the alternative-input rows (OCR / Region / etc)
-        // are explicit. We no longer try to second-guess what the
-        // user has captured because source text always comes from an
-        // explicit action.
-        text = localized(R.string.bubble_need_text)
-        setTextColor(mutedCol)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-        setPadding(0, 0, 0, (8 * dp).toInt())
+        text = "💡  " + localized(R.string.bubble_need_text)
+        setTextColor(tipFg)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        typeface = Typeface.DEFAULT_BOLD
+        setLineSpacing(2 * dp, 1f)
+        background = GradientDrawable().apply {
+            setColor(tipBg)
+            cornerRadius = 10 * dp
+        }
+        setPadding(
+            (10 * dp).toInt(), (8 * dp).toInt(),
+            (10 * dp).toInt(), (8 * dp).toInt(),
+        )
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = (2 * dp).toInt(); bottomMargin = (10 * dp).toInt() }
     })
 
     // Source → Target language chips. Each side is independently

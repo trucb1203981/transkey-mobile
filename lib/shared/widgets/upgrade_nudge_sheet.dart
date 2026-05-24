@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../features/upgrade/checkout_flow.dart';
 import '../../../features/upgrade/providers/plans_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -95,22 +95,15 @@ class _UpgradeNudgeSheetState extends ConsumerState<UpgradeNudgeSheet> {
   }
 
   Future<void> _checkout(String plan) async {
+    // Routes through the shared checkout flow: Google Play Billing on Android
+    // (RevenueCat), LemonSqueezy web checkout elsewhere. Previously this sheet
+    // called LemonSqueezy directly, so tapping a locked feature on Android
+    // opened a web browser instead of the Play Billing sheet.
+    setState(() => _isLoading = true);
     try {
-      final api = ref.read(apiClientProvider);
-      final response = await api.dio.get('/auth/checkout', queryParameters: {'plan': plan});
-      final url = response.data['url'] as String?;
-      if (url != null) {
-        await launchUrl(Uri.parse(url));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.upgradeCheckoutFailed),
-            backgroundColor: AppColors.red,
-          ),
-        );
-      }
+      await startPlanCheckout(context, ref, plan);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

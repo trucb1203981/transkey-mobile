@@ -1022,6 +1022,24 @@ class BubbleService : Service() {
     private fun saveBubbleActive(active: Boolean) {
         prefs.edit()
             .putBoolean(KEY_BUBBLE_ACTIVE, active).apply()
+        // Push the new state down to Flutter so the in-app Settings toggle
+        // reflects it immediately, regardless of which path flipped the
+        // bubble: keyboard-setup auto-start, drag-to-close, notification
+        // "Turn off", system restart. Without this, the Dart side has to
+        // poll isRunning() at navigation boundaries, and any flow we
+        // forget to instrument silently leaves the toggle stale.
+        notifyFlutterBubbleState(active)
+    }
+
+    private fun notifyFlutterBubbleState(active: Boolean) {
+        val engine = TransKeyApp.engine ?: return
+        try {
+            io.flutter.plugin.common.MethodChannel(
+                engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
+            ).invokeMethod("bubbleStateChanged", active)
+        } catch (e: Exception) {
+            android.util.Log.w("TKBubble", "notifyFlutterBubbleState failed: ${e.message}")
+        }
     }
 
     internal fun readSourceLang(): String {

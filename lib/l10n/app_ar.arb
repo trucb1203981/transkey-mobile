@@ -590,5 +590,11 @@
   "cameraTip4Title": "اسحب للإزالة",
   "cameraTip4Body": "اسحب البطاقة إلى سلة المهملات في الأسفل لإزالة الكتل غير المطلوبة.",
   "cameraTip5Title": "امسح صورة محفوظة",
-  "cameraTip5Body": "اضغط أيقونة المعرض بجوار زر الالتقاط لترجمة صورة موجودة على هاتفك."
+  "cameraTip5Body": "اضغط أيقونة المعرض بجوار زر الالتقاط لترجمة صورة موجودة على هاتفك.",
+  "upgradePurchaseSuccess": "تم تفعيل الاشتراك. استمتع بخطتك الجديدة!",
+  "upgradeRestoreSuccess": "تمت استعادة المشتريات — اشتراكك نشط.",
+  "upgradeRestoreNothing": "لم يتم العثور على مشتريات سابقة لاستعادتها.",
+  "upgradePickProPeriod": "اختر خطة Pro",
+  "upgradePickMobilePeriod": "اختر خطة Mobile",
+  "upgradeRestoreButton": "استعادة المشتريات"
 }

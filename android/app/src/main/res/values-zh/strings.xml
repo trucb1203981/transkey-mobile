@@ -3,7 +3,7 @@
     <string name="accessibility_service_description">在悬浮气泡上点击"粘贴回复"时，TransKey 可以将回复直接粘贴到任何应用获得焦点的输入框中。仅在触发操作时读取或写入文本，无后台追踪。</string>
 
     <string name="bubble_choose_action">选择操作</string>
-    <string name="bubble_need_text">先选中或复制文本，然后选择下方操作。</string>
+    <string name="bubble_need_text">两种快捷用法:\n• 复制文字 → 点按下方操作\n• 或选中文字 → 分享 → TransKey</string>
     <string name="bubble_show_last_result">显示最近结果</string>
     <string name="bubble_show_more">展开</string>
     <string name="bubble_show_less">收起</string>

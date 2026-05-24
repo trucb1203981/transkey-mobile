@@ -590,5 +590,11 @@
   "cameraTip4Title": "ドラッグで削除",
   "cameraTip4Body": "不要なカードは下のゴミ箱エリアにドラッグして削除します。",
   "cameraTip5Title": "保存済みの写真をスキャン",
-  "cameraTip5Body": "シャッター横のギャラリーアイコンをタップして、端末内の写真を翻訳できます。"
+  "cameraTip5Body": "シャッター横のギャラリーアイコンをタップして、端末内の写真を翻訳できます。",
+  "upgradePurchaseSuccess": "サブスクリプションを有効化しました。お楽しみください！",
+  "upgradeRestoreSuccess": "購入を復元しました。サブスクリプションは有効です。",
+  "upgradeRestoreNothing": "復元する以前の購入はありません。",
+  "upgradePickProPeriod": "Proプランを選択",
+  "upgradePickMobilePeriod": "Mobileプランを選択",
+  "upgradeRestoreButton": "購入を復元"
 }

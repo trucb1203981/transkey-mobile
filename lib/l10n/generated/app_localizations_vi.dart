@@ -1468,4 +1468,24 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'Nhấn biểu tượng thư viện cạnh nút chụp để dịch ảnh có sẵn trong máy.';
+
+  @override
+  String get upgradePurchaseSuccess => 'Đã kích hoạt gói. Tận hưởng nhé!';
+
+  @override
+  String get upgradeRestoreSuccess =>
+      'Đã khôi phục — gói của bạn đang hoạt động.';
+
+  @override
+  String get upgradeRestoreNothing =>
+      'Không tìm thấy giao dịch nào để khôi phục.';
+
+  @override
+  String get upgradePickProPeriod => 'Chọn gói Pro';
+
+  @override
+  String get upgradePickMobilePeriod => 'Chọn gói Mobile';
+
+  @override
+  String get upgradeRestoreButton => 'Khôi phục giao dịch';
 }

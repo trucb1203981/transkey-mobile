@@ -590,5 +590,11 @@
   "cameraTip4Title": "Glisser pour supprimer",
   "cameraTip4Body": "Glissez une carte vers la corbeille en bas pour supprimer les blocs inutiles.",
   "cameraTip5Title": "Scanner une photo",
-  "cameraTip5Body": "Touchez l'icône galerie à côté du déclencheur pour traduire une photo déjà sur votre téléphone."
+  "cameraTip5Body": "Touchez l'icône galerie à côté du déclencheur pour traduire une photo déjà sur votre téléphone.",
+  "upgradePurchaseSuccess": "Abonnement activé. Profitez de votre nouveau forfait !",
+  "upgradeRestoreSuccess": "Achats restaurés — votre abonnement est actif.",
+  "upgradeRestoreNothing": "Aucun achat précédent à restaurer.",
+  "upgradePickProPeriod": "Choisissez votre forfait Pro",
+  "upgradePickMobilePeriod": "Choisissez votre forfait Mobile",
+  "upgradeRestoreButton": "Restaurer les achats"
 }

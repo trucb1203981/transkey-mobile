@@ -4,7 +4,7 @@
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">เลือกการทำงาน</string>
-    <string name="bubble_need_text">เลือกหรือคัดลอกข้อความก่อน แล้วเลือกการทำงานด้านล่าง</string>
+    <string name="bubble_need_text">2 วิธีใช้แบบเร็ว:\n• คัดลอกข้อความ → แตะการทำงานด้านล่าง\n• หรือเลือกข้อความ → แชร์ → TransKey</string>
     <string name="bubble_need_copy">คัดลอกข้อความก่อน แล้วแตะปุ่ม TransKey</string>
     <string name="bubble_accessibility_hint">ไฮไลต์ + แตะปุ่ม TransKey ยังไม่ทำงาน เปิดการช่วยเหลือพิเศษเพื่อข้ามขั้นตอนคัดลอก</string>
     <string name="bubble_accessibility_enable">ตั้งค่า</string>

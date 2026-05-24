@@ -590,5 +590,11 @@
   "cameraTip4Title": "Arrastra para quitar",
   "cameraTip4Body": "Arrastra una tarjeta a la papelera de abajo para quitar los bloques que no necesites.",
   "cameraTip5Title": "Escanea una foto guardada",
-  "cameraTip5Body": "Toca el icono de galería junto al obturador para traducir una foto que ya tienes en el teléfono."
+  "cameraTip5Body": "Toca el icono de galería junto al obturador para traducir una foto que ya tienes en el teléfono.",
+  "upgradePurchaseSuccess": "Suscripción activada. ¡Disfruta de tu nuevo plan!",
+  "upgradeRestoreSuccess": "Compras restauradas — tu suscripción está activa.",
+  "upgradeRestoreNothing": "No se encontraron compras anteriores para restaurar.",
+  "upgradePickProPeriod": "Elige tu plan Pro",
+  "upgradePickMobilePeriod": "Elige tu plan Mobile",
+  "upgradeRestoreButton": "Restaurar compras"
 }

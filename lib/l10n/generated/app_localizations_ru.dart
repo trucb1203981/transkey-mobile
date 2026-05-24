@@ -1486,4 +1486,24 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'Нажмите значок галереи рядом с кнопкой съёмки, чтобы перевести фото из телефона.';
+
+  @override
+  String get upgradePurchaseSuccess => 'Подписка активирована. Наслаждайтесь!';
+
+  @override
+  String get upgradeRestoreSuccess =>
+      'Покупки восстановлены — подписка активна.';
+
+  @override
+  String get upgradeRestoreNothing =>
+      'Прошлые покупки для восстановления не найдены.';
+
+  @override
+  String get upgradePickProPeriod => 'Выберите план Pro';
+
+  @override
+  String get upgradePickMobilePeriod => 'Выберите план Mobile';
+
+  @override
+  String get upgradeRestoreButton => 'Восстановить покупки';
 }

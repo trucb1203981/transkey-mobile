@@ -1489,4 +1489,25 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'Tocca l\'icona galleria accanto allo scatto per tradurre una foto già sul telefono.';
+
+  @override
+  String get upgradePurchaseSuccess =>
+      'Abbonamento attivato. Goditi il tuo nuovo piano!';
+
+  @override
+  String get upgradeRestoreSuccess =>
+      'Acquisti ripristinati — il tuo abbonamento è attivo.';
+
+  @override
+  String get upgradeRestoreNothing =>
+      'Nessun acquisto precedente da ripristinare.';
+
+  @override
+  String get upgradePickProPeriod => 'Scegli il piano Pro';
+
+  @override
+  String get upgradePickMobilePeriod => 'Scegli il piano Mobile';
+
+  @override
+  String get upgradeRestoreButton => 'Ripristina acquisti';
 }

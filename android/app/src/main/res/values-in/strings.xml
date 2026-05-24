@@ -4,7 +4,7 @@
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">Pilih tindakan</string>
-    <string name="bubble_need_text">Pilih atau salin teks dulu, lalu pilih tindakan di bawah.</string>
+    <string name="bubble_need_text">Dua cara cepat:\n• Salin teks → ketuk tindakan di bawah\n• Atau pilih teks → Bagikan → TransKey</string>
     <string name="bubble_need_copy">Salin teks dulu, lalu ketuk Tombol TransKey.</string>
     <string name="bubble_accessibility_hint">Sorot + ketuk Tombol TransKey belum berfungsi. Aktifkan Aksesibilitas untuk melewati langkah Salin.</string>
     <string name="bubble_accessibility_enable">Atur</string>

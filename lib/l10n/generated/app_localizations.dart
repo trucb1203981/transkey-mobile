@@ -2815,6 +2815,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap the gallery icon next to the shutter to translate a photo already on your phone.'**
   String get cameraTip5Body;
+
+  /// No description provided for @upgradePurchaseSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription activated. Enjoy your new plan!'**
+  String get upgradePurchaseSuccess;
+
+  /// No description provided for @upgradeRestoreSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases restored — your subscription is active.'**
+  String get upgradeRestoreSuccess;
+
+  /// No description provided for @upgradeRestoreNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No previous purchases found to restore.'**
+  String get upgradeRestoreNothing;
+
+  /// No description provided for @upgradePickProPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your Pro plan'**
+  String get upgradePickProPeriod;
+
+  /// No description provided for @upgradePickMobilePeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your Mobile plan'**
+  String get upgradePickMobilePeriod;
+
+  /// No description provided for @upgradeRestoreButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore purchases'**
+  String get upgradeRestoreButton;
 }
 
 class _AppLocalizationsDelegate

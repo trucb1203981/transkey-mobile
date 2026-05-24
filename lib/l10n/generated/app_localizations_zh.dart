@@ -1408,4 +1408,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cameraTip5Body => '点击快门旁的相册图标，翻译手机里已有的照片。';
+
+  @override
+  String get upgradePurchaseSuccess => '订阅已激活。尽情享受您的新套餐吧！';
+
+  @override
+  String get upgradeRestoreSuccess => '已恢复购买,您的订阅已激活。';
+
+  @override
+  String get upgradeRestoreNothing => '未找到可恢复的购买记录。';
+
+  @override
+  String get upgradePickProPeriod => '选择 Pro 计费周期';
+
+  @override
+  String get upgradePickMobilePeriod => '选择 Mobile 计费周期';
+
+  @override
+  String get upgradeRestoreButton => '恢复购买';
 }

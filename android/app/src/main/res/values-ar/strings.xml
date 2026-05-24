@@ -4,7 +4,7 @@
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">اختر إجراءً</string>
-    <string name="bubble_need_text">حدّد أو انسخ النص أولاً، ثم اختر إجراءً بالأسفل.</string>
+    <string name="bubble_need_text">طريقتان سريعتان:\n• انسخ النص ← انقر إجراءً بالأسفل\n• أو حدّد النص ← مشاركة ← TransKey</string>
     <string name="bubble_need_copy">انسخ النص أولاً، ثم اضغط زر TransKey.</string>
     <string name="bubble_accessibility_hint">التحديد + الضغط على زر TransKey لا يعمل بعد. فعّل إمكانية الوصول لتخطي خطوة النسخ.</string>
     <string name="bubble_accessibility_enable">إعداد</string>

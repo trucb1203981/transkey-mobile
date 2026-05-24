@@ -57,7 +57,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with WidgetsBindingObserver {
   String _version = '';
-  bool _bubbleRunning = false;
   bool _accessibilityEnabled = false;
 
   @override
@@ -75,29 +74,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Re-poll accessibility/bubble state when user returns from system settings.
+    // Re-poll accessibility state when user returns from system settings.
+    // Bubble running state is driven by the bubbleManagerProvider watch in
+    // build() — BubbleService broadcasts bubbleStateChanged so we don't
+    // need to poll it here.
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
-      _refreshAndroidPermissions();
+      _refreshAccessibility();
     }
   }
 
-  Future<void> _refreshAndroidPermissions() async {
+  Future<void> _refreshAccessibility() async {
     final notifier = ref.read(bubbleManagerProvider.notifier);
-    final running = await notifier.isRunning();
     final accessibility = await notifier.checkAccessibility();
     if (!mounted) return;
-    setState(() {
-      _bubbleRunning = running;
-      _accessibilityEnabled = accessibility;
-    });
+    setState(() => _accessibilityEnabled = accessibility);
   }
 
   Future<void> _init() async {
     final info = await PackageInfo.fromPlatform();
     if (Platform.isAndroid) {
-      final notifier = ref.read(bubbleManagerProvider.notifier);
-      _bubbleRunning = await notifier.isRunning();
-      _accessibilityEnabled = await notifier.checkAccessibility();
+      _accessibilityEnabled =
+          await ref.read(bubbleManagerProvider.notifier).checkAccessibility();
     }
     if (mounted) {
       setState(() {
@@ -138,6 +135,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final appLang = ref.watch(localeProvider).valueOrNull?.languageCode ?? 'en';
     final settingsAsync = ref.watch(appSettingsProvider);
     final settings = settingsAsync.valueOrNull;
+    // Driven by BubbleService's bubbleStateChanged broadcast — covers every
+    // path that flips the bubble (keyboard-setup auto-start, drag-to-close,
+    // notification "Turn off", system restart) without callers having to
+    // remember to poll isRunning() after navigation.
+    final bubbleRunning = ref.watch(bubbleManagerProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(t.settingsTitle)),
@@ -236,16 +238,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     secondary: const Icon(Icons.bubble_chart_outlined),
                     title: Text(t.floatingBubble),
                     subtitle: Text(
-                      _bubbleRunning ? t.bubbleActive : t.bubbleInactive,
+                      bubbleRunning ? t.bubbleActive : t.bubbleInactive,
                       style: TextStyle(
                         fontSize: 12,
-                        color: _bubbleRunning
+                        color: bubbleRunning
                             ? AppColors.primary
                             : AppColors.textSecondary,
                       ),
                     ),
-                    value: _bubbleRunning,
-                    onChanged: (_) async => _toggleBubble(),
+                    value: bubbleRunning,
+                    onChanged: (_) async => _toggleBubble(bubbleRunning),
                   ),
                   // Permission walkthrough re-entry point. Users who Skip
                   // the post-login onboarding (especially without reading
@@ -277,22 +279,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     trailing: const Icon(Icons.chevron_right, size: 20),
                     onTap: () async {
                       await context.push('/accessibility-setup');
-                      if (mounted) _refreshAndroidPermissions();
+                      if (mounted) _refreshAccessibility();
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.bubble_chart_outlined),
                     title: Text(t.bubbleSetup),
                     trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () async {
-                      await context.push('/keyboard-setup?skip=false');
-                      if (mounted) {
-                        final running = await ref
-                            .read(bubbleManagerProvider.notifier)
-                            .isRunning();
-                        setState(() => _bubbleRunning = running);
-                      }
-                    },
+                    onTap: () => context.push('/keyboard-setup?skip=false'),
                   ),
                   _captureKeepaliveTile(t, settings.captureKeepaliveSeconds),
                 ] else ...[
@@ -347,22 +341,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   // ── Account section ──
 
-  Future<void> _toggleBubble() async {
+  Future<void> _toggleBubble(bool currentlyRunning) async {
     final bm = ref.read(bubbleManagerProvider.notifier);
-    if (_bubbleRunning) {
+    if (currentlyRunning) {
       await bm.stopBubble();
-      if (mounted) setState(() => _bubbleRunning = false);
-    } else {
-      final hasPermission = await bm.checkPermission();
-      if (!hasPermission) {
-        if (mounted) {
-          context.push('/keyboard-setup?skip=false');
-        }
-        return;
-      }
-      final ok = await bm.startBubble();
-      if (mounted) setState(() => _bubbleRunning = ok);
+      // No setState — BubbleService.saveBubbleActive(false) broadcasts
+      // bubbleStateChanged and BubbleManager.state flips, which the
+      // build() ref.watch picks up.
+      return;
     }
+    final hasPermission = await bm.checkPermission();
+    if (!hasPermission) {
+      if (!mounted) return;
+      // Push keyboard-setup; once the user grants overlay permission
+      // there, KeyboardSetupScreen._checkAndStartBubble starts the bubble
+      // and the native bubbleStateChanged broadcast flips the toggle.
+      // No await/refresh dance needed.
+      context.push('/keyboard-setup?skip=false');
+      return;
+    }
+    await bm.startBubble();
   }
 
   // ── Tiles ──

@@ -1,7 +1,7 @@
 name: transkey_mobile
 description: Real-time translation app by TransKey.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+8
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -43,6 +43,12 @@ dependencies:
   # Production ad units are configured in AdMob console; the build
   # currently uses Google's public test ad unit IDs for development.
   google_mobile_ads: ^6.0.0
+
+  # In-app subscriptions via RevenueCat (Google Play Billing on Android).
+  # Required by Play policy — selling digital subscriptions through an
+  # external web checkout (LemonSqueezy) is forbidden on Android. RC wraps
+  # Play Billing + server-side receipt verification + webhook to our API.
+  purchases_flutter: ^8.4.0
 
   # Camera (camera translate feature)
   camera: ^0.11.0

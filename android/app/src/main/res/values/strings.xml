@@ -4,7 +4,7 @@
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">Choose action</string>
-    <string name="bubble_need_text">Select or copy text first, then pick an action below.</string>
+    <string name="bubble_need_text">Two quick ways:\n• Copy text → tap an action below\n• Or select text → Share → TransKey</string>
     <string name="bubble_need_copy">Copy text first, then tap the bubble.</string>
     <string name="bubble_accessibility_hint">Highlight + tap bubble doesn\'t work yet. Enable Accessibility to skip the Copy step.</string>
     <string name="bubble_accessibility_enable">Setup</string>

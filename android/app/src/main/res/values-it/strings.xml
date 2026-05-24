@@ -4,7 +4,7 @@
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">Scegli un\'azione</string>
-    <string name="bubble_need_text">Seleziona o copia il testo, poi scegli un\'azione qui sotto.</string>
+    <string name="bubble_need_text">Due modi veloci:\n• Copia il testo → tocca un\'azione qui sotto\n• Oppure seleziona il testo → Condividi → TransKey</string>
     <string name="bubble_need_copy">Copia prima il testo, poi tocca il Pulsante TransKey.</string>
     <string name="bubble_accessibility_hint">Selezionare + toccare il Pulsante TransKey non funziona ancora. Attiva l\'Accessibilità per saltare il passaggio di copia.</string>
     <string name="bubble_accessibility_enable">Configura</string>

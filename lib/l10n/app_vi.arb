@@ -590,5 +590,11 @@
   "cameraTip4Title": "Kéo để xoá",
   "cameraTip4Body": "Kéo thẻ kết quả vào vùng thùng rác phía dưới để loại bỏ các thẻ không cần.",
   "cameraTip5Title": "Quét ảnh có sẵn",
-  "cameraTip5Body": "Nhấn biểu tượng thư viện cạnh nút chụp để dịch ảnh có sẵn trong máy."
+  "cameraTip5Body": "Nhấn biểu tượng thư viện cạnh nút chụp để dịch ảnh có sẵn trong máy.",
+  "upgradePurchaseSuccess": "Đã kích hoạt gói. Tận hưởng nhé!",
+  "upgradeRestoreSuccess": "Đã khôi phục — gói của bạn đang hoạt động.",
+  "upgradeRestoreNothing": "Không tìm thấy giao dịch nào để khôi phục.",
+  "upgradePickProPeriod": "Chọn gói Pro",
+  "upgradePickMobilePeriod": "Chọn gói Mobile",
+  "upgradeRestoreButton": "Khôi phục giao dịch"
 }

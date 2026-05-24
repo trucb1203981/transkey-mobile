@@ -590,5 +590,11 @@
   "cameraTip4Title": "拖动删除",
   "cameraTip4Body": "将不需要的结果卡片拖到底部垃圾桶区域即可删除。",
   "cameraTip5Title": "扫描已有照片",
-  "cameraTip5Body": "点击快门旁的相册图标，翻译手机里已有的照片。"
+  "cameraTip5Body": "点击快门旁的相册图标，翻译手机里已有的照片。",
+  "upgradePurchaseSuccess": "订阅已激活。尽情享受您的新套餐吧！",
+  "upgradeRestoreSuccess": "已恢复购买,您的订阅已激活。",
+  "upgradeRestoreNothing": "未找到可恢复的购买记录。",
+  "upgradePickProPeriod": "选择 Pro 计费周期",
+  "upgradePickMobilePeriod": "选择 Mobile 计费周期",
+  "upgradeRestoreButton": "恢复购买"
 }

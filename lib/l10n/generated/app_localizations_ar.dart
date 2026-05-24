@@ -1474,4 +1474,24 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'اضغط أيقونة المعرض بجوار زر الالتقاط لترجمة صورة موجودة على هاتفك.';
+
+  @override
+  String get upgradePurchaseSuccess =>
+      'تم تفعيل الاشتراك. استمتع بخطتك الجديدة!';
+
+  @override
+  String get upgradeRestoreSuccess => 'تمت استعادة المشتريات — اشتراكك نشط.';
+
+  @override
+  String get upgradeRestoreNothing =>
+      'لم يتم العثور على مشتريات سابقة لاستعادتها.';
+
+  @override
+  String get upgradePickProPeriod => 'اختر خطة Pro';
+
+  @override
+  String get upgradePickMobilePeriod => 'اختر خطة Mobile';
+
+  @override
+  String get upgradeRestoreButton => 'استعادة المشتريات';
 }

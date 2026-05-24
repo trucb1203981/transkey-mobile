@@ -590,5 +590,11 @@
   "cameraTip4Title": "Seret untuk hapus",
   "cameraTip4Body": "Seret kartu ke area tempat sampah di bawah untuk hapus blok yang tak perlu.",
   "cameraTip5Title": "Pindai foto tersimpan",
-  "cameraTip5Body": "Ketuk ikon galeri di samping rana untuk menerjemahkan foto yang sudah ada di ponsel."
+  "cameraTip5Body": "Ketuk ikon galeri di samping rana untuk menerjemahkan foto yang sudah ada di ponsel.",
+  "upgradePurchaseSuccess": "Langganan diaktifkan. Selamat menikmati!",
+  "upgradeRestoreSuccess": "Pembelian dipulihkan — langganan Anda aktif.",
+  "upgradeRestoreNothing": "Tidak ada pembelian sebelumnya untuk dipulihkan.",
+  "upgradePickProPeriod": "Pilih paket Pro",
+  "upgradePickMobilePeriod": "Pilih paket Mobile",
+  "upgradeRestoreButton": "Pulihkan pembelian"
 }

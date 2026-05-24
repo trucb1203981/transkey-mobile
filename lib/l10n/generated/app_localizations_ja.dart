@@ -1423,4 +1423,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cameraTip5Body => 'シャッター横のギャラリーアイコンをタップして、端末内の写真を翻訳できます。';
+
+  @override
+  String get upgradePurchaseSuccess => 'サブスクリプションを有効化しました。お楽しみください！';
+
+  @override
+  String get upgradeRestoreSuccess => '購入を復元しました。サブスクリプションは有効です。';
+
+  @override
+  String get upgradeRestoreNothing => '復元する以前の購入はありません。';
+
+  @override
+  String get upgradePickProPeriod => 'Proプランを選択';
+
+  @override
+  String get upgradePickMobilePeriod => 'Mobileプランを選択';
+
+  @override
+  String get upgradeRestoreButton => '購入を復元';
 }

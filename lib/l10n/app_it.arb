@@ -590,5 +590,11 @@
   "cameraTip4Title": "Trascina per rimuovere",
   "cameraTip4Body": "Trascina una scheda nel cestino in basso per rimuovere i blocchi non necessari.",
   "cameraTip5Title": "Scansiona una foto salvata",
-  "cameraTip5Body": "Tocca l'icona galleria accanto allo scatto per tradurre una foto già sul telefono."
+  "cameraTip5Body": "Tocca l'icona galleria accanto allo scatto per tradurre una foto già sul telefono.",
+  "upgradePurchaseSuccess": "Abbonamento attivato. Goditi il tuo nuovo piano!",
+  "upgradeRestoreSuccess": "Acquisti ripristinati — il tuo abbonamento è attivo.",
+  "upgradeRestoreNothing": "Nessun acquisto precedente da ripristinare.",
+  "upgradePickProPeriod": "Scegli il piano Pro",
+  "upgradePickMobilePeriod": "Scegli il piano Mobile",
+  "upgradeRestoreButton": "Ripristina acquisti"
 }

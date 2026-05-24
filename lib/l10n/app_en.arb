@@ -524,8 +524,12 @@
   "@cameraBatchProgress": {
     "description": "Progress label shown during a multi-pick gallery batch. {current} is the 1-based index of the image currently being processed.",
     "placeholders": {
-      "current": { "type": "int" },
-      "total":   { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "cameraSaveNoteLabel": "Add a note (optional)",
@@ -559,7 +563,9 @@
   "@cameraDetected": {
     "description": "Badge label confirming what the AI thinks the captured image is (placeholder is a localized scene name).",
     "placeholders": {
-      "scene": { "type": "String" }
+      "scene": {
+        "type": "String"
+      }
     }
   },
   "cameraWhatIsThis": "What is this?",
@@ -603,5 +609,11 @@
   "cameraTip4Title": "Drag to remove",
   "cameraTip4Body": "Drag a result card to the trash zone at the bottom to remove blocks you don't need.",
   "cameraTip5Title": "Scan a saved photo",
-  "cameraTip5Body": "Tap the gallery icon next to the shutter to translate a photo already on your phone."
+  "cameraTip5Body": "Tap the gallery icon next to the shutter to translate a photo already on your phone.",
+  "upgradePurchaseSuccess": "Subscription activated. Enjoy your new plan!",
+  "upgradeRestoreSuccess": "Purchases restored — your subscription is active.",
+  "upgradeRestoreNothing": "No previous purchases found to restore.",
+  "upgradePickProPeriod": "Choose your Pro plan",
+  "upgradePickMobilePeriod": "Choose your Mobile plan",
+  "upgradeRestoreButton": "Restore purchases"
 }

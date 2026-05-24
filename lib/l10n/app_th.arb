@@ -590,5 +590,11 @@
   "cameraTip4Title": "ลากเพื่อลบ",
   "cameraTip4Body": "ลากการ์ดไปยังถังขยะด้านล่างเพื่อลบบล็อกที่ไม่ต้องการ",
   "cameraTip5Title": "สแกนรูปที่บันทึกไว้",
-  "cameraTip5Body": "แตะไอคอนแกลเลอรีข้างปุ่มชัตเตอร์เพื่อแปลรูปที่มีอยู่ในเครื่อง"
+  "cameraTip5Body": "แตะไอคอนแกลเลอรีข้างปุ่มชัตเตอร์เพื่อแปลรูปที่มีอยู่ในเครื่อง",
+  "upgradePurchaseSuccess": "เปิดใช้งานการสมัครสมาชิกแล้ว ขอให้สนุก!",
+  "upgradeRestoreSuccess": "กู้คืนการซื้อแล้ว — การสมัครสมาชิกของคุณใช้งานได้",
+  "upgradeRestoreNothing": "ไม่พบการซื้อก่อนหน้านี้ที่จะกู้คืน",
+  "upgradePickProPeriod": "เลือกแพ็กเกจ Pro",
+  "upgradePickMobilePeriod": "เลือกแพ็กเกจ Mobile",
+  "upgradeRestoreButton": "กู้คืนการซื้อ"
 }

@@ -590,5 +590,11 @@
   "cameraTip4Title": "Arraste para remover",
   "cameraTip4Body": "Arraste um cartão para a lixeira na parte inferior para remover blocos desnecessários.",
   "cameraTip5Title": "Digitalize uma foto salva",
-  "cameraTip5Body": "Toque no ícone da galeria ao lado do obturador para traduzir uma foto já no seu telefone."
+  "cameraTip5Body": "Toque no ícone da galeria ao lado do obturador para traduzir uma foto já no seu telefone.",
+  "upgradePurchaseSuccess": "Assinatura ativada. Aproveite seu novo plano!",
+  "upgradeRestoreSuccess": "Compras restauradas — sua assinatura está ativa.",
+  "upgradeRestoreNothing": "Nenhuma compra anterior encontrada para restaurar.",
+  "upgradePickProPeriod": "Escolha o plano Pro",
+  "upgradePickMobilePeriod": "Escolha o plano Mobile",
+  "upgradeRestoreButton": "Restaurar compras"
 }

@@ -1492,4 +1492,24 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get cameraTip5Body =>
       'Touchez l\'icône galerie à côté du déclencheur pour traduire une photo déjà sur votre téléphone.';
+
+  @override
+  String get upgradePurchaseSuccess =>
+      'Abonnement activé. Profitez de votre nouveau forfait !';
+
+  @override
+  String get upgradeRestoreSuccess =>
+      'Achats restaurés — votre abonnement est actif.';
+
+  @override
+  String get upgradeRestoreNothing => 'Aucun achat précédent à restaurer.';
+
+  @override
+  String get upgradePickProPeriod => 'Choisissez votre forfait Pro';
+
+  @override
+  String get upgradePickMobilePeriod => 'Choisissez votre forfait Mobile';
+
+  @override
+  String get upgradeRestoreButton => 'Restaurer les achats';
 }

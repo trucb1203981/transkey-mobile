@@ -3,7 +3,7 @@
     <string name="accessibility_service_description">TransKey peut coller une réponse directement dans le champ de texte actif de n\'importe quelle app lorsque vous appuyez sur « Coller la réponse » dans la bulle flottante. Le texte n\'est lu ou écrit que lorsque vous déclenchez une action — aucun suivi en arrière-plan.</string>
 
     <string name="bubble_choose_action">Choisir une action</string>
-    <string name="bubble_need_text">Sélectionnez ou copiez du texte, puis choisissez une action ci-dessous.</string>
+    <string name="bubble_need_text">Deux façons rapides :\n• Copier le texte → toucher une action ci-dessous\n• Ou sélectionner le texte → Partager → TransKey</string>
     <string name="bubble_show_last_result">Afficher le dernier résultat</string>
     <string name="bubble_show_more">Afficher plus</string>
     <string name="bubble_show_less">Afficher moins</string>
