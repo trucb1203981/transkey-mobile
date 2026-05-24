@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -74,13 +75,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Re-poll accessibility state when user returns from system settings.
-    // Bubble running state is driven by the bubbleManagerProvider watch in
-    // build() — BubbleService broadcasts bubbleStateChanged so we don't
-    // need to poll it here.
+    // Re-poll accessibility AND bubble running state on resume. Bubble state
+    // is primarily driven by BubbleService's bubbleStateChanged broadcast,
+    // but aggressive OEM battery managers (Xiaomi MIUI especially) can
+    // force-kill the foreground service before stopBubble() reaches
+    // notifyFlutterBubbleState — the broadcast never fires and the toggle
+    // stays stale at ON. Re-polling isRunning() native side on resume
+    // converges the UI even when the broadcast was lost.
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
       _refreshAccessibility();
+      _refreshBubbleState();
     }
+  }
+
+  Future<void> _refreshBubbleState() async {
+    final notifier = ref.read(bubbleManagerProvider.notifier);
+    final running = await notifier.isRunning();
+    if (!mounted) return;
+    notifier.syncState(running);
   }
 
   Future<void> _refreshAccessibility() async {
@@ -95,6 +107,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     if (Platform.isAndroid) {
       _accessibilityEnabled =
           await ref.read(bubbleManagerProvider.notifier).checkAccessibility();
+      // Same defensive re-poll as the resume path: covers the case where the
+      // user enters Settings WITHOUT triggering a lifecycle resume (e.g.,
+      // navigates directly from another in-app screen after an OEM-killed
+      // bubble that never broadcast its state change).
+      unawaited(_refreshBubbleState());
     }
     if (mounted) {
       setState(() {

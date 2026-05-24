@@ -99,8 +99,19 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "isRunning" -> {
+                        // The persisted flag is necessary but not sufficient:
+                        // the user can revoke SYSTEM_ALERT_WINDOW from the
+                        // notification's "App settings" link without ever
+                        // going through stopBubble(), leaving the flag stuck
+                        // at true while the bubble can no longer draw. Gate
+                        // on the live overlay grant so isRunning reflects
+                        // reality and the in-app Settings toggle converges.
                         val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-                        result.success(prefs.getBoolean("flutter.tk_bubble_active", false))
+                        val flagOn = prefs.getBoolean("flutter.tk_bubble_active", false)
+                        val hasOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            Settings.canDrawOverlays(this)
+                        } else true
+                        result.success(flagOn && hasOverlay)
                     }
                     "checkAccessibility" -> {
                         result.success(isAccessibilityEnabled())
