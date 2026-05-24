@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -128,12 +129,44 @@ Future<void> _checkoutViaRevenueCat(
       return;
     }
 
-    await ref.read(authStateProvider.notifier).refreshUser();
+    // RC SDK has already verified the purchase with Play Billing before
+    // returning this CustomerInfo, so the entitlements are authoritative
+    // RIGHT NOW. Update the local session optimistically so the UI flips off
+    // 'free' the instant the snackbar appears — otherwise the user sits on
+    // 'free' for 1-3s while our backend webhook handler processes, which
+    // feels like a scam ("I paid and nothing happened"). The background
+    // refresh below then syncs server-side fields (sub_ends_at, billing
+    // dates) once the webhook lands.
+    final expected = info.entitlements.active.containsKey('pro')
+        ? 'pro'
+        : info.entitlements.active.containsKey('mobile')
+            ? 'mobile'
+            : null;
+    final session = ref.read(authStateProvider).valueOrNull?.session;
+    if (session != null && expected != null && session.plan != expected) {
+      await ref.read(authStateProvider.notifier)
+          .updateSession(session.copyWith(plan: expected));
+    }
+
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(l.upgradePurchaseSuccess)),
     );
     Navigator.of(context).maybePop();
+
+    // Background: sync server-side state after the webhook has had time to
+    // land. If the backend somehow still shows the old plan (webhook stuck
+    // / slow), re-apply the optimistic plan so the UI doesn't regress —
+    // the next launch's /auth/me will normalize when the webhook eventually
+    // finishes.
+    unawaited(Future.delayed(const Duration(seconds: 4), () async {
+      final notifier = ref.read(authStateProvider.notifier);
+      await notifier.refreshUser();
+      final s = ref.read(authStateProvider).valueOrNull?.session;
+      if (s != null && expected != null && s.plan != expected) {
+        await notifier.updateSession(s.copyWith(plan: expected));
+      }
+    }));
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -129,11 +129,8 @@ class AccountSection extends ConsumerWidget {
               child: Text(t.upgradeToPro),
             ),
           ),
-        if (isFreeOrTrial) ...[
-          const SizedBox(width: AppSpacing.sm),
-          logoutButton,
-        ],
-        if (!isFreeOrTrial && !isMobile) logoutButton,
+        if (isFreeOrTrial || isMobile) const SizedBox(width: AppSpacing.sm),
+        logoutButton,
       ],
     );
   }

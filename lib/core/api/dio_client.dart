@@ -251,7 +251,16 @@ class _AuthRefreshInterceptor extends Interceptor {
         }),
       );
       final newToken = refreshResponse.data['accessToken'] as String;
-      final expiresAt = refreshResponse.data['expiresAt'] as String?;
+      // Tolerant: backend currently returns ISO 8601 string, but historically
+      // returned a milliseconds-since-epoch number. A naive `as String?` on
+      // the number form throws and the catch below calls onAuthFailed, which
+      // looks like a silent logout to the user. Accept both shapes here so
+      // future backend shape changes don't trigger the loop.
+      final expiresAtRaw = refreshResponse.data['expiresAt'];
+      final expiresAt = expiresAtRaw is num
+          ? DateTime.fromMillisecondsSinceEpoch(expiresAtRaw.toInt())
+              .toIso8601String()
+          : expiresAtRaw as String?;
       await sessionStore.save(
         session.copyWith(accessToken: newToken, expiresAt: expiresAt),
       );
