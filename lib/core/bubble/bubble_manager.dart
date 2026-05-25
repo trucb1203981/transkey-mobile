@@ -47,6 +47,9 @@ class BubbleManager extends StateNotifier<bool> {
       return _hasPermission;
     } on PlatformException {
       return false;
+    } on MissingPluginException {
+      // Channel handler not attached yet — see [isRunning].
+      return false;
     }
   }
 
@@ -58,6 +61,8 @@ class BubbleManager extends StateNotifier<bool> {
       _hasPermission = result ?? false;
       return _hasPermission;
     } on PlatformException {
+      return false;
+    } on MissingPluginException {
       return false;
     }
   }
@@ -81,6 +86,8 @@ class BubbleManager extends StateNotifier<bool> {
     } on PlatformException catch (e) {
       debugPrint('[BubbleManager] startBubble failed: $e');
       return false;
+    } on MissingPluginException {
+      return false;
     }
   }
 
@@ -93,6 +100,8 @@ class BubbleManager extends StateNotifier<bool> {
       _tracking.event('bubble_stop');
     } on PlatformException catch (e) {
       debugPrint('[BubbleManager] stopBubble failed: $e');
+    } on MissingPluginException {
+      // no-op
     }
   }
 
@@ -103,6 +112,8 @@ class BubbleManager extends StateNotifier<bool> {
       await _channel.invokeMethod<void>('setBubbleState', bubbleState.name);
     } on PlatformException catch (e) {
       debugPrint('[BubbleManager] setState failed: $e');
+    } on MissingPluginException {
+      // no-op
     }
   }
 
@@ -112,6 +123,14 @@ class BubbleManager extends StateNotifier<bool> {
     try {
       return await _channel.invokeMethod<bool>('isRunning') ?? false;
     } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      // The native handler may not be attached yet: TransKeyApp pre-warms the
+      // engine and runs main() (which constructs BubbleManager + calls
+      // tryAutoStart) before MainActivity.configureFlutterEngine installs the
+      // full bubble handler. MissingPluginException is NOT a PlatformException
+      // so it must be caught explicitly, or it escapes to the zone guard.
+      // Treat as "not running"; later bubbleStateChanged / re-query corrects.
       return false;
     }
   }
@@ -142,6 +161,8 @@ class BubbleManager extends StateNotifier<bool> {
       return await _channel.invokeMethod<bool>('checkAccessibility') ?? false;
     } on PlatformException {
       return false;
+    } on MissingPluginException {
+      return false;
     }
   }
 
@@ -152,6 +173,8 @@ class BubbleManager extends StateNotifier<bool> {
       await _channel.invokeMethod<void>('requestAccessibility');
     } on PlatformException catch (e) {
       debugPrint('[BubbleManager] requestAccessibility failed: $e');
+    } on MissingPluginException {
+      // no-op
     }
   }
 
@@ -164,6 +187,8 @@ class BubbleManager extends StateNotifier<bool> {
       await _channel.invokeMethod<void>('openAppDetails');
     } on PlatformException catch (e) {
       debugPrint('[BubbleManager] openAppDetails failed: $e');
+    } on MissingPluginException {
+      // no-op
     }
   }
 
@@ -179,6 +204,8 @@ class BubbleManager extends StateNotifier<bool> {
           ) ??
           false;
     } on PlatformException {
+      return false;
+    } on MissingPluginException {
       return false;
     }
   }

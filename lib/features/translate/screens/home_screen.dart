@@ -132,6 +132,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The observer can still fire while the element is detaching (we saw
+    // "No ProviderScope found" here). Bail before any ref.read so a lifecycle
+    // event during teardown can't reach a disposed/scope-less element.
+    if (!mounted) return;
     // Reload settings when app comes to foreground — the floating bubble (or
     // Share Extension) may have changed language/tone/reply-lang in
     // SharedPreferences while we were backgrounded. Without these reloads the

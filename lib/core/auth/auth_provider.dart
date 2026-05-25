@@ -52,6 +52,13 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     return AuthState(isLoggedIn: true, session: session);
   }
 
+  /// Current session snapshot, readable from outside the notifier without
+  /// touching the `@protected` `state`. Lets callers that outlive their
+  /// widget (e.g. a post-checkout background refresh after the sheet popped)
+  /// read the latest session via the app-scoped notifier instead of a stale
+  /// WidgetRef.
+  AuthSession? get currentSession => state.valueOrNull?.session;
+
   /// Drop the in-memory token cache held by the API client so the next
   /// request reads the fresh value we just wrote to storage. Must be called
   /// after any sessionStore.save() / clear() that wasn't triggered by the

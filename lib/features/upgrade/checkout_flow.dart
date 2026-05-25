@@ -96,6 +96,14 @@ Future<void> _checkoutViaRevenueCat(
   String plan,
   AppLocalizations l,
 ) async {
+  // Capture provider references up front. The success path pops this sheet
+  // (Navigator.maybePop below) before the 4s background refresh runs, so the
+  // WidgetRef is no longer usable by then. These notifier/service objects are
+  // app-scoped (non-autoDispose) and stay valid for the app lifetime, so the
+  // background work + error tracking use them instead of `ref` — otherwise
+  // "Cannot use ref after the widget was disposed" crashes the zone guard.
+  final authNotifier = ref.read(authStateProvider.notifier);
+  final tracking = ref.read(trackingServiceProvider);
   try {
     final offerings = await PurchasesService.getOfferings();
     final offering = offerings?.current
@@ -119,12 +127,12 @@ Future<void> _checkoutViaRevenueCat(
         : await _showPackagePicker(context, packages, plan);
     if (chosen == null) return; // user dismissed picker — silent no-op
 
-    ref.read(trackingServiceProvider).event('upgrade_purchase_start',
+    tracking.event('upgrade_purchase_start',
         properties: {'plan': plan, 'product_id': chosen.storeProduct.identifier});
 
     final info = await PurchasesService.purchasePackage(chosen);
     if (info == null) {
-      ref.read(trackingServiceProvider).event('upgrade_purchase_cancel',
+      tracking.event('upgrade_purchase_cancel',
           properties: {'plan': plan, 'product_id': chosen.storeProduct.identifier});
       return;
     }
@@ -142,10 +150,9 @@ Future<void> _checkoutViaRevenueCat(
         : info.entitlements.active.containsKey('mobile')
             ? 'mobile'
             : null;
-    final session = ref.read(authStateProvider).valueOrNull?.session;
+    final session = authNotifier.currentSession;
     if (session != null && expected != null && session.plan != expected) {
-      await ref.read(authStateProvider.notifier)
-          .updateSession(session.copyWith(plan: expected));
+      await authNotifier.updateSession(session.copyWith(plan: expected));
     }
 
     if (!context.mounted) return;
@@ -160,11 +167,10 @@ Future<void> _checkoutViaRevenueCat(
     // the next launch's /auth/me will normalize when the webhook eventually
     // finishes.
     unawaited(Future.delayed(const Duration(seconds: 4), () async {
-      final notifier = ref.read(authStateProvider.notifier);
-      await notifier.refreshUser();
-      final s = ref.read(authStateProvider).valueOrNull?.session;
+      await authNotifier.refreshUser();
+      final s = authNotifier.currentSession;
       if (s != null && expected != null && s.plan != expected) {
-        await notifier.updateSession(s.copyWith(plan: expected));
+        await authNotifier.updateSession(s.copyWith(plan: expected));
       }
     }));
   } catch (e) {
@@ -173,7 +179,7 @@ Future<void> _checkoutViaRevenueCat(
         SnackBar(content: Text(l.upgradeCheckoutFailed), backgroundColor: AppColors.red),
       );
     }
-    ref.read(trackingServiceProvider).event('upgrade_purchase_fail',
+    tracking.event('upgrade_purchase_fail',
         properties: {'plan': plan, 'error': e.runtimeType.toString()});
   }
 }

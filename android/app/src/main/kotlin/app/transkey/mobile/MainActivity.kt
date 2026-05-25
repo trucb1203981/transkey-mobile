@@ -111,7 +111,12 @@ class MainActivity : FlutterActivity() {
                         val hasOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             Settings.canDrawOverlays(this)
                         } else true
-                        result.success(flagOn && hasOverlay)
+                        // Also require a live service: a hard kill (force-stop
+                        // / OEM background killer) bypasses START_STICKY, so the
+                        // flag can be stuck true while the service is dead.
+                        // isAlive resets on process death → tryAutoStart can
+                        // recover and the toggle won't lie.
+                        result.success(BubbleService.isAlive && flagOn && hasOverlay)
                     }
                     "checkAccessibility" -> {
                         result.success(isAccessibilityEnabled())

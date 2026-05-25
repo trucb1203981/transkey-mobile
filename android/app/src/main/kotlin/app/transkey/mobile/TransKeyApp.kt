@@ -2,6 +2,7 @@ package app.transkey.mobile
 
 import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import io.flutter.app.FlutterApplication
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -109,6 +110,57 @@ class TransKeyApp : FlutterApplication() {
                             startService(intent)
                         }
                     }
+                    result.success(null)
+                }
+                // Query/control methods the Dart side hits during the pre-warm
+                // window: this engine runs main() at Application.onCreate, so
+                // BubbleManager._seedInitialState + tryAutoStart call these
+                // BEFORE MainActivity.configureFlutterEngine swaps in the full
+                // handler. Without these branches they'd return notImplemented
+                // -> MissingPluginException on the Dart side (and auto-resume
+                // would silently break). Bodies mirror MainActivity's and only
+                // use the Application context (pref read / overlay grant /
+                // startService), so no Activity is required.
+                "isRunning" -> {
+                    val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+                    val flagOn = prefs.getBoolean("flutter.tk_bubble_active", false)
+                    val hasOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Settings.canDrawOverlays(this)
+                    } else true
+                    // Liveness-gated — see MainActivity.isRunning.
+                    result.success(BubbleService.isAlive && flagOn && hasOverlay)
+                }
+                "checkPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        result.success(Settings.canDrawOverlays(this))
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "startBubble" -> {
+                    startService(
+                        Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_START
+                        },
+                    )
+                    result.success(null)
+                }
+                "stopBubble" -> {
+                    startService(
+                        Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_STOP
+                        },
+                    )
+                    result.success(null)
+                }
+                "setBubbleState" -> {
+                    val state = call.arguments as? String ?: BubbleService.STATE_IDLE
+                    startService(
+                        Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_SET_STATE
+                            putExtra(BubbleService.EXTRA_STATE, state)
+                        },
+                    )
                     result.success(null)
                 }
                 else -> result.notImplemented()

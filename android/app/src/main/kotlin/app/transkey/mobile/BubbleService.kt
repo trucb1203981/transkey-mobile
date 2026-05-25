@@ -37,6 +37,21 @@ import java.util.Locale
 class BubbleService : Service() {
 
     companion object {
+        /**
+         * True while a BubbleService instance is alive in THIS process.
+         * Resets to false on process death (static default), so after a hard
+         * kill that bypasses START_STICKY — `am force-stop`, or an OEM
+         * background killer (Xiaomi/OnePlus) — `isRunning` reports the bubble
+         * as down instead of trusting the persisted `tk_bubble_active` flag
+         * alone. That lets tryAutoStart actually restart it and keeps the
+         * in-app toggle honest. BubbleService runs in the app's default
+         * process (no android:process), so MainActivity / TransKeyApp read
+         * the same value.
+         */
+        @Volatile
+        var isAlive: Boolean = false
+            private set
+
         const val CHANNEL_ID = "transkey_bubble"
         const val NOTIFICATION_ID = 1001
         const val ACTION_START = "transkey.bubble.START"
@@ -426,6 +441,7 @@ class BubbleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isAlive = true
         createBubbleNotificationChannel()
         // On Android 14+ a FGS that captures mic must declare the microphone
         // type at startForeground time; declaring it only in the manifest is
@@ -570,6 +586,7 @@ class BubbleService : Service() {
     }
 
     override fun onDestroy() {
+        isAlive = false
         // Drop every queued postDelayed before we tear views down — the
         // pending Flutter-translate retry, the IME-show kick, the voice
         // pulse, the final-result safety net, etc. would otherwise fire
