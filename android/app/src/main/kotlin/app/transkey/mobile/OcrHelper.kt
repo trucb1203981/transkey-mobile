@@ -374,15 +374,19 @@ object OcrHelper {
         return lang in VISION_ONLY_LANGS
     }
 
+    // Keep in sync with camera_screen.dart `_visionOnlyLangs` (camera flow).
+    // Both lists must match so Lens and camera route the same scripts to the
+    // vision LLM; tg/sd/ti were previously only in the Dart list, so pinning
+    // them on Lens wasted a doomed ML Kit pass before the empty-OCR fallback.
     private val VISION_ONLY_LANGS = setOf(
-        // Cyrillic
-        "ru", "uk", "bg", "sr", "mk", "be", "kk", "ky", "mn",
+        // Cyrillic (tg = Tajik)
+        "ru", "uk", "bg", "sr", "mk", "be", "kk", "ky", "mn", "tg",
         // Thai / Lao / Khmer / Myanmar
         "th", "lo", "km", "my",
-        // Arabic-script (Arabic, Persian, Urdu, Pashto)
-        "ar", "fa", "ur", "ps",
-        // Hebrew / Yiddish, Greek, Georgian, Armenian, Sinhala, Amharic
-        "he", "yi", "el", "ka", "hy", "si", "am",
+        // Arabic-script (Arabic, Persian, Urdu, Pashto, Sindhi)
+        "ar", "fa", "ur", "ps", "sd",
+        // Hebrew / Yiddish, Greek, Georgian, Armenian, Sinhala, Amharic, Tigrinya
+        "he", "yi", "el", "ka", "hy", "si", "am", "ti",
         // Non-Devanagari Indic ML Kit doesn't ship a recognizer for
         "ta", "te", "kn", "ml", "or", "gu", "pa", "bn",
     )
