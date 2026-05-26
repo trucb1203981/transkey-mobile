@@ -101,7 +101,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       if (authState.hasError) {
         final err = authState.error;
         if (err is DioException) {
-          setState(() => _errorMessage = ApiException.fromDio(err).code.localize(l));
+          setState(() => _errorMessage = _messageFor(ApiException.fromDio(err), l));
         } else {
           setState(() => _errorMessage = err.toString());
         }
@@ -110,10 +110,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
       if (mounted) context.go('/');
     } on DioException catch (e) {
-      setState(() => _errorMessage = ApiException.fromDio(e).code.localize(l));
+      setState(() => _errorMessage = _messageFor(ApiException.fromDio(e), l));
     } catch (e) {
       setState(() => _errorMessage = l.errorGeneric);
     }
+  }
+
+  /// Pick the user-facing message for an ApiException. Mapped codes use
+  /// their localized string; an `unknown` code with a server-provided
+  /// message shows that message verbatim (so new server error codes
+  /// surface their real cause to the user instead of "Something went
+  /// wrong"). Pure unknowns fall back to the generic copy.
+  String _messageFor(ApiException ex, AppLocalizations l) {
+    if (ex.code == ApiErrorCode.unknown && ex.message.isNotEmpty) {
+      return ex.message;
+    }
+    return ex.code.localize(l);
   }
 
   Future<void> _googleOAuth() async {

@@ -7,7 +7,8 @@ enum ApiErrorCode {
   invalidCredentials,  // login/register/google-mobile rejected at the door
   emailNotVerified,
   featureDisabled,
-  deviceLimit,
+  deviceLimit,         // free plan: too many free accounts from this device
+  proDeviceLimit,      // pro plan: already registered on 2 devices
   mobilePlanDesktopBlocked,
   textTooLong,
   quotaExceeded,
@@ -95,6 +96,11 @@ class ApiException implements Exception {
               code: ApiErrorCode.deviceLimit,
               message: 'Too many devices on free plan',
             );
+          case 'pro_device_limit':
+            return const ApiException(
+              code: ApiErrorCode.proDeviceLimit,
+              message: 'Pro account already registered on 2 devices',
+            );
           case 'mobile_plan_desktop_blocked':
             return const ApiException(
               code: ApiErrorCode.mobilePlanDesktopBlocked,
@@ -163,6 +169,7 @@ extension ApiErrorCodeL on ApiErrorCode {
     ApiErrorCode.emailNotVerified          => l.errorEmailNotVerified,
     ApiErrorCode.featureDisabled           => l.errorFeatureRequiresPaid,
     ApiErrorCode.deviceLimit               => l.errorDeviceLimit,
+    ApiErrorCode.proDeviceLimit            => l.proDeviceLimitError,
     ApiErrorCode.mobilePlanDesktopBlocked  => l.errorMobilePlanDesktopBlocked,
     ApiErrorCode.textTooLong               => l.errorTextTooLong,
     ApiErrorCode.quotaExceeded             => l.errorQuotaExceeded,
