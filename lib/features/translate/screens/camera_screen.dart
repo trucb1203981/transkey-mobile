@@ -394,6 +394,22 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                 imageSize: size,
                 onBlockTap: _explainBlock,
               ),
+            // "Scanning" reassurance: camera is live but no text boxes yet
+            // (the inherent camera-init + first-OCR window). Without it the
+            // preview looks dead for ~1-1.5 s and users think it's broken.
+            // Hidden once any box appears or while the blur hint is up.
+            if (size != null && _liveBlocks.isEmpty && !_isBlurry)
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 56),
+                    child: Center(child: _ScanningPill()),
+                  ),
+                ),
+              ),
             if (_focusRingPos != null)
               Positioned(
                 left: _focusRingPos!.dx - 28,
@@ -2682,6 +2698,41 @@ class _DetectedSceneChip extends StatelessWidget {
               letterSpacing: 0.2,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Language-neutral "scanning" indicator shown on the live preview
+/// before the first text box appears, so the camera doesn't look dead
+/// during the camera-init + first-OCR window. Pure icon + spinner — no
+/// i18n needed.
+class _ScanningPill extends StatelessWidget {
+  const _ScanningPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 13,
+            height: 13,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          SizedBox(width: 8),
+          Icon(Icons.document_scanner_outlined,
+              size: 15, color: Colors.white70),
         ],
       ),
     );

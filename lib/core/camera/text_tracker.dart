@@ -30,21 +30,23 @@ import 'camera_service.dart';
 /// so the live overlay needs no changes.
 class TextTracker {
   TextTracker({
-    this.confirmHits = 2,
-    this.removeMisses = 4,
+    this.confirmHits = 1,
+    this.removeMisses = 3,
     this.iouMatchThreshold = 0.3,
   });
 
-  /// Promote a track to "visible" only after this many consecutive
-  /// detections. 2 swallows one-frame ML Kit noise without adding a
-  /// perceptible startup lag (4-frame default cycle ≈ 4 s at 1 Hz, too
-  /// slow; 1 would let any spurious blob through).
+  /// Show a track after this many consecutive detections. 1 = show on
+  /// the FIRST detection — critical for perceived responsiveness: at the
+  /// 1 Hz live cadence, requiring 2 hits added a full second before any
+  /// box appeared and made the camera feel dead on open. The brief cost
+  /// is that a one-frame spurious blob can flash for a cycle, but
+  /// [removeMisses] clears it quickly and ML Kit rarely phantoms on a
+  /// static scene.
   final int confirmHits;
 
-  /// Drop a track after this many consecutive misses. 4 frames ≈ 4 s
-  /// at the current 1 Hz cadence — long enough to ride out brief
-  /// occlusion (hand sweeping past, autofocus blur) without the box
-  /// hanging around after the user has clearly panned away.
+  /// Drop a track after this many consecutive misses. 3 frames ≈ 3 s at
+  /// 1 Hz — rides out brief occlusion / autofocus blur on real text,
+  /// while clearing a spurious one-frame detection within a few cycles.
   final int removeMisses;
 
   /// Minimum IoU between a track's predicted box and a detection for
