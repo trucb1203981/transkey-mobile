@@ -177,6 +177,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   int _batchTotal = 0;
   int _batchDone = 0;
 
+  /// Hard cap on how many images one gallery pick can process. Prevents
+  /// a 20-image flood from monopolising the OCR pipeline + LLM quota.
+  /// 5 covers a typical menu (2-4 pages); larger numbers tank the UX
+  /// without unlocking a real use case.
+  static const int _kMaxBatchImages = 5;
+
   /// Lifecycle: timer that auto-stops the camera stream when the app stays
   /// in the background for too long (saves battery / avoids camera LED drain).
   static const _backgroundStopDelay = Duration(minutes: 3);
@@ -752,19 +758,28 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   /// Open the "What is this?" sheet for a block. Picker preference:
-  ///   1. Server-supplied `items` (vision_boxes path) — chips show
-  ///      the translation, tap returns original.
-  ///   2. Lazy /split-block call (menu / sign scenes only, multi-item
-  ///      blocks only) — same chip UX as (1), result cached so a
-  ///      repeat long-press is free.
-  ///   3. Newline-split / drag-select fallback — for blocks neither
-  ///      path covers (e.g. document scene).
-  /// Short single-item blocks skip the picker entirely.
+  ///   1. Server-supplied `items` (vision_boxes path) - chips show the
+  ///      translation, tap returns original.
+  ///   2. Per-line pairing (2+ source lines aligned 1:1 with the same
+  ///      number of translation lines). Cheap, no LLM round-trip - just
+  ///      uses the per-block translation we already have.
+  ///   3. Lazy /split-block call (menu / sign scenes only, multi-item
+  ///      single-line blocks). Result cached per block text.
+  ///   4. Direct explain on the whole block.
   Future<void> _explainBlock(OcrBlock block) async {
     var items = block.items;
 
-    // (2) Lazy split when the server didn't pre-split the block but the
-    // scene is one where multi-item rows are common (menu, sign).
+    // (2) Per-line pairing: when the block holds multiple lines and the
+    // translation preserved the same line count (the LLM prompt enforces
+    // `preserve_structure`), zip them 1:1. No extra LLM call.
+    if (items == null || items.length < 2) {
+      final pairedItems = _pairLineItems(block);
+      if (pairedItems != null && pairedItems.length >= 2) {
+        items = pairedItems;
+      }
+    }
+
+    // (3) Lazy /split-block for menu / sign multi-item single-line blocks.
     if (items == null || items.length < 2) {
       final lazyItems = await _maybeLazySplit(block);
       if (lazyItems != null && lazyItems.length >= 2) {
@@ -778,18 +793,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       textToExplain = await _pickFromItems(block, items);
       if (textToExplain == null) return;
     } else {
-      final lines = block.text
-          .split('\n')
-          .map((l) => l.trim())
-          .where((l) => l.isNotEmpty)
-          .toList();
-      final showPicker = lines.length > 1 || block.text.trim().length > 15;
-      if (showPicker) {
-        textToExplain = await _pickExplainItem(block, lines);
-        if (textToExplain == null) return;
-      } else {
-        textToExplain = block.text;
-      }
+      // (4) Single discrete unit: explain the whole block directly.
+      textToExplain = block.text;
     }
 
     ref.read(trackingServiceProvider).event('region_explain', properties: {
@@ -804,6 +809,41 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     await WhatIsThisSheet.show(context, textToExplain);
     if (!mounted) return;
     if (_step == _CameraStep.preview) _startStream();
+  }
+
+  /// Build items[] from the block's per-line source + translation when
+  /// both share the same line count. translate-batch's prompt enforces
+  /// `preserve_structure` so multi-line source usually ships back with
+  /// matching translation line structure - that lets us pair them 1:1
+  /// without spending another LLM call. Returns null when:
+  ///   - the block has < 2 source lines, OR
+  ///   - we don't have a translation for this block yet, OR
+  ///   - source and translation line counts don't match (LLM dropped /
+  ///     merged a line - the pairing would be misaligned).
+  List<OcrBlockItem>? _pairLineItems(OcrBlock block) {
+    final idx = _blocks.indexOf(block);
+    if (idx < 0 || idx >= _translations.length) return null;
+    final translation = _translations[idx];
+    if (translation.isEmpty || translation == block.text) return null;
+
+    final srcLines = block.text
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (srcLines.length < 2) return null;
+
+    final trLines = translation
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (trLines.length != srcLines.length) return null;
+
+    return [
+      for (var i = 0; i < srcLines.length; i++)
+        OcrBlockItem(original: srcLines[i], translation: trLines[i]),
+    ];
   }
 
   /// Lazy /split-block call - only fires when:
@@ -945,116 +985,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  /// Bottom sheet picker for multi-item blocks. The user can either:
-  ///   - tap a numbered line chip (when newlines split the block),
-  ///   - drag-select a substring out of the full block (covers the
-  ///     single-line-multi-item case where there are no newlines),
-  ///   - or tap "Whole block" for the unfiltered explain.
-  /// Returns the chosen text or null when dismissed.
-  Future<String?> _pickExplainItem(OcrBlock block, List<String> lines) {
-    var selected = '';
-    return showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: StatefulBuilder(
-            builder: (ctx, setSheetState) => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Pick an item to explain',
-                  style: Theme.of(ctx).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Drag-select any word(s) below, or tap a numbered line.',
-                  style: Theme.of(ctx).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SelectableText(
-                    block.text,
-                    onSelectionChanged: (sel, _) {
-                      final start = sel.start;
-                      final end = sel.end;
-                      if (start < 0 ||
-                          end < 0 ||
-                          start == end ||
-                          end > block.text.length) {
-                        setSheetState(() => selected = '');
-                        return;
-                      }
-                      setSheetState(
-                        () => selected =
-                            block.text.substring(start, end).trim(),
-                      );
-                    },
-                  ),
-                ),
-                if (lines.length > 1) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (var i = 0; i < lines.length; i++)
-                        ActionChip(
-                          avatar: CircleAvatar(
-                            radius: 10,
-                            child: Text(
-                              '${i + 1}',
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          ),
-                          label: Text(lines[i]),
-                          onPressed: () => Navigator.pop(ctx, lines[i]),
-                        ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx, block.text),
-                        child: const Text('Whole block'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: selected.isEmpty
-                            ? null
-                            : () => Navigator.pop(ctx, selected),
-                        child: Text(
-                          selected.isEmpty
-                              ? 'Selection'
-                              : 'Explain "${selected.length > 18 ? '${selected.substring(0, 18)}…' : selected}"',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -1678,21 +1608,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  /// Pick an existing photo from the gallery and run it through the same
-  /// OCR + scene pipeline as a live capture. Useful when the user already
-  /// has a photo of the menu/sign/document and doesn't need a fresh shot —
-  /// or when the lighting at the moment is bad and they'd rather use a
-  /// clearer photo from before.
+  /// Pick existing photos from the gallery and run them through the same
+  /// OCR + scene pipeline as a live capture. Useful when the user
+  /// already has photos of the menu/sign/document or the lighting at
+  /// the moment is bad. Multi-pick is the common case for restaurant
+  /// menus (2-4 pages); the batch flow surfaces arrow nav at the top of
+  /// the result so the user can flip between pages without re-picking.
   Future<void> _pickFromGallery() async {
-    // Multi-pick: a restaurant menu is typically 2–4 pages — making the
-    // user re-enter the gallery picker for each one is painful. We
-    // process them all sequentially below and surface arrow nav at the
-    // top of the result so they can flip between pages without re-
-    // capturing. Single pick is still the common case and stays a
-    // 1-element batch with no nav UI shown.
-    final List<XFile> picked;
+    final List<XFile> rawPicked;
     try {
-      picked = await ImagePicker().pickMultiImage(
+      rawPicked = await ImagePicker().pickMultiImage(
         // Cap dimensions to 1600 px so OCR + (optional) vision upload run
         // fast on a gallery pick — going larger only adds latency without
         // improving recognition (ML Kit's detection grid plateaus before
@@ -1705,10 +1630,30 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       debugPrint('[Camera] Gallery pick failed: $e');
       return;
     }
-    if (picked.isEmpty) return; // user cancelled
+    if (rawPicked.isEmpty) return; // user cancelled
     if (!mounted) return;
+
+    // Cap picks at _kMaxBatchImages - over-picking is almost always a
+    // mistake (a 20-image flood monopolises OCR + LLM cost), so we keep
+    // the first 5 and surface a snackbar so the user knows.
+    final List<XFile> picked = rawPicked.length > _kMaxBatchImages
+        ? rawPicked.sublist(0, _kMaxBatchImages)
+        : rawPicked;
+    if (rawPicked.length > _kMaxBatchImages) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Max $_kMaxBatchImages images per batch - using the first $_kMaxBatchImages',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+
     ref.read(trackingServiceProvider).event('gallery_pick', properties: {
-      'count': picked.length,
+      'count':   picked.length,
+      'capped':  rawPicked.length > _kMaxBatchImages,
+      'raw':     rawPicked.length,
     });
     setState(() {
       _step = _CameraStep.translating;
@@ -1723,32 +1668,65 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     });
     await _cameraService.stopTextStream();
 
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+    final sourceLang =
+        ref.read(languageSettingsProvider).valueOrNull?.sourceLang;
+    final visionOnly =
+        scene == CameraScene.sign || _sourceNeedsVision(sourceLang);
+
+    if (visionOnly) {
+      // Vision-only scenes (sign + non-ML-Kit scripts) keep the original
+      // sequential flow because /translate-image and its scene/source-lang
+      // chip wiring live inside _captureWithVision which mutates shared
+      // state. Parallelising them would race the singletons; this path
+      // is also a less-common gallery use case.
+      await _runBatchSequential(picked);
+    } else {
+      // Menu / document / screenshot / auto — the common gallery case.
+      // Parallelise the ML Kit OCR step (decode + recognizeText, both
+      // pure / no shared-state mutation) so 5 images take ~max(OCR)
+      // instead of sum(OCR); translation still runs per-image because
+      // it threads through stateful helpers, but the first ready
+      // OCR's translation surfaces immediately so the user sees a
+      // result long before the last image finishes.
+      await _runBatchParallelOcr(picked, scene: scene);
+    }
+
+    if (!mounted) return;
+    setState(() => _isBatchProcessing = false);
+
+    if (_batchQueue.isEmpty) {
+      _recoverToPreview();
+      return;
+    }
+    // First-completed is already restored by the parallel/sequential
+    // helper; this block is a safety net for the sequential path which
+    // doesn't auto-restore mid-loop.
+    if (_step != _CameraStep.result) {
+      setState(() {
+        _activeBatchIndex = 0;
+        _restoreFromSnapshot(_batchQueue[0]);
+        _step = _resultStepRespectingBatch();
+      });
+    }
+  }
+
+  /// Sequential batch fallback for scenes that depend on shared-state
+  /// helpers (sign, vision-only sources). Same loop the gallery flow
+  /// used to run unconditionally - kept for the rare cases parallel
+  /// can't cover.
+  Future<void> _runBatchSequential(List<XFile> picked) async {
     for (var i = 0; i < picked.length; i++) {
       if (!mounted) return;
       try {
-        // Gallery uses the SAME 3-pass aggressive OCR pipeline as live
-        // captures. Earlier we ran single-pass here to save 4-6 s per
-        // image on the theory that "user picked it, so it's clean" —
-        // but real-world testing showed gallery picks of menu photos
-        // (especially screenshots-of-a-menu) regressed badly vs
-        // capturing the same menu live with the same scene picked.
-        // The latency cost is worth it: gallery flow is already a
-        // "I have time, do it properly" path, and the multi-pass
-        // recall delta on dish names is large.
         await _processImage(picked[i].path, aggressivePasses: true);
         if (!mounted) return;
-        // Snapshot the just-processed image's singletons before moving
-        // on to the next one. Without this, image N+1's writes would
-        // overwrite image N's blocks / translations and the result
-        // batch would only retain the LAST page.
         if (_capturedPath != null && _capturedImageSize != null) {
           _batchQueue.add(_snapshotActive());
         }
         setState(() {
           _batchDone = i + 1;
-          // Reset between images so half-finished N+1 state can't show
-          // through as we start the next pass (the spinner background
-          // image stays unchanged until next process sets it).
           if (i < picked.length - 1) {
             _blocks = [];
             _translations = [];
@@ -1762,22 +1740,114 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         debugPrint('[Camera] Gallery batch item $i failed: $e');
       }
     }
+  }
 
-    if (!mounted) return;
-    setState(() => _isBatchProcessing = false);
+  /// Parallel-OCR batch path for the common menu/document gallery flow.
+  /// All ML Kit OCR calls fire in parallel via Future.wait (each
+  /// recognizeText is pure - no shared state writes). The for-loop
+  /// below the await drains the futures in pick-order and runs the
+  /// stateful translate step for each. The FIRST image's translated
+  /// snapshot transitions the UI out of the spinner immediately so
+  /// the user can browse it while later images finish in the
+  /// background.
+  Future<void> _runBatchParallelOcr(
+    List<XFile> picked, {
+    required CameraScene scene,
+  }) async {
+    final settings = ref.read(cameraSettingsProvider).valueOrNull ??
+        CameraSettings.defaults;
 
-    if (_batchQueue.isEmpty) {
-      _recoverToPreview();
-      return;
+    // Phase 1: kick off ALL OCR jobs in parallel. Each future decodes
+    // its own image and returns the per-image OCR result (or null on
+    // failure). Construction with .toList() materialises the futures
+    // so they all start before any awaits below.
+    final ocrJobs = picked.map((file) => _runOcrPure(
+          file.path,
+          scene: scene.id,
+          confidenceThreshold: settings.confidenceThreshold,
+        )).toList();
+
+    // Phase 2: drain in pick-order and translate sequentially. First
+    // completed translation flips the UI out of the spinner.
+    for (var i = 0; i < ocrJobs.length; i++) {
+      if (!mounted) return;
+      final ocr = await ocrJobs[i];
+      if (!mounted) return;
+      if (ocr == null) {
+        setState(() => _batchDone = i + 1);
+        continue;
+      }
+      // Move this image's OCR result into the shared singletons so the
+      // existing _translateAndShow path (which reads from state) can
+      // translate it. setState here is safe because the for-loop is
+      // serial — only one image is "active" at a time.
+      setState(() {
+        _capturedPath = ocr.path;
+        _capturedImageSize = ocr.size;
+        _blocks = ocr.blocks;
+        _translations = List<String>.filled(ocr.blocks.length, '');
+        _error = ocr.blocks.isEmpty ? 'No text found' : null;
+        _visionConfidence = null;
+        _detectedScene = null;
+        _captureSourceLang = null;
+      });
+      if (ocr.blocks.isNotEmpty) {
+        try {
+          await _translateAndShow();
+        } catch (e) {
+          debugPrint('[Camera] Gallery translate $i failed: $e');
+        }
+      }
+      if (!mounted) return;
+      if (_capturedPath == ocr.path && _capturedImageSize != null) {
+        _batchQueue.add(_snapshotActive());
+      }
+      setState(() {
+        _batchDone = i + 1;
+        // First successful image: transition out of the translating
+        // spinner so the user starts browsing while the rest process.
+        if (_batchQueue.length == 1) {
+          _isBatchProcessing = false;
+          _step = _resultStepRespectingBatch();
+        }
+      });
     }
-    // Restore the FIRST batch item into the visible singletons; arrow
-    // nav lets the user step through the rest. Single-pick (length=1)
-    // falls through here too — no nav shown but the path stays uniform.
-    setState(() {
-      _activeBatchIndex = 0;
-      _restoreFromSnapshot(_batchQueue[0]);
-      _step = _resultStepRespectingBatch();
-    });
+  }
+
+  /// Pure (no shared-state writes) decode + ML Kit OCR pass used by
+  /// the parallel batch path. Returns the per-image data needed to
+  /// later run translation through the existing stateful helpers.
+  Future<_BatchOcrResult?> _runOcrPure(
+    String path, {
+    required String scene,
+    required double confidenceThreshold,
+  }) async {
+    try {
+      final bytes = await File(path).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final size = Size(
+        frame.image.width.toDouble(),
+        frame.image.height.toDouble(),
+      );
+      frame.image.dispose();
+      codec.dispose();
+      final raw = await _cameraService.recognizeText(
+        path,
+        scene: scene,
+        aggressivePasses: true,
+      );
+      final blocks = confidenceThreshold <= kOcrConfidenceFloor
+          ? raw
+          : raw.where((b) {
+              final c = b.confidence;
+              return c == null || c >= confidenceThreshold;
+            }).toList();
+      return _BatchOcrResult(path: path, size: size, blocks: blocks);
+    } catch (e) {
+      debugPrint('[Camera] Parallel OCR failed for $path: $e');
+      return null;
+    }
   }
 
   /// Shared pipeline for live captures + gallery picks: load bytes, decode
@@ -3158,6 +3228,21 @@ class _BatchPageNav extends StatelessWidget {
 /// in a multi-pick gallery batch without re-running OCR / vision. The
 /// fields mirror the per-capture singletons on [_CameraScreenState];
 /// see [_snapshotActive] / [_restoreFromSnapshot] for the round-trip.
+/// Per-image OCR result carried between the parallel-OCR phase and the
+/// sequential translate phase of the gallery batch flow. Holds only the
+/// data needed to seed [_translateAndShow] for one image - no shared
+/// state, no translations yet.
+class _BatchOcrResult {
+  _BatchOcrResult({
+    required this.path,
+    required this.size,
+    required this.blocks,
+  });
+  final String path;
+  final ui.Size size;
+  final List<OcrBlock> blocks;
+}
+
 class _BatchSnapshot {
   _BatchSnapshot({
     required this.path,
