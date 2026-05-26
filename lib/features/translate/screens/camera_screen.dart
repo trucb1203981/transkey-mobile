@@ -60,6 +60,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   List<String> _translations = [];
   String? _error;
 
+  /// Block indices still waiting for their server translation. Cards at
+  /// these indices show a marching-ants dashed border.
+  Set<int> _pendingIndices = {};
+
   /// Drives the result overlay's card visibility + reset from the action
   /// bar so the eye / reset buttons sit in the same row as Copy all
   /// instead of floating over the photo.
@@ -605,6 +609,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       showOriginalAlways: settings.showOriginalAlways,
       overlayOpacity: settings.overlayOpacity,
       usePrimaryColor: settings.usePrimaryOverlayColor,
+      pendingIndices: _pendingIndices,
       onExplain: _explainBlock,
       onBlockTap: _openBlockActionSheet,
     );
@@ -1451,6 +1456,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// quality; false = single-pass for gallery picks that don't need it
   /// and would otherwise add 4-6 s of latency.
   Future<void> _processImage(String path, {bool aggressivePasses = true}) async {
+    final sw = Stopwatch()..start();
     // Surface the source image as soon as it's available so the user sees
     // something other than a black screen while OCR runs.
     if (mounted) setState(() => _capturedPath = path);
@@ -1464,6 +1470,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
     frame.image.dispose();
     codec.dispose();
+    debugPrint('[Camera] Latency: image decode ${sw.elapsedMilliseconds}ms');
 
     final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
         CameraScene.auto;
@@ -1614,6 +1621,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       _blocks = blocks;
       _step = _CameraStep.translating;
     });
+    debugPrint('[Camera] Latency: OCR total ${sw.elapsedMilliseconds}ms '
+        '(${blocks.length} blocks)');
 
     ref.read(trackingServiceProvider).event('camera_capture', properties: {
       'scene':        scene.id,
@@ -2177,12 +2186,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _translateAndShow() async {
+    final sw = Stopwatch()..start();
     try {
       final texts = _blocks.map((b) => b.text).toList();
       if (texts.isEmpty) {
         if (!mounted) return;
         setState(() {
           _translations = [];
+          _pendingIndices = {};
           _step = _resultStepRespectingBatch();
         });
         return;
@@ -2195,17 +2206,22 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         texts.length,
         (i) => cache.results[i] ?? texts[i],
       );
+      final missSet = Set<int>.from(cache.missIndices);
 
       if (!mounted) return;
       setState(() {
         _translations = initialTranslations;
+        _pendingIndices = missSet;
         _step = _resultStepRespectingBatch();
       });
+      debugPrint('[Camera] Latency: cache probe ${sw.elapsedMilliseconds}ms '
+          '(${cache.cacheHits}/${texts.length} hits)');
 
       // All cache hits → no network needed.
       if (cache.missIndices.isEmpty) return;
 
       // Phase 2: progressive chunk translation for cache misses.
+      final chunkSw = Stopwatch()..start();
       await _translateBatch(
         texts,
         forceRefresh: false,
@@ -2217,14 +2233,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               updated[updatedIndices[j]] = partialTranslations[j];
             }
             _translations = updated;
+            _pendingIndices = _pendingIndices.difference(updatedIndices.toSet());
           });
+          debugPrint('[Camera] Latency: chunk done +${chunkSw.elapsedMilliseconds}ms '
+              '(${updatedIndices.length} blocks)');
         },
       );
+      debugPrint('[Camera] Latency: TOTAL ${sw.elapsedMilliseconds}ms '
+          '(${texts.length} blocks, ${cache.missIndices.length} network)');
     } catch (e) {
       debugPrint('[Camera] Translate failed: $e');
       if (!mounted) return;
       setState(() {
         _error = e.toString();
+        _pendingIndices = {};
         _step = _resultStepRespectingBatch();
       });
     }
@@ -2337,12 +2359,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           final partialTranslations = <String>[];
           final partialIndices = <int>[];
           try {
-            final response = await api.dio.post('/translate-batch', data: {
-              'texts': missTexts.sublist(start, end),
-              'targetLang': targetLang,
-              'appHint': 'camera',
-              'scene': scene.id,
-            });
+            final response = await api.dio
+                .post('/translate-batch', data: {
+                  'texts': missTexts.sublist(start, end),
+                  'targetLang': targetLang,
+                  'appHint': 'camera',
+                  'scene': scene.id,
+                })
+                .timeout(const Duration(seconds: 8));
             final data = response.data as Map?;
             if (_captureSourceLang == null) {
               final rawSrc =
@@ -2396,12 +2420,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       final chunkResults = await Future.wait(chunkRanges.map((range) async {
         final (start, end) = range;
         try {
-          final response = await api.dio.post('/translate-batch', data: {
-            'texts': missTexts.sublist(start, end),
-            'targetLang': targetLang,
-            'appHint': 'camera',
-            'scene': scene.id,
-          });
+          final response = await api.dio
+              .post('/translate-batch', data: {
+                'texts': missTexts.sublist(start, end),
+                'targetLang': targetLang,
+                'appHint': 'camera',
+                'scene': scene.id,
+              })
+              .timeout(const Duration(seconds: 8));
           final data = response.data as Map?;
           if (_captureSourceLang == null) {
             final rawSrc =

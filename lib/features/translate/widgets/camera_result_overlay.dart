@@ -106,6 +106,7 @@ class CameraResultOverlay extends StatefulWidget {
     this.showOriginalAlways = false,
     this.overlayOpacity = 0.95,
     this.usePrimaryColor = false,
+    this.pendingIndices = const {},
     this.onExplain,
     this.onBlockTap,
   });
@@ -145,6 +146,10 @@ class CameraResultOverlay extends StatefulWidget {
   /// sampled background colors.
   final bool usePrimaryColor;
 
+  /// Block indices still awaiting their translation from the server.
+  /// Cards at these indices render an animated dashed border.
+  final Set<int> pendingIndices;
+
   final ValueChanged<OcrBlock>? onExplain;
   final void Function(int index, OcrBlock block, String translation)?
       onBlockTap;
@@ -153,8 +158,15 @@ class CameraResultOverlay extends StatefulWidget {
   State<CameraResultOverlay> createState() => _CameraResultOverlayState();
 }
 
-class _CameraResultOverlayState extends State<CameraResultOverlay> {
+class _CameraResultOverlayState extends State<CameraResultOverlay>
+    with SingleTickerProviderStateMixin {
   bool _overlayVisible = true;
+
+  /// Drives the marching-ants dash animation on pending cards.
+  late final AnimationController _dashAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  )..repeat();
 
   /// True when this overlay should render its OWN eye + reset controls.
   /// False when a [CameraResultOverlayController] is supplied - then the
@@ -221,6 +233,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
 
   @override
   void dispose() {
+    _dashAnim.dispose();
     widget.controller?.removeListener(_onControllerChanged);
     super.dispose();
   }
@@ -504,6 +517,8 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                   bgColor: widget.usePrimaryColor
                       ? const Color(0xFF6C63FF)
                       : (_bgColors[card.index] ?? BgColorSampler.fallback),
+                  isPending: widget.pendingIndices.contains(card.index),
+                  dashAnim: _dashAnim,
                   fadedForDelete:
                       _draggingIndex == card.index && _overTrash,
                   onTap: () {
@@ -717,6 +732,8 @@ class _BlockCard extends StatelessWidget {
     this.onDragStart,
     this.onDragEnd,
     this.fadedForDelete = false,
+    this.isPending = false,
+    this.dashAnim,
     this.onExplain,
   });
 
@@ -736,6 +753,8 @@ class _BlockCard extends StatelessWidget {
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
   final bool fadedForDelete;
+  final bool isPending;
+  final Animation<double>? dashAnim;
   final VoidCallback? onExplain;
 
   /// Pick white or black for the card text based on the sampled
@@ -759,12 +778,61 @@ class _BlockCard extends StatelessWidget {
         translation != block.text;
 
     final alpha = overlayOpacity.clamp(0.0, 1.0);
-    // Apply the user's opacity setting on top of the sampled colour.
-    // At 1.0 the card fully replaces the underlying photo (DeepL-style).
-    // Lower values let the original text glimmer through.
     final fillColor = bgColor.withValues(alpha: alpha);
     final textColor = _textColorFor(bgColor);
     final low = block.isLowConfidence;
+
+    final cardBody = Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: _kCardHPad, vertical: _kCardVPad),
+      decoration: BoxDecoration(
+        color: fillColor,
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            displayText,
+            style: TextStyle(
+              color: textColor,
+              fontSize: fontSize,
+              fontWeight: isTranslated
+                  ? FontWeight.w500
+                  : FontWeight.normal,
+              height: 1.25,
+            ),
+          ),
+          if (showOriginalAlways && isTranslated)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Container(
+                padding: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: textColor.withValues(alpha: 0.3),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  block.text,
+                  style: TextStyle(
+                    color: textColor.withValues(alpha: 0.75),
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
 
     return Positioned(
       left: left,
@@ -787,63 +855,24 @@ class _BlockCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               child: Stack(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: _kCardHPad, vertical: _kCardVPad),
-                    decoration: BoxDecoration(
-                      color: fillColor,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                    // The translation. No maxLines / no ellipsis - the
-                    // parent's _fitFont already picked a size that makes
-                    // the text fit, or grew the card if it could not.
-                    Text(
-                      displayText,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: fontSize,
-                        fontWeight: isTranslated
-                            ? FontWeight.w500
-                            : FontWeight.normal,
-                        height: 1.25,
-                      ),
-                    ),
-                    if (showOriginalAlways && isTranslated)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Container(
-                          padding: const EdgeInsets.only(top: 4),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(
-                                color: textColor.withValues(alpha: 0.3),
-                                width: 0.5,
-                              ),
+                  cardBody,
+                  // Marching-ants dashed border on cards still awaiting
+                  // their translation from the server.
+                  if (isPending && dashAnim != null)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: dashAnim!,
+                          builder: (_, __) => CustomPaint(
+                            painter: _MarchingAntsPainter(
+                              progress: dashAnim!.value,
+                              color: textColor.withValues(alpha: 0.6),
+                              radius: 3,
                             ),
-                          ),
-                          child: Text(
-                            block.text,
-                            style: TextStyle(
-                              color: textColor.withValues(alpha: 0.75),
-                              fontSize: 10,
-                              fontStyle: FontStyle.italic,
-                              height: 1.25,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),
-                      ],
                     ),
-                  ),
-                  // Tiny corner dot signals low-quality OCR without
-                  // stealing a whole row of card height. 4 px is visible
-                  // but doesn't crowd the text.
                   if (low)
                     Positioned(
                       top: 2,
@@ -865,4 +894,108 @@ class _BlockCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Draws a marching-ants dashed rectangle. The [progress] value (0..1 from
+/// a repeating AnimationController) shifts the dash pattern along the
+/// perimeter to create the "marching" motion.
+class _MarchingAntsPainter extends CustomPainter {
+  _MarchingAntsPainter({
+    required this.progress,
+    required this.color,
+    required this.radius,
+  });
+
+  final double progress;
+  final Color color;
+  final double radius;
+
+  static const _strokeWidth = 1.5;
+  static const _dashLen = 6.0;
+  static const _gapLen = 4.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = _strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(radius),
+    );
+
+    final perimeter = _rrectPerimeter(rrect);
+    final step = _dashLen + _gapLen;
+    final offset = (progress * step * 4) % step;
+
+    var dist = -offset;
+    while (dist < perimeter) {
+      final start = dist.clamp(0.0, perimeter);
+      final end = (dist + _dashLen).clamp(0.0, perimeter);
+      if (start < end) {
+        canvas.drawPath(
+          _extractRRectPath(rrect, start, end, perimeter),
+          paint,
+        );
+      }
+      dist += step;
+    }
+  }
+
+  double _rrectPerimeter(RRect r) {
+    return 2 * (r.width - 2 * radius) +
+        2 * (r.height - 2 * radius) +
+        2 * math.pi * radius;
+  }
+
+  Path _extractRRectPath(RRect r, double startDist, double endDist, double total) {
+    final pts = <Offset>[];
+    final w = r.width;
+    final h = r.height;
+    final rad = radius;
+
+    pts.add(Offset(rad, 0));
+    pts.add(Offset(w - rad, 0));
+    pts.add(Offset(w, rad));
+    pts.add(Offset(w, h - rad));
+    pts.add(Offset(w - rad, h));
+    pts.add(Offset(rad, h));
+    pts.add(Offset(0, h - rad));
+    pts.add(Offset(0, rad));
+    pts.add(Offset(rad, 0));
+
+    // Calculate cumulative distances for each segment
+    final segLens = <double>[];
+    for (var i = 0; i < pts.length - 1; i++) {
+      segLens.add((pts[i + 1] - pts[i]).distance);
+    }
+
+    final path = Path();
+    var accum = 0.0;
+    var started = false;
+    for (var i = 0; i < segLens.length; i++) {
+      final segEnd = accum + segLens[i];
+      if (segEnd <= startDist || accum >= endDist) {
+        accum = segEnd;
+        continue;
+      }
+      final t0 = (startDist > accum) ? (startDist - accum) / segLens[i] : 0.0;
+      final t1 = (endDist < segEnd) ? (endDist - accum) / segLens[i] : 1.0;
+      final p0 = Offset.lerp(pts[i], pts[i + 1], t0)!;
+      final p1 = Offset.lerp(pts[i], pts[i + 1], t1)!;
+      if (!started) {
+        path.moveTo(p0.dx, p0.dy);
+        started = true;
+      }
+      path.lineTo(p1.dx, p1.dy);
+      accum = segEnd;
+    }
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(covariant _MarchingAntsPainter old) =>
+      progress != old.progress || color != old.color;
 }
