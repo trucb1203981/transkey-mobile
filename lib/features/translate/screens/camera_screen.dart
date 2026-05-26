@@ -17,6 +17,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/session_store.dart';
 import '../../../core/camera/camera_service.dart';
+import '../../../core/camera/text_tracker.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
@@ -51,6 +52,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   ui.Size? _capturedImageSize;
   List<OcrBlock> _liveBlocks = [];
   List<OcrBlock> _blocks = [];
+
+  /// SORT-style Kalman tracker for the live overlay. Detector boxes go
+  /// in raw; smoothed, identity-stable boxes come out. See [TextTracker].
+  final _liveTracker = TextTracker();
   List<String> _translations = [];
   String? _error;
 
@@ -217,10 +222,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   void _startStream() {
+    // Fresh stream → fresh tracker identities. Otherwise a track from a
+    // previous preview session could linger and merge with new text.
+    _liveTracker.reset();
     _cameraService.startTextStream(
       (blocks) {
         if (mounted && _step == _CameraStep.preview) {
-          setState(() => _liveBlocks = blocks);
+          // Run the raw detector boxes through the SORT-style tracker.
+          // The overlay then renders smoothed, identity-stable boxes -
+          // no jitter, no per-frame flicker on missed detections.
+          setState(() => _liveBlocks = _liveTracker.update(blocks));
         }
       },
       onBlurChange: _handleBlurChange,
