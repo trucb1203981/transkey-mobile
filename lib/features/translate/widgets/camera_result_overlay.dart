@@ -31,7 +31,7 @@ class _CardLayout {
 }
 
 const double _kCardHPad = 4.0;
-const double _kCardVPad = 2.0;
+const double _kCardVPad = 0.0;
 const double _kMinFontSize = 7.0;
 const double _kMaxFontSize = 28.0;
 
@@ -331,7 +331,13 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     if (text.isEmpty) {
       return (fontSize: startFont, height: 0);
     }
-    final innerW = math.max(20.0, maxWidth - _kCardHPad * 2);
+    // innerW floor matches the SizedBox width inside _BlockCard. The
+    // earlier floor of 20 over-measured space when the OCR box was
+    // narrow (cardWidth - 8 < 20): the fitter thought text fit at a
+    // larger font, but the actual render wrapped to more lines, then
+    // FittedBox shrank everything to fit cardHeight - text ended up
+    // tiny / unreadable. 8 is a safer floor (one glyph at small font).
+    final innerW = math.max(8.0, maxWidth - _kCardHPad * 2);
     final innerH = math.max(0.0, maxHeight - _kCardVPad * 2);
 
     // fontWeight matches what _BlockCard renders (w500 for translations, w400
@@ -432,13 +438,14 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
           );
 
           final fontSize = fit1.fontSize;
-          // Lock the card to the source box height when the fitted text
-          // fits, else grow downward to contain it. Using max() instead
-          // of gating on _kMinFontSize closes the case where the fitter
-          // settled above the floor but the text still overflowed by a
-          // few pixels - that produced the debug "BOTTOM OVERFLOWED"
-          // stripe and clipped text in release.
-          var cardHeight = math.max(boxH, fit1.height);
+          // Hard-lock the card to the source OCR box height. Earlier
+          // versions let it grow when content exceeded the box, but that
+          // caused cards to bleed into the row below on dense menus
+          // (visible block-on-block overlap). FittedBox(scaleDown) below
+          // is the safety net for the rare case where text doesn't fit
+          // at _kMinFontSize - it shrinks visually rather than the card
+          // growing into a neighbour.
+          var cardHeight = boxH;
 
           // "Show original always" rides under the translation - it needs
           // extra height regardless, so grow past the box in that mode.

@@ -58,6 +58,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// in raw; smoothed, identity-stable boxes come out. See [TextTracker].
   final _liveTracker = TextTracker();
   List<String> _translations = [];
+
+  /// Tracks the InteractiveViewer's transform so we can flip pan on/off
+  /// based on the current zoom level - pan stays disabled at scale=1
+  /// (preserves card drag-to-trash) and turns on once the user has
+  /// pinched in, so they can drag around the magnified menu.
+  final TransformationController _zoomController = TransformationController();
+
+  /// Cache of /split-block results keyed by the block's source text.
+  /// A repeat long-press on the same card (same OCR output) reuses the
+  /// result instead of paying for another LLM call. Text-keyed (not
+  /// index-keyed) so a fresh capture with different blocks at the same
+  /// indices doesn't accidentally hit stale data.
+  final Map<String, List<OcrBlockItem>> _splitCache =
+      <String, List<OcrBlockItem>>{};
   String? _error;
 
   /// Block indices still waiting for their server translation. Cards at
@@ -303,6 +317,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     _blurDebounce?.cancel();
     _cameraService.dispose();
     _overlayController.dispose();
+    _zoomController.dispose();
     // Per-session scope: cache must not leak into a later camera open
     // (different scene, prompt update on app launch, etc.).
     TranslationCache.instance.clear();
@@ -736,19 +751,313 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     });
   }
 
-  /// Open the "What is this?" sheet for a single live-preview block.
-  /// Pauses the OCR stream while the sheet is open so the box overlay
-  /// doesn't shift around under the modal; resumes on close.
+  /// Open the "What is this?" sheet for a block. Picker preference:
+  ///   1. Server-supplied `items` (vision_boxes path) — chips show
+  ///      the translation, tap returns original.
+  ///   2. Lazy /split-block call (menu / sign scenes only, multi-item
+  ///      blocks only) — same chip UX as (1), result cached so a
+  ///      repeat long-press is free.
+  ///   3. Newline-split / drag-select fallback — for blocks neither
+  ///      path covers (e.g. document scene).
+  /// Short single-item blocks skip the picker entirely.
   Future<void> _explainBlock(OcrBlock block) async {
+    var items = block.items;
+
+    // (2) Lazy split when the server didn't pre-split the block but the
+    // scene is one where multi-item rows are common (menu, sign).
+    if (items == null || items.length < 2) {
+      final lazyItems = await _maybeLazySplit(block);
+      if (lazyItems != null && lazyItems.length >= 2) {
+        items = lazyItems;
+      }
+    }
+
+    String? textToExplain;
+
+    if (items != null && items.length >= 2) {
+      textToExplain = await _pickFromItems(block, items);
+      if (textToExplain == null) return;
+    } else {
+      final lines = block.text
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+      final showPicker = lines.length > 1 || block.text.trim().length > 15;
+      if (showPicker) {
+        textToExplain = await _pickExplainItem(block, lines);
+        if (textToExplain == null) return;
+      } else {
+        textToExplain = block.text;
+      }
+    }
+
     ref.read(trackingServiceProvider).event('region_explain', properties: {
-      'length': block.text.length,
-      'step':   _step.name,
+      'length':     textToExplain.length,
+      'step':       _step.name,
+      'multi_item': textToExplain != block.text,
+      'whole':      textToExplain == block.text,
+      'source':     items != null && items.length >= 2 ? 'items' : 'fallback',
     });
     await _cameraService.stopTextStream();
     if (!mounted) return;
-    await WhatIsThisSheet.show(context, block.text);
+    await WhatIsThisSheet.show(context, textToExplain);
     if (!mounted) return;
     if (_step == _CameraStep.preview) _startStream();
+  }
+
+  /// Lazy /split-block call - only fires when:
+  ///   - scene is menu or sign (server rejects other scenes), AND
+  ///   - the block looks multi-item (length > 15 or contains a price
+  ///     pattern). Short blocks aren't worth the round-trip.
+  /// Result is cached per block text so repeat long-press is free.
+  /// Returns null on miss/error (caller falls back to the drag-select
+  /// picker). Shows a brief snackbar while in flight.
+  Future<List<OcrBlockItem>?> _maybeLazySplit(OcrBlock block) async {
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+    if (scene != CameraScene.menu && scene != CameraScene.sign) return null;
+
+    final text = block.text.trim();
+    if (text.length <= 15) return null;
+    final priceLike =
+        RegExp(r'[¥₩元$€£฿₽]|円|won|yen|\d{2,}\s*(yen|VND|đ|usd)', caseSensitive: false);
+    final hasMultiItemSignal = text.contains('\n') ||
+        priceLike.allMatches(text).length >= 2 ||
+        text.length > 40;
+    if (!hasMultiItemSignal) return null;
+
+    final cached = _splitCache[text];
+    if (cached != null) return cached;
+
+    final langs = ref.read(languageSettingsProvider).valueOrNull;
+    final targetLang = langs?.targetLang ?? 'en';
+    final sourceLang = _captureSourceLang ??
+        ((langs?.sourceLang != null && langs!.sourceLang.toLowerCase() != 'auto')
+            ? langs.sourceLang
+            : null);
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      const SnackBar(
+        content: Text('Splitting items…'),
+        duration: Duration(seconds: 4),
+      ),
+    );
+
+    try {
+      final api = ref.read(apiClientProvider);
+      final response = await api.dio
+          .post('/split-block', data: {
+            'text': text,
+            'targetLang': targetLang,
+            if (sourceLang != null) 'sourceLang': sourceLang,
+            'scene': scene.id,
+          })
+          .timeout(const Duration(seconds: 30));
+      messenger?.hideCurrentSnackBar();
+      final data = response.data as Map?;
+      final raw = data?['items'];
+      if (raw is! List || raw.isEmpty) return null;
+      final parsed = <OcrBlockItem>[];
+      for (final it in raw) {
+        if (it is! Map) continue;
+        final o = (it['original'] as String?)?.trim() ?? '';
+        final t = (it['translation'] as String?)?.trim() ?? '';
+        if (o.isEmpty && t.isEmpty) continue;
+        parsed.add(OcrBlockItem(original: o, translation: t));
+      }
+      if (parsed.length < 2) return null;
+      _splitCache[text] = parsed;
+      return parsed;
+    } catch (e) {
+      debugPrint('[Camera] split-block failed: $e');
+      messenger?.hideCurrentSnackBar();
+      return null;
+    }
+  }
+
+  /// Server-supplied items picker. Chips show the TRANSLATION (so the
+  /// user picks the dish they recognise without reading source script);
+  /// tapping returns the ORIGINAL of that item (the LLM gets source
+  /// language to explain, which it handles better than the translation).
+  /// `items` is passed in directly from the long-pressed block — it
+  /// belongs only to that block, never mixed with another block's
+  /// sub-items.
+  Future<String?> _pickFromItems(OcrBlock block, List<OcrBlockItem> items) {
+    return showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.layers_outlined),
+              title: Text(
+                'Whole block',
+                style: Theme.of(ctx).textTheme.titleSmall,
+              ),
+              subtitle: Text(
+                items.map((it) => it.translation).join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => Navigator.pop(ctx, block.text),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: items.length,
+                itemBuilder: (_, i) {
+                  final item = items[i];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      radius: 12,
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                    // Translation = user-readable label.
+                    title: Text(item.translation),
+                    // Original kept as small subtitle so the user can
+                    // sanity-check that the pair matches what they see
+                    // on the menu before tapping.
+                    subtitle: Text(
+                      item.original,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Theme.of(ctx)
+                            .colorScheme
+                            .onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                    // Explain the ORIGINAL — the LLM is fluent in source
+                    // and gives a richer answer than re-explaining a
+                    // translation.
+                    onTap: () => Navigator.pop(ctx, item.original),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bottom sheet picker for multi-item blocks. The user can either:
+  ///   - tap a numbered line chip (when newlines split the block),
+  ///   - drag-select a substring out of the full block (covers the
+  ///     single-line-multi-item case where there are no newlines),
+  ///   - or tap "Whole block" for the unfiltered explain.
+  /// Returns the chosen text or null when dismissed.
+  Future<String?> _pickExplainItem(OcrBlock block, List<String> lines) {
+    var selected = '';
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: StatefulBuilder(
+            builder: (ctx, setSheetState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Pick an item to explain',
+                  style: Theme.of(ctx).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Drag-select any word(s) below, or tap a numbered line.',
+                  style: Theme.of(ctx).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    block.text,
+                    onSelectionChanged: (sel, _) {
+                      final start = sel.start;
+                      final end = sel.end;
+                      if (start < 0 ||
+                          end < 0 ||
+                          start == end ||
+                          end > block.text.length) {
+                        setSheetState(() => selected = '');
+                        return;
+                      }
+                      setSheetState(
+                        () => selected =
+                            block.text.substring(start, end).trim(),
+                      );
+                    },
+                  ),
+                ),
+                if (lines.length > 1) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var i = 0; i < lines.length; i++)
+                        ActionChip(
+                          avatar: CircleAvatar(
+                            radius: 10,
+                            child: Text(
+                              '${i + 1}',
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ),
+                          label: Text(lines[i]),
+                          onPressed: () => Navigator.pop(ctx, lines[i]),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, block.text),
+                        child: const Text('Whole block'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: selected.isEmpty
+                            ? null
+                            : () => Navigator.pop(ctx, selected),
+                        child: Text(
+                          selected.isEmpty
+                              ? 'Selection'
+                              : 'Explain "${selected.length > 18 ? '${selected.substring(0, 18)}…' : selected}"',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildTranslating(AppLocalizations l) {
@@ -804,15 +1113,40 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ColoredBox(
-                color: Colors.black,
-                child: Center(
-                  child: Image.file(
-                      File(_capturedPath!), fit: BoxFit.contain),
+              // Pinch-to-zoom on the image + translation overlay as a
+              // unit so dense menus where text shrinks below comfortable
+              // reading size can be magnified. Pan is conditional: at
+              // scale 1 it stays disabled so single-finger drag belongs
+              // to the card (drag-to-trash); once the user pinches in,
+              // ValueListenableBuilder flips it on so they can drag the
+              // magnified view around to read different areas.
+              ValueListenableBuilder<Matrix4>(
+                valueListenable: _zoomController,
+                builder: (ctx, matrix, child) {
+                  final scale = matrix.getMaxScaleOnAxis();
+                  return InteractiveViewer(
+                    transformationController: _zoomController,
+                    minScale: 1.0,
+                    maxScale: 4.0,
+                    panEnabled: scale > 1.01,
+                    child: child!,
+                  );
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(
+                      color: Colors.black,
+                      child: Center(
+                        child: Image.file(
+                            File(_capturedPath!), fit: BoxFit.contain),
+                      ),
+                    ),
+                    if (_blocks.isNotEmpty && _translations.isNotEmpty)
+                      _buildShareableOverlay(settings),
+                  ],
                 ),
               ),
-              if (_blocks.isNotEmpty && _translations.isNotEmpty)
-                _buildShareableOverlay(settings),
               if (_error != null)
                 Center(
                   child: Container(
@@ -2050,10 +2384,30 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           double n(int i) => (box[i] is num) ? (box[i] as num).toDouble() : 0.0;
           final ymin = n(0), xmin = n(1), ymax = n(2), xmax = n(3);
           if (xmax <= xmin || ymax <= ymin) continue;
+          // Optional sub-items array: present only when this block holds
+          // multiple distinct items (typical for menu rows with several
+          // dish-name + price pairs on one line). Drives the explain
+          // picker chips - server already paired each original with its
+          // translation so the user sees readable labels instead of
+          // having to drag-select source-language text.
+          final rawItems = b['items'];
+          List<OcrBlockItem>? items;
+          if (rawItems is List && rawItems.isNotEmpty) {
+            final parsed = <OcrBlockItem>[];
+            for (final it in rawItems) {
+              if (it is! Map) continue;
+              final origIt = (it['original'] as String?)?.trim() ?? '';
+              final trIt = (it['translation'] as String?)?.trim() ?? '';
+              if (origIt.isEmpty && trIt.isEmpty) continue;
+              parsed.add(OcrBlockItem(original: origIt, translation: trIt));
+            }
+            if (parsed.length >= 2) items = parsed;
+          }
           visionBlocks.add(OcrBlock(
             text: original,
             boundingBox: Rect.fromLTRB(xmin, ymin, xmax, ymax),
             confidence: mappedConfidence,
+            items: items,
           ));
           visionTranslations.add(trVi);
         }

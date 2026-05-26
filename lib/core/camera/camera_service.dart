@@ -31,6 +31,18 @@ const double kOcrConfidenceFloor = 0.30;
 /// user knows the translation may be unreliable.
 const double kOcrLowConfidenceBadge = 0.50;
 
+/// One discrete sub-item carried inside a block — present when vision
+/// OCR groups multiple distinct items (dish + price pairs on a single
+/// menu row) under one bounding box. Lets the explain picker show
+/// user-readable translation chips instead of forcing them to bôi đen
+/// source-language text. Null on the parent block means "no sub-items;
+/// treat the block as a single unit."
+class OcrBlockItem {
+  const OcrBlockItem({required this.original, required this.translation});
+  final String original;
+  final String translation;
+}
+
 /// Text block with bounding box and OCR confidence from ML Kit.
 class OcrBlock {
   const OcrBlock({
@@ -38,6 +50,7 @@ class OcrBlock {
     required this.boundingBox,
     this.confidence,
     this.bgColor,
+    this.items,
   });
 
   final String text;
@@ -54,6 +67,11 @@ class OcrBlock {
   /// top of it.
   final Color? bgColor;
 
+  /// Discrete items grouped under this block. Set when vision OCR
+  /// detects multiple sub-items on a single visual row (menu rows).
+  /// Null when the block is a single unit.
+  final List<OcrBlockItem>? items;
+
   /// Return a copy with [bgColor] swapped — keeps the field final so
   /// the rest of the pipeline still treats blocks as immutable.
   OcrBlock copyWith({Color? bgColor}) => OcrBlock(
@@ -61,6 +79,7 @@ class OcrBlock {
         boundingBox: boundingBox,
         confidence: confidence,
         bgColor: bgColor ?? this.bgColor,
+        items: items,
       );
 
   TextQuality get quality {
