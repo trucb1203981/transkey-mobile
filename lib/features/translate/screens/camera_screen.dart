@@ -2366,7 +2366,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   'appHint': 'camera',
                   'scene': scene.id,
                 })
-                .timeout(const Duration(seconds: 8));
+                .timeout(const Duration(seconds: 60));
             final data = response.data as Map?;
             if (_captureSourceLang == null) {
               final rawSrc =
@@ -2427,7 +2427,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 'appHint': 'camera',
                 'scene': scene.id,
               })
-              .timeout(const Duration(seconds: 8));
+              .timeout(const Duration(seconds: 60));
           final data = response.data as Map?;
           if (_captureSourceLang == null) {
             final rawSrc =

@@ -32,7 +32,7 @@ class _CardLayout {
 
 const double _kCardHPad = 4.0;
 const double _kCardVPad = 2.0;
-const double _kMinFontSize = 9.0;
+const double _kMinFontSize = 7.0;
 const double _kMaxFontSize = 28.0;
 
 /// Bridges the overlay's internal view state (card visibility + the
@@ -326,6 +326,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     required double maxWidth,
     required double maxHeight,
     required double startFont,
+    required FontWeight fontWeight,
   }) {
     if (text.isEmpty) {
       return (fontSize: startFont, height: 0);
@@ -333,11 +334,15 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     final innerW = math.max(20.0, maxWidth - _kCardHPad * 2);
     final innerH = math.max(0.0, maxHeight - _kCardVPad * 2);
 
+    // fontWeight matches what _BlockCard renders (w500 for translations, w400
+    // otherwise). Heavier glyphs are wider so they wrap to more lines, and
+    // measuring at the rendered weight is what keeps fit1.height accurate.
     double measureAt(double font) {
       final tp = TextPainter(
         text: TextSpan(
           text: text,
-          style: TextStyle(fontSize: font, height: 1.25),
+          style:
+              TextStyle(fontSize: font, fontWeight: fontWeight, height: 1.25),
         ),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: innerW);
@@ -356,10 +361,13 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     font = (startFont * ratio).clamp(_kMinFontSize, startFont);
     h = measureAt(font);
 
-    // Refine: wrap discretization can leave us still over by a single
-    // line. Step down 1 pt at a time until it fits or we hit the floor.
+    // Refine: wrap discretization can leave us still over by a line.
+    // Step 1pt at a time until it fits or hits the floor. Safety cap is
+    // wide enough to walk the full _kMaxFontSize -> _kMinFontSize range
+    // (a low cap used to bail early, leaving an above-floor font whose
+    // text still overflowed and produced the debug stripe).
     var safety = 0;
-    while (h > innerH && font > _kMinFontSize && safety < 6) {
+    while (h > innerH && font > _kMinFontSize && safety < 30) {
       font = math.max(_kMinFontSize, font - 1);
       h = measureAt(font);
       safety++;
@@ -419,20 +427,18 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             maxWidth: cardWidth,
             maxHeight: boxH,
             startFont: startFont,
+            fontWeight:
+                isTranslated ? FontWeight.w500 : FontWeight.normal,
           );
 
           final fontSize = fit1.fontSize;
-          // Lock the card to the source box height so neighbouring cards
-          // never overlap (OCR boxes themselves don't overlap, so boxed
-          // cards can't either). _fitFont already shrank the font to fit
-          // boxH; only when it bottomed out at the readable floor and the
-          // text STILL overflows do we let the card grow downward - that
-          // keeps the "never truncate" guarantee for the rare very-long
-          // translation on a tiny source line.
-          var cardHeight = boxH;
-          if (fit1.fontSize <= _kMinFontSize && fit1.height > boxH) {
-            cardHeight = fit1.height;
-          }
+          // Lock the card to the source box height when the fitted text
+          // fits, else grow downward to contain it. Using max() instead
+          // of gating on _kMinFontSize closes the case where the fitter
+          // settled above the floor but the text still overflowed by a
+          // few pixels - that produced the debug "BOTTOM OVERFLOWED"
+          // stripe and clipped text in release.
+          var cardHeight = math.max(boxH, fit1.height);
 
           // "Show original always" rides under the translation - it needs
           // extra height regardless, so grow past the box in that mode.
@@ -782,6 +788,12 @@ class _BlockCard extends StatelessWidget {
     final textColor = _textColorFor(bgColor);
     final low = block.isLowConfidence;
 
+    // FittedBox(scaleDown) + SizedBox(width:innerW) is the safety net for
+    // the residual measurement-vs-render gap _fitFont can't fully close
+    // (strut metrics, leading distribution etc.). The fitter still picks
+    // the primary font size; this wrapper only triggers when actual
+    // rendered content slightly exceeds the box, scaling it down
+    // uniformly so neighbouring cards never get overlapped.
     final cardBody = Container(
       padding: const EdgeInsets.symmetric(
           horizontal: _kCardHPad, vertical: _kCardVPad),
@@ -789,10 +801,15 @@ class _BlockCard extends StatelessWidget {
         color: fillColor,
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: width - _kCardHPad * 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
           Text(
             displayText,
             style: TextStyle(
@@ -831,6 +848,8 @@ class _BlockCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
+        ),
       ),
     );
 
