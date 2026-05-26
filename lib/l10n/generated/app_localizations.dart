@@ -2354,6 +2354,12 @@ abstract class AppLocalizations {
   /// **'Hold steady'**
   String get cameraHoldSteady;
 
+  /// No description provided for @cameraWaitFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for focus, hold steady'**
+  String get cameraWaitFocus;
+
   /// No description provided for @cameraCopyTranslation.
   ///
   /// In en, this message translates to:

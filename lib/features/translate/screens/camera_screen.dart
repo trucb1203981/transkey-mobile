@@ -54,6 +54,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   List<String> _translations = [];
   String? _error;
 
+  /// Drives the result overlay's card visibility + reset from the action
+  /// bar so the eye / reset buttons sit in the same row as Copy all
+  /// instead of floating over the photo.
+  final _overlayController = CameraResultOverlayController();
+
   /// Server's self-assessed quality for the current vision capture
   /// ("high" | "medium" | "low"), or null when the result came from ML
   /// Kit OCR (which has per-block confidence already surfaced on each
@@ -110,6 +115,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   // (no reason to keep nagging once the user has steadied).
   bool _isBlurry = false;
   Timer? _blurDebounce;
+
+  /// Live focus quality 0-100 from the Laplacian-variance meter. Drives
+  /// the sharpness pill above the shutter so the user knows WHEN the
+  /// frame is crisp enough to capture instead of firing the instant the
+  /// camera opens (before autofocus settles). 60+ = green/ready.
+  double _sharpness = 0;
+
+  /// "Ready" line: at/above this the shutter shows green and capture is
+  /// encouraged. Mirrors the service's 60% anchor for [_blurThreshold].
+  static const double _kSharpReady = 60;
 
   /// Anchors the RepaintBoundary that wraps the result body so the
   /// Share action can rasterise it to a PNG without dragging the
@@ -209,6 +224,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         }
       },
       onBlurChange: _handleBlurChange,
+      onSharpness: (pct) {
+        if (!mounted || _step != _CameraStep.preview) return;
+        // Smooth a little so the pill doesn't jitter frame-to-frame.
+        final smoothed = _sharpness * 0.5 + pct * 0.5;
+        if ((smoothed - _sharpness).abs() < 1) return;
+        setState(() => _sharpness = smoothed);
+      },
     );
   }
 
@@ -234,6 +256,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     _focusResetTimer?.cancel();
     _blurDebounce?.cancel();
     _cameraService.dispose();
+    _overlayController.dispose();
     // Per-session scope: cache must not leak into a later camera open
     // (different scene, prompt update on app launch, etc.).
     TranslationCache.instance.clear();
@@ -425,6 +448,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       blocks: _blocks,
       translations: _translations,
       imageSize: _capturedImageSize!,
+      imagePath: _capturedPath,
+      controller: _overlayController,
       hideLowConfidence: settings.hideLowConfidence,
       showOriginalAlways: settings.showOriginalAlways,
       overlayOpacity: settings.overlayOpacity,
@@ -735,27 +760,56 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           left: 0,
           right: 0,
           bottom: 40,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _ActionChip(
-                icon: Icons.refresh,
-                label: AppLocalizations.of(context)!.cameraRetake,
-                onTap: _retake,
-              ),
-              const SizedBox(width: 12),
-              _ActionChip(
-                icon: Icons.copy,
-                label: AppLocalizations.of(context)!.cameraCopyAll,
-                onTap: _copyAll,
-              ),
-              const SizedBox(width: 12),
-              _ActionChip(
-                icon: Icons.ios_share,
-                label: AppLocalizations.of(context)!.cameraShare,
-                onTap: _shareResult,
-              ),
-            ],
+          child: AnimatedBuilder(
+            animation: _overlayController,
+            builder: (context, _) => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Left cluster: view controls (eye + help + reset). Round
+                // icon buttons so they read as a distinct group from the
+                // labelled Retake / Copy actions on the right.
+                _RoundIconButton(
+                  icon: _overlayController.visible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
+                  tooltip: AppLocalizations.of(context)!
+                      .cameraTapShowTranslations,
+                  onTap: () => _overlayController.toggleVisible(),
+                ),
+                const SizedBox(width: 8),
+                _RoundIconButton(
+                  icon: Icons.help_outline,
+                  tooltip: AppLocalizations.of(context)!.cameraTipsTitle,
+                  onTap: () {
+                    ref.read(trackingServiceProvider).event(
+                      'camera_tips_open',
+                      properties: {'source': 'result_help_button'},
+                    );
+                    CameraTipsSheet.show(context);
+                  },
+                ),
+                if (_overlayController.hasEdits) ...[
+                  const SizedBox(width: 8),
+                  _RoundIconButton(
+                    icon: Icons.restart_alt,
+                    tooltip: 'Reset',
+                    onTap: () => _overlayController.reset(),
+                  ),
+                ],
+                const SizedBox(width: 16),
+                _ActionChip(
+                  icon: Icons.refresh,
+                  label: AppLocalizations.of(context)!.cameraRetake,
+                  onTap: _retake,
+                ),
+                const SizedBox(width: 12),
+                _ActionChip(
+                  icon: Icons.copy,
+                  label: AppLocalizations.of(context)!.cameraCopyAll,
+                  onTap: _copyAll,
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -810,17 +864,23 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                       ),
                       onPressed: _toggleFlash,
                     ),
-                  IconButton(
-                    icon: const Icon(Icons.help_outline, color: Colors.white),
-                    tooltip: l.cameraTipsTitle,
-                    onPressed: () {
-                      ref.read(trackingServiceProvider).event(
-                            'camera_tips_open',
-                            properties: {'source': 'help_button'},
-                          );
-                      CameraTipsSheet.show(context);
-                    },
-                  ),
+                  // Help lives in the top bar only OUTSIDE the result
+                  // screen; on the result screen it moves into the action
+                  // bar's view-control cluster so it doesn't crowd the
+                  // settings button.
+                  if (_step != _CameraStep.result)
+                    IconButton(
+                      icon: const Icon(Icons.help_outline,
+                          color: Colors.white),
+                      tooltip: l.cameraTipsTitle,
+                      onPressed: () {
+                        ref.read(trackingServiceProvider).event(
+                              'camera_tips_open',
+                              properties: {'source': 'help_button'},
+                            );
+                        CameraTipsSheet.show(context);
+                      },
+                    ),
                   IconButton(
                     icon: const Icon(Icons.tune, color: Colors.white),
                     tooltip: l.cameraSettingsTitle,
@@ -890,6 +950,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             ),
             const SizedBox(height: 12),
             if (_cameraService.supportsZoom) _buildZoomPresets(),
+            const SizedBox(height: 10),
+            _buildSharpnessPill(l),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -909,7 +971,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                     height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
+                      // Ring turns green once the frame is sharp enough to
+                      // capture, so the user has an at-a-glance "go" signal
+                      // instead of guessing when autofocus has settled.
+                      border: Border.all(
+                        color: _sharpness >= _kSharpReady
+                            ? const Color(0xFF22C55E)
+                            : Colors.white,
+                        width: 4,
+                      ),
                     ),
                     alignment: Alignment.center,
                     child: Container(
@@ -927,6 +997,71 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               ],
             ),
             const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Live focus-quality pill above the shutter. Language-neutral by
+  /// design (icon + bar + %) so it needs no new i18n keys: a colour goes
+  /// red → amber → green as the Laplacian-variance meter climbs, with a
+  /// check icon at the ready line. Tells the user WHEN autofocus has
+  /// settled so they stop firing the shutter on a blurry first frame.
+  Widget _buildSharpnessPill(AppLocalizations l) {
+    final pct = _sharpness.round();
+    final ready = _sharpness >= _kSharpReady;
+    final Color color;
+    if (_sharpness >= _kSharpReady) {
+      color = const Color(0xFF22C55E); // green
+    } else if (_sharpness >= 40) {
+      color = const Color(0xFFF59E0B); // amber
+    } else {
+      color = const Color(0xFFEF4444); // red
+    }
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.7), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              ready ? Icons.check_circle : Icons.center_focus_strong,
+              color: color,
+              size: 15,
+            ),
+            const SizedBox(width: 7),
+            // Thin progress bar fills with the focus %.
+            SizedBox(
+              width: 70,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: (_sharpness / 100).clamp(0.0, 1.0),
+                  minHeight: 5,
+                  backgroundColor: Colors.white24,
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            SizedBox(
+              width: 34,
+              child: Text(
+                '$pct%',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -984,7 +1119,40 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     return '${zoom.toStringAsFixed(1)}×';
   }
 
+  /// Set when the user taps the shutter while the frame is still blurry
+  /// and we ask them to wait for focus. A second tap within the window
+  /// captures anyway (so we never fully block a deliberate shot).
+  bool _focusNudgeShown = false;
+
   Future<void> _capture() async {
+    // Focus guard: if the frame isn't sharp yet AND the user hasn't
+    // already insisted, nudge them to wait for autofocus instead of
+    // baking a blurry capture. Re-centre autofocus to speed it up. A
+    // second tap (or once the ring goes green) proceeds normally.
+    if (_sharpness < _kSharpReady && !_focusNudgeShown) {
+      _focusNudgeShown = true;
+      _cameraService.focusOnPoint(const Offset(0.5, 0.5));
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          duration: const Duration(milliseconds: 1600),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.black87,
+          content: Text(
+            AppLocalizations.of(context)!.cameraWaitFocus,
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      // Allow an immediate retry to override after a short beat.
+      Timer(const Duration(milliseconds: 1800), () {
+        if (mounted) _focusNudgeShown = false;
+      });
+      return;
+    }
+    _focusNudgeShown = false;
+
     // Instant UI feedback: switch to the translating screen IMMEDIATELY
     // when the user taps. The 2 s OCR pipeline otherwise leaves the user
     // staring at the live preview wondering whether the tap registered.
@@ -1240,12 +1408,28 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       (b) => b.confidence != null && b.confidence! >= 0.7,
     );
 
+    // Composite "ML Kit weakness" score (0..1) — a multi-signal proxy
+    // for "this on-device read is unreliable / incomplete, escalate to
+    // Vision". No single signal is sufficient (you can't know what OCR
+    // MISSED without re-running it), so we blend the cheap signals ML
+    // Kit + the capture give us. See _mlkitWeakness for the formula.
+    final weakness = _mlkitWeakness(
+      blocks: blocks,
+      imageSize: size,
+      totalChars: totalChars,
+      shortThreshold: shortThreshold,
+    );
+
+    // Fall back when empty, OR the short+low-conf legacy rule fires, OR
+    // the composite score crosses the tuned threshold. Keeping the
+    // legacy rule preserves the well-tuned "tiny garbage result" path.
     final shouldFallbackToVision = blocks.isEmpty ||
-        (totalChars < shortThreshold && !hasHighConfBlock);
+        (totalChars < shortThreshold && !hasHighConfBlock) ||
+        weakness >= _kWeaknessThreshold;
 
     if (shouldFallbackToVision) {
       debugPrint(
-        '[Camera] OCR weak (chars=$totalChars, '
+        '[Camera] OCR weak (chars=$totalChars, weakness=${weakness.toStringAsFixed(2)}, '
         'hasHighConf=$hasHighConfBlock, scene=${scene.id}, '
         'sourceVision=$sourceWantsVision) — vision fallback',
       );
@@ -1253,9 +1437,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         'reason':            sourceWantsVision ? 'source_vision_only' : 'weak_ocr',
         'scene':             scene.id,
         'total_chars':       totalChars,
+        'weakness':          double.parse(weakness.toStringAsFixed(2)),
         'has_high_conf':     hasHighConfBlock,
         if (sourceWantsVision) 'source_lang': sourceLang,
       });
+      // Hybrid tier 2: try Google Cloud Vision OCR (cheap, high recall)
+      // BEFORE the pricier vision LLM. It returns true when it produced a
+      // result; false when the server has no Vision key or found nothing,
+      // in which case we fall through to the LLM tier below.
+      if (await _captureWithGoogleVision(path, bytes, size, scene: scene.id)) {
+        return;
+      }
       // Carry the user's selected scene into the vision path. This is the
       // critical bit for handwritten / chalkboard menus: with scene=menu,
       // the response gets split per-line so each dish row is its own card
@@ -1357,6 +1549,68 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
   }
 
+  /// Composite "ML Kit weakness" threshold. At/above this the capture is
+  /// escalated to Google Vision. Tuned conservatively (0.5) so a clean
+  /// read never pays for a Vision call; raise to be stingier, lower to
+  /// favour recall over cost.
+  static const double _kWeaknessThreshold = 0.5;
+
+  /// Blend cheap, on-device signals into a 0..1 estimate of how UNRELIABLE
+  /// / INCOMPLETE the ML Kit read is. Higher = weaker = prefer Vision.
+  ///
+  /// You can't know what OCR *missed* without re-running it, so every term
+  /// is a proxy; we combine four so no single noisy signal dominates:
+  ///
+  ///   • confidence  (0.45) — mean ML Kit line confidence. The strongest
+  ///       signal for "the model is guessing". Null on iOS → treated as a
+  ///       neutral 0.7 so the term neither helps nor hurts there.
+  ///   • lowConfFrac (0.25) — share of blocks under 0.5 confidence; catches
+  ///       a few garbage reads dragging down an otherwise-ok mean.
+  ///   • coverage    (0.15) — text-box area ÷ image area, normalised to a
+  ///       12% "well-covered" target. Low coverage on a dense capture hints
+  ///       at missed regions. Weighted low: a legit sparse sign also reads
+  ///       low here, so it must not dominate.
+  ///   • blur        (0.15) — from the live sharpness meter; a soft frame
+  ///       degrades OCR recall. Skipped (0) for gallery picks with no
+  ///       preview sharpness.
+  double _mlkitWeakness({
+    required List<OcrBlock> blocks,
+    required ui.Size imageSize,
+    required int totalChars,
+    required int shortThreshold,
+  }) {
+    if (blocks.isEmpty) return 1.0;
+
+    final confs = blocks
+        .map((b) => b.confidence)
+        .whereType<double>()
+        .toList();
+    final meanConf = confs.isEmpty
+        ? 0.7 // iOS / unknown → neutral
+        : confs.reduce((a, b) => a + b) / confs.length;
+    final lowConfFrac = confs.isEmpty
+        ? 0.0
+        : confs.where((c) => c < 0.5).length / confs.length;
+
+    final imgArea = imageSize.width * imageSize.height;
+    final boxArea = blocks.fold<double>(
+      0,
+      (sum, b) => sum + b.boundingBox.width * b.boundingBox.height,
+    );
+    final coverage = imgArea <= 0 ? 0.0 : (boxArea / imgArea);
+    // Normalise: 12% text area = fully covered (score 1). Below → <1.
+    final coverageScore = (coverage / 0.12).clamp(0.0, 1.0);
+
+    final blurPenalty =
+        _sharpness > 0 ? (1 - _sharpness / 100).clamp(0.0, 1.0) : 0.0;
+
+    final weakness = 0.45 * (1 - meanConf) +
+        0.25 * lowConfFrac +
+        0.15 * (1 - coverageScore) +
+        0.15 * blurPenalty;
+    return weakness.clamp(0.0, 1.0);
+  }
+
   /// True when [sourceLang] is a concrete (non-auto) language whose script
   /// ML Kit can't OCR — caller should route the capture to vision instead.
   bool _sourceNeedsVision(String? sourceLang) {
@@ -1371,6 +1625,97 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   void _recoverToPreview() {
     if (mounted) setState(() => _step = _CameraStep.preview);
     _startStream();
+  }
+
+  /// Hybrid OCR tier 2: Google Cloud Vision (via backend). Tried BEFORE
+  /// the pricier vision-LLM when on-device ML Kit comes back weak. Vision
+  /// has far higher recall on dense / small / mixed-script captures and
+  /// returns per-block boxes the overlay positions exactly.
+  ///
+  /// Returns true when it populated a result (caller stops); false when
+  /// the caller should fall through to [_captureWithVision] - either
+  /// Vision isn't configured on the server (no key) or it found no text.
+  Future<bool> _captureWithGoogleVision(
+    String path,
+    Uint8List bytes,
+    ui.Size size, {
+    required String scene,
+  }) async {
+    try {
+      final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+      final targetLang = langSettings?.targetLang ?? 'en';
+      final sourceLang = langSettings?.sourceLang;
+      final api = ref.read(apiClientProvider);
+      final compressed =
+          await _cameraService.compressForVision(bytes, scene: scene);
+      final imageBase64 = base64Encode(compressed);
+
+      final response = await api.dio.post('/translate-image-ocr', data: {
+        'imageBase64': imageBase64,
+        'targetLang': targetLang,
+        'scene': scene,
+        if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
+          'sourceLang': sourceLang,
+        'imageWidth': size.width.round(),
+        'imageHeight': size.height.round(),
+      });
+      if (!mounted) return false;
+      final data = response.data as Map?;
+      final rawBlocks = data?['blocks'];
+      if (rawBlocks is! List || rawBlocks.isEmpty) {
+        // Vision unconfigured or found nothing → let the LLM tier try.
+        return false;
+      }
+
+      // Box convention matches /translate-image: [ymin, xmin, ymax, xmax]
+      // in the same pixel space as `size`.
+      final blocks = <OcrBlock>[];
+      final translations = <String>[];
+      for (final b in rawBlocks) {
+        if (b is! Map) continue;
+        final original = (b['original'] as String?)?.trim() ?? '';
+        final translation = (b['translation'] as String?)?.trim() ?? '';
+        if (original.isEmpty && translation.isEmpty) continue;
+        final box = b['box'];
+        if (box is! List || box.length != 4) continue;
+        double n(int i) => (box[i] is num) ? (box[i] as num).toDouble() : 0.0;
+        final ymin = n(0), xmin = n(1), ymax = n(2), xmax = n(3);
+        if (xmax <= xmin || ymax <= ymin) continue;
+        blocks.add(OcrBlock(
+          text: original,
+          boundingBox: Rect.fromLTRB(xmin, ymin, xmax, ymax),
+        ));
+        translations.add(translation);
+      }
+      if (blocks.isEmpty) return false;
+
+      final rawSrc = (data?['sourceLang'] as String?)?.toLowerCase();
+      _captureSourceLang =
+          (rawSrc != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrc))
+              ? rawSrc
+              : null;
+
+      setState(() {
+        _capturedPath = path;
+        _capturedImageSize = size;
+        _blocks = blocks;
+        _translations = translations;
+        _error = null;
+        _step = _resultStepRespectingBatch();
+      });
+      ref.read(trackingServiceProvider).event('camera_capture', properties: {
+        'scene':       scene,
+        'source_lang': sourceLang ?? 'auto',
+        'target_lang': targetLang,
+        'block_count': blocks.length,
+        'path':        'google_vision',
+      });
+      return true;
+    } catch (e) {
+      debugPrint('[Camera] Google Vision OCR failed: $e');
+      // Network / server error → fall through to the LLM tier.
+      return false;
+    }
   }
 
   /// Vision-LLM pipeline: bypasses ML Kit OCR entirely and sends the raw
@@ -1862,7 +2207,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   /// rather than `ceil(N / 50)`. Server failing at the exact boundary
   /// would mean an off-by-one in class-validator, which we'd want to
   /// catch in dev anyway.
-  static const int _batchChunkSize = 60;
+  /// Per-/translate-batch chunk cap. Empirically the server LLM takes
+  /// ~0.5-0.8 s per Japanese-to-Vietnamese block; at 60 blocks the chunk
+  /// would hit Dio's 30 s receive timeout on dense menu captures. 15 keeps
+  /// each chunk's worst case around 12 s while parallelising 3-4 chunks
+  /// for a 50-block capture - faster total than 60-per-chunk anyway.
+  static const int _batchChunkSize = 15;
 
   void _retake() {
     setState(() {
@@ -1894,6 +2244,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   /// suffixed name so back-to-back shares don't clobber each other
   /// (the system share sheet hangs on to the path past the dialog
   /// dismissal).
+  ///
+  /// Currently unreferenced: the Share action chip was pulled from the
+  /// result bar until the export quality is reworked. Kept (with the
+  /// RepaintBoundary it reads) so re-enabling is a one-line button add.
+  // ignore: unused_element
   Future<void> _shareResult() async {
     final l = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
@@ -2319,6 +2674,39 @@ class _DetectedSceneChip extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Circular icon-only button for the result action bar's view-control
+/// cluster (eye / help / reset). Visually lighter than [_ActionChip] so
+/// the labelled Retake / Copy actions stay the primary affordances.
+class _RoundIconButton extends StatelessWidget {
+  const _RoundIconButton({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = Material(
+      color: Colors.black54,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+      ),
+    );
+    if (tooltip == null) return button;
+    return Tooltip(message: tooltip!, child: button);
   }
 }
 

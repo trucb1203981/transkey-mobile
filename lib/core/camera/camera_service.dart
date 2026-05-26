@@ -35,6 +35,7 @@ class OcrBlock {
     required this.text,
     required this.boundingBox,
     this.confidence,
+    this.bgColor,
   });
 
   final String text;
@@ -42,6 +43,23 @@ class OcrBlock {
 
   /// Average confidence across all lines (Android only, null on iOS).
   final double? confidence;
+
+  /// Median background colour sampled in a thin strip just outside the
+  /// bounding box. Null until [BgColorSampler] has filled it in (the
+  /// camera flow attaches it post-OCR). The overlay paints this as the
+  /// card's solid fill so the translation visually replaces the source
+  /// text at the exact same position instead of being chip-stamped on
+  /// top of it.
+  final Color? bgColor;
+
+  /// Return a copy with [bgColor] swapped — keeps the field final so
+  /// the rest of the pipeline still treats blocks as immutable.
+  OcrBlock copyWith({Color? bgColor}) => OcrBlock(
+        text: text,
+        boundingBox: boundingBox,
+        confidence: confidence,
+        bgColor: bgColor ?? this.bgColor,
+      );
 
   TextQuality get quality {
     if (confidence == null) return TextQuality.good;
@@ -97,6 +115,28 @@ class CameraService {
   /// out-of-focus 20-60. 80 is the rough boundary where ML Kit OCR
   /// recall starts degrading sharply.
   static const double _blurThreshold = 80.0;
+
+  /// Laplacian variance treated as "fully sharp" (100%). Sharp natural
+  /// scenes land at 300+, so 250 maps the realistic in-focus range to
+  /// the top of the meter without needing a tripod-perfect shot to ever
+  /// read 100%.
+  static const double _sharpVariance = 250.0;
+
+  /// Map a Laplacian variance to a 0-100 sharpness percentage for the
+  /// live focus meter. Anchored so the OCR-usable [_blurThreshold] reads
+  /// 60% (the "ready / green" line): below threshold scales 0→60% so a
+  /// shaky frame visibly drops; above it scales 60→100% toward
+  /// [_sharpVariance]. Both segments clamp.
+  double _sharpnessPct(double variance) {
+    if (variance <= 0) return 0;
+    if (variance < _blurThreshold) {
+      return (variance / _blurThreshold * 60).clamp(0, 60);
+    }
+    final extra = (variance - _blurThreshold) /
+        (_sharpVariance - _blurThreshold) *
+        40;
+    return (60 + extra).clamp(60, 100);
+  }
 
   /// Last reported blur state — so we only fire the callback on edge
   /// transitions, not every frame. Starts as `false` (assumed sharp)
@@ -367,6 +407,7 @@ class CameraService {
   Future<void> startTextStream(
     void Function(List<OcrBlock> blocks) onBlocks, {
     void Function(bool isBlurry)? onBlurChange,
+    void Function(double sharpnessPct)? onSharpness,
   }) async {
     if (_controller == null || _isStreaming) return;
     _isStreaming = true;
@@ -391,13 +432,17 @@ class CameraService {
       // an OCR pass is in flight. Skipping when an earlier blur check
       // is itself in-flight would just drop frames here; the math is
       // cheap enough to run inline.
-      if (onBlurChange != null &&
+      if ((onBlurChange != null || onSharpness != null) &&
           now.difference(_lastBlurTime) >= _blurInterval) {
         _lastBlurTime = now;
         try {
           final variance = _computeBlurVariance(image);
+          // Continuous sharpness % fires EVERY check (not edge-triggered)
+          // so the live meter tracks smoothly while the user steadies the
+          // phone or waits for autofocus.
+          onSharpness?.call(_sharpnessPct(variance));
           final isBlurry = variance < _blurThreshold;
-          if (isBlurry != _lastBlurState) {
+          if (onBlurChange != null && isBlurry != _lastBlurState) {
             _lastBlurState = isBlurry;
             onBlurChange(isBlurry);
           }
@@ -638,14 +683,25 @@ class CameraService {
     }
     final contrastFuture = _preprocessAndRecognize(
         imagePath, _PreprocessMode.contrast,
-        perLine: perLine);
+        perLine: perLine, autoDetect: autoDetect);
     final binarizeFuture = _preprocessAndRecognize(
         imagePath, _PreprocessMode.binarize,
-        perLine: perLine);
+        perLine: perLine, autoDetect: autoDetect);
+    // 4th pass: upscaled copy to recover fine print (menu address,
+    // footnotes) that ML Kit's detector skips at native resolution.
+    // Runs in parallel so it adds isolate CPU, not wall-clock latency.
+    final upscaleFuture = _preprocessAndRecognize(
+        imagePath, _PreprocessMode.upscale,
+        perLine: perLine, autoDetect: autoDetect);
 
-    final results =
-        await Future.wait([originalFuture, contrastFuture, binarizeFuture]);
-    final merged = <OcrBlock>[...results[0], ...results[1], ...results[2]];
+    final results = await Future.wait(
+        [originalFuture, contrastFuture, binarizeFuture, upscaleFuture]);
+    final merged = <OcrBlock>[
+      ...results[0],
+      ...results[1],
+      ...results[2],
+      ...results[3],
+    ];
     final deduped = _dedupeAndFilter(merged);
     return _mergeForScene(deduped, scene);
   }
@@ -803,20 +859,52 @@ class CameraService {
 
   /// Preprocess the image with [mode], run latin OCR on the result.
   /// Returns empty on any failure (we still have the original pass).
+  ///
+  /// CRITICAL: the preprocess step resizes the image (down for huge
+  /// captures, UP for the small-text pass). ML Kit reports bounding
+  /// boxes in the PROCESSED image's pixel space, so we divide every box
+  /// by the resize scale to map it back to the ORIGINAL capture's
+  /// coordinate space - the only space the overlay knows how to render.
+  /// Skipping this made preprocess-pass boxes land in the wrong place
+  /// whenever they won dedup over the original pass.
   Future<List<OcrBlock>> _preprocessAndRecognize(
     String imagePath,
     _PreprocessMode mode, {
     bool perLine = false,
+    bool autoDetect = false,
   }) async {
     try {
-      final processedPath = await _writePreprocessedImage(imagePath, mode);
-      if (processedPath == null) return const [];
+      final processed = await _writePreprocessedImage(imagePath, mode);
+      if (processed == null) return const [];
+      final (processedPath, scale) = processed;
       try {
-        return await _recognizeWithScript(
-          processedPath,
-          TextRecognitionScript.latin,
-          perLine: perLine,
-        );
+        // CJK menus: the preprocess passes used to run Latin-only, so on a
+        // Japanese / Chinese / Korean capture they produced garbage that
+        // the content filter dropped - leaving recall at effectively one
+        // (the original auto pass). Running the multi-script auto detector
+        // here lets contrast / binarize / upscale each contribute real
+        // CJK reads, which is the dominant recall win on dense menus.
+        final blocks = autoDetect
+            ? await _recognizeAuto(processedPath, perLine: perLine)
+            : await _recognizeWithScript(
+                processedPath,
+                TextRecognitionScript.latin,
+                perLine: perLine,
+              );
+        if (scale == 1.0) return blocks;
+        final inv = 1.0 / scale;
+        return blocks
+            .map((b) => OcrBlock(
+                  text: b.text,
+                  confidence: b.confidence,
+                  boundingBox: Rect.fromLTRB(
+                    b.boundingBox.left * inv,
+                    b.boundingBox.top * inv,
+                    b.boundingBox.right * inv,
+                    b.boundingBox.bottom * inv,
+                  ),
+                ))
+            .toList();
       } finally {
         // Cleanup temp file — best-effort, ignore failure.
         try { await File(processedPath).delete(); } catch (_) {}
@@ -829,19 +917,23 @@ class CameraService {
 
   /// Heavy CPU work — runs in an isolate via [compute] so the UI thread
   /// stays responsive while the JPEG is decoded, filtered, and re-encoded.
-  Future<String?> _writePreprocessedImage(
+  /// Returns the output path AND the resize scale (processed ÷ original
+  /// longest side) so the caller can map ML Kit boxes back to original
+  /// coordinates, or null on failure.
+  Future<(String, double)?> _writePreprocessedImage(
     String imagePath,
     _PreprocessMode mode,
   ) async {
     final tempDir = await getTemporaryDirectory();
     final outputPath =
         '${tempDir.path}/ocr_${mode.name}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final ok = await compute(_runPreprocessIsolate, _PreprocessArgs(
+    final scale = await compute(_runPreprocessIsolate, _PreprocessArgs(
       inputPath: imagePath,
       outputPath: outputPath,
       mode: mode,
     ));
-    return ok ? outputPath : null;
+    if (scale <= 0) return null;
+    return (outputPath, scale);
   }
 
   Future<List<OcrBlock>> _recognizeWithScript(
@@ -941,7 +1033,20 @@ class CameraService {
   /// the one with higher confidence (falls back to longer text).
   List<OcrBlock> _dedupeAndFilter(List<OcrBlock> blocks) {
     // Drop pure-noise blocks: empty / single-character / only punctuation.
-    final filtered = blocks.where(_isMeaningful).toList();
+    // Also drop low-confidence blocks whose bbox is tiny (< 16 px tall):
+    // ML Kit's geometric accuracy degrades sharply on text that small,
+    // so the resulting card lands metres away from the actual glyphs.
+    // Captured menus put the address / phone / opening-hours at that
+    // size; the user prefers nothing over "Low quality" cards at the
+    // wrong position. 16 px is calibrated for 1080p+ captures - real
+    // body copy on those is 30+ px tall.
+    final filtered = blocks.where((b) {
+      if (!_isMeaningful(b)) return false;
+      final tooSmall = b.boundingBox.height < 16;
+      final lowConf = (b.confidence ?? 1.0) < 0.5;
+      if (tooSmall && lowConf) return false;
+      return true;
+    }).toList();
 
     // Sort by descending confidence then descending length — first match
     // wins during dedupe, so the highest-quality version of a duplicate
@@ -957,9 +1062,55 @@ class CameraService {
     final kept = <OcrBlock>[];
     for (final block in filtered) {
       final normalized = _normalizeForDedupe(block.text);
+      // Aggressive cull for low-confidence detections: a block with
+      // confidence < 0.5 that overlaps ANY kept block by IoU > 0.2 is
+      // treated as a duplicate, regardless of text. ML Kit's 3-pass
+      // pipeline (original / contrast / binarize) routinely emits 3-4
+      // near-identical bboxes around small text (menu address, phone
+      // number) - each with slightly different coords and minor text
+      // variations (a stray comma, a kana ↔ kanji confusion). The
+      // standard IoU > 0.5 rule misses these because the bboxes are
+      // small enough that a 5 px shift drops IoU below 0.5. The visual
+      // result was a stack of 3-4 "Low quality" cards at the bottom,
+      // each with a bg colour mis-sampled because neighbours filled
+      // every strip the sampler tried.
+      final lowConfBlock = (block.confidence ?? 1.0) < 0.5;
       final isDup = kept.any((other) {
         final iou = _iou(block.boundingBox, other.boundingBox);
         final otherNorm = _normalizeForDedupe(other.text);
+        if (lowConfBlock && iou > 0.2) return true;
+        // SAME normalised text + ANY box overlap → duplicate. IoU alone
+        // misses the case the user hit: the 3 OCR passes grouped the
+        // same physical text differently (one pass = the whole
+        // paragraph box, another = a single tight line box). Their IoU
+        // can fall below 0.3 even though they describe identical text,
+        // so both survived and the SAME translation rendered twice in
+        // two stacked cards. Gating on identical text keeps genuinely
+        // repeated labels (three "¥500" tags on different dish rows)
+        // separate - those don't overlap at all (intersect == empty).
+        if (otherNorm == normalized && iou > 0.0) return true;
+        // Containment: a tight line box sitting INSIDE a paragraph box
+        // covers little of the union (low IoU) but is ~fully enclosed.
+        // Catch it via overlap-vs-smaller-area instead of IoU.
+        if (_containment(block.boundingBox, other.boundingBox) > 0.6 &&
+            (otherNorm == normalized ||
+                otherNorm.contains(normalized) ||
+                normalized.contains(otherNorm))) {
+          return true;
+        }
+        // NEAR-duplicate text: two OCR passes read the same physical
+        // text slightly differently ("...của nhà hàng chúng tôi..." vs
+        // "...của chúng tôi...") so neither contains the other and the
+        // exact-match rules miss them. When the boxes overlap AND the
+        // character content is ≥80 % shared, treat as a duplicate and
+        // keep the higher-confidence / longer one (we iterate in that
+        // order). Genuinely different adjacent dishes share far fewer
+        // characters, so this doesn't merge distinct rows.
+        if ((iou > 0.3 ||
+                _containment(block.boundingBox, other.boundingBox) > 0.5) &&
+            _charOverlapRatio(normalized, otherNorm) > 0.8) {
+          return true;
+        }
         // Exact text match + decent box overlap → duplicate.
         if (iou > 0.5 && otherNorm == normalized) return true;
         // Different text but heavy box overlap → keep the longer one only
@@ -983,16 +1134,33 @@ class CameraService {
       if (!isDup) kept.add(block);
     }
 
+    // Final geometric overlap pass. Text-based dedup above can still
+    // leave two boxes physically overlapping when their CONTENT differs
+    // (garbled stylized logos read as different junk per pass, or a
+    // mixed-script grouping the heuristics didn't catch). Cards drawn at
+    // those boxes visibly stack. Here we drop any block whose box
+    // overlaps an already-kept block by IoU > 0.45 regardless of text -
+    // genuinely separate lines of a menu sit at IoU well below that
+    // (stacked rows ≈ 0.0-0.25), so this only removes true visual
+    // collisions. `kept` is in confidence-desc order, so the survivor is
+    // the higher-confidence read.
+    final spaced = <OcrBlock>[];
+    for (final block in kept) {
+      final collides = spaced.any(
+          (other) => _iou(block.boundingBox, other.boundingBox) > 0.45);
+      if (!collides) spaced.add(block);
+    }
+
     // Restore reading order (top-to-bottom, left-to-right). Pixel delta —
     // NOT compareTo — so the 12 px row-grouping tolerance actually fires.
     // The earlier compareTo version collapsed everything into "same row"
     // because compareTo only returns ±1, never > 12.
-    kept.sort((a, b) {
+    spaced.sort((a, b) {
       final dy = a.boundingBox.top - b.boundingBox.top;
       if (dy.abs() > 12) return dy < 0 ? -1 : 1;
       return a.boundingBox.left.compareTo(b.boundingBox.left);
     });
-    return kept;
+    return spaced;
   }
 
   bool _isMeaningful(OcrBlock block) {
@@ -1032,6 +1200,45 @@ class CameraService {
         a.width * a.height + b.width * b.height - intArea;
     if (unionArea <= 0) return 0.0;
     return intArea / unionArea;
+  }
+
+  /// Fraction of the SMALLER box that the intersection covers. Unlike
+  /// IoU, this stays high when a tight line box sits inside a much
+  /// larger paragraph box (IoU is dragged down by the big box's area,
+  /// but the small box is still ~fully contained). Used to dedupe the
+  /// "paragraph vs single-line" grouping mismatch across OCR passes.
+  double _containment(Rect a, Rect b) {
+    final intersection = a.intersect(b);
+    if (intersection.isEmpty) return 0.0;
+    final intArea = intersection.width * intersection.height;
+    final smaller = math.min(a.width * a.height, b.width * b.height);
+    if (smaller <= 0) return 0.0;
+    return intArea / smaller;
+  }
+
+  /// Multiset character-overlap ratio of the shorter string against the
+  /// longer (0..1). 1.0 = every char of the shorter appears in the
+  /// longer. Robust across scripts (works on CJK with no spaces) and
+  /// order-independent, so it catches two OCR passes that read the same
+  /// physical text with a small insertion/substitution. Distinct dishes
+  /// share far fewer characters, so a high threshold won't merge them.
+  double _charOverlapRatio(String a, String b) {
+    if (a.isEmpty || b.isEmpty) return 0.0;
+    final shorter = a.length <= b.length ? a : b;
+    final longer = a.length <= b.length ? b : a;
+    final counts = <int, int>{};
+    for (final c in longer.codeUnits) {
+      counts[c] = (counts[c] ?? 0) + 1;
+    }
+    var match = 0;
+    for (final c in shorter.codeUnits) {
+      final n = counts[c] ?? 0;
+      if (n > 0) {
+        match++;
+        counts[c] = n - 1;
+      }
+    }
+    return match / shorter.length;
   }
 
   /// Drop OCR blocks that are pure menu metadata — prices, phone
@@ -1479,11 +1686,18 @@ enum _PreprocessMode {
   /// contrast printed text and chalkboard handwriting.
   contrast,
 
-  /// Grayscale → contrast → luminance threshold (pure black/white).
-  /// Recovers BOLD stylized display fonts (sign lettering, neon, 3D
-  /// text) where colour gradients and anti-aliasing confuse the OCR
-  /// detector. Binarization collapses the gradient to a crisp edge.
+  /// Grayscale → contrast → ADAPTIVE (Bradley) threshold. Recovers BOLD
+  /// stylized display fonts AND copy under uneven lighting (one half of
+  /// a menu in shadow): a global threshold blows out the dark half,
+  /// whereas a local-mean threshold adapts per-region.
   binarize,
+
+  /// Grayscale → UPSCALE 2x (cubic) → normalize → unsharp. Targets the
+  /// fine-print failure mode (menu address / footnotes): ML Kit's
+  /// detector misses sub-16 px glyphs, and feeding it a crisply
+  /// upscaled copy gives those glyphs enough pixels to register. Boxes
+  /// come back in 2x space and are scaled back by [_preprocessAndRecognize].
+  upscale,
 }
 
 class _PreprocessArgs {
@@ -1499,32 +1713,54 @@ class _PreprocessArgs {
 
 /// Isolate entry point: decode JPEG, apply the [_PreprocessMode] filter
 /// chain, re-encode. Heavy on CPU + memory so it must run off the UI
-/// thread. Returns true when the output file was written.
+/// thread. Returns the resize SCALE applied (processed ÷ original
+/// longest side) so the caller can map ML Kit boxes back to original
+/// coordinates; returns -1 on failure.
 ///
 /// We deliberately do NOT invert the image: ML Kit handles white-on-black
 /// chalkboards fine once contrast is boosted; inverting also broke colour
 /// printed documents we saw in production.
-bool _runPreprocessIsolate(_PreprocessArgs args) {
+double _runPreprocessIsolate(_PreprocessArgs args) {
   try {
     final bytes = File(args.inputPath).readAsBytesSync();
     final decoded = img.decodeImage(bytes);
-    if (decoded == null) return false;
+    if (decoded == null) return -1;
 
-    // Cap longest side at 2000 px — anything larger only slows ML Kit
-    // without improving accuracy (its detection grid is fixed).
+    final origMax =
+        decoded.width > decoded.height ? decoded.width : decoded.height;
     var working = decoded;
-    final maxSide = working.width > working.height ? working.width : working.height;
-    if (maxSide > 2000) {
-      final scale = 2000 / maxSide;
-      working = img.copyResize(
-        working,
-        width: (working.width * scale).round(),
-        height: (working.height * scale).round(),
-        interpolation: img.Interpolation.linear,
-      );
+    double scale = 1.0;
+
+    if (args.mode == _PreprocessMode.upscale) {
+      // Upscale 2x to give sub-16 px glyphs enough pixels for ML Kit's
+      // detector, but cap the result at 3600 px so we don't OOM or
+      // exceed ML Kit's effective input ceiling on huge captures.
+      const targetMax = 3600;
+      final desired = (origMax * 2).clamp(origMax, targetMax);
+      scale = desired / origMax;
+      if (scale != 1.0) {
+        working = img.copyResize(
+          working,
+          width: (working.width * scale).round(),
+          height: (working.height * scale).round(),
+          interpolation: img.Interpolation.cubic,
+        );
+      }
+    } else {
+      // Cap longest side at 2000 px — anything larger only slows ML Kit
+      // without improving accuracy (its detection grid is fixed).
+      if (origMax > 2000) {
+        scale = 2000 / origMax;
+        working = img.copyResize(
+          working,
+          width: (working.width * scale).round(),
+          height: (working.height * scale).round(),
+          interpolation: img.Interpolation.linear,
+        );
+      }
     }
 
-    // Both variants start grayscale (colour is noise for OCR).
+    // All variants start grayscale (colour is noise for OCR).
     img.grayscale(working);
 
     switch (args.mode) {
@@ -1540,19 +1776,85 @@ bool _runPreprocessIsolate(_PreprocessArgs args) {
           div: 1,
         );
       case _PreprocessMode.binarize:
-        // Normalize → strong contrast → threshold to black/white. The
-        // threshold collapses anti-aliased stylized strokes into crisp
-        // shapes ML Kit's detector locks onto more reliably.
+        // Normalize → strong contrast → ADAPTIVE threshold. Local-mean
+        // (Bradley) instead of a single global cut so a menu half in
+        // shadow keeps its text instead of crushing to black.
         img.normalize(working, min: 0, max: 255);
         img.adjustColor(working, contrast: 1.3, saturation: 0);
-        img.luminanceThreshold(working, threshold: 0.5);
+        _bradleyThreshold(working);
+      case _PreprocessMode.upscale:
+        // Already upscaled. Normalize + a light unsharp so the cubic
+        // interpolation's softening doesn't cost edge definition.
+        img.normalize(working, min: 0, max: 255);
+        img.convolution(
+          working,
+          filter: [0, -1, 0, -1, 5, -1, 0, -1, 0],
+          div: 1,
+        );
     }
 
     final out = img.encodeJpg(working, quality: 92);
     File(args.outputPath).writeAsBytesSync(out);
-    return true;
+    return scale;
   } catch (_) {
-    return false;
+    return -1;
+  }
+}
+
+/// Bradley-Roth adaptive threshold on a grayscale [img.Image] (in place).
+///
+/// Each pixel becomes black when its luminance is more than [t] percent
+/// below the mean of the surrounding [windowFraction]-of-width window,
+/// else white. The window mean is computed in O(1) per pixel via an
+/// integral (summed-area) image, so the whole pass is O(w·h) - cheap
+/// enough for an OCR preprocess even on a 2000 px image.
+///
+/// Adaptive thresholding beats a global cut on real captures because
+/// lighting is rarely uniform: a single threshold either crushes the
+/// shadowed side to solid black or blows the lit side to solid white,
+/// erasing text either way. The local window tracks the gradient.
+void _bradleyThreshold(
+  img.Image image, {
+  double windowFraction = 0.125,
+  double t = 0.15,
+}) {
+  final w = image.width;
+  final h = image.height;
+  if (w < 3 || h < 3) return;
+
+  // Integral image of luminance (use red channel - already grayscale).
+  // (w+1)*(h+1) with a zero border simplifies the area lookup.
+  final integral = List<int>.filled((w + 1) * (h + 1), 0);
+  for (var y = 0; y < h; y++) {
+    var rowSum = 0;
+    for (var x = 0; x < w; x++) {
+      rowSum += image.getPixel(x, y).r.toInt();
+      final above = integral[y * (w + 1) + (x + 1)];
+      integral[(y + 1) * (w + 1) + (x + 1)] = above + rowSum;
+    }
+  }
+
+  final half = math.max(1, (w * windowFraction / 2).round());
+  final factor = 1.0 - t;
+
+  for (var y = 0; y < h; y++) {
+    final y1 = math.max(0, y - half);
+    final y2 = math.min(h - 1, y + half);
+    for (var x = 0; x < w; x++) {
+      final x1 = math.max(0, x - half);
+      final x2 = math.min(w - 1, x + half);
+      final count = (x2 - x1 + 1) * (y2 - y1 + 1);
+      // Summed-area lookup: A - B - C + D on the +1-offset integral.
+      final sum = integral[(y2 + 1) * (w + 1) + (x2 + 1)] -
+          integral[(y1) * (w + 1) + (x2 + 1)] -
+          integral[(y2 + 1) * (w + 1) + (x1)] +
+          integral[(y1) * (w + 1) + (x1)];
+      final pixel = image.getPixel(x, y);
+      final lum = pixel.r.toInt();
+      final isText = lum * count < sum * factor;
+      final v = isText ? 0 : 255;
+      image.setPixelRgb(x, y, v, v, v);
+    }
   }
 }
 

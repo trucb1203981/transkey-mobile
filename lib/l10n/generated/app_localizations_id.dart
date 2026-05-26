@@ -1235,6 +1235,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraHoldSteady => 'Tahan stabil';
 
   @override
+  String get cameraWaitFocus => 'Tunggu fokus, tahan stabil';
+
+  @override
   String get cameraCopyTranslation => 'Salin terjemahan';
 
   @override

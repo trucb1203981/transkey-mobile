@@ -1238,6 +1238,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cameraHoldSteady => 'Mantén firme';
 
   @override
+  String get cameraWaitFocus => 'Espera el enfoque, mantén firme';
+
+  @override
   String get cameraCopyTranslation => 'Copiar traducción';
 
   @override

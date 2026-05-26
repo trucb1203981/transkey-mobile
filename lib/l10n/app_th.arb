@@ -514,6 +514,7 @@
   "cameraConfidenceCaution": "ควรตรวจสอบ",
   "cameraConfidenceUnreliable": "เชื่อถือไม่ได้",
   "cameraHoldSteady": "ถือให้นิ่ง",
+  "cameraWaitFocus": "รอโฟกัส ถือให้นิ่ง",
   "cameraCopyTranslation": "คัดลอกคำแปล",
   "cameraCopyOriginal": "คัดลอกต้นฉบับ",
   "cameraRetryBlock": "แปลใหม่",

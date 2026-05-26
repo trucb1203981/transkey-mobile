@@ -1232,6 +1232,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cameraHoldSteady => 'Hold steady';
 
   @override
+  String get cameraWaitFocus => 'Wait for focus, hold steady';
+
+  @override
   String get cameraCopyTranslation => 'Copy translation';
 
   @override

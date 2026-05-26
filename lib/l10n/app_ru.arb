@@ -514,6 +514,7 @@
   "cameraConfidenceCaution": "Проверьте",
   "cameraConfidenceUnreliable": "Ненадёжно",
   "cameraHoldSteady": "Держите ровно",
+  "cameraWaitFocus": "Подождите фокусировку, держите ровно",
   "cameraCopyTranslation": "Копировать перевод",
   "cameraCopyOriginal": "Копировать оригинал",
   "cameraRetryBlock": "Перевести снова",

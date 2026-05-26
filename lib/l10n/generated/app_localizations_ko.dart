@@ -1188,6 +1188,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraHoldSteady => '흔들리지 마세요';
 
   @override
+  String get cameraWaitFocus => '초점 맞추는 중, 흔들지 마세요';
+
+  @override
   String get cameraCopyTranslation => '번역 복사';
 
   @override

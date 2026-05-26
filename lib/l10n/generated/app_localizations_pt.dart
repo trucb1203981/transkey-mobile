@@ -1243,6 +1243,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get cameraHoldSteady => 'Mantenha firme';
 
   @override
+  String get cameraWaitFocus => 'Aguarde o foco, segure firme';
+
+  @override
   String get cameraCopyTranslation => 'Copiar tradução';
 
   @override

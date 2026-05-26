@@ -1230,6 +1230,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraHoldSteady => 'ثبّت الكاميرا';
 
   @override
+  String get cameraWaitFocus => 'انتظر التركيز، ثبّت الكاميرا';
+
+  @override
   String get cameraCopyTranslation => 'نسخ الترجمة';
 
   @override

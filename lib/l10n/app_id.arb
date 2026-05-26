@@ -514,6 +514,7 @@
   "cameraConfidenceCaution": "Periksa lagi",
   "cameraConfidenceUnreliable": "Tidak tepercaya",
   "cameraHoldSteady": "Tahan stabil",
+  "cameraWaitFocus": "Tunggu fokus, tahan stabil",
   "cameraCopyTranslation": "Salin terjemahan",
   "cameraCopyOriginal": "Salin teks asli",
   "cameraRetryBlock": "Terjemahkan lagi",

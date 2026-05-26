@@ -3,11 +3,16 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/camera/bg_color_sampler.dart';
 import '../../../core/camera/camera_service.dart';
-import '../../../l10n/generated/app_localizations.dart';
 
-/// Position of a single translation card in view-space, after the
-/// anti-overlap pass has shifted it away from its raw OCR bounding box.
+/// Resolved render geometry for one card — position is LOCKED to the
+/// source OCR box (no anti-overlap shifting) and the font size is
+/// tuned per-card so the translation fits the original height when
+/// possible. Height can grow beyond the source box when even the
+/// minimum readable font can't fit the translation, so the user
+/// never sees a truncated ("…") translation - DeepL truncates with
+/// ellipsis in that case, we stay readable instead.
 class _CardLayout {
   _CardLayout({
     required this.index,
@@ -15,45 +20,91 @@ class _CardLayout {
     required this.top,
     required this.width,
     required this.height,
-    required this.origLeft,
-    required this.origTop,
+    required this.fontSize,
   });
   final int index;
-  // Both axes mutable: anti-overlap can shift the card right/left first,
-  // then fall back to down.
-  double left;
-  double top;
+  final double left;
+  final double top;
   final double width;
   final double height;
-  final double origLeft;
-  final double origTop;
+  final double fontSize;
 }
 
-const double _kCardHPad = 6.0;
-const double _kCardVPad = 4.0;
-const double _kTranslationFontSize = 13.0;
-const double _kOriginalFontSize = 11.0;
-const int _kCardMaxLines = 3;
+const double _kCardHPad = 4.0;
+const double _kCardVPad = 2.0;
+const double _kMinFontSize = 9.0;
+const double _kMaxFontSize = 28.0;
+
+/// Bridges the overlay's internal view state (card visibility + the
+/// drag/dismiss edits) out to the host screen so the action-bar buttons
+/// (eye toggle + reset) can live in the SAME row as Retake / Copy all
+/// instead of floating over the photo and colliding with the top-bar
+/// chrome. The overlay owns the actual state; this just exposes a
+/// controllable handle + change notifications.
+class CameraResultOverlayController extends ChangeNotifier {
+  bool _visible = true;
+  bool get visible => _visible;
+
+  bool _hasEdits = false;
+
+  /// True when the user has dragged or dismissed at least one card, so
+  /// the host can show/hide the reset button.
+  bool get hasEdits => _hasEdits;
+
+  /// Wired by the overlay; the host calls [reset] to clear all drags +
+  /// dismissals.
+  VoidCallback? _resetHook;
+
+  void toggleVisible() {
+    _visible = !_visible;
+    notifyListeners();
+  }
+
+  void reset() => _resetHook?.call();
+
+  // ── Internal: called by the overlay state ──
+  void attachResetHook(VoidCallback hook) => _resetHook = hook;
+
+  void setHasEdits(bool value) {
+    if (_hasEdits == value) return;
+    _hasEdits = value;
+    notifyListeners();
+  }
+
+  /// Sync visibility set from inside the overlay (tap-anywhere gesture)
+  /// without re-triggering a notify loop through [toggleVisible].
+  void syncVisible(bool value) {
+    if (_visible == value) return;
+    _visible = value;
+    notifyListeners();
+  }
+}
 
 /// Displays OCR text blocks positioned over the captured image.
 ///
-/// Two passes:
-///   1. Map each OCR box from image-space to view-space using BoxFit.contain,
-///      then MEASURE the actual rendered card height with TextPainter
-///      (the translation often wraps to 2-3x the height of the OCR box,
-///      so using box.height directly produces overlap-prone layouts).
-///   2. Anti-overlap pass: sort by top, push later cards down until they
-///      clear every earlier card with horizontal+vertical overlap.
+/// Design goals (vs the earlier version + vs DeepL):
+///   - Card stays at the exact pixel position the source text occupied.
+///     No anti-overlap shifting, no horizontal slide.
+///   - Translation is NEVER ellipsised. Font auto-fits inside the source
+///     box; if even [_kMinFontSize] doesn't fit, the card grows
+///     downward and keeps every character.
+///   - Card background colour is sampled from the photo (median of the
+///     pixels just outside the bounding box) so the panel blends into
+///     the underlying scene rather than chip-stamping over it.
+///   - Text colour flips between black / white per-card based on the
+///     sampled background's luminance.
 class CameraResultOverlay extends StatefulWidget {
   const CameraResultOverlay({
     super.key,
     required this.blocks,
     required this.translations,
     required this.imageSize,
+    this.imagePath,
+    this.controller,
     this.showOriginal = false,
     this.hideLowConfidence = false,
     this.showOriginalAlways = false,
-    this.overlayOpacity = 0.80,
+    this.overlayOpacity = 0.95,
     this.onExplain,
     this.onBlockTap,
   });
@@ -61,29 +112,35 @@ class CameraResultOverlay extends StatefulWidget {
   final List<OcrBlock> blocks;
   final List<String> translations;
   final ui.Size imageSize;
+
+  /// Optional external controller. When provided, the eye toggle + reset
+  /// buttons are NOT drawn inside the overlay - the host screen renders
+  /// them in its action bar and drives them through this controller.
+  final CameraResultOverlayController? controller;
+
+  /// Absolute path of the capture file backing [imageSize]. Used to
+  /// sample per-block background colour on the native side. Null means
+  /// the sampling is skipped and cards fall back to [BgColorSampler.fallback].
+  final String? imagePath;
+
   /// Force the cards to render the source text instead of the translation
-  /// (used by future "show source" toggle — not wired to UI yet).
+  /// (used by future "show source" toggle - not wired to UI yet).
   final bool showOriginal;
-  /// When true, also drop blocks flagged [OcrBlock.isLowConfidence] —
+
+  /// When true, also drop blocks flagged [OcrBlock.isLowConfidence] -
   /// keeps only "good" quality.
   final bool hideLowConfidence;
+
   /// When true, render the source text under every translation card.
   final bool showOriginalAlways;
-  /// Card background opacity (0.4–1.0).
+
+  /// Card background opacity (0.4–1.0). Applied on top of the sampled
+  /// colour - 1.0 means the card fully replaces what's underneath
+  /// (matching DeepL's overlay), lower values let the original text
+  /// bleed through.
   final double overlayOpacity;
-  /// "What is this?" handler — fired by long-press on a card. Receives
-  /// the OCR block (callers typically forward to WhatIsThisSheet.show
-  /// with block.text). Still useful even though the action sheet from
-  /// [onBlockTap] also offers Explain: long-press is a one-gesture
-  /// shortcut for power users.
+
   final ValueChanged<OcrBlock>? onExplain;
-  /// Per-block action handler — fired by a clean tap on a card. Receives
-  /// the block index (into [blocks] / [translations]), the block itself,
-  /// and the current translation string so the caller can open an
-  /// action sheet without re-deriving them. Replaces the previous
-  /// tap-to-expand behaviour: the sheet hosts everything the expand
-  /// state used to (full original text, "What is this?" pill) plus the
-  /// new Copy / Retry / Save actions.
   final void Function(int index, OcrBlock block, String translation)?
       onBlockTap;
 
@@ -94,39 +151,114 @@ class CameraResultOverlay extends StatefulWidget {
 class _CameraResultOverlayState extends State<CameraResultOverlay> {
   bool _overlayVisible = true;
 
-  // User-applied drag deltas, keyed by block index. Persists for the
-  // life of this overlay (i.e. until the user retakes or pops). The
-  // top-right reset chip clears all deltas.
+  /// True when this overlay should render its OWN eye + reset controls.
+  /// False when a [CameraResultOverlayController] is supplied - then the
+  /// host screen owns those buttons.
+  bool get _selfManagedControls => widget.controller == null;
+
+  /// Per-block drag deltas (index → cumulative pan offset). Cleared by
+  /// the reset action.
   final Map<int, Offset> _dragOffsets = <int, Offset>{};
 
-  /// Blocks the user removed by dragging into the trash zone. Kept as
-  /// indices into [widget.blocks]; rendering skips these. The reset chip
-  /// clears the set so dismissals are recoverable in one tap.
+  /// Blocks the user dragged into the trash zone. Rendering skips them
+  /// until reset.
   final Set<int> _dismissed = <int>{};
 
-  /// Index of the card currently under the finger (null when no drag is
-  /// active). Drives the trash zone's visibility — it only appears while a
-  /// drag is in progress to keep the result screen visually clean otherwise.
   int? _draggingIndex;
-
-  /// True when [_draggingIndex]'s card center is currently inside the trash
-  /// zone. Toggles the trash icon to its "hovered" red-filled state and
-  /// arms the dismiss on release.
   bool _overTrash = false;
 
-  /// Trash zone radius (logical px) from its centre. Card center within
-  /// this radius counts as "over". 80 is a comfortable thumb-target without
-  /// crowding the photo.
-  static const double _kTrashRadius = 80;
+  /// Toggle a red outline that draws the raw OCR bounding box mapped to
+  /// the view. Used to debug "card not at the source position": if the
+  /// red outline already sits in the wrong place, the math from box →
+  /// view coords is broken; if the outline is correct but the card is
+  /// elsewhere, the issue is in card sizing / Positioned wiring.
+  final bool _debugShowBoxes = false;
 
-  /// Vertical offset from the bottom of the view where the trash zone
-  /// renders. Keeps it clear of the system gesture inset and the bottom
-  /// action chips.
+  /// Background colours filled in asynchronously after the native
+  /// sampler returns. Keyed by block index. Until populated for an
+  /// index, the card uses [BgColorSampler.fallback].
+  final Map<int, Color> _bgColors = <int, Color>{};
+
+  static const double _kTrashRadius = 80;
   static const double _kTrashBottomGap = 80;
 
-  /// Returns true when [point] (a card-center position in view-local coords)
-  /// is within [_kTrashRadius] of the trash zone's centre. Same geometry the
-  /// trash zone widget uses, so the visual snap matches the hit zone.
+  @override
+  void initState() {
+    super.initState();
+    _startBgSampling();
+    final c = widget.controller;
+    if (c != null) {
+      c.attachResetHook(_resetEdits);
+      c.addListener(_onControllerChanged);
+      _overlayVisible = c.visible;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CameraResultOverlay old) {
+    super.didUpdateWidget(old);
+    if (old.controller != widget.controller) {
+      old.controller?.removeListener(_onControllerChanged);
+      widget.controller?.attachResetHook(_resetEdits);
+      widget.controller?.addListener(_onControllerChanged);
+    }
+    // Re-sample whenever the underlying capture file changes. We
+    // identity-check the path: the parent attaches a ValueKey on
+    // _capturedPath so a real swap brings us a fresh State, but a
+    // retry / retranslate keeps us alive with the same path - and
+    // we want to keep the previously-sampled colours in that case.
+    if (old.imagePath != widget.imagePath ||
+        !identical(old.blocks, widget.blocks)) {
+      _bgColors.clear();
+      _startBgSampling();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller?.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  /// React to the host toggling visibility through the controller.
+  void _onControllerChanged() {
+    final c = widget.controller;
+    if (c == null) return;
+    if (c.visible != _overlayVisible) {
+      setState(() => _overlayVisible = c.visible);
+    }
+  }
+
+  /// Clear all drag offsets + dismissals. Triggered by the in-overlay
+  /// reset chip OR the host's reset button via the controller.
+  void _resetEdits() {
+    setState(() {
+      _dragOffsets.clear();
+      _dismissed.clear();
+    });
+    widget.controller?.setHasEdits(false);
+  }
+
+  /// Recompute + publish the "has edits" flag after any drag/dismiss
+  /// change so the host's reset button shows/hides correctly.
+  void _publishEdits() {
+    widget.controller
+        ?.setHasEdits(_dragOffsets.isNotEmpty || _dismissed.isNotEmpty);
+  }
+
+  Future<void> _startBgSampling() async {
+    final path = widget.imagePath;
+    if (path == null || widget.blocks.isEmpty) return;
+    final rects = widget.blocks.map((b) => b.boundingBox).toList();
+    final colors = await BgColorSampler.sample(imagePath: path, rects: rects);
+    if (!mounted) return;
+    setState(() {
+      for (var i = 0; i < colors.length && i < widget.blocks.length; i++) {
+        _bgColors[i] = colors[i];
+      }
+    });
+  }
+
   bool _isOverTrash(Offset point, Size viewSize) {
     final trashCenter = Offset(
       viewSize.width / 2,
@@ -135,20 +267,99 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
     return (point - trashCenter).distance <= _kTrashRadius;
   }
 
+  /// Number of visual lines occupied by the source text inside its
+  /// bounding box. ML Kit emits one block per paragraph with `\n`
+  /// between lines, so a quick split is enough. Floor at 1 because
+  /// some blocks are single tokens with no newline.
+  int _sourceLineCount(String text) {
+    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).length;
+    return math.max(1, lines);
+  }
+
+  /// Estimate the font size that produced the source text inside a
+  /// box of [boxHeight] tall with [lines] visual lines. Line-height
+  /// factor of 1.25 mirrors what _BlockCard renders with. Clamped so
+  /// extreme aspect ratios (a tall narrow box around a single short
+  /// word, or a flat one-line block on a banner) still produce a
+  /// readable starting font.
+  double _estimateSourceFont(double boxHeight, int lines) {
+    final lineH = boxHeight / lines;
+    return (lineH / 1.25).clamp(_kMinFontSize, _kMaxFontSize);
+  }
+
+  /// Solve for the font size at which [text] wrapped to [maxWidth]
+  /// fits within [maxHeight], starting from [startFont].
+  ///
+  /// Math: total rendered height H scales as (font / startFont)²
+  /// (chars-per-line goes up linearly when font shrinks, total lines
+  /// goes down linearly → height shrinks quadratically). One analytic
+  /// estimate gets us within a font size of optimal; we then refine
+  /// with up to 4 measure-then-shrink steps because wrap discretization
+  /// (a line that "almost fits" suddenly breaks) makes the analytic
+  /// result a slight under-estimate of the achievable font.
+  ///
+  /// Returns the chosen font size + the measured height at that font.
+  /// If even [_kMinFontSize] overflows, returns [_kMinFontSize] with
+  /// its measured (over-)height; the caller grows the card downward
+  /// instead of truncating.
+  ({double fontSize, double height}) _fitFont({
+    required String text,
+    required double maxWidth,
+    required double maxHeight,
+    required double startFont,
+  }) {
+    if (text.isEmpty) {
+      return (fontSize: startFont, height: 0);
+    }
+    final innerW = math.max(20.0, maxWidth - _kCardHPad * 2);
+    final innerH = math.max(0.0, maxHeight - _kCardVPad * 2);
+
+    double measureAt(double font) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(fontSize: font, height: 1.25),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: innerW);
+      return tp.size.height;
+    }
+
+    var font = startFont;
+    var h = measureAt(font);
+    if (h <= innerH || innerH <= 0) {
+      return (fontSize: font, height: h + _kCardVPad * 2);
+    }
+
+    // Analytic shrink: h scales ~ font². Solve for font that puts h at
+    // innerH, clamped to the readable floor.
+    final ratio = math.sqrt(innerH / h);
+    font = (startFont * ratio).clamp(_kMinFontSize, startFont);
+    h = measureAt(font);
+
+    // Refine: wrap discretization can leave us still over by a single
+    // line. Step down 1 pt at a time until it fits or we hit the floor.
+    var safety = 0;
+    while (h > innerH && font > _kMinFontSize && safety < 6) {
+      font = math.max(_kMinFontSize, font - 1);
+      h = measureAt(font);
+      safety++;
+    }
+
+    // h at _kMinFontSize is what the card actually renders; caller
+    // grows the box if it overflows.
+    return (fontSize: font, height: h + _kCardVPad * 2);
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
         final fit = _fitContain(widget.imageSize, viewSize);
-
         final scaleX = fit.fitW / widget.imageSize.width;
         final scaleY = fit.fitH / widget.imageSize.height;
 
-        // Build initial layouts at the OCR-reported position, with
-        // TextPainter-measured heights. Apply the user's hide-low filter
-        // first so dropped blocks don't consume layout slots; also skip
-        // blocks the user already dragged into the trash zone.
         final cards = <_CardLayout>[];
         for (var i = 0; i < widget.blocks.length; i++) {
           if (_dismissed.contains(i)) continue;
@@ -156,63 +367,119 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
           if (widget.hideLowConfidence && block.isLowConfidence) continue;
           final box = block.boundingBox;
 
-          final origLeft = box.left * scaleX + fit.offsetX;
-          final origTop = box.top * scaleY + fit.offsetY;
-          // Card width: at least the OCR box width, capped at 92% of the
-          // viewport so translations don't wrap to 6+ lines (the earlier
-          // 240 px hard cap was tuned for narrow phones and made cards
-          // way too tall on modern 400+px screens — aggregate-scene cards
-          // in particular pulled the result overlay below the bottom of
-          // the screen). Right-edge clamp prevents overflow when the OCR
-          // box is anchored near the right side.
-          final boxWidth = math.max(40.0, box.width * scaleX);
-          final maxCardWidth = viewSize.width * 0.92;
-          final cardWidth = math.min(
-            math.max(140.0, boxWidth),
-            math.min(maxCardWidth, viewSize.width - origLeft - 8),
-          );
+          // Map source-image bbox to view coordinates. Position is
+          // locked to the source - no shift, no expansion to the left.
+          final left = box.left * scaleX + fit.offsetX;
+          final top = box.top * scaleY + fit.offsetY;
+          final boxW = box.width * scaleX;
+          final boxH = box.height * scaleY;
+          // Clamp the right edge so a card anchored near the screen
+          // edge can't paint off-screen. Left/top stay untouched so the
+          // position invariant holds.
+          final cardWidth =
+              math.min(boxW, math.max(40.0, viewSize.width - left - 4));
 
           final translation = i < widget.translations.length
               ? widget.translations[i]
               : '';
-          final displayText = widget.showOriginal ? block.text : translation;
           final isTranslated = !widget.showOriginal &&
               translation.isNotEmpty &&
               translation != block.text;
+          final displayText = widget.showOriginal
+              ? block.text
+              : (isTranslated ? translation : block.text);
 
-          final measuredHeight = _measureCardHeight(
-            displayText,
-            cardWidth,
-            isTranslated: isTranslated,
-            showOriginal: widget.showOriginal,
-            withOriginalUnderneath:
-                widget.showOriginalAlways && isTranslated,
-            originalText: block.text,
-            lowConfidence: block.isLowConfidence,
+          // Start font: match the source's apparent size so a 1:1
+          // translation (same length, same script) renders at the same
+          // visual scale as the original.
+          final lines = _sourceLineCount(block.text);
+          final startFont = _estimateSourceFont(boxH, lines);
+
+          final fit1 = _fitFont(
+            text: displayText,
+            maxWidth: cardWidth,
+            maxHeight: boxH,
+            startFont: startFont,
           );
+
+          final fontSize = fit1.fontSize;
+          // Lock the card to the source box height so neighbouring cards
+          // never overlap (OCR boxes themselves don't overlap, so boxed
+          // cards can't either). _fitFont already shrank the font to fit
+          // boxH; only when it bottomed out at the readable floor and the
+          // text STILL overflows do we let the card grow downward - that
+          // keeps the "never truncate" guarantee for the rare very-long
+          // translation on a tiny source line.
+          var cardHeight = boxH;
+          if (fit1.fontSize <= _kMinFontSize && fit1.height > boxH) {
+            cardHeight = fit1.height;
+          }
+
+          // "Show original always" rides under the translation - it needs
+          // extra height regardless, so grow past the box in that mode.
+          if (widget.showOriginalAlways && isTranslated) {
+            const origFont = 10.0;
+            final origMeasured = _measureText(
+              block.text,
+              cardWidth - _kCardHPad * 2,
+              fontSize: origFont,
+              maxLines: 2,
+            );
+            cardHeight = math.max(cardHeight, fit1.height) + origMeasured + 6;
+          }
+
+          // No height reservation for low-confidence: the badge is now a
+          // tiny corner dot inside _BlockCard, which doesn't push the
+          // translation around.
 
           cards.add(_CardLayout(
             index: i,
-            left: origLeft,
-            top: origTop,
+            left: left,
+            top: top,
             width: cardWidth,
-            height: measuredHeight,
-            origLeft: origLeft,
-            origTop: origTop,
+            height: cardHeight,
+            fontSize: fontSize,
           ));
         }
-
-        _resolveOverlap(cards, viewSize);
 
         return Stack(
           children: [
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTap: () =>
-                    setState(() => _overlayVisible = !_overlayVisible),
+                onTap: () {
+                  setState(() => _overlayVisible = !_overlayVisible);
+                  widget.controller?.syncVisible(_overlayVisible);
+                },
               ),
             ),
+            // Debug — draw the raw OCR bounding box (mapped to view coords)
+            // as a thin red outline for every visible card. Lets the user
+            // see at a glance whether the card SHOULD have landed exactly
+            // there. Toggle with the chip in the top-right corner.
+            if (_overlayVisible && _debugShowBoxes)
+              for (var i = 0; i < widget.blocks.length; i++)
+                if (!_dismissed.contains(i) &&
+                    (!widget.hideLowConfidence ||
+                        !widget.blocks[i].isLowConfidence))
+                  Positioned(
+                    left: widget.blocks[i].boundingBox.left * scaleX +
+                        fit.offsetX,
+                    top: widget.blocks[i].boundingBox.top * scaleY +
+                        fit.offsetY,
+                    width: widget.blocks[i].boundingBox.width * scaleX,
+                    height: widget.blocks[i].boundingBox.height * scaleY,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFFFF1744),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
             if (_overlayVisible)
               for (final card in cards)
                 _BlockCard(
@@ -220,23 +487,17 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                   translation: card.index < widget.translations.length
                       ? widget.translations[card.index]
                       : '',
-                  // Auto-layout position + user's drag delta.
-                  left: card.left +
-                      (_dragOffsets[card.index]?.dx ?? 0),
-                  top: card.top +
-                      (_dragOffsets[card.index]?.dy ?? 0),
+                  left: card.left + (_dragOffsets[card.index]?.dx ?? 0),
+                  top: card.top + (_dragOffsets[card.index]?.dy ?? 0),
                   width: card.width,
+                  height: card.height,
+                  fontSize: card.fontSize,
                   showOriginal: widget.showOriginal,
                   showOriginalAlways: widget.showOriginalAlways,
                   overlayOpacity: widget.overlayOpacity,
-                  // Half-fade the card center to signal "drop here = delete"
-                  // when the trash zone is armed for this exact card.
+                  bgColor: _bgColors[card.index] ?? BgColorSampler.fallback,
                   fadedForDelete:
                       _draggingIndex == card.index && _overTrash,
-                  // Clean tap → action sheet via parent. Fallback to
-                  // a noop when no handler is wired so existing call
-                  // sites (e.g. unit tests / preview widgets) don't
-                  // require the new callback.
                   onTap: () {
                     final handler = widget.onBlockTap;
                     if (handler == null) return;
@@ -256,9 +517,6 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                       final cur =
                           _dragOffsets[card.index] ?? Offset.zero;
                       _dragOffsets[card.index] = cur + delta;
-                      // Hover-test: is the card's CENTER inside the trash
-                      // zone right now? Drives the zone's highlighted state
-                      // + arms the dismiss-on-release.
                       final cardCenter = Offset(
                         card.left + (cur.dx + delta.dx) + card.width / 2,
                         card.top +
@@ -282,17 +540,12 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                         _overTrash = false;
                       });
                     }
+                    _publishEdits();
                   },
                   onExplain: widget.onExplain == null
                       ? null
                       : () => widget.onExplain!(widget.blocks[card.index]),
-                  wasShifted: (card.top - card.origTop).abs() > 4 ||
-                      (card.left - card.origLeft).abs() > 4,
                 ),
-            // Trash zone — only rendered while a drag is in progress so the
-            // result screen stays uncluttered otherwise. Centered along the
-            // bottom edge above the existing action chips. Highlighted red
-            // when the dragged card's center is inside its radius.
             if (_overlayVisible && _draggingIndex != null)
               Positioned(
                 left: viewSize.width / 2 - _kTrashRadius,
@@ -326,10 +579,11 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                   ),
                 ),
               ),
-            // Reset chip — visible once the user has dragged or dismissed
-            // anything. Tap snaps positions back AND restores dismissed
-            // blocks (one-tap undo for accidental trash drops).
-            if (_overlayVisible &&
+            // In-overlay reset chip + eye button ONLY when no external
+            // controller is wired (standalone / preview use). With a
+            // controller the host renders these in its action bar.
+            if (_selfManagedControls &&
+                _overlayVisible &&
                 (_dragOffsets.isNotEmpty || _dismissed.isNotEmpty))
               Positioned(
                 top: 0,
@@ -342,10 +596,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                       borderRadius: BorderRadius.circular(20),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(20),
-                        onTap: () => setState(() {
-                          _dragOffsets.clear();
-                          _dismissed.clear();
-                        }),
+                        onTap: _resetEdits,
                         child: const Padding(
                           padding: EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
@@ -371,30 +622,25 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                   ),
                 ),
               ),
-            if (!_overlayVisible)
+            if (_selfManagedControls)
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Center(
+                bottom: 80,
+                right: 12,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () =>
+                        setState(() => _overlayVisible = !_overlayVisible),
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          AppLocalizations.of(context)!
-                              .cameraTapShowTranslations,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
-                        ),
+                      padding: const EdgeInsets.all(10),
+                      child: Icon(
+                        _overlayVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -406,163 +652,21 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
     );
   }
 
-  /// Measure the rendered card height for a given text + max-width.
-  /// Must mirror the actual [_BlockCard] render path:
-  ///   • horizontal padding 6+6
-  ///   • vertical padding 4+4
-  ///   • maxLines 3 (collapsed) → ellipsis after that
-  ///   • font 13 for translation, 11 for original-only mode
-  ///   • line-height 1.25
-  /// When [withOriginalUnderneath] is true, also account for the source
-  /// text rendered under the translation (4px gap + 4px padding + up to
-  /// 2 italic lines at font 11).
-  /// When [lowConfidence] is true, account for the "Low quality" badge
-  /// row (~13 px).
-  double _measureCardHeight(
+  double _measureText(
     String text,
-    double cardWidth, {
-    required bool isTranslated,
-    required bool showOriginal,
-    bool withOriginalUnderneath = false,
-    String originalText = '',
-    bool lowConfidence = false,
+    double maxWidth, {
+    required double fontSize,
+    int? maxLines,
   }) {
-    final fontSize = showOriginal ? _kOriginalFontSize : _kTranslationFontSize;
-    final style = TextStyle(
-      fontSize: fontSize,
-      height: 1.25,
-      fontWeight: isTranslated ? FontWeight.w500 : FontWeight.normal,
-    );
-    final innerWidth = cardWidth - _kCardHPad * 2;
     final tp = TextPainter(
-      text: TextSpan(text: text, style: style),
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontSize: fontSize, height: 1.25),
+      ),
       textDirection: TextDirection.ltr,
-      maxLines: _kCardMaxLines,
-      ellipsis: '…',
-    )..layout(maxWidth: innerWidth);
-    var total = tp.size.height + _kCardVPad * 2 + 2;
-    if (lowConfidence) total += 13;
-    if (withOriginalUnderneath && originalText.isNotEmpty) {
-      final ot = TextPainter(
-        text: TextSpan(
-          text: originalText,
-          style: const TextStyle(
-            fontSize: _kOriginalFontSize,
-            height: 1.25,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-        maxLines: 2,
-        ellipsis: '…',
-      )..layout(maxWidth: innerWidth);
-      total += ot.size.height + 8; // gap + divider padding
-    }
-    return total;
-  }
-
-  /// Greedy top-to-bottom anti-overlap with HORIZONTAL-FIRST resolution.
-  ///
-  /// For each card, when it collides with a previously placed card we try
-  /// the cheapest fix first:
-  ///   1. Slide RIGHT of the collider (keeps Y, useful for 2-column
-  ///      layouts where one card naturally belongs on the right side).
-  ///   2. Slide LEFT of the collider (keeps Y, useful when right edge is
-  ///      blocked).
-  ///   3. Fallback: push DOWN below the collider (original behaviour).
-  /// After any move we re-check against ALL placed cards — a horizontal
-  /// slide could land on a different card.
-  ///
-  /// Clamped to viewSize.height - 60 / viewSize.width to stay visible.
-  void _resolveOverlap(List<_CardLayout> cards, Size viewSize) {
-    cards.sort((a, b) {
-      final dy = a.top.compareTo(b.top);
-      if (dy != 0) return dy;
-      return a.left.compareTo(b.left);
-    });
-    const gap = 3.0;
-    final maxBottom = viewSize.height - 60;
-    final maxRight = viewSize.width;
-    final placed = <_CardLayout>[];
-    for (final card in cards) {
-      var safety = 0;
-      while (safety < 100) {
-        safety++;
-        final collider = _firstCollider(card, placed);
-        if (collider == null) break;
-        if (_tryShiftRight(card, collider, placed, maxRight, gap)) continue;
-        if (_tryShiftLeft(card, collider, placed, gap)) continue;
-        // No horizontal fit — push below.
-        final newTop = collider.top + collider.height + gap;
-        if (newTop <= card.top) {
-          // The collider sits ABOVE us already but we still collide — bail.
-          card.top += card.height;
-        } else {
-          card.top = newTop;
-        }
-      }
-      if (card.top + card.height > maxBottom) {
-        card.top = math.max(0, maxBottom - card.height);
-      }
-      placed.add(card);
-    }
-  }
-
-  _CardLayout? _firstCollider(_CardLayout card, List<_CardLayout> placed) {
-    for (final other in placed) {
-      if (_horizontallyOverlaps(card, other) &&
-          _verticallyOverlaps(card, other)) {
-        return other;
-      }
-    }
-    return null;
-  }
-
-  bool _tryShiftRight(
-    _CardLayout card,
-    _CardLayout collider,
-    List<_CardLayout> placed,
-    double maxRight,
-    double gap,
-  ) {
-    final candidateLeft = collider.left + collider.width + gap;
-    if (candidateLeft + card.width > maxRight) return false;
-    final originalLeft = card.left;
-    card.left = candidateLeft;
-    if (_firstCollider(card, placed) != null) {
-      card.left = originalLeft;
-      return false;
-    }
-    return true;
-  }
-
-  bool _tryShiftLeft(
-    _CardLayout card,
-    _CardLayout collider,
-    List<_CardLayout> placed,
-    double gap,
-  ) {
-    final candidateLeft = collider.left - card.width - gap;
-    if (candidateLeft < 0) return false;
-    final originalLeft = card.left;
-    card.left = candidateLeft;
-    if (_firstCollider(card, placed) != null) {
-      card.left = originalLeft;
-      return false;
-    }
-    return true;
-  }
-
-  bool _horizontallyOverlaps(_CardLayout a, _CardLayout b) {
-    final aRight = a.left + a.width;
-    final bRight = b.left + b.width;
-    return a.left < bRight && b.left < aRight;
-  }
-
-  bool _verticallyOverlaps(_CardLayout a, _CardLayout b) {
-    final aBottom = a.top + a.height;
-    final bBottom = b.top + b.height;
-    return a.top < bBottom && b.top < aBottom;
+      maxLines: maxLines,
+    )..layout(maxWidth: math.max(20, maxWidth));
+    return tp.size.height;
   }
 
   ({double fitW, double fitH, double offsetX, double offsetY}) _fitContain(
@@ -594,12 +698,14 @@ class _BlockCard extends StatelessWidget {
     required this.left,
     required this.top,
     required this.width,
+    required this.height,
+    required this.fontSize,
     required this.showOriginal,
     required this.showOriginalAlways,
     required this.overlayOpacity,
+    required this.bgColor,
     required this.onTap,
     required this.onDrag,
-    required this.wasShifted,
     this.onDragStart,
     this.onDragEnd,
     this.fadedForDelete = false,
@@ -611,27 +717,31 @@ class _BlockCard extends StatelessWidget {
   final double left;
   final double top;
   final double width;
+  final double height;
+  final double fontSize;
   final bool showOriginal;
   final bool showOriginalAlways;
   final double overlayOpacity;
+  final Color bgColor;
   final VoidCallback onTap;
-  /// Called with the per-frame drag delta while the user pans on the
-  /// card. Parent state aggregates these into a per-block offset.
   final ValueChanged<Offset> onDrag;
-  /// Fired once at the start of a pan so the overlay can mount its trash
-  /// zone widget. Null = no drag-to-delete UX.
   final VoidCallback? onDragStart;
-  /// Fired on pan end — the overlay decides whether to dismiss the block
-  /// (if the card was released over the trash zone) or just keep its
-  /// dragged position.
   final VoidCallback? onDragEnd;
-  /// While true, the card renders semi-transparent to signal "drop here =
-  /// delete". Driven by the parent's hover-test against the trash zone.
   final bool fadedForDelete;
-  final bool wasShifted;
-  /// "What is this?" handler. Long-press the card fires this directly;
-  /// when null, no long-press shortcut and no explain button is rendered.
   final VoidCallback? onExplain;
+
+  /// Pick white or black for the card text based on the sampled
+  /// background's perceived brightness (Rec. 709 luminance). Threshold
+  /// 0.55 biases slightly toward white because cards over photos read
+  /// better with high-contrast white text than dark text on a near-white
+  /// surface (which loses contrast at the edge anti-aliasing).
+  Color _textColorFor(Color bg) {
+    final r = bg.r * 255.0;
+    final g = bg.g * 255.0;
+    final b = bg.b * 255.0;
+    final luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+    return luminance > 0.55 ? Colors.black : Colors.white;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -640,134 +750,110 @@ class _BlockCard extends StatelessWidget {
         translation.isNotEmpty &&
         translation != block.text;
 
-    // Card tint:
-    //  • translated → blue
-    //  • untranslated / showing-original → black
-    //  • low-confidence OCR → amber overlay so user mistrusts the text
-    // Opacity comes from the user's settings (0.4–1.0); we apply it to
-    // all three base colours so the user-controlled value is honoured.
-    final low = block.isLowConfidence;
     final alpha = overlayOpacity.clamp(0.0, 1.0);
-    final baseColor = low
-        ? Color.fromRGBO(180, 83, 9, alpha)
-        : isTranslated
-            ? Color.fromRGBO(37, 99, 235, alpha)
-            : Colors.black.withValues(alpha: alpha * 0.75);
+    // Apply the user's opacity setting on top of the sampled colour.
+    // At 1.0 the card fully replaces the underlying photo (DeepL-style).
+    // Lower values let the original text glimmer through.
+    final fillColor = bgColor.withValues(alpha: alpha);
+    final textColor = _textColorFor(bgColor);
+    final low = block.isLowConfidence;
 
     return Positioned(
       left: left,
       top: top,
       width: width,
+      height: height,
       child: Opacity(
-        // Half-fade while the trash zone is armed for THIS card so the user
-        // gets a clear "release to delete" signal — the visual cue mirrors
-        // how Android's floating bubble dims while over its trash zone.
         opacity: fadedForDelete ? 0.5 : 1.0,
         child: Material(
-        type: MaterialType.transparency,
-        // GestureDetector handles both tap (toggle expand) and pan (drag
-        // to move). Flutter's gesture arena disambiguates: small movement
-        // → tap; larger → pan. The Material/InkWell ripple under the
-        // GestureDetector still fires on tap so users get tactile feedback.
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onPanStart: (_) => onDragStart?.call(),
-          onPanUpdate: (details) => onDrag(details.delta),
-          onPanEnd: (_) => onDragEnd?.call(),
-          onPanCancel: () => onDragEnd?.call(),
-          child: InkWell(
-            onTap: onTap,
-            // Long-press → quick "What is this?" without expanding the
-            // card. Discoverable via the explicit button in expanded
-            // state (below), but here for power users who don't want
-            // the extra tap.
-            onLongPress: onExplain,
-            borderRadius: BorderRadius.circular(6),
-            child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: _kCardHPad, vertical: _kCardVPad),
-            decoration: BoxDecoration(
-              color: baseColor,
-              borderRadius: BorderRadius.circular(6),
-              border: wasShifted
-                  ? Border.all(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      width: 0.5,
-                    )
-                  : null,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (low)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: Row(
+          type: MaterialType.transparency,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanStart: (_) => onDragStart?.call(),
+            onPanUpdate: (details) => onDrag(details.delta),
+            onPanEnd: (_) => onDragEnd?.call(),
+            onPanCancel: () => onDragEnd?.call(),
+            child: InkWell(
+              onTap: onTap,
+              onLongPress: onExplain,
+              borderRadius: BorderRadius.circular(3),
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: _kCardHPad, vertical: _kCardVPad),
+                    decoration: BoxDecoration(
+                      color: fillColor,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            size: 10, color: Colors.white),
-                        const SizedBox(width: 3),
-                        Text(
-                          AppLocalizations.of(context)!.cameraLowQuality,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
+                    // The translation. No maxLines / no ellipsis - the
+                    // parent's _fitFont already picked a size that makes
+                    // the text fit, or grew the card if it could not.
+                    Text(
+                      displayText,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: fontSize,
+                        fontWeight: isTranslated
+                            ? FontWeight.w500
+                            : FontWeight.normal,
+                        height: 1.25,
+                      ),
+                    ),
+                    if (showOriginalAlways && isTranslated)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Container(
+                          padding: const EdgeInsets.only(top: 4),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(
+                                color: textColor.withValues(alpha: 0.3),
+                                width: 0.5,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            block.text,
+                            style: TextStyle(
+                              color: textColor.withValues(alpha: 0.75),
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                              height: 1.25,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                      ),
                       ],
                     ),
                   ),
-                Text(
-                  displayText,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: showOriginal
-                        ? _kOriginalFontSize
-                        : _kTranslationFontSize,
-                    fontWeight: isTranslated
-                        ? FontWeight.w500
-                        : FontWeight.normal,
-                    height: 1.25,
-                  ),
-                  // Always truncated on the card. Full text lives in the
-                  // action sheet that opens on tap.
-                  maxLines: _kCardMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (showOriginalAlways && isTranslated)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Container(
-                      padding: const EdgeInsets.only(top: 4),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            width: 0.5,
-                          ),
+                  // Tiny corner dot signals low-quality OCR without
+                  // stealing a whole row of card height. 4 px is visible
+                  // but doesn't crowd the text.
+                  if (low)
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade700,
+                          shape: BoxShape.circle,
                         ),
-                      ),
-                      child: Text(
-                        block.text,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.75),
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
-          ),
         ),
-      ),
       ),
     );
   }

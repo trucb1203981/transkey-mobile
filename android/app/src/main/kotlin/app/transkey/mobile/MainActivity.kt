@@ -15,6 +15,14 @@ class MainActivity : FlutterActivity() {
 
     private val shareChannel = "transkey/share"
     private val bubbleChannel = "transkey/bubble"
+    private val bgSamplerChannel = "transkey/bg_sampler"
+
+    /** Lazy worker for off-main-thread bitmap sampling. One thread is
+     *  enough - sampler calls fire one per capture, never concurrently. */
+    private val samplerThread by lazy {
+        android.os.HandlerThread("bg-sampler").also { it.start() }
+    }
+    private val samplerHandler by lazy { android.os.Handler(samplerThread.looper) }
 
     /**
      * Reuse the engine that [TransKeyApp] pre-warms in `onCreate`. Default
@@ -245,6 +253,37 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                         result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // Background colour sampler — called by the camera overlay after
+        // OCR returns block bounding boxes. Reads pixels from the capture
+        // file on a worker thread so the UI thread isn't blocked while a
+        // 12 MP JPG is decoded + scanned.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, bgSamplerChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "sample" -> {
+                        val path = call.argument<String>("imagePath")
+                        val rectsArg = call.argument<List<Map<String, Number>>>("rects")
+                        if (path == null || rectsArg == null) {
+                            result.error("ARG", "missing imagePath or rects", null)
+                            return@setMethodCallHandler
+                        }
+                        val rects = rectsArg.map {
+                            android.graphics.Rect(
+                                (it["left"]?.toInt()) ?: 0,
+                                (it["top"]?.toInt()) ?: 0,
+                                (it["right"]?.toInt()) ?: 0,
+                                (it["bottom"]?.toInt()) ?: 0,
+                            )
+                        }
+                        samplerHandler.post {
+                            val colors = BgColorSampler.sample(path, rects)
+                            runOnUiThread { result.success(colors) }
+                        }
                     }
                     else -> result.notImplemented()
                 }

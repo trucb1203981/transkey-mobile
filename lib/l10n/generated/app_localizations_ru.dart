@@ -1237,6 +1237,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraHoldSteady => 'Держите ровно';
 
   @override
+  String get cameraWaitFocus => 'Подождите фокусировку, держите ровно';
+
+  @override
   String get cameraCopyTranslation => 'Копировать перевод';
 
   @override

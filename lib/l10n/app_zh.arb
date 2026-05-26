@@ -514,6 +514,7 @@
   "cameraConfidenceCaution": "需核对",
   "cameraConfidenceUnreliable": "不可靠",
   "cameraHoldSteady": "保持稳定",
+  "cameraWaitFocus": "等待对焦，请拿稳",
   "cameraCopyTranslation": "复制译文",
   "cameraCopyOriginal": "复制原文",
   "cameraRetryBlock": "重新翻译",

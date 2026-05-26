@@ -1173,6 +1173,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraHoldSteady => '保持稳定';
 
   @override
+  String get cameraWaitFocus => '等待对焦，请拿稳';
+
+  @override
   String get cameraCopyTranslation => '复制译文';
 
   @override

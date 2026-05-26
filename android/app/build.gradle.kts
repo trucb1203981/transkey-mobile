@@ -85,4 +85,12 @@ dependencies {
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
+
+    // EXIF-aware decoding for BgColorSampler. BitmapFactory ignores the
+    // JPEG orientation tag, so a capture that carries an unbaked EXIF
+    // rotation would be read in the WRONG orientation - the sampler
+    // would then grab pixels at coordinates that don't line up with
+    // ML Kit's bounding boxes (which are reported in the EXIF-applied
+    // space Flutter renders in). ExifInterface lets us match that space.
+    implementation("androidx.exifinterface:exifinterface:1.4.1")
 }

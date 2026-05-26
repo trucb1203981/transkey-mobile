@@ -1187,6 +1187,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraHoldSteady => '動かさないで';
 
   @override
+  String get cameraWaitFocus => 'ピント合わせ中、動かさないで';
+
+  @override
   String get cameraCopyTranslation => '訳をコピー';
 
   @override

@@ -514,6 +514,7 @@
   "cameraConfidenceCaution": "要確認",
   "cameraConfidenceUnreliable": "信頼できない",
   "cameraHoldSteady": "動かさないで",
+  "cameraWaitFocus": "ピント合わせ中、動かさないで",
   "cameraCopyTranslation": "訳をコピー",
   "cameraCopyOriginal": "原文をコピー",
   "cameraRetryBlock": "もう一度翻訳",
