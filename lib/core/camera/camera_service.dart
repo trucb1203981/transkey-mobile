@@ -102,9 +102,25 @@ class CameraService {
   /// Persistent recognizers for the live stream — one per script (latin /
   /// chinese / japanese / korean / devanagari). Created once in
   /// [startTextStream], reused every frame (creating a recognizer per frame
-  /// is expensive), closed in [stopTextStream]. Running all scripts is what
-  /// lets the live preview detect CJK, not just Latin.
-  final List<TextRecognizer> _streamRecognizers = [];
+  /// is expensive), closed in [stopTextStream]. Keyed by script so the
+  /// stream can run JUST the recognizer matching the user's pinned source
+  /// language (one ML Kit call ≈ 150 ms) instead of fanning out to all
+  /// five (≈ 800-1500 ms) — a big cut to first-box latency when the
+  /// source is known.
+  final Map<TextRecognitionScript, TextRecognizer> _streamRecognizers = {};
+
+  /// When false the live stream skips OCR entirely (still does blur /
+  /// sharpness). The camera screen flips this so live text boxes only
+  /// run for the `menu` / `sign` scenes — the modes where aiming at
+  /// individual items matters. Other scenes (document / screenshot /
+  /// auto) translate the whole capture, so per-line live boxes are noise
+  /// and waste CPU + battery.
+  bool liveDetectionEnabled = true;
+
+  /// Pinned source language (ISO 639-1) for the live stream, or null for
+  /// auto. When concrete + script-supported, the stream runs only that
+  /// script's recognizer for lower latency.
+  String? liveSourceHint;
 
   // ── Blur detection (live preview) ─────────────────────────────────
   //
@@ -425,9 +441,9 @@ class CameraService {
     // Spin up one recognizer per script so the live preview detects CJK +
     // Latin (and Devanagari), not just Latin. Reused across frames.
     if (_streamRecognizers.isEmpty) {
-      _streamRecognizers.addAll(
-        TextRecognitionScript.values.map((s) => TextRecognizer(script: s)),
-      );
+      for (final s in TextRecognitionScript.values) {
+        _streamRecognizers[s] = TextRecognizer(script: s);
+      }
     }
 
     await _controller!.startImageStream((image) async {
@@ -460,6 +476,9 @@ class CameraService {
         }
       }
 
+      // Scene gate: live boxes only run for menu / sign. Other scenes
+      // translate the whole capture, so per-line live boxes are noise.
+      if (!liveDetectionEnabled) return;
       if (_isProcessing) return;
       if (now.difference(_lastOcrTime) < _ocrInterval) return;
 
@@ -468,10 +487,12 @@ class CameraService {
 
       try {
         final inputImage = _cameraImageToInputImage(image);
-        // Fan out to every script recognizer, keep the one that read the
-        // most characters — same "pick best script" heuristic the capture
-        // path uses. This is what surfaces CJK boxes in the live overlay.
-        final results = await Future.wait(_streamRecognizers.map((recognizer) async {
+        // Pick which recognizers to run. With a pinned source language we
+        // run JUST that script's recognizer (one ML Kit call, low latency
+        // to first box); on auto we still fan out to every script and
+        // keep whichever read the most characters (surfaces CJK boxes).
+        final recognizers = _liveRecognizersForHint(liveSourceHint);
+        final results = await Future.wait(recognizers.map((recognizer) async {
           try {
             final result = await recognizer.processImage(inputImage);
             final blocks = _extractBlocks(result);
@@ -498,6 +519,70 @@ class CameraService {
     });
   }
 
+  /// Recognizers to run for the live stream given a source-language hint.
+  /// A concrete, ML-Kit-supported hint → just that one script's
+  /// recognizer (≈150 ms — fast first box). Auto / unsupported script →
+  /// all recognizers (the pick-best fan-out that surfaces CJK boxes).
+  Iterable<TextRecognizer> _liveRecognizersForHint(String? hint) {
+    final script = _scriptForLang(hint);
+    if (script != null) {
+      final r = _streamRecognizers[script];
+      if (r != null) return [r];
+    }
+    return _streamRecognizers.values;
+  }
+
+  /// Map an ISO 639-1 language to its ML Kit script recognizer, or null
+  /// when auto / a script ML Kit can't read (those route to the vision
+  /// LLM anyway, so the live stream just fans out to all).
+  TextRecognitionScript? _scriptForLang(String? lang) {
+    if (lang == null) return null;
+    final code = lang.toLowerCase().split(RegExp(r'[-_]')).first;
+    switch (code) {
+      case 'ja':
+        return TextRecognitionScript.japanese;
+      case 'ko':
+        return TextRecognitionScript.korean;
+      case 'zh':
+        return TextRecognitionScript.chinese;
+      case 'hi':
+      case 'mr':
+      case 'ne':
+        return TextRecognitionScript.devanagiri;
+      case 'en':
+      case 'vi':
+      case 'fr':
+      case 'de':
+      case 'es':
+      case 'it':
+      case 'pt':
+      case 'id':
+      case 'ms':
+      case 'nl':
+      case 'pl':
+      case 'tr':
+      case 'sv':
+      case 'da':
+      case 'no':
+      case 'fi':
+      case 'cs':
+      case 'ro':
+      case 'hu':
+      case 'hr':
+      case 'sk':
+      case 'sl':
+      case 'et':
+      case 'lv':
+      case 'lt':
+      case 'tl':
+      case 'sw':
+      case 'af':
+        return TextRecognitionScript.latin;
+      default:
+        return null; // auto / unsupported → run all
+    }
+  }
+
   /// Stop the live camera stream + release the per-script recognizers.
   Future<void> stopTextStream() async {
     if (!_isStreaming) return;
@@ -505,7 +590,7 @@ class CameraService {
     try {
       await _controller?.stopImageStream();
     } catch (_) {}
-    for (final recognizer in _streamRecognizers) {
+    for (final recognizer in _streamRecognizers.values) {
       try {
         recognizer.close();
       } catch (_) {}
@@ -1764,7 +1849,7 @@ class CameraService {
 
   void dispose() {
     _isStreaming = false;
-    for (final recognizer in _streamRecognizers) {
+    for (final recognizer in _streamRecognizers.values) {
       try {
         recognizer.close();
       } catch (_) {}

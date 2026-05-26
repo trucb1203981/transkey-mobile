@@ -221,10 +221,31 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
   }
 
+  /// Push the current scene + source language into the camera service so
+  /// the live OCR stream knows (a) whether to run at all — boxes only for
+  /// menu / sign — and (b) which single script recognizer to use when the
+  /// source is pinned (lower first-box latency). Called on stream start
+  /// and whenever the scene / source changes.
+  void _syncLiveDetectionConfig() {
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+    final enabled =
+        scene == CameraScene.menu || scene == CameraScene.sign;
+    _cameraService.liveDetectionEnabled = enabled;
+    _cameraService.liveSourceHint =
+        ref.read(languageSettingsProvider).valueOrNull?.sourceLang;
+    // Disabled now → clear any boxes left from a menu/sign session.
+    if (!enabled && _liveBlocks.isNotEmpty) {
+      _liveTracker.reset();
+      setState(() => _liveBlocks = const []);
+    }
+  }
+
   void _startStream() {
     // Fresh stream → fresh tracker identities. Otherwise a track from a
     // previous preview session could linger and merge with new text.
     _liveTracker.reset();
+    _syncLiveDetectionConfig();
     _cameraService.startTextStream(
       (blocks) {
         if (mounted && _step == _CameraStep.preview) {
@@ -277,6 +298,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    // Re-sync the live OCR gates when the user switches scene
+    // (ScenePickerRow → menu/sign turns boxes on, others off) or pins a
+    // different source language (lets the stream pick the matching
+    // single recognizer instead of fanning out to all five).
+    ref.listen(cameraSettingsProvider, (_, __) => _syncLiveDetectionConfig());
+    ref.listen(languageSettingsProvider, (_, __) => _syncLiveDetectionConfig());
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -397,8 +424,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             // "Scanning" reassurance: camera is live but no text boxes yet
             // (the inherent camera-init + first-OCR window). Without it the
             // preview looks dead for ~1-1.5 s and users think it's broken.
-            // Hidden once any box appears or while the blur hint is up.
-            if (size != null && _liveBlocks.isEmpty && !_isBlurry)
+            // Only shown when live detection is on (menu / sign scenes —
+            // other scenes don't run live OCR so a "scanning" pill there
+            // would be a lie). Hidden once any box appears or while the
+            // blur hint is up.
+            if (size != null &&
+                _liveBlocks.isEmpty &&
+                !_isBlurry &&
+                _cameraService.liveDetectionEnabled)
               const Positioned(
                 top: 0,
                 left: 0,
