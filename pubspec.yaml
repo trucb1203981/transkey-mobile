@@ -53,6 +53,11 @@ dependencies:
   # Camera (camera translate feature)
   camera: ^0.11.0
   google_mlkit_text_recognition: ^0.14.0
+  # On-device TFLite runtime — powers the optional DBNet text detector
+  # (PaddleOCR ch_PP-OCRv4_det converted to TFLite). Detection is opt-in:
+  # absent model file → DbnetTextDetector returns empty → CameraService
+  # transparently falls through to the ML Kit detector below.
+  tflite_flutter: ^0.11.0
   # Lets the camera screen pick an existing photo from the device gallery
   # and run it through the same OCR + scene pipeline as a live capture.
   image_picker: ^1.1.2

@@ -11,6 +11,8 @@ import 'package:image/image.dart' as img;
 import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'dbnet_text_detector.dart';
+
 /// Text quality based on OCR confidence.
 enum TextQuality {
   good,  // confidence >= 0.7
@@ -82,6 +84,12 @@ class OcrBlock {
 class CameraService {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
+
+  /// Optional DBNet (PaddleOCR) detector used as a safety-net pass for
+  /// regions the ML Kit 4-pass pipeline misses. No-op until the TFLite
+  /// model asset is bundled (see docs/dbnet-conversion.md).
+  final DbnetTextDetector _dbnet = DbnetTextDetector();
+
   bool _isInitialized = false;
   bool _isStreaming = false;
   bool _isProcessing = false;
@@ -702,8 +710,97 @@ class CameraService {
       ...results[2],
       ...results[3],
     ];
+
+    // OPTIONAL safety-net pass: DBNet (PaddleOCR) detector for regions
+    // ML Kit missed. Only fires when the TFLite model is bundled; in
+    // that case we ask DBNet for every text region in the capture, drop
+    // any that already overlap an ML Kit block, and recognise just the
+    // uncovered ones with ML Kit on a per-crop call. Vision LLM still
+    // owns the truly-difficult fallback path — this tier catches
+    // cheap-to-fix ML Kit misses without a network round-trip.
+    final dbnetExtras = await _dbnetFillIn(imagePath, merged);
+    merged.addAll(dbnetExtras);
+
     final deduped = _dedupeAndFilter(merged);
     return _mergeForScene(deduped, scene);
+  }
+
+  /// Run DBNet on [imagePath] and return only the regions that don't
+  /// overlap an existing [mlkitBlocks] block (IoU > 0.3 considered the
+  /// same line). For each uncovered region, crop the capture and run an
+  /// ML Kit Latin recognizer on the crop — Latin handles the Latin /
+  /// price-tag content ML Kit's text detector often skips on dense menus
+  /// (CJK menus already win recall via the multi-script preprocess
+  /// passes above). Empty list when the model isn't bundled.
+  Future<List<OcrBlock>> _dbnetFillIn(
+    String imagePath,
+    List<OcrBlock> mlkitBlocks,
+  ) async {
+    if (!_dbnet.isAvailable) return const [];
+    try {
+      final regions = await _dbnet.detect(imagePath);
+      if (regions.isEmpty) return const [];
+      // Filter out regions already covered by ML Kit's reads.
+      final uncovered = regions.where((r) {
+        for (final b in mlkitBlocks) {
+          if (_iou(b.boundingBox, r.box) > 0.3) return false;
+        }
+        return true;
+      }).toList();
+      if (uncovered.isEmpty) return const [];
+
+      // Read the capture once; crop + recognise from the in-memory copy
+      // so we don't write 20 temp files for 20 regions.
+      final bytes = await File(imagePath).readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return const [];
+
+      final tempDir = await getTemporaryDirectory();
+      final extras = <OcrBlock>[];
+      // Single Latin recognizer reused across crops — instantiating a
+      // recognizer per crop loads the 3 MB model each time and dwarfs
+      // the actual recognition cost.
+      final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      try {
+        for (final region in uncovered) {
+          final box = region.box;
+          final l = box.left.clamp(0, decoded.width - 1).round();
+          final t = box.top.clamp(0, decoded.height - 1).round();
+          final w =
+              (box.width).clamp(1, decoded.width - l).round();
+          final h =
+              (box.height).clamp(1, decoded.height - t).round();
+          if (w < 8 || h < 8) continue; // too small to OCR usefully
+          final cropped = img.copyCrop(decoded, x: l, y: t, width: w, height: h);
+          final cropPath =
+              '${tempDir.path}/dbnet_crop_${DateTime.now().microsecondsSinceEpoch}.jpg';
+          try {
+            await File(cropPath).writeAsBytes(img.encodeJpg(cropped, quality: 90));
+            final result =
+                await recognizer.processImage(InputImage.fromFilePath(cropPath));
+            final text = result.text.trim();
+            if (text.isEmpty || text.length < 2) continue;
+            extras.add(OcrBlock(
+              text: text,
+              boundingBox: box,
+              confidence: region.score,
+            ));
+          } finally {
+            try { await File(cropPath).delete(); } catch (_) {}
+          }
+        }
+      } finally {
+        recognizer.close();
+      }
+      if (extras.isNotEmpty) {
+        debugPrint('[CameraService] DBNet filled in ${extras.length} '
+            'region(s) ML Kit missed');
+      }
+      return extras;
+    } catch (e) {
+      debugPrint('[CameraService] DBNet fill-in failed: $e');
+      return const [];
+    }
   }
 
   /// Scene-aware merge dispatcher. Each scene defines an explicit
@@ -1673,6 +1770,7 @@ class CameraService {
       } catch (_) {}
     }
     _streamRecognizers.clear();
+    _dbnet.close();
     _controller?.dispose();
     _controller = null;
     _isInitialized = false;
