@@ -1238,6 +1238,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cameraHoldSteady => 'Mantén firme';
 
   @override
+  String get cameraPausedTitle => 'Cámara en pausa';
+
+  @override
+  String get cameraPausedTapToResume => 'Toca para reanudar';
+
+  @override
   String get cameraWaitFocus => 'Espera el enfoque, mantén firme';
 
   @override

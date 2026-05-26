@@ -1242,6 +1242,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cameraHoldSteady => 'Stillhalten';
 
   @override
+  String get cameraPausedTitle => 'Kamera pausiert';
+
+  @override
+  String get cameraPausedTapToResume => 'Tippen zum Fortsetzen';
+
+  @override
   String get cameraWaitFocus => 'Auf Fokus warten, ruhig halten';
 
   @override

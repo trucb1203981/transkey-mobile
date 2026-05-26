@@ -2354,6 +2354,18 @@ abstract class AppLocalizations {
   /// **'Hold steady'**
   String get cameraHoldSteady;
 
+  /// No description provided for @cameraPausedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Paused'**
+  String get cameraPausedTitle;
+
+  /// No description provided for @cameraPausedTapToResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to resume'**
+  String get cameraPausedTapToResume;
+
   /// No description provided for @cameraWaitFocus.
   ///
   /// In en, this message translates to:

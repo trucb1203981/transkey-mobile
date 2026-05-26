@@ -514,6 +514,9 @@
   "cameraConfidenceCaution": "Cần kiểm tra",
   "cameraConfidenceUnreliable": "Không đáng tin",
   "cameraHoldSteady": "Giữ máy yên",
+
+  "cameraPausedTitle": "Camera đã tạm dừng",
+  "cameraPausedTapToResume": "Nhấn để tiếp tục",
   "cameraWaitFocus": "Đợi lấy nét, giữ máy yên",
   "cameraCopyTranslation": "Sao chép bản dịch",
   "cameraCopyOriginal": "Sao chép bản gốc",

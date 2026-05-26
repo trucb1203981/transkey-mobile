@@ -1173,6 +1173,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraHoldSteady => '保持稳定';
 
   @override
+  String get cameraPausedTitle => '相机已暂停';
+
+  @override
+  String get cameraPausedTapToResume => '点击继续';
+
+  @override
   String get cameraWaitFocus => '等待对焦，请拿稳';
 
   @override

@@ -43,7 +43,8 @@ class CameraScreen extends ConsumerStatefulWidget {
   ConsumerState<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends ConsumerState<CameraScreen> {
+class _CameraScreenState extends ConsumerState<CameraScreen>
+    with WidgetsBindingObserver {
   final _cameraService = CameraService();
   _CameraStep _step = _CameraStep.preview;
   bool _flashOn = false;
@@ -158,9 +159,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   int _batchTotal = 0;
   int _batchDone = 0;
 
+  /// Lifecycle: timer that auto-stops the camera stream when the app stays
+  /// in the background for too long (saves battery / avoids camera LED drain).
+  static const _backgroundStopDelay = Duration(seconds: 60);
+  Timer? _backgroundTimer;
+  bool _cameraStoppedForBackground = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initCamera();
     // First-run tips — shown once, after the first frame so the sheet has a
     // mounted scaffold to attach to. Reopenable later via the "?" top-bar
@@ -285,6 +293,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _backgroundTimer?.cancel();
     _focusResetTimer?.cancel();
     _blurDebounce?.cancel();
     _cameraService.dispose();
@@ -293,6 +303,47 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     // (different scene, prompt update on app launch, etc.).
     TranslationCache.instance.clear();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+    switch (state) {
+      case AppLifecycleState.paused:
+        // User left the app — schedule camera teardown to save battery.
+        _backgroundTimer?.cancel();
+        _backgroundTimer = Timer(_backgroundStopDelay, () {
+          if (!mounted) return;
+          _stopCameraForBackground();
+        });
+      case AppLifecycleState.resumed:
+        _backgroundTimer?.cancel();
+        _backgroundTimer = null;
+        if (_cameraStoppedForBackground) {
+          _reinitCameraAfterBackground();
+        }
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        break;
+    }
+  }
+
+  /// Release camera resources after the app has been backgrounded long enough.
+  void _stopCameraForBackground() {
+    if (_step != _CameraStep.preview) return;
+    _cameraService.dispose();
+    _cameraStoppedForBackground = true;
+    _liveBlocks = [];
+    _liveTracker.reset();
+    debugPrint('[Camera] Stopped for background (battery save)');
+    if (mounted) setState(() {});
+  }
+
+  /// Re-initialize the camera when the user returns after a background stop.
+  Future<void> _reinitCameraAfterBackground() {
+    _cameraStoppedForBackground = false;
+    return _initCamera();
   }
 
   @override
@@ -313,6 +364,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           _buildTopBar(l),
           if (_step == _CameraStep.preview) _buildBottomControls(l),
           if (_step == _CameraStep.preview && _isBlurry) _buildBlurOverlay(l),
+          if (_cameraStoppedForBackground)
+            _buildBackgroundPauseOverlay(l),
         ],
       ),
     );
@@ -365,6 +418,44 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Full-screen overlay shown when the camera was auto-stopped after the app
+  /// sat in the background past [_backgroundStopDelay]. Tapping anywhere
+  /// re-initializes the camera.
+  Widget _buildBackgroundPauseOverlay(AppLocalizations l) {
+    return GestureDetector(
+      onTap: _reinitCameraAfterBackground,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.85),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.camera_alt_outlined,
+                color: Colors.white70, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              l.cameraPausedTitle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.cameraPausedTapToResume,
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -514,6 +514,9 @@
   "cameraConfidenceCaution": "تحقّق",
   "cameraConfidenceUnreliable": "غير موثوق",
   "cameraHoldSteady": "ثبّت الكاميرا",
+
+  "cameraPausedTitle": "الكاميرا متوقفة",
+  "cameraPausedTapToResume": "انقر للاستئناف",
   "cameraWaitFocus": "انتظر التركيز، ثبّت الكاميرا",
   "cameraCopyTranslation": "نسخ الترجمة",
   "cameraCopyOriginal": "نسخ النص الأصلي",

@@ -1187,6 +1187,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraHoldSteady => '動かさないで';
 
   @override
+  String get cameraPausedTitle => 'カメラ一時停止中';
+
+  @override
+  String get cameraPausedTapToResume => 'タップして再開';
+
+  @override
   String get cameraWaitFocus => 'ピント合わせ中、動かさないで';
 
   @override

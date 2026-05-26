@@ -1240,6 +1240,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get cameraHoldSteady => 'Tieni fermo';
 
   @override
+  String get cameraPausedTitle => 'Fotocamera in pausa';
+
+  @override
+  String get cameraPausedTapToResume => 'Tocca per riprendere';
+
+  @override
   String get cameraWaitFocus => 'Attendi la messa a fuoco, tieni fermo';
 
   @override

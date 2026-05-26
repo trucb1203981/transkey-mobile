@@ -514,6 +514,9 @@
   "cameraConfidenceCaution": "Verificar",
   "cameraConfidenceUnreliable": "Não confiável",
   "cameraHoldSteady": "Mantenha firme",
+
+  "cameraPausedTitle": "Câmera pausada",
+  "cameraPausedTapToResume": "Toque para retomar",
   "cameraWaitFocus": "Aguarde o foco, segure firme",
   "cameraCopyTranslation": "Copiar tradução",
   "cameraCopyOriginal": "Copiar original",

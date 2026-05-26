@@ -1235,6 +1235,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraHoldSteady => 'Tahan stabil';
 
   @override
+  String get cameraPausedTitle => 'Kamera Dijeda';
+
+  @override
+  String get cameraPausedTapToResume => 'Ketuk untuk melanjutkan';
+
+  @override
   String get cameraWaitFocus => 'Tunggu fokus, tahan stabil';
 
   @override

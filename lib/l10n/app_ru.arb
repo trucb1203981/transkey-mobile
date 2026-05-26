@@ -514,6 +514,9 @@
   "cameraConfidenceCaution": "Проверьте",
   "cameraConfidenceUnreliable": "Ненадёжно",
   "cameraHoldSteady": "Держите ровно",
+
+  "cameraPausedTitle": "Камера приостановлена",
+  "cameraPausedTapToResume": "Нажмите, чтобы возобновить",
   "cameraWaitFocus": "Подождите фокусировку, держите ровно",
   "cameraCopyTranslation": "Копировать перевод",
   "cameraCopyOriginal": "Копировать оригинал",

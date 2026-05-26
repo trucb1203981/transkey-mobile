@@ -1222,6 +1222,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraHoldSteady => 'ถือให้นิ่ง';
 
   @override
+  String get cameraPausedTitle => 'กล้องหยุดชั่วคราว';
+
+  @override
+  String get cameraPausedTapToResume => 'แตะเพื่อดำเนินการต่อ';
+
+  @override
   String get cameraWaitFocus => 'รอโฟกัส ถือให้นิ่ง';
 
   @override

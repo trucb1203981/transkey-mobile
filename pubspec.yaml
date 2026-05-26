@@ -108,3 +108,4 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/models/dbnet_paddleocr.tflite

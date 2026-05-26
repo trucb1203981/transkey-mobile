@@ -1230,6 +1230,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraHoldSteady => 'ثبّت الكاميرا';
 
   @override
+  String get cameraPausedTitle => 'الكاميرا متوقفة';
+
+  @override
+  String get cameraPausedTapToResume => 'انقر للاستئناف';
+
+  @override
   String get cameraWaitFocus => 'انتظر التركيز، ثبّت الكاميرا';
 
   @override

@@ -1222,6 +1222,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraHoldSteady => 'Giữ máy yên';
 
   @override
+  String get cameraPausedTitle => 'Camera đã tạm dừng';
+
+  @override
+  String get cameraPausedTapToResume => 'Nhấn để tiếp tục';
+
+  @override
   String get cameraWaitFocus => 'Đợi lấy nét, giữ máy yên';
 
   @override

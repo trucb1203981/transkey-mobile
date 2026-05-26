@@ -514,6 +514,9 @@
   "cameraConfidenceCaution": "需核对",
   "cameraConfidenceUnreliable": "不可靠",
   "cameraHoldSteady": "保持稳定",
+
+  "cameraPausedTitle": "相机已暂停",
+  "cameraPausedTapToResume": "点击继续",
   "cameraWaitFocus": "等待对焦，请拿稳",
   "cameraCopyTranslation": "复制译文",
   "cameraCopyOriginal": "复制原文",

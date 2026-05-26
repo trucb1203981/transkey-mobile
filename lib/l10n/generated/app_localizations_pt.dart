@@ -1243,6 +1243,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get cameraHoldSteady => 'Mantenha firme';
 
   @override
+  String get cameraPausedTitle => 'Câmera pausada';
+
+  @override
+  String get cameraPausedTapToResume => 'Toque para retomar';
+
+  @override
   String get cameraWaitFocus => 'Aguarde o foco, segure firme';
 
   @override
