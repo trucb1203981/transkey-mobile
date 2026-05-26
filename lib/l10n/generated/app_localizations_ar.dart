@@ -1173,6 +1173,21 @@ class AppLocalizationsAr extends AppLocalizations {
       'بعد مسح الشاشة، أبقِ إذن التقاط الشاشة جاهزًا حتى تتمكن من النقر المزدوج على الزر (أو اختيار مسح الشاشة مرة أخرى) دون مطالبة النظام بالإذن. النوافذ الأطول تقلل النقرات لكنها تُبقي مؤشر البث ظاهرًا وتُسخّن الجهاز قليلًا.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'إيقاف';
 
   @override
@@ -1327,6 +1342,13 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'شفافية خلفية البطاقة. أقل = الصورة خلفها أوضح.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'لون تراكب موحد';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'استخدم لونًا واحدًا لجميع البطاقات بدلاً من اكتشاف اللون من الصورة.';
 
   @override
   String get cameraSceneAuto => 'تلقائي';

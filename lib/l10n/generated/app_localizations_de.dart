@@ -1185,6 +1185,21 @@ class AppLocalizationsDe extends AppLocalizations {
       'Behält nach einem Screen-Scan die Bildschirmaufnahme-Berechtigung für diese Dauer, damit ein Doppeltipp (oder erneutes Lens) keine System-Berechtigung mehr verlangt. Länger = weniger Taps, aber die Casting-Anzeige bleibt sichtbar und das Gerät erwärmt sich leicht.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'Aus';
 
   @override
@@ -1340,6 +1355,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'Hintergrundtransparenz der Karte. Niedriger = Foto dahinter besser sichtbar.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'Einheitliche Overlay-Farbe';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'Verwende eine einzige Farbe für alle Karten statt die Farbe aus dem Foto zu erkennen.';
 
   @override
   String get cameraSceneAuto => 'Auto';

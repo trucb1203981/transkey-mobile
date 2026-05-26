@@ -1180,6 +1180,21 @@ class AppLocalizationsRu extends AppLocalizations {
       'После сканирования экрана сохраняйте разрешение на захват экрана активным, чтобы можно было дважды нажать кнопку (или снова выбрать «Сканировать экран») без системного запроса разрешения. Более длинное окно экономит нажатия, но индикатор трансляции остаётся видимым и слегка нагревает устройство.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'Выкл.';
 
   @override
@@ -1335,6 +1350,13 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'Прозрачность фона карточки. Меньше = фото сзади видно лучше.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'Единый цвет оверлея';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'Использовать один цвет для всех карточек вместо определения цвета из фото.';
 
   @override
   String get cameraSceneAuto => 'Авто';

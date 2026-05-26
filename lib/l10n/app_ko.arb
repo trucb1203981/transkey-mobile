@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "빠른 재스캔 권한 유지",
   "captureKeepaliveHint": "더블탭으로 재스캔",
   "captureKeepaliveExplain": "화면 스캔 후 이 시간 동안 화면 캡처 권한을 유지하여 다음에 더블탭(또는 Lens 재선택) 시 시스템 권한 창이 다시 뜨지 않게 합니다. 길게 유지하면 조작이 줄지만, 캐스팅 표시가 오래 보이고 기기가 약간 더 따뜻해집니다.",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "끄기",
   "captureKeepaliveOffHint": "매 스캔마다 권한을 다시 요청합니다. 개인정보·배터리 우선.",
   "captureKeepaliveDefaultHint": "권장 — 재스캔 속도와 배터리의 균형.",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "각 번역 카드 아래에 원본 텍스트를 항상 표시.",
   "cameraSettingsOpacity": "오버레이 불투명도",
   "cameraSettingsOpacityHint": "카드 배경 투명도. 낮을수록 뒤의 사진이 더 보임.",
+  "cameraSettingsPrimaryColor": "통일 오버레이 색상",
+  "cameraSettingsPrimaryColorHint": "사진에서 색상을 감지하는 대신 모든 카드에 앱 색상을 사용합니다.",
   "cameraSceneAuto": "자동",
   "cameraSceneDocument": "문서",
   "cameraSceneMenu": "메뉴",

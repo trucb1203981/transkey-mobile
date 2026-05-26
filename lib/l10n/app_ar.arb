@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "نافذة إعادة المسح السريعة",
   "captureKeepaliveHint": "نقر مزدوج على الزر = إعادة مسح",
   "captureKeepaliveExplain": "بعد مسح الشاشة، أبقِ إذن التقاط الشاشة جاهزًا حتى تتمكن من النقر المزدوج على الزر (أو اختيار مسح الشاشة مرة أخرى) دون مطالبة النظام بالإذن. النوافذ الأطول تقلل النقرات لكنها تُبقي مؤشر البث ظاهرًا وتُسخّن الجهاز قليلًا.",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "إيقاف",
   "captureKeepaliveOffHint": "كل عملية مسح تطلب الإذن من جديد. الأفضل للخصوصية / البطارية.",
   "captureKeepaliveDefaultHint": "موصى به — يوازن بين سرعة إعادة المسح والبطارية.",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "إظهار النص المصدر دائماً تحت كل بطاقة ترجمة.",
   "cameraSettingsOpacity": "شفافية التراكب",
   "cameraSettingsOpacityHint": "شفافية خلفية البطاقة. أقل = الصورة خلفها أوضح.",
+  "cameraSettingsPrimaryColor": "لون تراكب موحد",
+  "cameraSettingsPrimaryColorHint": "استخدم لونًا واحدًا لجميع البطاقات بدلاً من اكتشاف اللون من الصورة.",
   "cameraSceneAuto": "تلقائي",
   "cameraSceneDocument": "مستند",
   "cameraSceneMenu": "قائمة طعام",

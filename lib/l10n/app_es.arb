@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "Ventana de re-captura rápida",
   "captureKeepaliveHint": "doble toque = re-escanear",
   "captureKeepaliveExplain": "Tras una captura, conserva el permiso de captura de pantalla durante este tiempo para que un doble toque (o seleccionar Lens otra vez) no pida permiso al sistema de nuevo. Más tiempo = menos toques, pero el indicador de transmisión queda visible y el dispositivo se calienta un poco.",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "Desactivado",
   "captureKeepaliveOffHint": "Cada captura pide permiso de nuevo. Mejor para privacidad y batería.",
   "captureKeepaliveDefaultHint": "Recomendado — equilibra velocidad y batería.",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "Mostrar siempre el texto fuente bajo cada tarjeta de traducción.",
   "cameraSettingsOpacity": "Opacidad de la superposición",
   "cameraSettingsOpacityHint": "Transparencia del fondo de la tarjeta. Más bajo = la foto detrás se ve más.",
+  "cameraSettingsPrimaryColor": "Color de overlay único",
+  "cameraSettingsPrimaryColorHint": "Usar un solo color para todas las tarjetas en lugar de detectar el color de la foto.",
   "cameraSceneAuto": "Auto",
   "cameraSceneDocument": "Documento",
   "cameraSceneMenu": "Menú",

@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "Jendela pindai ulang cepat",
   "captureKeepaliveHint": "ketuk dua kali tombol = pindai ulang",
   "captureKeepaliveExplain": "Setelah memindai layar, biarkan izin tangkapan layar tetap aktif agar Anda dapat mengetuk dua kali tombol (atau memilih Pindai layar lagi) tanpa permintaan izin sistem. Jendela yang lebih panjang menghemat ketukan tetapi membuat indikator casting tetap terlihat dan sedikit memanaskan perangkat.",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "Mati",
   "captureKeepaliveOffHint": "Setiap pemindaian meminta izin lagi. Terbaik untuk privasi / baterai.",
   "captureKeepaliveDefaultHint": "Direkomendasikan — menyeimbangkan kecepatan pindai ulang dengan baterai.",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "Selalu tampilkan teks sumber di bawah setiap kartu terjemahan.",
   "cameraSettingsOpacity": "Opasitas overlay",
   "cameraSettingsOpacityHint": "Transparansi latar kartu. Lebih rendah = foto di belakang lebih terlihat.",
+  "cameraSettingsPrimaryColor": "Warna overlay tunggal",
+  "cameraSettingsPrimaryColorHint": "Gunakan satu warna untuk semua kartu alih-alih mendeteksi warna dari foto.",
   "cameraSceneAuto": "Otomatis",
   "cameraSceneDocument": "Dokumen",
   "cameraSceneMenu": "Menu",

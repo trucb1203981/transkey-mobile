@@ -2252,6 +2252,30 @@ abstract class AppLocalizations {
   /// **'After a screen scan, keep screen-capture permission ready so you can double-tap the bubble (or pick Lens again) without the system permission prompt. Longer windows save taps but keep the casting indicator visible and slightly warm the device.'**
   String get captureKeepaliveExplain;
 
+  /// No description provided for @bubbleIdleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bubble auto-stop'**
+  String get bubbleIdleTitle;
+
+  /// No description provided for @bubbleIdleExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the floating bubble when you haven\'t used it for a while. Saves battery on long idle.'**
+  String get bubbleIdleExplain;
+
+  /// No description provided for @bubbleIdleOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get bubbleIdleOff;
+
+  /// No description provided for @bubbleIdleMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String bubbleIdleMinutes(int count);
+
   /// No description provided for @captureKeepaliveOff.
   ///
   /// In en, this message translates to:
@@ -2539,6 +2563,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Card background transparency. Lower = see more of the photo behind.'**
   String get cameraSettingsOpacityHint;
+
+  /// No description provided for @cameraSettingsPrimaryColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Single overlay color'**
+  String get cameraSettingsPrimaryColor;
+
+  /// No description provided for @cameraSettingsPrimaryColorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use one app color for all cards instead of matching each card to the photo.'**
+  String get cameraSettingsPrimaryColorHint;
 
   /// No description provided for @cameraSceneAuto.
   ///

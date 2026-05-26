@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "Giữ quyền chụp lại nhanh",
   "captureKeepaliveHint": "chạm 2 lần Nút TransKey = chụp lại",
   "captureKeepaliveExplain": "Sau khi chụp màn hình, app giữ quyền chụp trong khoảng thời gian này để lần sau bạn chạm 2 lần Nút TransKey (hoặc chọn Dịch màn hình) không bị hỏi quyền hệ thống lại. Giữ lâu = ít thao tác hơn nhưng biểu tượng đang quay màn hình hiển thị lâu và máy hơi nóng thêm.",
+
+  "bubbleIdleTitle": "Tự động tắt bong bóng",
+  "bubbleIdleExplain": "Tự động tắt bong bóng khi không sử dụng trong một khoảng thời gian. Tiết kiệm pin khi để quên.",
+  "bubbleIdleOff": "Không bao giờ",
+  "bubbleIdleMinutes": "{count} phút",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "Tắt",
   "captureKeepaliveOffHint": "Mỗi lần chụp đều hỏi quyền lại. Tiết kiệm pin / riêng tư nhất.",
   "captureKeepaliveDefaultHint": "Khuyến nghị — cân bằng tốc độ chụp lại với pin.",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "Luôn hiển thị chữ gốc bên dưới mỗi thẻ dịch.",
   "cameraSettingsOpacity": "Độ mờ của thẻ",
   "cameraSettingsOpacityHint": "Độ mờ nền của thẻ dịch. Thấp hơn = thấy ảnh gốc rõ hơn.",
+  "cameraSettingsPrimaryColor": "Màu phủ đồng nhất",
+  "cameraSettingsPrimaryColorHint": "Dùng một màu cho tất cả thẻ thay vì nhận diện màu từ ảnh.",
   "cameraSceneAuto": "Tự động",
   "cameraSceneDocument": "Tài liệu",
   "cameraSceneMenu": "Thực đơn",

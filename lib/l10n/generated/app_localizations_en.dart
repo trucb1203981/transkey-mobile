@@ -1175,6 +1175,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'After a screen scan, keep screen-capture permission ready so you can double-tap the bubble (or pick Lens again) without the system permission prompt. Longer windows save taps but keep the casting indicator visible and slightly warm the device.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery on long idle.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'Off';
 
   @override
@@ -1330,6 +1345,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'Card background transparency. Lower = see more of the photo behind.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'Single overlay color';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'Use one app color for all cards instead of matching each card to the photo.';
 
   @override
   String get cameraSceneAuto => 'Auto';

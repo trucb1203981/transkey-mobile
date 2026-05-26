@@ -5,8 +5,11 @@ import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.util.TypedValue
+import android.content.Intent
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -36,6 +39,8 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
             initialTouchY = event.rawY
             isDragging = false
             isOverCloseZone = false
+            longPressFired = false
+            handler.postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
             return true
         }
         MotionEvent.ACTION_MOVE -> {
@@ -43,6 +48,7 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
             val dy = event.rawY - initialTouchY
             if (!isDragging && dx * dx + dy * dy > 25 * dp * dp) {
                 isDragging = true
+                handler.removeCallbacks(longPressRunnable)
                 showCloseZone(dp)
             }
             params.x = initialX + dx.toInt()
@@ -61,6 +67,7 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
             return true
         }
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            handler.removeCallbacks(longPressRunnable)
             if (isDragging) {
                 hideCloseZone()
                 if (isOverCloseZone) {
@@ -74,7 +81,7 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
                 params.x = if (centerX < sw / 2) 0 else sw - (BUBBLE_SIZE_DP * dp).toInt()
                 params.y = params.y.coerceIn(0, sh - (BUBBLE_SIZE_DP * dp).toInt())
                 windowManager?.updateViewLayout(bubbleView!!, params)
-            } else if (event.action == MotionEvent.ACTION_UP) {
+            } else if (event.action == MotionEvent.ACTION_UP && !longPressFired) {
                 onBubbleTapped()
             }
             return true

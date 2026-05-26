@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "Janela de re-escaneamento rápido",
   "captureKeepaliveHint": "toque duplo no botão = re-escanear",
   "captureKeepaliveExplain": "Após escanear a tela, mantenha a permissão de captura pronta para que você possa tocar duas vezes no botão (ou escolher Escanear tela novamente) sem o aviso de permissão do sistema. Janelas mais longas economizam toques mas mantêm o indicador de transmissão visível e aquecem levemente o dispositivo.",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "Desativado",
   "captureKeepaliveOffHint": "Cada escaneamento pede permissão novamente. Melhor para privacidade / bateria.",
   "captureKeepaliveDefaultHint": "Recomendado — equilibra velocidade de re-escaneamento com bateria.",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "Sempre mostrar o texto fonte abaixo de cada cartão de tradução.",
   "cameraSettingsOpacity": "Opacidade da sobreposição",
   "cameraSettingsOpacityHint": "Transparência do fundo do cartão. Menor = a foto atrás aparece mais.",
+  "cameraSettingsPrimaryColor": "Cor de overlay única",
+  "cameraSettingsPrimaryColorHint": "Usar uma única cor para todos os cards em vez de detectar a cor da foto.",
   "cameraSceneAuto": "Auto",
   "cameraSceneDocument": "Documento",
   "cameraSceneMenu": "Cardápio",

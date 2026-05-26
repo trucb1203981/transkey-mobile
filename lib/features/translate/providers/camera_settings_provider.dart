@@ -9,6 +9,7 @@ const _kHideLowKey = 'tk_cam_hide_low';
 const _kShowOriginalAlwaysKey = 'tk_cam_show_original';
 const _kOverlayOpacityKey = 'tk_cam_overlay_opacity';
 const _kSceneKey = 'tk_cam_scene';
+const _kPrimaryColorKey = 'tk_cam_primary_color';
 
 /// Capture scene the user picks before / during capture. The value flows
 /// to the server's translate-batch prompt as a "scene" hint and also
@@ -44,6 +45,7 @@ class CameraSettings {
     required this.hideLowConfidence,
     required this.showOriginalAlways,
     required this.overlayOpacity,
+    required this.usePrimaryOverlayColor,
     required this.scene,
   });
 
@@ -68,6 +70,10 @@ class CameraSettings {
   /// values prioritise readability.
   final double overlayOpacity;
 
+  /// When true, all translation cards use a single primary color instead of
+  /// per-block background sampling. Cleaner look, avoids color mismatches.
+  final bool usePrimaryOverlayColor;
+
   /// Active capture scene. Tuned independently by the chip row in the
   /// camera bottom bar — the settings sheet doesn't expose this knob
   /// (it'd be one extra tap away from the live preview where users
@@ -79,6 +85,7 @@ class CameraSettings {
     hideLowConfidence: false,
     showOriginalAlways: false,
     overlayOpacity: 0.80,
+    usePrimaryOverlayColor: false,
     scene: CameraScene.auto,
   );
 
@@ -87,6 +94,7 @@ class CameraSettings {
     bool? hideLowConfidence,
     bool? showOriginalAlways,
     double? overlayOpacity,
+    bool? usePrimaryOverlayColor,
     CameraScene? scene,
   }) =>
       CameraSettings(
@@ -96,6 +104,8 @@ class CameraSettings {
         showOriginalAlways:
             showOriginalAlways ?? this.showOriginalAlways,
         overlayOpacity: overlayOpacity ?? this.overlayOpacity,
+        usePrimaryOverlayColor:
+            usePrimaryOverlayColor ?? this.usePrimaryOverlayColor,
         scene: scene ?? this.scene,
       );
 }
@@ -113,6 +123,8 @@ class CameraSettingsNotifier extends AsyncNotifier<CameraSettings> {
           CameraSettings.defaults.showOriginalAlways,
       overlayOpacity: prefs.getDouble(_kOverlayOpacityKey) ??
           CameraSettings.defaults.overlayOpacity,
+      usePrimaryOverlayColor: prefs.getBool(_kPrimaryColorKey) ??
+          CameraSettings.defaults.usePrimaryOverlayColor,
       scene: cameraSceneFromId(prefs.getString(_kSceneKey)),
     );
   }
@@ -161,12 +173,21 @@ class CameraSettingsNotifier extends AsyncNotifier<CameraSettings> {
     state = AsyncData(current.copyWith(overlayOpacity: clamped));
   }
 
+  Future<void> setUsePrimaryOverlayColor(bool value) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kPrimaryColorKey, value);
+    state = AsyncData(current.copyWith(usePrimaryOverlayColor: value));
+  }
+
   Future<void> resetToDefaults() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kConfidenceKey);
     await prefs.remove(_kHideLowKey);
     await prefs.remove(_kShowOriginalAlwaysKey);
     await prefs.remove(_kOverlayOpacityKey);
+    await prefs.remove(_kPrimaryColorKey);
     await prefs.remove(_kSceneKey);
     state = const AsyncData(CameraSettings.defaults);
   }

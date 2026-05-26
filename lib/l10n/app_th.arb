@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "ช่วงเวลาสแกนซ้ำเร็ว",
   "captureKeepaliveHint": "แตะสองครั้งที่ปุ่ม = สแกนซ้ำ",
   "captureKeepaliveExplain": "หลังจากสแกนหน้าจอ ให้คงสิทธิ์จับภาพหน้าจอไว้ เพื่อให้คุณแตะสองครั้งที่ปุ่ม (หรือเลือกสแกนหน้าจออีกครั้ง) ได้โดยไม่ต้องผ่านการขอสิทธิ์จากระบบ ระยะที่ยาวขึ้นช่วยลดการแตะ แต่จะคงตัวบ่งชี้การส่งสัญญาณไว้ และทำให้อุปกรณ์อุ่นขึ้นเล็กน้อย",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "ปิด",
   "captureKeepaliveOffHint": "ทุกการสแกนจะถามสิทธิ์ใหม่ ดีที่สุดสำหรับความเป็นส่วนตัว / แบตเตอรี่",
   "captureKeepaliveDefaultHint": "แนะนำ — สมดุลระหว่างความเร็วในการสแกนซ้ำกับแบตเตอรี่",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "แสดงข้อความต้นฉบับใต้การ์ดแปลทุกใบเสมอ",
   "cameraSettingsOpacity": "ความทึบของซ้อนทับ",
   "cameraSettingsOpacityHint": "ความโปร่งของพื้นหลังการ์ด ต่ำ = เห็นรูปด้านหลังมากขึ้น",
+  "cameraSettingsPrimaryColor": "สีโอเวอร์เลย์เดียว",
+  "cameraSettingsPrimaryColorHint": "ใช้สีเดียวสำหรับทุกการ์ดแทนการตรวจจับสีจากรูปภาพ",
   "cameraSceneAuto": "อัตโนมัติ",
   "cameraSceneDocument": "เอกสาร",
   "cameraSceneMenu": "เมนู",

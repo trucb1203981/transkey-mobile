@@ -1165,6 +1165,21 @@ class AppLocalizationsVi extends AppLocalizations {
       'Sau khi chụp màn hình, app giữ quyền chụp trong khoảng thời gian này để lần sau bạn chạm 2 lần Nút TransKey (hoặc chọn Dịch màn hình) không bị hỏi quyền hệ thống lại. Giữ lâu = ít thao tác hơn nhưng biểu tượng đang quay màn hình hiển thị lâu và máy hơi nóng thêm.';
 
   @override
+  String get bubbleIdleTitle => 'Tự động tắt bong bóng';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Tự động tắt bong bóng khi không sử dụng trong một khoảng thời gian. Tiết kiệm pin khi để quên.';
+
+  @override
+  String get bubbleIdleOff => 'Không bao giờ';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count phút';
+  }
+
+  @override
   String get captureKeepaliveOff => 'Tắt';
 
   @override
@@ -1320,6 +1335,13 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'Độ mờ nền của thẻ dịch. Thấp hơn = thấy ảnh gốc rõ hơn.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'Màu phủ đồng nhất';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'Dùng một màu cho tất cả thẻ thay vì nhận diện màu từ ảnh.';
 
   @override
   String get cameraSceneAuto => 'Tự động';

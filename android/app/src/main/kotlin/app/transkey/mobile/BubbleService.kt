@@ -423,6 +423,37 @@ class BubbleService : Service() {
     internal var initialTouchY = 0f
     internal var isDragging = false
 
+    // Long-press bubble → open app home screen.
+    internal var longPressFired = false
+    internal val longPressRunnable = Runnable {
+        longPressFired = true
+        resetIdleTimer()
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        startActivity(intent)
+    }
+
+    // Idle auto-stop: stop the bubble after N minutes of no interaction.
+    // Default 10 min. Read from SharedPrefs so the Flutter settings screen
+    // can change it without a MethodChannel round-trip.
+    private val idleAutoStopMs: Long
+        get() = prefs.getInt("flutter.tk_bubble_idle_minutes", 10).coerceIn(0, 120).toLong() * 60_000L
+    private val idleAutoStopRunnable = Runnable {
+        if (idleAutoStopMs > 0) {
+            android.util.Log.w("TKBubble", "bubble idle ${idleAutoStopMs / 60_000} min reached — stopping")
+            stopBubble()
+        }
+    }
+
+    /** Reset the idle auto-stop timer. Call on every user interaction. */
+    internal fun resetIdleTimer() {
+        handler.removeCallbacks(idleAutoStopRunnable)
+        if (idleAutoStopMs > 0) {
+            handler.postDelayed(idleAutoStopRunnable, idleAutoStopMs)
+        }
+    }
+
     // Double-tap → repeat last lens action (skip menu). Remembered for the
     // lifetime of the bubble session; cleared when the bubble stops.
     private data class LastLensAction(val regionMode: Boolean, val mode: String)
@@ -621,6 +652,7 @@ class BubbleService : Service() {
     @SuppressLint("ClickableViewAccessibility")
     private fun showBubble() {
         if (bubbleView != null) return
+        resetIdleTimer()
         ensureWindowManager()
         val dp = resources.displayMetrics.density
         val bubbleSize = (BUBBLE_SIZE_DP * dp).toInt()
@@ -696,6 +728,7 @@ class BubbleService : Service() {
      * Clipboard is read inside ShareActivity (foreground) when user picks a mode.
      */
     internal fun onBubbleTapped() {
+        resetIdleTimer()
         // Double-tap detect: two taps within DOUBLE_TAP_WINDOW_MS repeat the
         // last lens (screenshot-translate / region-translate) action so the
         // user doesn't have to walk Menu → Lens → Translate every time when
@@ -2184,6 +2217,7 @@ class BubbleService : Service() {
     // ── Lifecycle ──
 
     fun stopBubble() {
+        handler.removeCallbacks(idleAutoStopRunnable)
         hideModePicker()
         hideLangPicker()
         hideInputPicker()

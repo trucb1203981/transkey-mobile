@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "再スキャン許可の保持時間",
   "captureKeepaliveHint": "ダブルタップで再スキャン",
   "captureKeepaliveExplain": "スキャン後、画面キャプチャ許可をこの時間だけ保持し、次回ダブルタップ（または再度Lens選択）でシステム許可を再要求せずに済むようにします。長く保持するほど操作が減りますが、画面録画インジケーターが表示され続け、端末がわずかに発熱します。",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "オフ",
   "captureKeepaliveOffHint": "毎回許可を要求します。プライバシー・省電力重視。",
   "captureKeepaliveDefaultHint": "推奨 — 再スキャン速度とバッテリーのバランス。",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "各翻訳カードの下に元のテキストを常に表示。",
   "cameraSettingsOpacity": "オーバーレイの透明度",
   "cameraSettingsOpacityHint": "カード背景の透明度。低い = 後ろの写真がより見える。",
+  "cameraSettingsPrimaryColor": "統一オーバーレイカラー",
+  "cameraSettingsPrimaryColorHint": "写真から色を検出する代わりに、すべてのカードにアプリカラーを使用します。",
   "cameraSceneAuto": "自動",
   "cameraSceneDocument": "書類",
   "cameraSceneMenu": "メニュー",

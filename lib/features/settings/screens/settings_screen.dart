@@ -306,6 +306,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     onTap: () => context.push('/keyboard-setup?skip=false'),
                   ),
                   _captureKeepaliveTile(t, settings.captureKeepaliveSeconds),
+                  _bubbleIdleTile(t, settings.bubbleIdleMinutes),
                 ] else ...[
                   ListTile(
                     leading: const Icon(Icons.keyboard_outlined),
@@ -670,6 +671,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       await ref
           .read(appSettingsProvider.notifier)
           .setCaptureKeepaliveSeconds(picked);
+    }
+  }
+
+  Widget _bubbleIdleTile(AppLocalizations t, int minutes) {
+    return ListTile(
+      leading: const Icon(Icons.timer_outlined),
+      title: Text(t.bubbleIdleTitle),
+      subtitle: Text(
+        minutes == 0
+            ? t.bubbleIdleOff
+            : t.bubbleIdleMinutes(minutes),
+        style: const TextStyle(fontSize: 12),
+      ),
+      trailing: const Icon(Icons.chevron_right, size: 20),
+      onTap: () => _showBubbleIdlePicker(minutes, t),
+    );
+  }
+
+  Future<void> _showBubbleIdlePicker(int current, AppLocalizations t) async {
+    final picked = await OptionPickerSheet.show<int>(
+      context,
+      title: t.bubbleIdleTitle,
+      explanation: t.bubbleIdleExplain,
+      selectedValue: current,
+      options: [
+        for (final mins in bubbleIdleOptions)
+          PickerOption(
+            value: mins,
+            label: mins == 0
+                ? t.bubbleIdleOff
+                : t.bubbleIdleMinutes(mins),
+          ),
+      ],
+    );
+    if (picked != null && mounted) {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .setBubbleIdleMinutes(picked);
     }
   }
 

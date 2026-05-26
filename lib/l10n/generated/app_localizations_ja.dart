@@ -1134,6 +1134,21 @@ class AppLocalizationsJa extends AppLocalizations {
       'スキャン後、画面キャプチャ許可をこの時間だけ保持し、次回ダブルタップ（または再度Lens選択）でシステム許可を再要求せずに済むようにします。長く保持するほど操作が減りますが、画面録画インジケーターが表示され続け、端末がわずかに発熱します。';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'オフ';
 
   @override
@@ -1281,6 +1296,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cameraSettingsOpacityHint => 'カード背景の透明度。低い = 後ろの写真がより見える。';
+
+  @override
+  String get cameraSettingsPrimaryColor => '統一オーバーレイカラー';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      '写真から色を検出する代わりに、すべてのカードにアプリカラーを使用します。';
 
   @override
   String get cameraSceneAuto => '自動';

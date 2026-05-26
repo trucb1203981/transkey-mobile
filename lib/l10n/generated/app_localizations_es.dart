@@ -1181,6 +1181,21 @@ class AppLocalizationsEs extends AppLocalizations {
       'Tras una captura, conserva el permiso de captura de pantalla durante este tiempo para que un doble toque (o seleccionar Lens otra vez) no pida permiso al sistema de nuevo. Más tiempo = menos toques, pero el indicador de transmisión queda visible y el dispositivo se calienta un poco.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'Desactivado';
 
   @override
@@ -1336,6 +1351,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'Transparencia del fondo de la tarjeta. Más bajo = la foto detrás se ve más.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'Color de overlay único';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'Usar un solo color para todas las tarjetas en lugar de detectar el color de la foto.';
 
   @override
   String get cameraSceneAuto => 'Auto';

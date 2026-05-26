@@ -127,6 +127,15 @@ class CameraSettingsSheet extends ConsumerWidget {
                       .read(cameraSettingsProvider.notifier)
                       .setOverlayOpacity(v),
                 ),
+                const SizedBox(height: 16),
+                _SwitchRow(
+                  label: l.cameraSettingsPrimaryColor,
+                  hint: l.cameraSettingsPrimaryColorHint,
+                  value: settings.usePrimaryOverlayColor,
+                  onChanged: (v) => ref
+                      .read(cameraSettingsProvider.notifier)
+                      .setUsePrimaryOverlayColor(v),
+                ),
                 const SizedBox(height: 8),
               ],
             ),

@@ -161,7 +161,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   /// Lifecycle: timer that auto-stops the camera stream when the app stays
   /// in the background for too long (saves battery / avoids camera LED drain).
-  static const _backgroundStopDelay = Duration(seconds: 60);
+  static const _backgroundStopDelay = Duration(minutes: 3);
   Timer? _backgroundTimer;
   bool _cameraStoppedForBackground = false;
 
@@ -604,6 +604,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       hideLowConfidence: settings.hideLowConfidence,
       showOriginalAlways: settings.showOriginalAlways,
       overlayOpacity: settings.overlayOpacity,
+      usePrimaryColor: settings.usePrimaryOverlayColor,
       onExplain: _explainBlock,
       onBlockTap: _openBlockActionSheet,
     );
@@ -2178,12 +2179,47 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   Future<void> _translateAndShow() async {
     try {
       final texts = _blocks.map((b) => b.text).toList();
-      final translations = await _translateBatch(texts);
+      if (texts.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _translations = [];
+          _step = _resultStepRespectingBatch();
+        });
+        return;
+      }
+
+      // Phase 1: probe cache synchronously and show overlay immediately
+      // with cache hits + original text as placeholder for misses.
+      final cache = _probeTranslationCache(texts);
+      final initialTranslations = List<String>.generate(
+        texts.length,
+        (i) => cache.results[i] ?? texts[i],
+      );
+
       if (!mounted) return;
       setState(() {
-        _translations = translations;
+        _translations = initialTranslations;
         _step = _resultStepRespectingBatch();
       });
+
+      // All cache hits → no network needed.
+      if (cache.missIndices.isEmpty) return;
+
+      // Phase 2: progressive chunk translation for cache misses.
+      await _translateBatch(
+        texts,
+        forceRefresh: false,
+        onChunkDone: (partialTranslations, updatedIndices) {
+          if (!mounted) return;
+          setState(() {
+            final updated = List<String>.from(_translations);
+            for (var j = 0; j < updatedIndices.length; j++) {
+              updated[updatedIndices[j]] = partialTranslations[j];
+            }
+            _translations = updated;
+          });
+        },
+      );
     } catch (e) {
       debugPrint('[Camera] Translate failed: $e');
       if (!mounted) return;
@@ -2194,25 +2230,25 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  Future<List<String>> _translateBatch(
+  /// Probes the per-session translation cache for [texts]. Returns a record
+  /// with partial results (null for misses), miss indices/texts, and hit count.
+  /// Shared between [_translateAndShow] (immediate overlay) and
+  /// [_translateBatch] (network fallback).
+  ({
+    List<String?> results,
+    List<int> missIndices,
+    List<String> missTexts,
+    int cacheHits,
+  }) _probeTranslationCache(
     List<String> texts, {
     bool forceRefresh = false,
-  }) async {
+  }) {
     final langSettings = ref.read(languageSettingsProvider).valueOrNull;
     final targetLang = langSettings?.targetLang ?? 'en';
     final sourceLang = langSettings?.sourceLang ?? 'auto';
     final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
         CameraScene.auto;
 
-    // Probe the per-session cache before hitting the network. When the
-    // camera is steady between captures the OCR text usually repeats
-    // verbatim (or near-verbatim — see TranslationCache fuzzy match);
-    // serving those from cache turns a ~1-2 s round-trip into ~0 ms
-    // and saves the user's translation quota.
-    //
-    // [forceRefresh] skips the lookup (used by per-block retry): the
-    // whole point of "Translate again" is to get a NEW result, so
-    // serving the cached one defeats the action.
     final results = List<String?>.filled(texts.length, null);
     final missIndices = <int>[];
     final missTexts = <String>[];
@@ -2234,20 +2270,41 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         missTexts.add(texts[i]);
       }
     }
+    return (
+      results: results,
+      missIndices: missIndices,
+      missTexts: missTexts,
+      cacheHits: cacheHits,
+    );
+  }
+
+  Future<List<String>> _translateBatch(
+    List<String> texts, {
+    bool forceRefresh = false,
+    void Function(List<String> partialTranslations, List<int> updatedIndices)?
+        onChunkDone,
+  }) async {
+    final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+    final targetLang = langSettings?.targetLang ?? 'en';
+    final sourceLang = langSettings?.sourceLang ?? 'auto';
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+
+    // Probe the per-session cache before hitting the network.
+    final probe = _probeTranslationCache(texts, forceRefresh: forceRefresh);
+    final results = probe.results;
+    final missIndices = probe.missIndices;
+    final missTexts = probe.missTexts;
 
     if (texts.isNotEmpty) {
-      // Fire BEFORE any await so the event lands even if /translate-batch
-      // throws — we want to see hit-rate trends regardless of network
-      // outcome.
       ref.read(trackingServiceProvider).event('translate_cache', properties: {
-        'hits':   cacheHits,
-        'total':  texts.length,
-        'scene':  scene.id,
+        'hits': probe.cacheHits,
+        'total': texts.length,
+        'scene': scene.id,
       });
     }
 
-    // All-hit fast path: skip the API entirely. This is the
-    // "camera-steady retake" win the cache exists for.
+    // All-hit fast path: skip the API entirely.
     if (missTexts.isEmpty) {
       return results.cast<String>();
     }
@@ -2255,8 +2312,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     try {
       final session = await SessionStore().load();
       if (session == null) {
-        // No session: misses can't translate, return originals so the
-        // result overlay still renders the OCR text.
         for (final idx in missIndices) {
           results[idx] = texts[idx];
         }
@@ -2265,15 +2320,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
       final api = ref.read(apiClientProvider);
 
-      // Chunk to /translate-batch's server-side limit (ArrayMaxSize(60)).
-      // A dense menu / document capture can produce 100+ OCR blocks; the
-      // unchunked code path used to send them all and eat a 400 silently
-      // (the user saw a failed translate with no idea why). We split
-      // into chunks of [_batchChunkSize], run them in PARALLEL so the
-      // user doesn't pay 2-3x latency for a wide capture, then stitch
-      // the results back in the original miss order. One chunk failing
-      // doesn't poison the others — its misses fall back to the OCR
-      // text individually.
       final chunkRanges = <(int start, int end)>[];
       for (var i = 0; i < missTexts.length; i += _batchChunkSize) {
         chunkRanges.add(
@@ -2281,27 +2327,82 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         );
       }
 
+      // Progressive path: fire all chunks in parallel, deliver each
+      // result via onChunkDone as soon as it completes (completion-order,
+      // not submission-order). This gives the speed of Future.wait while
+      // still updating the overlay incrementally.
+      if (onChunkDone != null) {
+        await Future.wait(chunkRanges.map((range) async {
+          final (start, end) = range;
+          final partialTranslations = <String>[];
+          final partialIndices = <int>[];
+          try {
+            final response = await api.dio.post('/translate-batch', data: {
+              'texts': missTexts.sublist(start, end),
+              'targetLang': targetLang,
+              'appHint': 'camera',
+              'scene': scene.id,
+            });
+            final data = response.data as Map?;
+            if (_captureSourceLang == null) {
+              final rawSrc =
+                  (data?['detectedSourceLang'] as String?)?.toLowerCase();
+              if (rawSrc != null &&
+                  RegExp(r'^[a-z]{2}$').hasMatch(rawSrc)) {
+                _captureSourceLang = rawSrc;
+              }
+            }
+            final raw = data?['translations'] as List?;
+            for (var k = 0; k < end - start; k++) {
+              final missIdx = start + k;
+              final origIdx = missIndices[missIdx];
+              final originalText = texts[origIdx];
+              final value =
+                  (raw != null && k < raw.length) ? raw[k] : null;
+              final translation =
+                  value is String && value.trim().isNotEmpty
+                      ? value
+                      : originalText;
+              results[origIdx] = translation;
+              partialIndices.add(origIdx);
+              partialTranslations.add(translation);
+              if (translation != originalText) {
+                TranslationCache.instance.store(
+                  text: originalText,
+                  sourceLang: sourceLang,
+                  targetLang: targetLang,
+                  scene: scene.id,
+                  translation: translation,
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint(
+                '[Camera] Translate chunk failed ($start-$end): $e');
+            for (var k = 0; k < end - start; k++) {
+              final missIdx = start + k;
+              final origIdx = missIndices[missIdx];
+              results[origIdx] = texts[origIdx];
+              partialIndices.add(origIdx);
+              partialTranslations.add(texts[origIdx]);
+            }
+          }
+          onChunkDone(partialTranslations, partialIndices);
+        }));
+        return results.cast<String>();
+      }
+
+      // Batch path: run all chunks in parallel, return when all done.
       final chunkResults = await Future.wait(chunkRanges.map((range) async {
         final (start, end) = range;
         try {
           final response = await api.dio.post('/translate-batch', data: {
-            // Send only the misses — server cost scales with payload,
-            // so partial hits still cut tokens proportionally.
             'texts': missTexts.sublist(start, end),
             'targetLang': targetLang,
             'appHint': 'camera',
-            // Server uses this to inject scene-specific guidance into
-            // the batch prompt (menu-vs-document priorities differ a lot).
             'scene': scene.id,
           });
           final data = response.data as Map?;
-          // Adopt the server's detected source language from the FIRST
-          // chunk that reports it — every chunk of one capture shares
-          // the same source, so we don't gain anything by checking
-          // later chunks too. Only set when null to avoid clobbering
-          // a value already populated by the vision path (mixed case
-          // where vision ran AND batch ran — but that doesn't happen
-          // in the current flow, so this is defence-in-depth).
           if (_captureSourceLang == null) {
             final rawSrc =
                 (data?['detectedSourceLang'] as String?)?.toLowerCase();
@@ -2328,9 +2429,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               ? value
               : originalText;
           results[origIdx] = translation;
-          // Don't cache the fallback-to-original case — TranslationCache
-          // would do the same comparison and skip, but bailing here is
-          // cheaper and clearer.
           if (translation != originalText) {
             TranslationCache.instance.store(
               text: originalText,

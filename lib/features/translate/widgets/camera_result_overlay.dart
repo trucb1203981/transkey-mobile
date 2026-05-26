@@ -105,6 +105,7 @@ class CameraResultOverlay extends StatefulWidget {
     this.hideLowConfidence = false,
     this.showOriginalAlways = false,
     this.overlayOpacity = 0.95,
+    this.usePrimaryColor = false,
     this.onExplain,
     this.onBlockTap,
   });
@@ -139,6 +140,10 @@ class CameraResultOverlay extends StatefulWidget {
   /// (matching DeepL's overlay), lower values let the original text
   /// bleed through.
   final double overlayOpacity;
+
+  /// When true, all cards use a single primary color instead of per-block
+  /// sampled background colors.
+  final bool usePrimaryColor;
 
   final ValueChanged<OcrBlock>? onExplain;
   final void Function(int index, OcrBlock block, String translation)?
@@ -247,6 +252,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
   }
 
   Future<void> _startBgSampling() async {
+    if (widget.usePrimaryColor) return;
     final path = widget.imagePath;
     if (path == null || widget.blocks.isEmpty) return;
     final rects = widget.blocks.map((b) => b.boundingBox).toList();
@@ -495,7 +501,9 @@ class _CameraResultOverlayState extends State<CameraResultOverlay> {
                   showOriginal: widget.showOriginal,
                   showOriginalAlways: widget.showOriginalAlways,
                   overlayOpacity: widget.overlayOpacity,
-                  bgColor: _bgColors[card.index] ?? BgColorSampler.fallback,
+                  bgColor: widget.usePrimaryColor
+                      ? const Color(0xFF6C63FF)
+                      : (_bgColors[card.index] ?? BgColorSampler.fallback),
                   fadedForDelete:
                       _draggingIndex == card.index && _overTrash,
                   onTap: () {

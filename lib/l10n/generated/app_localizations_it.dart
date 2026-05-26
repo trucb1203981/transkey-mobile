@@ -1183,6 +1183,21 @@ class AppLocalizationsIt extends AppLocalizations {
       'Dopo una scansione dello schermo, mantieni pronta l\'autorizzazione di cattura schermo per poter fare doppio tocco sul pulsante (o scegliere di nuovo Scansiona schermo) senza la richiesta di sistema. Finestre più lunghe risparmiano tocchi ma mantengono visibile l\'indicatore di trasmissione e riscaldano leggermente il dispositivo.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'Disattivato';
 
   @override
@@ -1338,6 +1353,13 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'Trasparenza dello sfondo della scheda. Più basso = la foto dietro è più visibile.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'Colore overlay unico';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'Usa un solo colore per tutte le schede invece di rilevare il colore dalla foto.';
 
   @override
   String get cameraSceneAuto => 'Auto';

@@ -1120,6 +1120,21 @@ class AppLocalizationsZh extends AppLocalizations {
       '扫屏后在此时段内保留屏幕录制权限，下次双击悬浮按钮（或再次选择 Lens）时无需重新弹出系统授权。保留越久操作越少，但投屏指示器会持续显示，设备会略微发热。';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => '关闭';
 
   @override
@@ -1267,6 +1282,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cameraSettingsOpacityHint => '卡片背景透明度。低 = 后面照片更可见。';
+
+  @override
+  String get cameraSettingsPrimaryColor => '统一覆盖颜色';
+
+  @override
+  String get cameraSettingsPrimaryColorHint => '使用单一应用颜色代替从照片中检测每个卡片的背景色。';
 
   @override
   String get cameraSceneAuto => '自动';

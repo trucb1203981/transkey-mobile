@@ -1165,6 +1165,21 @@ class AppLocalizationsTh extends AppLocalizations {
       'หลังจากสแกนหน้าจอ ให้คงสิทธิ์จับภาพหน้าจอไว้ เพื่อให้คุณแตะสองครั้งที่ปุ่ม (หรือเลือกสแกนหน้าจออีกครั้ง) ได้โดยไม่ต้องผ่านการขอสิทธิ์จากระบบ ระยะที่ยาวขึ้นช่วยลดการแตะ แต่จะคงตัวบ่งชี้การส่งสัญญาณไว้ และทำให้อุปกรณ์อุ่นขึ้นเล็กน้อย';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'ปิด';
 
   @override
@@ -1319,6 +1334,13 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'ความโปร่งของพื้นหลังการ์ด ต่ำ = เห็นรูปด้านหลังมากขึ้น';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'สีโอเวอร์เลย์เดียว';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'ใช้สีเดียวสำหรับทุกการ์ดแทนการตรวจจับสีจากรูปภาพ';
 
   @override
   String get cameraSceneAuto => 'อัตโนมัติ';

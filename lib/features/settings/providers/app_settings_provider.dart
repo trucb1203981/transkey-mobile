@@ -11,6 +11,7 @@ const _kReplyToneOverride = 'tk_reply_tone_override';
 const _kReplyLang = 'tk_reply_lang';
 const _kAutoCloseSeconds = 'tk_auto_close_seconds';
 const _kCaptureKeepaliveSeconds = 'tk_capture_keepalive_s';
+const _kBubbleIdleMinutes = 'tk_bubble_idle_minutes';
 
 /// How long the native screen-capture grant stays alive after a scan so
 /// the next scan (double-tap repeat, or another menu pick) can reuse the
@@ -18,6 +19,12 @@ const _kCaptureKeepaliveSeconds = 'tk_capture_keepalive_s';
 /// 0 = release immediately. Max 300s (5 min) enforced both sides.
 const captureKeepaliveOptions = <int>[0, 60, 180, 300];
 const captureKeepaliveDefault = 180;
+
+/// How long the bubble stays alive with no interaction before auto-stopping.
+/// Native BubbleService reads `tk_bubble_idle_minutes` from SharedPrefs.
+/// 0 = never auto-stop. Max 120 min.
+const bubbleIdleOptions = <int>[0, 5, 10, 30, 60, 120];
+const bubbleIdleDefault = 10;
 
 class AppSettings {
   const AppSettings({
@@ -29,6 +36,7 @@ class AppSettings {
     this.replyLang = '',
     this.autoCloseSeconds = 0,
     this.captureKeepaliveSeconds = captureKeepaliveDefault,
+    this.bubbleIdleMinutes = bubbleIdleDefault,
   });
 
   final bool historySave;
@@ -39,6 +47,7 @@ class AppSettings {
   final String replyLang;
   final int autoCloseSeconds;
   final int captureKeepaliveSeconds;
+  final int bubbleIdleMinutes;
 
   AppSettings copyWith({
     bool? historySave,
@@ -49,6 +58,7 @@ class AppSettings {
     String? replyLang,
     int? autoCloseSeconds,
     int? captureKeepaliveSeconds,
+    int? bubbleIdleMinutes,
   }) =>
       AppSettings(
         historySave: historySave ?? this.historySave,
@@ -60,6 +70,8 @@ class AppSettings {
         autoCloseSeconds: autoCloseSeconds ?? this.autoCloseSeconds,
         captureKeepaliveSeconds:
             captureKeepaliveSeconds ?? this.captureKeepaliveSeconds,
+        bubbleIdleMinutes:
+            bubbleIdleMinutes ?? this.bubbleIdleMinutes,
       );
 }
 
@@ -85,6 +97,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       autoCloseSeconds: prefs.getInt(_kAutoCloseSeconds) ?? 0,
       captureKeepaliveSeconds:
           prefs.getInt(_kCaptureKeepaliveSeconds) ?? captureKeepaliveDefault,
+      bubbleIdleMinutes:
+          prefs.getInt(_kBubbleIdleMinutes) ?? bubbleIdleDefault,
     );
   }
 
@@ -103,7 +117,8 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
         current.replyToneOverride == fresh.replyToneOverride &&
         current.replyLang == fresh.replyLang &&
         current.autoCloseSeconds == fresh.autoCloseSeconds &&
-        current.captureKeepaliveSeconds == fresh.captureKeepaliveSeconds) {
+        current.captureKeepaliveSeconds == fresh.captureKeepaliveSeconds &&
+        current.bubbleIdleMinutes == fresh.bubbleIdleMinutes) {
       return;
     }
     state = AsyncData(fresh);
@@ -180,6 +195,15 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
     final current = state.valueOrNull ?? const AppSettings();
     state = AsyncData(current.copyWith(captureKeepaliveSeconds: clamped));
     _trackChange('capture_keepalive_seconds', clamped);
+  }
+
+  Future<void> setBubbleIdleMinutes(int value) async {
+    final clamped = value.clamp(0, 120);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kBubbleIdleMinutes, clamped);
+    final current = state.valueOrNull ?? const AppSettings();
+    state = AsyncData(current.copyWith(bubbleIdleMinutes: clamped));
+    _trackChange('bubble_idle_minutes', clamped);
   }
 }
 

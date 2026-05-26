@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "快速再次截图保留时长",
   "captureKeepaliveHint": "双击悬浮按钮即可再扫",
   "captureKeepaliveExplain": "扫屏后在此时段内保留屏幕录制权限，下次双击悬浮按钮（或再次选择 Lens）时无需重新弹出系统授权。保留越久操作越少，但投屏指示器会持续显示，设备会略微发热。",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "关闭",
   "captureKeepaliveOffHint": "每次扫屏都需重新授权。最省电、最注重隐私。",
   "captureKeepaliveDefaultHint": "推荐 — 平衡再扫速度与电池消耗。",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "始终在每张翻译卡片下显示原文。",
   "cameraSettingsOpacity": "覆盖层不透明度",
   "cameraSettingsOpacityHint": "卡片背景透明度。低 = 后面照片更可见。",
+  "cameraSettingsPrimaryColor": "统一覆盖颜色",
+  "cameraSettingsPrimaryColorHint": "使用单一应用颜色代替从照片中检测每个卡片的背景色。",
   "cameraSceneAuto": "自动",
   "cameraSceneDocument": "文档",
   "cameraSceneMenu": "菜单",

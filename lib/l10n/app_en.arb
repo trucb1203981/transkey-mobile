@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "Quick re-scan window",
   "captureKeepaliveHint": "double-tap bubble = re-scan",
   "captureKeepaliveExplain": "After a screen scan, keep screen-capture permission ready so you can double-tap the bubble (or pick Lens again) without the system permission prompt. Longer windows save taps but keep the casting indicator visible and slightly warm the device.",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery on long idle.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "Off",
   "captureKeepaliveOffHint": "Each scan asks for permission again. Best for privacy / battery.",
   "captureKeepaliveDefaultHint": "Recommended — balances re-scan speed with battery.",
@@ -557,6 +569,8 @@
   "cameraSettingsShowOriginalHint": "Always show the source text under each translation card.",
   "cameraSettingsOpacity": "Overlay opacity",
   "cameraSettingsOpacityHint": "Card background transparency. Lower = see more of the photo behind.",
+  "cameraSettingsPrimaryColor": "Single overlay color",
+  "cameraSettingsPrimaryColorHint": "Use one app color for all cards instead of matching each card to the photo.",
   "cameraSceneAuto": "Auto",
   "cameraSceneDocument": "Document",
   "cameraSceneMenu": "Menu",

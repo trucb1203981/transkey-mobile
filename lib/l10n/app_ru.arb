@@ -490,6 +490,18 @@
   "captureKeepaliveTitle": "Окно быстрого повторного сканирования",
   "captureKeepaliveHint": "двойной тап по кнопке = повторное сканирование",
   "captureKeepaliveExplain": "После сканирования экрана сохраняйте разрешение на захват экрана активным, чтобы можно было дважды нажать кнопку (или снова выбрать «Сканировать экран») без системного запроса разрешения. Более длинное окно экономит нажатия, но индикатор трансляции остаётся видимым и слегка нагревает устройство.",
+
+  "bubbleIdleTitle": "Bubble auto-stop",
+  "bubbleIdleExplain": "Stop the floating bubble when you haven't used it for a while. Saves battery.",
+  "bubbleIdleOff": "Never",
+  "bubbleIdleMinutes": "{count} min",
+  "@bubbleIdleMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "captureKeepaliveOff": "Выкл.",
   "captureKeepaliveOffHint": "Каждое сканирование снова запрашивает разрешение. Лучше для приватности / аккумулятора.",
   "captureKeepaliveDefaultHint": "Рекомендуется — баланс между скоростью повторного сканирования и аккумулятором.",
@@ -546,6 +558,8 @@
   "cameraSettingsShowOriginalHint": "Всегда показывать исходный текст под каждой карточкой перевода.",
   "cameraSettingsOpacity": "Непрозрачность наложения",
   "cameraSettingsOpacityHint": "Прозрачность фона карточки. Меньше = фото сзади видно лучше.",
+  "cameraSettingsPrimaryColor": "Единый цвет оверлея",
+  "cameraSettingsPrimaryColorHint": "Использовать один цвет для всех карточек вместо определения цвета из фото.",
   "cameraSceneAuto": "Авто",
   "cameraSceneDocument": "Документ",
   "cameraSceneMenu": "Меню",

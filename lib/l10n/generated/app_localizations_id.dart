@@ -1178,6 +1178,21 @@ class AppLocalizationsId extends AppLocalizations {
       'Setelah memindai layar, biarkan izin tangkapan layar tetap aktif agar Anda dapat mengetuk dua kali tombol (atau memilih Pindai layar lagi) tanpa permintaan izin sistem. Jendela yang lebih panjang menghemat ketukan tetapi membuat indikator casting tetap terlihat dan sedikit memanaskan perangkat.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => 'Mati';
 
   @override
@@ -1333,6 +1348,13 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get cameraSettingsOpacityHint =>
       'Transparansi latar kartu. Lebih rendah = foto di belakang lebih terlihat.';
+
+  @override
+  String get cameraSettingsPrimaryColor => 'Warna overlay tunggal';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      'Gunakan satu warna untuk semua kartu alih-alih mendeteksi warna dari foto.';
 
   @override
   String get cameraSceneAuto => 'Otomatis';

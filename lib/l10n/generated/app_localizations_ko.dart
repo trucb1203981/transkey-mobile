@@ -1135,6 +1135,21 @@ class AppLocalizationsKo extends AppLocalizations {
       '화면 스캔 후 이 시간 동안 화면 캡처 권한을 유지하여 다음에 더블탭(또는 Lens 재선택) 시 시스템 권한 창이 다시 뜨지 않게 합니다. 길게 유지하면 조작이 줄지만, 캐스팅 표시가 오래 보이고 기기가 약간 더 따뜻해집니다.';
 
   @override
+  String get bubbleIdleTitle => 'Bubble auto-stop';
+
+  @override
+  String get bubbleIdleExplain =>
+      'Stop the floating bubble when you haven\'t used it for a while. Saves battery.';
+
+  @override
+  String get bubbleIdleOff => 'Never';
+
+  @override
+  String bubbleIdleMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
   String get captureKeepaliveOff => '끄기';
 
   @override
@@ -1283,6 +1298,13 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cameraSettingsOpacityHint => '카드 배경 투명도. 낮을수록 뒤의 사진이 더 보임.';
+
+  @override
+  String get cameraSettingsPrimaryColor => '통일 오버레이 색상';
+
+  @override
+  String get cameraSettingsPrimaryColorHint =>
+      '사진에서 색상을 감지하는 대신 모든 카드에 앱 색상을 사용합니다.';
 
   @override
   String get cameraSceneAuto => '자동';
