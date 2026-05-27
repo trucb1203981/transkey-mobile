@@ -31,6 +31,7 @@ import '../widgets/camera_result_overlay.dart';
 import '../widgets/camera_settings_sheet.dart';
 import '../widgets/camera_tips_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
+
 import '../widgets/scene_picker_row.dart';
 import '../widgets/what_is_this_sheet.dart';
 
@@ -48,6 +49,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   final _cameraService = CameraService();
   _CameraStep _step = _CameraStep.preview;
   bool _flashOn = false;
+
+  bool _mangaUiVisible = true;
 
   String? _capturedPath;
   ui.Size? _capturedImageSize;
@@ -188,6 +191,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   static const _backgroundStopDelay = Duration(minutes: 3);
   Timer? _backgroundTimer;
   bool _cameraStoppedForBackground = false;
+  bool _cameraDisposed = false;
 
   @override
   void initState() {
@@ -199,6 +203,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     // button.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) CameraTipsSheet.showIfFirstTime(context);
+    });
+    // Scene picker on entry — force a conscious choice up-front so manga
+    // pages don't accidentally go through ML Kit (scene=auto), which
+    // fragments speech bubbles. Scheduled AFTER the tips sheet's first
+    // frame so they don't stack. The chip row in the bottom bar lets
+    // the user change scene later without re-entering the screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) SceneEntrySheet.show(context);
     });
     final langs = ref.read(languageSettingsProvider).valueOrNull;
     ref.read(trackingServiceProvider).event('camera_open', properties: {
@@ -243,6 +255,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
     try {
       await _cameraService.init();
+      _cameraDisposed = false;
       if (mounted) {
         setState(() {});
         _startStream();
@@ -359,6 +372,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     if (_step != _CameraStep.preview) return;
     _cameraService.dispose();
     _cameraStoppedForBackground = true;
+    _cameraDisposed = true;
     _liveBlocks = [];
     _liveTracker.reset();
     debugPrint('[Camera] Stopped for background (battery save)');
@@ -386,7 +400,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         fit: StackFit.expand,
         children: [
           _buildBody(l),
-          _buildTopBar(l),
+          if (!(_step == _CameraStep.result &&
+              !_mangaUiVisible &&
+              (ref.read(cameraSettingsProvider).valueOrNull?.scene ==
+                  CameraScene.manga)))
+            _buildTopBar(l),
           if (_step == _CameraStep.preview) _buildBottomControls(l),
           if (_step == _CameraStep.preview && _isBlurry) _buildBlurOverlay(l),
           if (_cameraStoppedForBackground)
@@ -631,6 +649,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       overlayOpacity: settings.overlayOpacity,
       usePrimaryColor: settings.usePrimaryOverlayColor,
       pendingIndices: _pendingIndices,
+      mangaMode: settings.scene == CameraScene.manga,
+      onBackgroundTap: settings.scene == CameraScene.manga
+          ? () => setState(() => _mangaUiVisible = !_mangaUiVisible)
+          : null,
       onExplain: _explainBlock,
       onBlockTap: _openBlockActionSheet,
     );
@@ -924,9 +946,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     final messenger = ScaffoldMessenger.maybeOf(context);
     messenger?.showSnackBar(
-      const SnackBar(
-        content: Text('Splitting items…'),
-        duration: Duration(seconds: 4),
+      SnackBar(
+        content: Text(AppLocalizations.of(context)?.splittingItems ?? 'Splitting items…'),
+        duration: const Duration(seconds: 4),
       ),
     );
 
@@ -1086,7 +1108,22 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
     final settings = ref.watch(cameraSettingsProvider).valueOrNull ??
         CameraSettings.defaults;
-    return Stack(
+    final isManga = settings.scene == CameraScene.manga;
+
+    return GestureDetector(
+      // Manga: horizontal swipe switches batch pages; tap empty area
+      // toggles UI chrome visibility.
+      onHorizontalDragEnd: isManga && _batchQueue.length > 1
+          ? (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity < -300) {
+                _switchBatch(_activeBatchIndex + 1);
+              } else if (velocity > 300) {
+                _switchBatch(_activeBatchIndex - 1);
+              }
+            }
+          : null,
+      child: Stack(
       fit: StackFit.expand,
       children: [
         // Shareable sub-tree: everything users want in the exported PNG
@@ -1144,7 +1181,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     ),
                   ),
                 ),
-              if (_visionConfidence != null || _showDetectedSceneChip)
+              if (!isManga || _mangaUiVisible)
+                if (_visionConfidence != null || _showDetectedSceneChip)
                 Positioned(
                   top: 0,
                   left: 16,
@@ -1169,13 +1207,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             ],
           ),
         ),
+
         // Multi-pick batch nav — shown only when the gallery flow
         // produced more than one image. Centered horizontally at the
         // top so it doesn't fight either confidence chip (left) or
         // the close X (also left in the top bar — different row).
         // Outside the RepaintBoundary so a Share screenshot doesn't
         // bake "2 / 4" + arrow controls into the exported PNG.
-        if (_batchQueue.length > 1)
+        if (_batchQueue.length > 1 && (!isManga || _mangaUiVisible))
           Positioned(
             top: 0,
             left: 0,
@@ -1194,12 +1233,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               ),
             ),
           ),
-        // Discoverability hint for the new per-card "What is this?"
-        // gesture. Stays subtle (white12 background, small font) so it
-        // doesn't compete with the translation cards. Anchored above
-        // the action bar so the user notices it while scanning the
-        // result screen.
-        Positioned(
+        // Discoverability hint + action bar — hide in manga reading mode.
+        if (!isManga || _mangaUiVisible) ...[
+          // Discoverability hint for the new per-card "What is this?"
+          // gesture. Stays subtle (white12 background, small font) so it
+          // doesn't compete with the translation cards. Anchored above
+          // the action bar so the user notices it while scanning the
+          // result screen.
+          Positioned(
           left: 0,
           right: 0,
           bottom: 100,
@@ -1289,7 +1330,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             ),
           ),
         ),
+        ],
       ],
+    ),
     );
   }
 
@@ -1671,6 +1714,18 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// menus (2-4 pages); the batch flow surfaces arrow nav at the top of
   /// the result so the user can flip between pages without re-picking.
   Future<void> _pickFromGallery() async {
+    // Stop the live camera feed BEFORE handing off to the OS picker —
+    // the preview keeps the sensor + GPU pipeline hot otherwise, draining
+    // battery + heating the device while the user is in another activity
+    // browsing photos. Restart only if the user cancels (returns to
+    // preview). Success path transitions to translating/result and won't
+    // need the camera back until the user explicitly returns to preview.
+    _cameraService.dispose();
+    _cameraDisposed = true;
+    _liveBlocks = [];
+    _liveTracker.reset();
+    if (mounted) setState(() {});
+
     final List<XFile> rawPicked;
     try {
       rawPicked = await ImagePicker().pickMultiImage(
@@ -1684,9 +1739,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
     } catch (e) {
       debugPrint('[Camera] Gallery pick failed: $e');
+      // Restore camera so the user lands on a working preview, not a black
+      // screen, if the picker itself crashed.
+      if (mounted && _step == _CameraStep.preview) _startStream();
       return;
     }
-    if (rawPicked.isEmpty) return; // user cancelled
+    if (rawPicked.isEmpty) {
+      // User cancelled — restart camera so the preview is live again.
+      if (mounted && _step == _CameraStep.preview) _startStream();
+      return;
+    }
     if (!mounted) return;
 
     // Cap picks at _kMaxBatchImages - over-picking is almost always a
@@ -1732,12 +1794,19 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         scene == CameraScene.manga ||
         _sourceNeedsVision(sourceLang);
 
-    if (visionOnly) {
-      // Vision-only scenes (sign + non-ML-Kit scripts) keep the original
-      // sequential flow because /translate-image and its scene/source-lang
-      // chip wiring live inside _captureWithVision which mutates shared
-      // state. Parallelising them would race the singletons; this path
-      // is also a less-common gallery use case.
+    if (scene == CameraScene.manga) {
+      // Manga: fire all pages' vision calls IN PARALLEL. Reading a comic =
+      // many pages picked at once; sequential vision (≈10s × N) was the
+      // bottleneck. _runVisionPure does the network+parse with no shared-
+      // state mutation, so they run concurrently and the first ready page
+      // surfaces immediately while the rest finish in the background.
+      await _runBatchParallelVision(picked, scene: scene);
+    } else if (visionOnly) {
+      // sign + non-ML-Kit-script sources keep the sequential flow:
+      // _captureWithVision owns scene/source-lang retry + the Google Vision
+      // last-resort fallback, which _runVisionPure deliberately omits.
+      // These are lower-volume gallery cases where the extra robustness
+      // matters more than batch speed.
       await _runBatchSequential(picked);
     } else {
       // Menu / document / screenshot / auto — the common gallery case.
@@ -1868,6 +1937,208 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           _step = _resultStepRespectingBatch();
         }
       });
+    }
+  }
+
+  /// Parallel-vision batch path for the COMIC/MANGA scene. Mirrors
+  /// [_runBatchParallelOcr] but the per-image job is a complete vision
+  /// round-trip (OCR + translate + boxes in one server call) instead of
+  /// ML Kit OCR. All pages fire concurrently; the first to finish flips
+  /// the UI out of the spinner so the user starts reading immediately.
+  Future<void> _runBatchParallelVision(
+    List<XFile> picked, {
+    required CameraScene scene,
+  }) async {
+    // Phase 1: kick off ALL vision calls in parallel (pure — no shared
+    // state writes), materialised with .toList() so they all start now.
+    final jobs =
+        picked.map((file) => _runVisionPure(file.path, scene: scene.id)).toList();
+
+    // Phase 2: drain in pick-order; first ready page surfaces immediately.
+    for (var i = 0; i < jobs.length; i++) {
+      if (!mounted) return;
+      final snap = await jobs[i];
+      if (!mounted) return;
+      _batchQueue.add(snap);
+      setState(() {
+        _batchDone = i + 1;
+        if (_batchQueue.length == 1) {
+          _activeBatchIndex = 0;
+          _restoreFromSnapshot(snap);
+          _isBatchProcessing = false;
+          _step = _resultStepRespectingBatch();
+        }
+      });
+    }
+  }
+
+  /// Pure (no shared-state writes) vision round-trip used by the parallel
+  /// manga batch. Decodes the image for its dimensions, compresses +
+  /// POSTs /translate-image?withBoxes=true, parses the per-block boxes,
+  /// and returns a ready [_BatchSnapshot]. Returns null on failure.
+  ///
+  /// Deliberately does NOT carry _captureWithVision's scene-retry or the
+  /// Google Vision last-resort fallback — manga reliably returns blocks
+  /// from the vision LLM, and keeping this pure is what lets N pages run
+  /// concurrently without racing the result singletons.
+  Future<_BatchSnapshot> _runVisionPure(
+    String path, {
+    required String scene,
+  }) async {
+    try {
+      final bytes = await File(path).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final size = Size(
+        frame.image.width.toDouble(),
+        frame.image.height.toDouble(),
+      );
+      frame.image.dispose();
+      codec.dispose();
+
+      final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+      final targetLang = langSettings?.targetLang ?? 'en';
+      final sourceLang = langSettings?.sourceLang;
+      final api = ref.read(apiClientProvider);
+      final compressed =
+          await _cameraService.compressForVision(bytes, scene: scene);
+      final imageBase64 = base64Encode(compressed);
+
+      // Use the compressed (EXIF-baked) image dimensions so bounding
+      // boxes from the vision model align with the displayed image.
+      // Raw codec dimensions may differ from the EXIF-corrected
+      // orientation, causing a coordinate-space mismatch.
+      final compCodec = await ui.instantiateImageCodec(compressed);
+      final compFrame = await compCodec.getNextFrame();
+      final compSize = Size(
+        compFrame.image.width.toDouble(),
+        compFrame.image.height.toDouble(),
+      );
+      compFrame.image.dispose();
+      compCodec.dispose();
+
+      final response = await api.dio.post('/translate-image', data: {
+        'imageBase64': imageBase64,
+        'targetLang': targetLang,
+        'scene': scene,
+        if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
+          'sourceLang': sourceLang,
+        'withBoxes': true,
+        'imageWidth': compSize.width.round(),
+        'imageHeight': compSize.height.round(),
+      });
+
+      final data = response.data as Map?;
+      final visionConfidence = (data?['confidence'] as String?)?.toLowerCase();
+      final mappedConfidence = _mapVisionConfidenceToScore(visionConfidence, scene);
+      final confChip = (visionConfidence == 'high' ||
+              visionConfidence == 'medium' ||
+              visionConfidence == 'low')
+          ? visionConfidence
+          : null;
+      final rawSrcLang = (data?['sourceLang'] as String?)?.toLowerCase();
+      final captureSourceLang =
+          (rawSrcLang != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrcLang))
+              ? rawSrcLang
+              : null;
+
+      // Primary path: per-block boxes (one card per speech bubble).
+      final rawBlocks = data?['blocks'];
+      if (rawBlocks is List && rawBlocks.isNotEmpty) {
+        final vb = <OcrBlock>[];
+        final vt = <String>[];
+        for (final b in rawBlocks) {
+          if (b is! Map) continue;
+          final original = (b['original'] as String?)?.trim() ?? '';
+          final trVi = (b['translation'] as String?)?.trim() ?? '';
+          if (original.isEmpty && trVi.isEmpty) continue;
+          final box = b['box'];
+          if (box is! List || box.length != 4) continue;
+          double n(int i) => (box[i] is num) ? (box[i] as num).toDouble() : 0.0;
+          final ymin = n(0), xmin = n(1), ymax = n(2), xmax = n(3);
+          if (xmax <= xmin || ymax <= ymin) continue;
+          vb.add(OcrBlock(
+            text: original,
+            boundingBox: Rect.fromLTRB(xmin, ymin, xmax, ymax),
+            confidence: mappedConfidence,
+          ));
+          vt.add(trVi);
+        }
+        if (vb.isNotEmpty) {
+          return _BatchSnapshot(
+            path: path,
+            imageSize: compSize,
+            blocks: vb,
+            translations: vt,
+            visionConfidence: confChip,
+            sourceLang: captureSourceLang,
+          );
+        }
+      }
+
+      // Fallback: flat transcription/translation → per-line bubbles.
+      final transcription = (data?['transcription'] as String?) ?? '';
+      final translation = (data?['translation'] as String?) ?? '';
+      if (transcription.trim().isEmpty && translation.trim().isEmpty) {
+        return _BatchSnapshot(
+          path: path,
+          imageSize: compSize,
+          blocks: const [],
+          translations: const [],
+          error: 'No text found',
+        );
+      }
+      final srcLines = transcription
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      final dstLines = translation
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (srcLines.length >= 2 && srcLines.length == dstLines.length) {
+        final stripH = compSize.height / srcLines.length;
+        final blocks = <OcrBlock>[
+          for (var i = 0; i < srcLines.length; i++)
+            OcrBlock(
+              text: srcLines[i],
+              boundingBox: Rect.fromLTWH(0, i * stripH, compSize.width, stripH),
+              confidence: mappedConfidence,
+            ),
+        ];
+        return _BatchSnapshot(
+          path: path,
+          imageSize: compSize,
+          blocks: blocks,
+          translations: dstLines,
+          visionConfidence: confChip,
+          sourceLang: captureSourceLang,
+        );
+      }
+      final block = OcrBlock(
+        text: transcription.isNotEmpty ? transcription : translation,
+        boundingBox: Rect.fromLTWH(0, 0, compSize.width, compSize.height),
+        confidence: mappedConfidence,
+      );
+      return _BatchSnapshot(
+        path: path,
+        imageSize: compSize,
+        blocks: [block],
+        translations: [translation],
+        visionConfidence: confChip,
+        sourceLang: captureSourceLang,
+      );
+    } catch (e) {
+      debugPrint('[Camera] Parallel vision failed for $path: $e');
+      return _BatchSnapshot(
+        path: path,
+        imageSize: Size.zero,
+        blocks: const [],
+        translations: const [],
+        error: e.toString(),
+      );
     }
   }
 
@@ -2397,23 +2668,30 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           await _cameraService.compressForVision(bytes, scene: scene);
       final imageBase64 = base64Encode(compressed);
 
+      // Use compressed (EXIF-baked) image dimensions so vision model
+      // bounding boxes align with the displayed image.  Raw codec
+      // dimensions may not match when EXIF orientation is present
+      // (gallery picks on Android).
+      final compCodec = await ui.instantiateImageCodec(compressed);
+      final compFrame = await compCodec.getNextFrame();
+      final compSize = Size(
+        compFrame.image.width.toDouble(),
+        compFrame.image.height.toDouble(),
+      );
+      compFrame.image.dispose();
+      compCodec.dispose();
+
       final response = await api.dio.post('/translate-image', data: {
         'imageBase64': imageBase64,
         'targetLang': targetLang,
         'scene': scene,
         if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
           'sourceLang': sourceLang,
-        // Ask the server (Gemini-routed) for per-block bounding boxes so
-        // the result overlay can position each translation chip OVER the
-        // matching source region — instead of the strip-distribution
-        // fallback below that fakes evenly-spaced rows. Pass the
-        // ORIGINAL capture dimensions: boxes come back normalized 0-1000
-        // and the server scales them to whatever `imageWidth/Height` we
-        // send, so we hand it the same coord space the overlay later
-        // renders chips in (`_capturedImageSize`).
+        // Pass the EXIF-baked dimensions so server scales boxes to
+        // the same coordinate space the overlay renders in.
         'withBoxes': true,
-        'imageWidth': size.width.round(),
-        'imageHeight': size.height.round(),
+        'imageWidth': compSize.width.round(),
+        'imageHeight': compSize.height.round(),
       });
       if (!mounted) return;
       final data = response.data as Map?;
@@ -2496,7 +2774,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         }
         setState(() {
           _capturedPath = path;
-          _capturedImageSize = size;
+          _capturedImageSize = compSize;
           _blocks = [];
           _translations = [];
           _error = l.cameraNoText;
@@ -2561,7 +2839,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         if (visionBlocks.isNotEmpty) {
           setState(() {
             _capturedPath = path;
-            _capturedImageSize = size;
+            _capturedImageSize = compSize;
             _blocks = visionBlocks;
             _translations = visionTranslations;
             _error = null;
@@ -2609,7 +2887,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         // aren't precise (vision doesn't return per-line geometry), but
         // matching the visual order is enough for the result overlay to
         // stack cards top-to-bottom in reading order.
-        final stripHeight = size.height / srcLines.length;
+        final stripHeight = compSize.height / srcLines.length;
         final blocks = <OcrBlock>[];
         for (var i = 0; i < srcLines.length; i++) {
           blocks.add(OcrBlock(
@@ -2617,7 +2895,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             boundingBox: Rect.fromLTWH(
               0,
               i * stripHeight,
-              size.width,
+              compSize.width,
               stripHeight,
             ),
             // Vision returns one confidence per image — each line shares it.
@@ -2626,7 +2904,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         }
         setState(() {
           _capturedPath = path;
-          _capturedImageSize = size;
+          _capturedImageSize = compSize;
           _blocks = blocks;
           _translations = dstLines;
           _error = null;
@@ -2649,12 +2927,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       // semantics, OR a menu/screenshot whose line counts diverged.
       final block = OcrBlock(
         text: transcription.isNotEmpty ? transcription : translation,
-        boundingBox: Rect.fromLTWH(0, 0, size.width, size.height),
+        boundingBox: Rect.fromLTWH(0, 0, compSize.width, compSize.height),
         confidence: mappedConfidence,
       );
       setState(() {
         _capturedPath = path;
-        _capturedImageSize = size;
+        _capturedImageSize = compSize;
         _blocks = [block];
         _translations = [translation];
         _error = null;
@@ -3005,16 +3283,19 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       _visionConfidence = null;
       _detectedScene = null;
       _captureSourceLang = null;
-      // Drop the multi-pick batch on retake — going back to live
-      // preview implies the user is starting over, not continuing to
-      // edit the previous result set.
       _batchQueue.clear();
       _activeBatchIndex = 0;
       _isBatchProcessing = false;
       _batchTotal = 0;
       _batchDone = 0;
     });
-    _startStream();
+    if (_cameraStoppedForBackground) {
+      _reinitCameraAfterBackground();
+    } else if (_cameraDisposed) {
+      _initCamera();
+    } else {
+      _startStream();
+    }
   }
 
   /// Rasterise the shareable subtree (captured image + translation

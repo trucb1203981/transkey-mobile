@@ -76,6 +76,119 @@ class ScenePickerRow extends ConsumerWidget {
   }
 }
 
+/// Modal bottom sheet shown when entering the camera screen. The user
+/// picks the scene UP FRONT — picking "Comic" routes manga pages through
+/// the vision LLM (per-bubble blocks, no ML Kit fragmentation), picking
+/// "Auto" keeps the existing detect-from-content path. The same chips
+/// stay in the camera bottom bar so a wrong pick can be corrected
+/// without re-entering the camera screen.
+class SceneEntrySheet extends ConsumerWidget {
+  const SceneEntrySheet({super.key});
+
+  static Future<void> show(BuildContext context) =>
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const SceneEntrySheet(),
+      );
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final notifier = ref.read(cameraSettingsProvider.notifier);
+
+    final entries = <(_SceneEntry, CameraScene)>[
+      (_SceneEntry(l.cameraSceneAuto,       l.cameraSceneAutoDesc, Icons.auto_awesome),         CameraScene.auto),
+      (_SceneEntry(l.cameraSceneManga,      l.cameraSceneMangaDesc, Icons.auto_stories), CameraScene.manga),
+      (_SceneEntry(l.cameraSceneMenu,       l.cameraSceneMenuDesc,                Icons.restaurant_menu),  CameraScene.menu),
+      (_SceneEntry(l.cameraSceneSign,       l.cameraSceneSignDesc,                            Icons.signpost_outlined), CameraScene.sign),
+      (_SceneEntry(l.cameraSceneDocument,   l.cameraSceneDocumentDesc,                    Icons.description_outlined), CameraScene.document),
+      (_SceneEntry(l.cameraSceneScreenshot, l.cameraSceneScreenshotDesc,                       Icons.phone_android),    CameraScene.screenshot),
+    ];
+
+    final theme = Theme.of(context);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.62,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (ctx, scrollCtrl) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  l.cameraScenePickerTitle,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  l.cameraScenePickerHint,
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                controller: scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+                itemCount: entries.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                itemBuilder: (ctx, i) {
+                  final (e, scene) = entries[i];
+                  return ListTile(
+                    leading: Icon(e.icon, color: theme.colorScheme.primary),
+                    title: Text(e.label,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(e.desc,
+                        style: const TextStyle(fontSize: 12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onTap: () async {
+                      await notifier.setScene(scene);
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SceneEntry {
+  const _SceneEntry(this.label, this.desc, this.icon);
+  final String label;
+  final String desc;
+  final IconData icon;
+}
+
 class _SceneChip extends StatelessWidget {
   const _SceneChip({
     required this.label,

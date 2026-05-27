@@ -107,6 +107,8 @@ class CameraResultOverlay extends StatefulWidget {
     this.overlayOpacity = 0.95,
     this.usePrimaryColor = false,
     this.pendingIndices = const {},
+    this.mangaMode = false,
+    this.onBackgroundTap,
     this.onExplain,
     this.onBlockTap,
   });
@@ -150,6 +152,9 @@ class CameraResultOverlay extends StatefulWidget {
   /// Cards at these indices render an animated dashed border.
   final Set<int> pendingIndices;
 
+  final bool mangaMode;
+
+  final VoidCallback? onBackgroundTap;
   final ValueChanged<OcrBlock>? onExplain;
   final void Function(int index, OcrBlock block, String translation)?
       onBlockTap;
@@ -422,56 +427,75 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               ? block.text
               : (isTranslated ? translation : block.text);
 
-          // Start font: match the source's apparent size so a 1:1
-          // translation (same length, same script) renders at the same
-          // visual scale as the original.
-          final lines = _sourceLineCount(block.text);
-          final startFont = _estimateSourceFont(boxH, lines);
+          if (widget.mangaMode) {
+            // Manga: card = bounding box dimensions, font 6sp.
+            // Server handles overlap resolution + margin expansion.
+            const mangaFont = 6.0;
+            const expandH = 1.10;
+            final expW = boxW * expandH;
+            var expLeft = left + (boxW - expW) / 2;
+            var expCardW =
+                math.min(expW, math.max(40.0, viewSize.width - expLeft - 4));
+            if (expCardW < expW) {
+              expLeft += (expW - expCardW) / 2;
+            }
 
-          final fit1 = _fitFont(
-            text: displayText,
-            maxWidth: cardWidth,
-            maxHeight: boxH,
-            startFont: startFont,
-            fontWeight:
-                isTranslated ? FontWeight.w500 : FontWeight.normal,
-          );
+            cards.add(_CardLayout(
+              index: i,
+              left: expLeft,
+              top: top,
+              width: expCardW,
+              height: boxH,
+              fontSize: mangaFont,
+            ));
+          } else {
+            // Normal mode: auto-fit font to source box height.
+            final lines = _sourceLineCount(block.text);
+            final startFont = _estimateSourceFont(boxH, lines);
 
-          final fontSize = fit1.fontSize;
-          // Hard-lock the card to the source OCR box height. Earlier
-          // versions let it grow when content exceeded the box, but that
-          // caused cards to bleed into the row below on dense menus
-          // (visible block-on-block overlap). FittedBox(scaleDown) below
-          // is the safety net for the rare case where text doesn't fit
-          // at _kMinFontSize - it shrinks visually rather than the card
-          // growing into a neighbour.
-          var cardHeight = boxH;
-
-          // "Show original always" rides under the translation - it needs
-          // extra height regardless, so grow past the box in that mode.
-          if (widget.showOriginalAlways && isTranslated) {
-            const origFont = 10.0;
-            final origMeasured = _measureText(
-              block.text,
-              cardWidth - _kCardHPad * 2,
-              fontSize: origFont,
-              maxLines: 2,
+            final fit1 = _fitFont(
+              text: displayText,
+              maxWidth: cardWidth,
+              maxHeight: boxH,
+              startFont: startFont,
+              fontWeight:
+                  isTranslated ? FontWeight.w500 : FontWeight.normal,
             );
-            cardHeight = math.max(cardHeight, fit1.height) + origMeasured + 6;
+
+            final fontSize = fit1.fontSize;
+            // Hard-lock the card to the source OCR box height. Earlier
+            // versions let it grow when content exceeded the box, but that
+            // caused cards to bleed into the row below on dense menus
+            // (visible block-on-block overlap). FittedBox(scaleDown) below
+            // is the safety net for the rare case where text doesn't fit
+            // at _kMinFontSize - it shrinks visually rather than the card
+            // growing into a neighbour.
+            var cardHeight = boxH;
+
+            // "Show original always" rides under the translation - it needs
+            // extra height regardless, so grow past the box in that mode.
+            if (widget.showOriginalAlways && isTranslated) {
+              const origFont = 10.0;
+              final origMeasured = _measureText(
+                block.text,
+                cardWidth - _kCardHPad * 2,
+                fontSize: origFont,
+                maxLines: 2,
+              );
+              cardHeight = math.max(cardHeight, fit1.height) +
+                  origMeasured +
+                  6;
+            }
+
+            cards.add(_CardLayout(
+              index: i,
+              left: left,
+              top: top,
+              width: cardWidth,
+              height: cardHeight,
+              fontSize: fontSize,
+            ));
           }
-
-          // No height reservation for low-confidence: the badge is now a
-          // tiny corner dot inside _BlockCard, which doesn't push the
-          // translation around.
-
-          cards.add(_CardLayout(
-            index: i,
-            left: left,
-            top: top,
-            width: cardWidth,
-            height: cardHeight,
-            fontSize: fontSize,
-          ));
         }
 
         return Stack(
@@ -480,8 +504,12 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: () {
-                  setState(() => _overlayVisible = !_overlayVisible);
-                  widget.controller?.syncVisible(_overlayVisible);
+                  if (widget.mangaMode) {
+                    widget.onBackgroundTap?.call();
+                  } else {
+                    setState(() => _overlayVisible = !_overlayVisible);
+                    widget.controller?.syncVisible(_overlayVisible);
+                  }
                 },
               ),
             ),
@@ -532,6 +560,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                       : (_bgColors[card.index] ?? BgColorSampler.fallback),
                   isPending: widget.pendingIndices.contains(card.index),
                   dashAnim: _dashAnim,
+                  mangaMode: widget.mangaMode,
                   fadedForDelete:
                       _draggingIndex == card.index && _overTrash,
                   onTap: () {
@@ -747,6 +776,7 @@ class _BlockCard extends StatelessWidget {
     this.fadedForDelete = false,
     this.isPending = false,
     this.dashAnim,
+    this.mangaMode = false,
     this.onExplain,
   });
 
@@ -768,6 +798,7 @@ class _BlockCard extends StatelessWidget {
   final bool fadedForDelete;
   final bool isPending;
   final Animation<double>? dashAnim;
+  final bool mangaMode;
   final VoidCallback? onExplain;
 
   /// Pick white or black for the card text based on the sampled
@@ -783,17 +814,58 @@ class _BlockCard extends StatelessWidget {
     return luminance > 0.55 ? Colors.black : Colors.white;
   }
 
+  Widget _buildMangaCard(String displayText, bool isTranslated, bool low) {
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: Opacity(
+        opacity: fadedForDelete ? 0.5 : 1.0,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                displayText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: fontSize,
+                  fontWeight:
+                      isTranslated ? FontWeight.w500 : FontWeight.normal,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayText = showOriginal ? block.text : translation;
     final isTranslated = !showOriginal &&
         translation.isNotEmpty &&
         translation != block.text;
+    final low = block.isLowConfidence;
+
+    if (mangaMode) return _buildMangaCard(displayText, isTranslated, low);
 
     final alpha = overlayOpacity.clamp(0.0, 1.0);
     final fillColor = bgColor.withValues(alpha: alpha);
     final textColor = _textColorFor(bgColor);
-    final low = block.isLowConfidence;
 
     // FittedBox(scaleDown) + SizedBox(width:innerW) is the safety net for
     // the residual measurement-vs-render gap _fitFont can't fully close
