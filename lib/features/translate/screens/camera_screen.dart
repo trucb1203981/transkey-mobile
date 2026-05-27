@@ -757,33 +757,52 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     });
   }
 
-  /// Open the "What is this?" sheet for a block. Picker preference:
-  ///   1. Server-supplied `items` (vision_boxes path) - chips show the
-  ///      translation, tap returns original.
-  ///   2. Per-line pairing (2+ source lines aligned 1:1 with the same
-  ///      number of translation lines). Cheap, no LLM round-trip - just
-  ///      uses the per-block translation we already have.
-  ///   3. Lazy /split-block call (menu / sign scenes only, multi-item
-  ///      single-line blocks). Result cached per block text.
-  ///   4. Direct explain on the whole block.
+  /// Open the "What is this?" sheet for a block. Picker preference is
+  /// scene-aware:
+  ///
+  ///   menu / sign:
+  ///     1. Server-supplied `items` (vision_boxes path).
+  ///     2. Lazy /split-block - the semantic LLM split is more accurate
+  ///        than naive newline-pairing for menu rows that can wrap mid-
+  ///        dish-name or pack multiple units onto one line. Cached per
+  ///        block text so repeat long-presses don't re-charge.
+  ///     3. Per-line pairing fallback (if /split-block fails).
+  ///     4. Direct explain on the whole block.
+  ///
+  ///   other scenes (document / screenshot / auto):
+  ///     1. Server-supplied `items`.
+  ///     2. Per-line pairing - the server rejects /split-block for these
+  ///        scenes (would just waste an LLM call), so we skip straight to
+  ///        the cheap structural split.
+  ///     3. Direct explain on the whole block.
   Future<void> _explainBlock(OcrBlock block) async {
     var items = block.items;
 
-    // (2) Per-line pairing: when the block holds multiple lines and the
-    // translation preserved the same line count (the LLM prompt enforces
-    // `preserve_structure`), zip them 1:1. No extra LLM call.
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+    final isLensSplitScene =
+        scene == CameraScene.menu || scene == CameraScene.sign;
+
+    // (2) menu/sign: try /split-block FIRST so the LLM semantic split
+    // wins over the structural line-pairing heuristic. Cached, gated by
+    // a multi-item heuristic inside _maybeLazySplit so short/single-
+    // unit blocks don't fire a needless API call.
+    if ((items == null || items.length < 2) && isLensSplitScene) {
+      final lazyItems = await _maybeLazySplit(block);
+      if (lazyItems != null && lazyItems.length >= 2) {
+        items = lazyItems;
+      }
+    }
+
+    // (3) Per-line pairing: works for any scene where source and
+    // translation share the same line structure (translate-batch's
+    // `preserve_structure` prompt enforces this). Primary for non-
+    // menu/sign scenes; fallback for menu/sign when /split-block
+    // didn't produce items.
     if (items == null || items.length < 2) {
       final pairedItems = _pairLineItems(block);
       if (pairedItems != null && pairedItems.length >= 2) {
         items = pairedItems;
-      }
-    }
-
-    // (3) Lazy /split-block for menu / sign multi-item single-line blocks.
-    if (items == null || items.length < 2) {
-      final lazyItems = await _maybeLazySplit(block);
-      if (lazyItems != null && lazyItems.length >= 2) {
-        items = lazyItems;
       }
     }
 
@@ -856,19 +875,45 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   Future<List<OcrBlockItem>?> _maybeLazySplit(OcrBlock block) async {
     final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
         CameraScene.auto;
-    if (scene != CameraScene.menu && scene != CameraScene.sign) return null;
+    debugPrint('[Split] enter scene=${scene.id} textLen=${block.text.length} preview="${block.text.substring(0, block.text.length.clamp(0, 50))}"');
+    if (scene != CameraScene.menu && scene != CameraScene.sign) {
+      debugPrint('[Split] SKIP: scene not menu/sign');
+      return null;
+    }
 
     final text = block.text.trim();
-    if (text.length <= 15) return null;
+    if (text.length < 8) {
+      debugPrint('[Split] SKIP: text too short (${text.length} < 8)');
+      return null;
+    }
     final priceLike =
         RegExp(r'[¥₩元$€£฿₽]|円|won|yen|\d{2,}\s*(yen|VND|đ|usd)', caseSensitive: false);
+    final priceCount = priceLike.allMatches(text).length;
+    // Token count handles the price-less multi-item case (e.g. Japanese
+    // menu rows that list several dishes separated by full-width or
+    // half-width spaces: "味噌チャーシュー 醤油チャーシュー 塩チャーシュー").
+    // ASCII whitespace + ideographic space (U+3000) are the menu
+    // separators in practice.
+    final tokenCount = text
+        .split(RegExp(r'[\s　]+'))
+        .where((t) => t.isNotEmpty)
+        .length;
     final hasMultiItemSignal = text.contains('\n') ||
-        priceLike.allMatches(text).length >= 2 ||
-        text.length > 40;
-    if (!hasMultiItemSignal) return null;
+        priceCount >= 2 ||
+        text.length > 40 ||
+        (tokenCount >= 2 && text.length >= 10);
+    debugPrint('[Split] heuristic: nl=${text.contains('\n')} prices=$priceCount tokens=$tokenCount len=${text.length} -> multiItem=$hasMultiItemSignal');
+    if (!hasMultiItemSignal) {
+      debugPrint('[Split] SKIP: no multi-item signal');
+      return null;
+    }
 
     final cached = _splitCache[text];
-    if (cached != null) return cached;
+    if (cached != null) {
+      debugPrint('[Split] cache HIT (${cached.length} items)');
+      return cached;
+    }
+    debugPrint('[Split] cache MISS - calling /split-block');
 
     final langs = ref.read(languageSettingsProvider).valueOrNull;
     final targetLang = langs?.targetLang ?? 'en';
@@ -887,6 +932,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     try {
       final api = ref.read(apiClientProvider);
+      debugPrint('[Split] POST /split-block scene=${scene.id} target=$targetLang src=$sourceLang');
       final response = await api.dio
           .post('/split-block', data: {
             'text': text,
@@ -896,9 +942,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           })
           .timeout(const Duration(seconds: 30));
       messenger?.hideCurrentSnackBar();
+      debugPrint('[Split] response status=${response.statusCode}');
       final data = response.data as Map?;
       final raw = data?['items'];
-      if (raw is! List || raw.isEmpty) return null;
+      debugPrint('[Split] items raw=${raw is List ? "List(${raw.length})" : "type=${raw.runtimeType}"}');
+      if (raw is! List || raw.isEmpty) {
+        debugPrint('[Split] FAIL: items not a non-empty list');
+        return null;
+      }
       final parsed = <OcrBlockItem>[];
       for (final it in raw) {
         if (it is! Map) continue;
@@ -907,11 +958,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         if (o.isEmpty && t.isEmpty) continue;
         parsed.add(OcrBlockItem(original: o, translation: t));
       }
-      if (parsed.length < 2) return null;
+      debugPrint('[Split] parsed ${parsed.length} items');
+      if (parsed.length < 2) {
+        debugPrint('[Split] FAIL: only ${parsed.length} parsed items, need >=2');
+        return null;
+      }
       _splitCache[text] = parsed;
+      debugPrint('[Split] OK - cached & returning ${parsed.length} items');
       return parsed;
     } catch (e) {
-      debugPrint('[Camera] split-block failed: $e');
+      debugPrint('[Split] EXCEPTION: $e');
       messenger?.hideCurrentSnackBar();
       return null;
     }
@@ -1720,7 +1776,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     for (var i = 0; i < picked.length; i++) {
       if (!mounted) return;
       try {
-        await _processImage(picked[i].path, aggressivePasses: true);
+        await _processImage(picked[i].path, aggressivePasses: false);
         if (!mounted) return;
         if (_capturedPath != null && _capturedImageSize != null) {
           _batchQueue.add(_snapshotActive());
@@ -1835,7 +1891,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       final raw = await _cameraService.recognizeText(
         path,
         scene: scene,
-        aggressivePasses: true,
+        aggressivePasses: false,
       );
       final blocks = confidenceThreshold <= kOcrConfidenceFloor
           ? raw

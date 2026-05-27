@@ -36,6 +36,18 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Drop x86_64 to satisfy Play 16 KB page size check. The
+        // tflite_flutter prebuilt libtensorflowlite_*_jni.so for x86_64
+        // ships with 4 KB ELF alignment (0x1000), which fails Play's
+        // "Recompile your app with 16 KB native library alignment"
+        // requirement. arm64-v8a + armeabi-v7a cover ~99% of mobile
+        // devices; x86_64 is mostly emulators / a handful of Intel
+        // Chromebooks. Drop until tflite_flutter ships a 16 KB-aligned
+        // x86_64 build.
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+        }
     }
 
     signingConfigs {
@@ -66,6 +78,27 @@ android {
                 // (e.g., fresh clone) so `flutter run --release` still works.
                 signingConfigs.getByName("debug")
             }
+        }
+    }
+
+    // Required for Google Play 16 KB page size compliance (Nov 2025+).
+    // Tells AGP to package .so files uncompressed and 16 KB-aligned in the
+    // APK so the loader can mmap them on devices with 16 KB pages
+    // (e.g. Android 15 on Pixel 8 / arm64). Without this, Play Console
+    // rejects the AAB with "Your app does not support 16 KB memory page sizes".
+    //
+    // ALSO excludes x86_64 native libs because tflite_flutter ships
+    // libtensorflowlite_*_jni.so for x86_64 with 4 KB ELF alignment
+    // (p_align = 0x1000), which fails Play's 16 KB check even with
+    // useLegacyPackaging = false. Flutter's --target-platform drops
+    // libflutter.so / libapp.so for x86_64 but does NOT drop bundled
+    // Android plugin libs; AGP defaultConfig.ndk.abiFilters is also
+    // ignored when Flutter manages the build. This exclude path is the
+    // belt-and-suspenders fix.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+            excludes += setOf("**/x86_64/**", "**/x86/**")
         }
     }
 }
