@@ -565,6 +565,7 @@
   "cameraSceneMenu": "Menü",
   "cameraSceneSign": "Schild",
   "cameraSceneScreenshot": "Bildschirmfoto",
+  "cameraSceneManga": "Comic",
   "cameraSceneOther": "Sonstiges",
   "cameraDetected": "Erkannt: {scene}",
   "cameraWhatIsThis": "Was ist das?",

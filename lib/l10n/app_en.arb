@@ -576,6 +576,7 @@
   "cameraSceneMenu": "Menu",
   "cameraSceneSign": "Sign",
   "cameraSceneScreenshot": "Screenshot",
+  "cameraSceneManga": "Comic",
   "cameraSceneOther": "Other",
   "cameraDetected": "Detected: {scene}",
   "@cameraDetected": {

@@ -1358,6 +1358,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraSceneScreenshot => 'ภาพหน้าจอ';
 
   @override
+  String get cameraSceneManga => 'การ์ตูน';
+
+  @override
   String get cameraSceneOther => 'อื่นๆ';
 
   @override

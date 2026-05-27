@@ -2606,6 +2606,12 @@ abstract class AppLocalizations {
   /// **'Screenshot'**
   String get cameraSceneScreenshot;
 
+  /// No description provided for @cameraSceneManga.
+  ///
+  /// In en, this message translates to:
+  /// **'Comic'**
+  String get cameraSceneManga;
+
   /// No description provided for @cameraSceneOther.
   ///
   /// In en, this message translates to:

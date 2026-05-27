@@ -565,6 +565,7 @@
   "cameraSceneMenu": "เมนู",
   "cameraSceneSign": "ป้าย",
   "cameraSceneScreenshot": "ภาพหน้าจอ",
+  "cameraSceneManga": "การ์ตูน",
   "cameraSceneOther": "อื่นๆ",
   "cameraDetected": "ตรวจพบ: {scene}",
   "cameraWhatIsThis": "นี่คืออะไร?",

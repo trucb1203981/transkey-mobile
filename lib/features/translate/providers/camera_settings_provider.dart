@@ -23,7 +23,8 @@ enum CameraScene {
   document('document'),
   menu('menu'),
   sign('sign'),
-  screenshot('screenshot');
+  screenshot('screenshot'),
+  manga('manga');
 
   const CameraScene(this.id);
   final String id;

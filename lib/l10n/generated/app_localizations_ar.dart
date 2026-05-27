@@ -1366,6 +1366,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraSceneScreenshot => 'لقطة شاشة';
 
   @override
+  String get cameraSceneManga => 'قصص مصورة';
+
+  @override
   String get cameraSceneOther => 'أخرى';
 
   @override

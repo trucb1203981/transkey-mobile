@@ -565,6 +565,7 @@
   "cameraSceneMenu": "Menu",
   "cameraSceneSign": "Cartello",
   "cameraSceneScreenshot": "Schermata",
+  "cameraSceneManga": "Fumetto",
   "cameraSceneOther": "Altro",
   "cameraDetected": "Rilevato: {scene}",
   "cameraWhatIsThis": "Cos'è questo?",

@@ -565,6 +565,7 @@
   "cameraSceneMenu": "Cardápio",
   "cameraSceneSign": "Placa",
   "cameraSceneScreenshot": "Captura de tela",
+  "cameraSceneManga": "Quadrinhos",
   "cameraSceneOther": "Outro",
   "cameraDetected": "Detectado: {scene}",
   "cameraWhatIsThis": "O que é isto?",

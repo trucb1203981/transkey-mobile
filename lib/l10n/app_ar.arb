@@ -565,6 +565,7 @@
   "cameraSceneMenu": "قائمة طعام",
   "cameraSceneSign": "لافتة",
   "cameraSceneScreenshot": "لقطة شاشة",
+  "cameraSceneManga": "قصص مصورة",
   "cameraSceneOther": "أخرى",
   "cameraDetected": "تم اكتشاف: {scene}",
   "cameraWhatIsThis": "ما هذا؟",

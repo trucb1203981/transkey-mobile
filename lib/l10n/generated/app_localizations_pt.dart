@@ -1380,6 +1380,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get cameraSceneScreenshot => 'Captura de tela';
 
   @override
+  String get cameraSceneManga => 'Quadrinhos';
+
+  @override
   String get cameraSceneOther => 'Outro';
 
   @override

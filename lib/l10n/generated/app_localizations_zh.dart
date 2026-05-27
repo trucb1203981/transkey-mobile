@@ -1305,6 +1305,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraSceneScreenshot => '屏幕截图';
 
   @override
+  String get cameraSceneManga => '漫画';
+
+  @override
   String get cameraSceneOther => '其他';
 
   @override

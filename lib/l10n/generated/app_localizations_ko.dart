@@ -1322,6 +1322,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraSceneScreenshot => '스크린샷';
 
   @override
+  String get cameraSceneManga => '만화';
+
+  @override
   String get cameraSceneOther => '기타';
 
   @override

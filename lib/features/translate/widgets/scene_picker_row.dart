@@ -53,6 +53,8 @@ class ScenePickerRow extends ConsumerWidget {
         return l.cameraSceneSign;
       case CameraScene.screenshot:
         return l.cameraSceneScreenshot;
+      case CameraScene.manga:
+        return l.cameraSceneManga;
     }
   }
 
@@ -68,6 +70,8 @@ class ScenePickerRow extends ConsumerWidget {
         return Icons.signpost_outlined;
       case CameraScene.screenshot:
         return Icons.phone_android;
+      case CameraScene.manga:
+        return Icons.auto_stories;
     }
   }
 }

@@ -565,6 +565,7 @@
   "cameraSceneMenu": "메뉴",
   "cameraSceneSign": "간판",
   "cameraSceneScreenshot": "스크린샷",
+  "cameraSceneManga": "만화",
   "cameraSceneOther": "기타",
   "cameraDetected": "감지됨: {scene}",
   "cameraWhatIsThis": "이것은 무엇인가요?",

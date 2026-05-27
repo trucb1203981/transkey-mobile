@@ -1728,8 +1728,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         CameraScene.auto;
     final sourceLang =
         ref.read(languageSettingsProvider).valueOrNull?.sourceLang;
-    final visionOnly =
-        scene == CameraScene.sign || _sourceNeedsVision(sourceLang);
+    final visionOnly = scene == CameraScene.sign ||
+        scene == CameraScene.manga ||
+        _sourceNeedsVision(sourceLang);
 
     if (visionOnly) {
       // Vision-only scenes (sign + non-ML-Kit scripts) keep the original
@@ -1935,12 +1936,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
         CameraScene.auto;
 
-    // Scene=sign uses the VISION LLM path instead of on-device OCR.
-    // Signs are mostly stylized / cursive / decorative fonts that ML
-    // Kit OCR can't read. The vision model reads them like a human.
-    if (scene == CameraScene.sign) {
+    // Scene=sign / scene=manga use the VISION LLM path instead of on-device
+    // OCR. Signs are stylized / cursive fonts; manga is speech-bubble text
+    // (handwritten-style, vertical Japanese, sound effects) — both are
+    // content ML Kit reads poorly. The vision model reads them like a human
+    // and returns per-bubble blocks for the AR overlay.
+    if (scene == CameraScene.sign || scene == CameraScene.manga) {
       ref.read(trackingServiceProvider).event('vision_fallback', properties: {
-        'reason': 'sign_scene',
+        'reason': scene == CameraScene.manga ? 'manga_scene' : 'sign_scene',
         'scene':  scene.id,
       });
       await _captureWithVision(path, bytes, size, scene: scene.id);
@@ -2578,13 +2581,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         }
       }
 
-      // Per-line split for menu / screenshot — match what the user expects
-      // when those scenes are picked. Both fields share \n line structure
-      // (server prompt enforces `preserve_structure`), so a 1:1 alignment
-      // is usually clean. If line counts diverge (LLM occasionally drops a
-      // blank line), fall back to single-block to avoid stacking mismatched
-      // pairs.
-      final perLineScenes = scene == 'menu' || scene == 'screenshot';
+      // Per-line split for menu / screenshot / manga — match what the user
+      // expects when those scenes are picked. Both fields share \n line
+      // structure (server prompt enforces `preserve_structure`), so a 1:1
+      // alignment is usually clean. Manga: each speech bubble / caption is
+      // its own line, so per-line keeps bubbles as separate cards (the
+      // withBoxes path already does this when bounding boxes succeed; this
+      // is the strip-distribution fallback). If line counts diverge fall
+      // back to single-block to avoid stacking mismatched pairs.
+      final perLineScenes =
+          scene == 'menu' || scene == 'screenshot' || scene == 'manga';
       final srcLines = transcription
           .split('\n')
           .map((s) => s.trim())

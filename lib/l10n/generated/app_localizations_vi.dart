@@ -1359,6 +1359,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraSceneScreenshot => 'Ảnh màn hình';
 
   @override
+  String get cameraSceneManga => 'Truyện tranh';
+
+  @override
   String get cameraSceneOther => 'Khác';
 
   @override

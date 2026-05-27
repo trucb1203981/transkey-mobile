@@ -1372,6 +1372,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraSceneScreenshot => 'Tangkapan layar';
 
   @override
+  String get cameraSceneManga => 'Komik';
+
+  @override
   String get cameraSceneOther => 'Lainnya';
 
   @override

@@ -565,6 +565,7 @@
   "cameraSceneMenu": "菜单",
   "cameraSceneSign": "招牌",
   "cameraSceneScreenshot": "屏幕截图",
+  "cameraSceneManga": "漫画",
   "cameraSceneOther": "其他",
   "cameraDetected": "已识别: {scene}",
   "cameraWhatIsThis": "这是什么?",

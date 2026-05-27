@@ -1320,6 +1320,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraSceneScreenshot => 'スクリーンショット';
 
   @override
+  String get cameraSceneManga => 'マンガ';
+
+  @override
   String get cameraSceneOther => 'その他';
 
   @override

@@ -565,6 +565,7 @@
   "cameraSceneMenu": "Menu",
   "cameraSceneSign": "Papan tanda",
   "cameraSceneScreenshot": "Tangkapan layar",
+  "cameraSceneManga": "Komik",
   "cameraSceneOther": "Lainnya",
   "cameraDetected": "Terdeteksi: {scene}",
   "cameraWhatIsThis": "Apa ini?",

@@ -565,6 +565,7 @@
   "cameraSceneMenu": "Меню",
   "cameraSceneSign": "Вывеска",
   "cameraSceneScreenshot": "Скриншот",
+  "cameraSceneManga": "Комикс",
   "cameraSceneOther": "Другое",
   "cameraDetected": "Обнаружено: {scene}",
   "cameraWhatIsThis": "Что это?",

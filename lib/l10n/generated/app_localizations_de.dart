@@ -1379,6 +1379,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cameraSceneScreenshot => 'Bildschirmfoto';
 
   @override
+  String get cameraSceneManga => 'Comic';
+
+  @override
   String get cameraSceneOther => 'Sonstiges';
 
   @override

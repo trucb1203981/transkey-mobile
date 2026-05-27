@@ -1374,6 +1374,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraSceneScreenshot => 'Скриншот';
 
   @override
+  String get cameraSceneManga => 'Комикс';
+
+  @override
   String get cameraSceneOther => 'Другое';
 
   @override
