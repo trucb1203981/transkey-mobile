@@ -400,7 +400,7 @@
   "setupStep4DescIOS": "Seleziona qualsiasi testo → tocca \"Condividi\" → scegli TransKey. Oppure copia il testo e apri TransKey — leggerà automaticamente gli appunti.",
   "setupStep4DescAndroid": "Seleziona il testo in qualsiasi app → tocca \"Condividi\" → scegli TransKey. Oppure usa il pulsante mobile dopo aver copiato il testo.",
   "setupStep5Title": "Funzioni intelligenti",
-  "setupStep5Desc": "Traduci, Rispondi, Riassumi, Spiega e Migliora — tutte basate sull'IA. Le funzioni Pro sono contrassegnate con un'icona a lucchetto.",
+  "setupStep5Desc": "Traduci, Rispondi, Riassumi, Spiega e Migliora. Le funzioni Pro sono contrassegnate con un'icona a lucchetto.",
   "guideTitle": "Come usare",
   "guideSubtitle": "Tutti i modi per catturare testo per ogni funzione",
   "guideIntroTitle": "Non serve alcuna autorizzazione speciale per catturare il testo.",
@@ -431,7 +431,7 @@
       }
     }
   },
-  "guideInputMenuDesc": "Seleziona il testo in qualsiasi app — appare il popup con Copia/Condividi. Tocca ⋮ per altre opzioni, poi scegli TransKey: {feature}.",
+  "guideInputMenuDesc": "Seleziona il testo in qualsiasi app — appare il menu con Copia/Condividi. Tocca ⋮ per altre opzioni, poi scegli TransKey: {feature}.",
   "@guideInputMenuDesc": {
     "placeholders": {
       "feature": {
@@ -558,7 +558,7 @@
   "cameraSettingsShowOriginalHint": "Mostra sempre il testo sorgente sotto ogni scheda di traduzione.",
   "cameraSettingsOpacity": "Opacità sovrapposizione",
   "cameraSettingsOpacityHint": "Trasparenza dello sfondo della scheda. Più basso = la foto dietro è più visibile.",
-  "cameraSettingsPrimaryColor": "Colore overlay unico",
+  "cameraSettingsPrimaryColor": "Colore unico delle schede",
   "cameraSettingsPrimaryColorHint": "Usa un solo colore per tutte le schede invece di rilevare il colore dalla foto.",
   "cameraSceneAuto": "Auto",
   "cameraSceneDocument": "Documento",
@@ -567,6 +567,16 @@
   "cameraSceneScreenshot": "Schermata",
   "cameraSceneManga": "Fumetto",
   "cameraSceneOther": "Altro",
+  "cameraScenePickerTitle": "Cosa vuoi catturare?",
+  "cameraScenePickerHint": "Scegli prima una modalità per risultati più precisi. Puoi cambiare dalla barra di selezione qui sotto.",
+  "cameraSceneAutoDesc": "Sceglie automaticamente la modalità migliore",
+  "cameraSceneMangaDesc": "Manga / manhwa / manhua / fumetto - una scheda per nuvoletta",
+  "cameraSceneMenuDesc": "Menu del ristorante - salta i prezzi evidenti",
+  "cameraSceneSignDesc": "Vetrine, insegne, banner",
+  "cameraSceneDocumentDesc": "Documenti ufficiali, libri, documenti",
+  "cameraSceneScreenshotDesc": "Screenshot di app o sito web",
+  "mangaNoDialogue": "Nessun dialogo trovato",
+  "splittingItems": "Suddivisione elementi…",
   "cameraDetected": "Rilevato: {scene}",
   "cameraWhatIsThis": "Cos'è questo?",
   "cameraWhatIsThisHint": "Tocca un testo nell'anteprima per chiedere",

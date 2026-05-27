@@ -890,7 +890,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupStep3DescIOS =>
-      'アプリで入力中に地球儀キー🌐を長押ししてTransKeyに切り替え。「Reply」をタップしてメッセージを即翻訳。';
+      'アプリで入力中に地球儀キー🌐を長押ししてTransKeyに切り替え。「返信」をタップしてメッセージを即翻訳。';
 
   @override
   String get setupStep3DescAndroid =>
@@ -908,11 +908,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'テキストを選択 → 「共有」 → TransKey を選ぶ。またはコピー後にフローティングバブルを使えます。';
 
   @override
-  String get setupStep5Title => 'AI機能';
+  String get setupStep5Title => 'スマート機能';
 
   @override
-  String get setupStep5Desc =>
-      '翻訳・返信・要約・説明・推敲 — すべてAI搭載。Pro限定機能には鍵アイコンがついています。';
+  String get setupStep5Desc => '翻訳・返信・要約・説明・推敲。Pro限定機能には鍵アイコンがついています。';
 
   @override
   String get guideTitle => '使い方';
@@ -925,7 +924,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'どの機能も、あなたが意図的に操作したときだけテキストを読み取ります — コピー、画面のスキャン、範囲選択、システムの共有、またはテキスト選択メニューから TransKey をタップ。アクセシビリティは、入力中のチャット欄に Reply の結果を直接ペーストするためにのみ使われます。';
+      'どの機能も、あなたが意図的に操作したときだけテキストを読み取ります — コピー、画面のスキャン、範囲選択、システムの共有、またはテキスト選択メニューから TransKey をタップ。アクセシビリティは、入力中のチャット欄に返信結果を直接ペーストするためにのみ使われます。';
 
   @override
   String get guideFeatureTranslate => '翻訳';
@@ -1013,7 +1012,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'フローティングバブル権限を付与するだけで始められます。アクセシビリティは任意で、ワンタップ Reply ペーストにのみ必要です。';
+      'フローティングバブル権限を付与するだけで始められます。アクセシビリティは任意で、ワンタップで返信を貼り付けるためにのみ必要です。';
 
   @override
   String get permFloatingBubble => 'フローティングバブル';
@@ -1026,14 +1025,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ はサイドロードアプリのアクセシビリティを既定でブロックします。右上の ⋮ → \"制限付き設定を許可\"。';
+      'Android 13+ はストア外からインストールしたアプリのアクセシビリティを既定でブロックします。右上の ⋮ → \"制限付き設定を許可\"。';
 
   @override
   String get permAccessibility => 'アクセシビリティ(任意)';
 
   @override
-  String get permAccessibilityBody =>
-      'Reply 候補をフォーカス中の入力欄に直接ペースト。手動ペーストでよければスキップ可能。';
+  String get permAccessibilityBody => '返信候補を入力中の欄に直接ペースト。手動ペーストでよければスキップ可能。';
 
   @override
   String get permEnabled => '有効';
@@ -1048,8 +1046,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get permOpenAppDetails => 'アプリ詳細を開く';
 
   @override
-  String get permSkipHint =>
-      'アクセシビリティは任意です。なしでも Reply 結果はクリップボードに入り、自分でペーストできます。';
+  String get permSkipHint => 'アクセシビリティは任意です。なしでも返信結果はクリップボードに入り、自分でペーストできます。';
 
   @override
   String get permSkipForNow => '後で';
@@ -1324,6 +1321,37 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'その他';
+
+  @override
+  String get cameraScenePickerTitle => '何をキャプチャしますか？';
+
+  @override
+  String get cameraScenePickerHint =>
+      'より正確な結果を得るために、まずモードを選択してください。下の選択バーから切り替えることもできます。';
+
+  @override
+  String get cameraSceneAutoDesc => '最適なモードを自動的に選択';
+
+  @override
+  String get cameraSceneMangaDesc => '漫画 / Web漫画 / 中国漫画 / コミック - 吹き出しごとに1カード';
+
+  @override
+  String get cameraSceneMenuDesc => 'レストランメニュー - 明らかな価格はスキップ';
+
+  @override
+  String get cameraSceneSignDesc => '店舗、看板、バナー';
+
+  @override
+  String get cameraSceneDocumentDesc => '公文書、書籍、論文';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'アプリやウェブサイトのスクリーンショット';
+
+  @override
+  String get mangaNoDialogue => 'セリフが見つかりません';
+
+  @override
+  String get splittingItems => '項目を分割中…';
 
   @override
   String cameraDetected(String scene) {

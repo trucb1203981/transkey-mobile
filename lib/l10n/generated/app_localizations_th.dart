@@ -934,7 +934,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'แปล ตอบกลับ สรุป อธิบาย และปรับปรุงข้อความ — ทั้งหมดขับเคลื่อนด้วย AI ฟีเจอร์ Pro มีไอคอนรูปกุญแจกำกับ';
+      'แปล ตอบกลับ สรุป อธิบาย และปรับปรุงข้อความ ฟีเจอร์ Pro มีไอคอนรูปกุญแจกำกับ';
 
   @override
   String get guideTitle => 'วิธีใช้งาน';
@@ -1062,7 +1062,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get permAccessibilityBody =>
-      'ช่วยให้ TransKey วางข้อเสนอแนะการตอบโดยตรงในช่องข้อความที่กำลังโฟกัส ข้ามได้ถ้าคุณไม่ขัดข้องที่จะวางเอง';
+      'ช่วยให้ TransKey วางข้อเสนอแนะการตอบโดยตรงในช่องข้อความที่กำลังพิมพ์อยู่ ข้ามได้ถ้าคุณไม่ขัดข้องที่จะวางเอง';
 
   @override
   String get permEnabled => 'เปิดใช้งานแล้ว';
@@ -1362,6 +1362,38 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'อื่นๆ';
+
+  @override
+  String get cameraScenePickerTitle => 'คุณต้องการจับภาพอะไร?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'เลือกโหมดก่อนเพื่อผลลัพธ์ที่แม่นยำกว่า คุณสามารถสลับได้จากแถบตัวเลือกด้านล่าง';
+
+  @override
+  String get cameraSceneAutoDesc => 'เลือกโหมดที่ดีที่สุดโดยอัตโนมัติ';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'มังงะ / มังฮวา / มังงวา / การ์ตูน - หนึ่งการ์ดต่อฟองคำพูด';
+
+  @override
+  String get cameraSceneMenuDesc => 'เมนูร้านอาหาร - ข้ามราคาที่ชัดเจน';
+
+  @override
+  String get cameraSceneSignDesc => 'ป้ายร้าน ป้ายสิ่งก่อสร้าง แบนเนอร์';
+
+  @override
+  String get cameraSceneDocumentDesc => 'เอกสารทางการ หนังสือ เอกสาร';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'ภาพหน้าจอแอปหรือเว็บไซต์';
+
+  @override
+  String get mangaNoDialogue => 'ไม่พบบทสนทนา';
+
+  @override
+  String get splittingItems => 'กำลังแยกรายการ…';
 
   @override
   String cameraDetected(String scene) {

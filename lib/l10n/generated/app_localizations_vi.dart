@@ -350,11 +350,11 @@ class AppLocalizationsVi extends AppLocalizations {
   String get speedNormal => 'Bình thường';
 
   @override
-  String get accessibilityPasteBack => 'Dán reply vào app khác';
+  String get accessibilityPasteBack => 'Dán câu trả lời vào ứng dụng khác';
 
   @override
   String get accessibilityPasteBackDesc =>
-      'Bật TransKey trong Accessibility để nút \"Paste\" có thể ghi reply trực tiếp vào ô nhập của app đang focus.';
+      'Bật TransKey trong phần Trợ năng để nút \"Dán\" có thể chèn câu trả lời thẳng vào ô đang gõ ở ứng dụng khác.';
 
   @override
   String get accessibilityEnabled => 'Đã bật';
@@ -891,7 +891,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get setupStep1DescAndroid =>
-      'Cho phép TransKey hiển thị trên các app khác để bong bóng nổi xuất hiện khi cần.';
+      'Cho phép TransKey hiển thị trên các ứng dụng khác để bong bóng nổi xuất hiện khi cần.';
 
   @override
   String get setupStep2Title => 'Cho phép truy cập đầy đủ';
@@ -902,36 +902,36 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get setupStep2DescAndroid =>
-      'Quyền overlay cho phép TransKey hiển thị bong bóng nổi trên các app khác để dịch nhanh.';
+      'Quyền hiển thị trên ứng dụng khác cho phép TransKey nổi bong bóng trên các ứng dụng khác để dịch nhanh.';
 
   @override
   String get setupStep3Title => 'Sẵn sàng!';
 
   @override
   String get setupStep3DescIOS =>
-      'Khi gõ trong bất kỳ app nào, giữ phím quả địa cầu 🌐 để chuyển sang TransKey. Nhấn \"Reply\" để dịch ngay tin nhắn.';
+      'Khi gõ trong bất kỳ ứng dụng nào, giữ phím quả địa cầu 🌐 để chuyển sang TransKey. Nhấn \"Phản hồi\" để dịch ngay tin nhắn.';
 
   @override
   String get setupStep3DescAndroid =>
-      'Chọn văn bản trong app bất kỳ rồi share sang TransKey, hoặc dùng bong bóng nổi để dịch nhanh.';
+      'Chọn văn bản trong ứng dụng bất kỳ rồi chia sẻ sang TransKey, hoặc dùng bong bóng nổi để dịch nhanh.';
 
   @override
   String get setupStep4Title => 'Dịch từ mọi app';
 
   @override
   String get setupStep4DescIOS =>
-      'Chọn văn bản → nhấn \"Share\" → chọn TransKey. Hoặc copy text rồi mở TransKey — app sẽ tự đọc clipboard.';
+      'Chọn văn bản → nhấn \"Chia sẻ\" → chọn TransKey. Hoặc sao chép văn bản rồi mở TransKey — ứng dụng sẽ tự đọc nội dung vừa sao chép.';
 
   @override
   String get setupStep4DescAndroid =>
-      'Chọn văn bản trong app bất kỳ → nhấn \"Share\" → chọn TransKey. Hoặc dùng bong bóng nổi sau khi copy.';
+      'Chọn văn bản trong ứng dụng bất kỳ → nhấn \"Chia sẻ\" → chọn TransKey. Hoặc dùng bong bóng nổi sau khi sao chép.';
 
   @override
-  String get setupStep5Title => 'Tính năng AI';
+  String get setupStep5Title => 'Tính năng thông minh';
 
   @override
   String get setupStep5Desc =>
-      'Dịch, Phản hồi, Tóm tắt, Giải thích & Tinh chỉnh — tất cả do AI. Tính năng Pro có biểu tượng khoá.';
+      'Dịch, Phản hồi, Tóm tắt, Giải thích & Tinh chỉnh. Tính năng Pro có biểu tượng khoá.';
 
   @override
   String get guideTitle => 'Cách sử dụng';
@@ -944,7 +944,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Tính năng nào cũng chỉ đọc nội dung sau khi bạn chủ động làm gì đó — copy text, quét màn hình, chọn vùng, dùng nút Share của hệ thống, hoặc tap TransKey trong menu chọn text. Trợ năng chỉ cần để kết quả Reply tự dán thẳng vào ô chat bạn đang gõ.';
+      'Tính năng nào cũng chỉ đọc nội dung sau khi bạn chủ động làm gì đó — sao chép văn bản, quét màn hình, chọn vùng, dùng nút Chia sẻ của hệ thống, hoặc chạm TransKey trong menu chọn văn bản. Trợ năng chỉ cần để câu trả lời tự dán thẳng vào ô chat bạn đang gõ.';
 
   @override
   String get guideFeatureTranslate => 'Dịch';
@@ -981,11 +981,11 @@ class AppLocalizationsVi extends AppLocalizations {
       'Tạo câu trả lời gợi ý theo ngôn ngữ đích';
 
   @override
-  String get guideInputCopyTitle => 'Copy text rồi chạm Nút TransKey';
+  String get guideInputCopyTitle => 'Sao chép văn bản rồi chạm Nút TransKey';
 
   @override
   String get guideInputCopyDesc =>
-      'Copy text bất kỳ trong app nào, rồi chạm Nút TransKey và chọn hành động.';
+      'Sao chép văn bản bất kỳ trong ứng dụng nào, rồi chạm Nút TransKey và chọn hành động.';
 
   @override
   String get guideInputOcrTitle => 'Dịch cả màn hình';
@@ -1002,11 +1002,11 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chạm Nút TransKey → Quét vùng. Kéo khung quanh đúng phần bạn muốn dịch.';
 
   @override
-  String get guideInputShareTitle => 'Từ nút Share (chia sẻ)';
+  String get guideInputShareTitle => 'Từ nút Chia sẻ';
 
   @override
   String get guideInputShareDesc =>
-      'Trong app bất kỳ: chọn text → tap Share → chọn TransKey.';
+      'Trong ứng dụng bất kỳ: chọn văn bản → chạm Chia sẻ → chọn TransKey.';
 
   @override
   String guideInputMenuTitle(String feature) {
@@ -1015,7 +1015,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'Khi bạn chọn text trong app, popup Copy/Share hiện ra. Tap ⋮ để xem thêm, rồi chọn TransKey: $feature.';
+    return 'Khi bạn chọn văn bản trong ứng dụng, menu Sao chép/Chia sẻ hiện ra. Chạm ⋮ để xem thêm, rồi chọn TransKey: $feature.';
   }
 
   @override
@@ -1023,16 +1023,16 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get guideReplyA11yBody =>
-      'Nếu bật Trợ năng cho TransKey, câu trả lời được dán thẳng vào ô chat bạn đang gõ. Không cần thao tác thêm.\n\nNếu bạn không muốn bật, câu trả lời tự copy sẵn cho bạn — chỉ cần long-press ô chat rồi tap Dán.';
+      'Nếu bật Trợ năng cho TransKey, câu trả lời được dán thẳng vào ô chat bạn đang gõ. Không cần thao tác thêm.\n\nNếu bạn không muốn bật, câu trả lời tự sao chép sẵn cho bạn — chỉ cần nhấn giữ ô chat rồi chạm Dán.';
 
   @override
   String get appPermissions => 'Quyền ứng dụng';
 
   @override
-  String get permissionsAllSet => 'Đã cấp đủ — tap để xem lại';
+  String get permissionsAllSet => 'Đã cấp đủ — chạm để xem lại';
 
   @override
-  String get permissionsNeedSetup => 'Tap để cấp các quyền cần thiết';
+  String get permissionsNeedSetup => 'Chạm để cấp các quyền cần thiết';
 
   @override
   String get setupTransKey => 'Thiết lập TransKey';
@@ -1046,21 +1046,21 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get permFloatingBubbleBody =>
-      'Hiển thị TransKey trên các app khác. Cần để nút TransKey xuất hiện.';
+      'Hiển thị TransKey trên các ứng dụng khác. Cần để nút TransKey xuất hiện.';
 
   @override
   String get permRestrictedSettings => 'Cho phép cài đặt giới hạn';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ chặn các app sideload không cho dùng Trợ năng. Tap ⋮ ở góc trên phải → \"Cho phép cài đặt giới hạn\".';
+      'Android 13+ chặn các ứng dụng cài ngoài cửa hàng không cho dùng Trợ năng. Chạm ⋮ ở góc trên phải → \"Cho phép cài đặt giới hạn\".';
 
   @override
   String get permAccessibility => 'Trợ năng (tùy chọn)';
 
   @override
   String get permAccessibilityBody =>
-      'Cho phép TransKey dán câu trả lời Reply thẳng vào ô nhập đang focus. Bỏ qua nếu bạn không ngại dán tay.';
+      'Cho phép TransKey dán câu trả lời thẳng vào ô bạn đang gõ. Bỏ qua nếu bạn không ngại dán tay.';
 
   @override
   String get permEnabled => 'Đã bật';
@@ -1076,7 +1076,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'Trợ năng là tùy chọn. Không có nó, kết quả Reply rơi vào clipboard và bạn dán thủ công.';
+      'Trợ năng là tùy chọn. Không có nó, câu trả lời được sao chép sẵn và bạn dán thủ công.';
 
   @override
   String get permSkipForNow => 'Bỏ qua';
@@ -1140,7 +1140,7 @@ class AppLocalizationsVi extends AppLocalizations {
       'Không cộng thưởng được. Thử lại sau một lát.';
 
   @override
-  String get quotaWatchAd => '+ Xem QC';
+  String get quotaWatchAd => '+ Xem quảng cáo';
 
   @override
   String get quotaRewardGranted => 'Đã cộng thưởng vào lượt dùng hôm nay';
@@ -1162,7 +1162,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get captureKeepaliveExplain =>
-      'Sau khi chụp màn hình, app giữ quyền chụp trong khoảng thời gian này để lần sau bạn chạm 2 lần Nút TransKey (hoặc chọn Dịch màn hình) không bị hỏi quyền hệ thống lại. Giữ lâu = ít thao tác hơn nhưng biểu tượng đang quay màn hình hiển thị lâu và máy hơi nóng thêm.';
+      'Sau khi chụp màn hình, ứng dụng giữ quyền chụp trong khoảng thời gian này để lần sau bạn chạm 2 lần Nút TransKey (hoặc chọn Dịch màn hình) không bị hỏi quyền hệ thống lại. Giữ lâu = ít thao tác hơn nhưng biểu tượng đang quay màn hình hiển thị lâu và máy hơi nóng thêm.';
 
   @override
   String get bubbleIdleTitle => 'Tự động tắt bong bóng';
@@ -1363,6 +1363,38 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Khác';
+
+  @override
+  String get cameraScenePickerTitle => 'Bạn muốn chụp gì?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Chọn chế độ trước để kết quả chính xác hơn. Bạn vẫn có thể đổi nhanh trên thanh chọn phía dưới sau khi vào màn hình.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Tự động chọn phù hợp với ảnh';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Truyện tranh — mỗi khung hội thoại một mục';
+
+  @override
+  String get cameraSceneMenuDesc => 'Thực đơn nhà hàng - bỏ giá khi rõ ràng';
+
+  @override
+  String get cameraSceneSignDesc => 'Biển hiệu, biển báo, banner';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Văn bản chính thức, sách, tài liệu';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'Chụp màn hình ứng dụng / website';
+
+  @override
+  String get mangaNoDialogue => 'Không tìm thấy hội thoại';
+
+  @override
+  String get splittingItems => 'Đang tách mục…';
 
   @override
   String cameraDetected(String scene) {

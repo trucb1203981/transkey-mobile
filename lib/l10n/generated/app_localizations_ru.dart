@@ -912,7 +912,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setupStep2DescAndroid =>
-      'Разрешение оверлея позволяет TransKey показывать плавающую кнопку поверх других приложений для быстрых переводов.';
+      'Разрешение «Поверх других приложений» позволяет TransKey показывать плавающую кнопку для быстрых переводов.';
 
   @override
   String get setupStep3Title => 'Всё готово!';
@@ -941,7 +941,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Перевод, Ответ, Резюме, Объяснение и Улучшение — всё на основе ИИ. Функции Pro отмечены значком замка.';
+      'Перевод, Ответ, Резюме, Объяснение и Улучшение. Функции Pro отмечены значком замка.';
 
   @override
   String get guideTitle => 'Как использовать';
@@ -1378,6 +1378,39 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Другое';
+
+  @override
+  String get cameraScenePickerTitle => 'Что вы хотите захватить?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Сначала выберите режим для более точного результата. Вы можете переключиться из панели выбора ниже.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Автоматически выбирает лучший режим';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Манга / маньхва / маньхуа / комикс - одна карточка на каждое облачко';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Меню ресторана - пропускает очевидные цены';
+
+  @override
+  String get cameraSceneSignDesc => 'Витрины, вывески, баннеры';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Официальные документы, книги, бумаги';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'Скриншот приложения или веб-сайта';
+
+  @override
+  String get mangaNoDialogue => 'Диалог не найден';
+
+  @override
+  String get splittingItems => 'Разделение элементов…';
 
   @override
   String cameraDetected(String scene) {

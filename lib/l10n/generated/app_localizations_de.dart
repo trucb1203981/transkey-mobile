@@ -945,7 +945,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Übersetzen, Antworten, Zusammenfassen, Erklären & Verfeinern — alles KI-gestützt. Pro-Funktionen sind mit einem Schloss markiert.';
+      'Übersetzen, Antworten, Zusammenfassen, Erklären & Verfeinern. Pro-Funktionen sind mit einem Schloss markiert.';
 
   @override
   String get guideTitle => 'Verwendung';
@@ -959,7 +959,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Jede Funktion liest Text erst, nachdem du etwas bewusst tust — Text kopieren, Bildschirm scannen, einen Bereich auswählen, die System-Teilen-Schaltfläche benutzen oder TransKey aus dem Textauswahlmenü antippen. Bedienungshilfen werden nur dazu verwendet, das Reply-Ergebnis direkt in den Chat einzufügen, in dem du gerade tippst.';
+      'Jede Funktion liest Text erst, nachdem du etwas bewusst tust — Text kopieren, Bildschirm scannen, einen Bereich auswählen, die System-Teilen-Schaltfläche benutzen oder TransKey aus dem Textauswahlmenü antippen. Bedienungshilfen werden nur dazu verwendet, die Antwort direkt in den Chat einzufügen, in dem du gerade tippst.';
 
   @override
   String get guideFeatureTranslate => 'Übersetzen';
@@ -1056,10 +1056,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Erteile die Floating-Bubble-Berechtigung zum Starten. Bedienungshilfen sind optional und nur für One-Tap-Reply-Einfügen erforderlich.';
+      'Erteile die Berechtigung für die schwebende Bubble zum Starten. Bedienungshilfen sind optional und nur für das direkte Einfügen der Antwort mit einem Tipp erforderlich.';
 
   @override
-  String get permFloatingBubble => 'Floating Bubble';
+  String get permFloatingBubble => 'Schwebende Bubble';
 
   @override
   String get permFloatingBubbleBody =>
@@ -1070,14 +1070,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ blockiert standardmäßig Bedienungshilfen für sideloaded Apps. ⋮ oben rechts → \"Eingeschränkte Einstellungen erlauben\".';
+      'Android 13+ blockiert standardmäßig Bedienungshilfen für Apps, die außerhalb des Stores installiert wurden. ⋮ oben rechts → \"Eingeschränkte Einstellungen erlauben\".';
 
   @override
   String get permAccessibility => 'Bedienungshilfen (optional)';
 
   @override
   String get permAccessibilityBody =>
-      'Erlaubt TransKey, Reply-Vorschläge direkt in das fokussierte Textfeld einzufügen. Überspringen, falls manuelles Einfügen kein Problem ist.';
+      'Erlaubt TransKey, Antwortvorschläge direkt in das aktive Textfeld einzufügen. Überspringen, falls manuelles Einfügen kein Problem ist.';
 
   @override
   String get permEnabled => 'Aktiviert';
@@ -1093,7 +1093,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'Bedienungshilfen sind optional. Ohne sie landen Reply-Vorschläge in der Zwischenablage und du fügst sie selbst ein.';
+      'Bedienungshilfen sind optional. Ohne sie landen Antwortvorschläge in der Zwischenablage und du fügst sie selbst ein.';
 
   @override
   String get permSkipForNow => 'Vorerst überspringen';
@@ -1383,6 +1383,39 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Sonstiges';
+
+  @override
+  String get cameraScenePickerTitle => 'Was möchten Sie erfassen?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Wählen Sie zuerst einen Modus für genauere Ergebnisse. Sie können unten über die Auswahlleiste wechseln.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Wählt automatisch den besten Modus';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Manga / Manhwa / Manhua / Comic - ein Block pro Sprechblase';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Speisekarte - überspringt offensichtliche Preise';
+
+  @override
+  String get cameraSceneSignDesc => 'Schaufenster, Schilder, Banner';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Offizielle Dokumente, Bücher, Papiere';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'App- oder Website-Screenshot';
+
+  @override
+  String get mangaNoDialogue => 'Kein Dialog gefunden';
+
+  @override
+  String get splittingItems => 'Elemente werden aufgeteilt…';
 
   @override
   String cameraDetected(String scene) {

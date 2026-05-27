@@ -908,11 +908,10 @@ class AppLocalizationsKo extends AppLocalizations {
       '어떤 앱에서든 텍스트 선택 → \"공유\" 탭 → TransKey 선택. 또는 텍스트 복사 후 플로팅 버블 사용.';
 
   @override
-  String get setupStep5Title => 'AI 기능';
+  String get setupStep5Title => '스마트 기능';
 
   @override
-  String get setupStep5Desc =>
-      '번역, 답장, 요약, 설명, 다듬기 — 모두 AI 기반. Pro 기능은 자물쇠 아이콘으로 표시됩니다.';
+  String get setupStep5Desc => '번역, 답장, 요약, 설명, 다듬기. Pro 기능은 자물쇠 아이콘으로 표시됩니다.';
 
   @override
   String get guideTitle => '사용법';
@@ -925,7 +924,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      '모든 기능은 사용자가 의도적으로 동작했을 때만 텍스트를 읽습니다 — 복사, 화면 스캔, 영역 선택, 시스템 공유 사용, 또는 텍스트 선택 메뉴에서 TransKey 탭. 접근성은 Reply 결과를 입력 중인 채팅창에 바로 붙여넣기 위해서만 사용됩니다.';
+      '모든 기능은 사용자가 의도적으로 동작했을 때만 텍스트를 읽습니다 — 복사, 화면 스캔, 영역 선택, 시스템 공유 사용, 또는 텍스트 선택 메뉴에서 TransKey 탭. 접근성은 답장 결과를 입력 중인 채팅창에 바로 붙여넣기 위해서만 사용됩니다.';
 
   @override
   String get guideFeatureTranslate => '번역';
@@ -1013,7 +1012,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      '플로팅 버블 권한만 부여하면 시작할 수 있습니다. 접근성은 선택사항이며 원탭 Reply 붙여넣기에만 필요합니다.';
+      '플로팅 버블 권한만 부여하면 시작할 수 있습니다. 접근성은 선택사항이며 한 번의 탭으로 답장을 붙여넣을 때만 필요합니다.';
 
   @override
   String get permFloatingBubble => '플로팅 버블';
@@ -1026,14 +1025,14 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+는 사이드로드 앱의 접근성을 기본 차단합니다. 우상단 ⋮ → \"제한된 설정 허용\".';
+      'Android 13+는 스토어 외부에서 설치한 앱의 접근성을 기본 차단합니다. 우상단 ⋮ → \"제한된 설정 허용\".';
 
   @override
   String get permAccessibility => '접근성 (선택)';
 
   @override
   String get permAccessibilityBody =>
-      'Reply 제안을 포커스된 텍스트 필드에 직접 붙여넣습니다. 수동 붙여넣기가 괜찮으면 건너뛰세요.';
+      '답장 제안을 입력 중인 텍스트 필드에 직접 붙여넣습니다. 수동 붙여넣기가 괜찮으면 건너뛰세요.';
 
   @override
   String get permEnabled => '활성화됨';
@@ -1048,8 +1047,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get permOpenAppDetails => '앱 정보 열기';
 
   @override
-  String get permSkipHint =>
-      '접근성은 선택사항입니다. 없으면 Reply 결과가 클립보드로 가고 직접 붙여넣어야 합니다.';
+  String get permSkipHint => '접근성은 선택사항입니다. 없으면 답장 결과가 클립보드로 가고 직접 붙여넣어야 합니다.';
 
   @override
   String get permSkipForNow => '지금은 건너뛰기';
@@ -1326,6 +1324,37 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cameraSceneOther => '기타';
+
+  @override
+  String get cameraScenePickerTitle => '무엇을 캡처할까요?';
+
+  @override
+  String get cameraScenePickerHint =>
+      '더 정확한 결과를 위해 먼저 모드를 선택하세요. 아래 선택 바에서 언제든 변경할 수 있습니다.';
+
+  @override
+  String get cameraSceneAutoDesc => '최적의 모드를 자동으로 선택';
+
+  @override
+  String get cameraSceneMangaDesc => '만화 / 웹툰 / 중국 만화 / 코믹 - 말풍선마다 한 카드씩';
+
+  @override
+  String get cameraSceneMenuDesc => '레스토랑 메뉴 - 명확한 가격은 건너뜀';
+
+  @override
+  String get cameraSceneSignDesc => '간판, 표지판, 배너';
+
+  @override
+  String get cameraSceneDocumentDesc => '공식 문서, 책, 논문';
+
+  @override
+  String get cameraSceneScreenshotDesc => '앱 또는 웹사이트 스크린샷';
+
+  @override
+  String get mangaNoDialogue => '대사를 찾을 수 없습니다';
+
+  @override
+  String get splittingItems => '항목 분할 중…';
 
   @override
   String cameraDetected(String scene) {

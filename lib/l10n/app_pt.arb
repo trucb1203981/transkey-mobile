@@ -400,7 +400,7 @@
   "setupStep4DescIOS": "Selecione qualquer texto → toque em \"Compartilhar\" → escolha TransKey. Ou copie o texto e abra o TransKey — ele lê sua área de transferência automaticamente.",
   "setupStep4DescAndroid": "Selecione o texto em qualquer app → toque em \"Compartilhar\" → escolha TransKey. Ou use o botão flutuante após copiar o texto.",
   "setupStep5Title": "Recursos inteligentes",
-  "setupStep5Desc": "Traduzir, Responder, Resumir, Explicar e Aprimorar — tudo com IA. Os recursos Pro estão marcados com um ícone de cadeado.",
+  "setupStep5Desc": "Traduzir, Responder, Resumir, Explicar e Aprimorar. Os recursos Pro estão marcados com um ícone de cadeado.",
   "guideTitle": "Como usar",
   "guideSubtitle": "Todas as maneiras de capturar texto para cada recurso",
   "guideIntroTitle": "Não são necessárias permissões especiais para capturar texto.",
@@ -431,7 +431,7 @@
       }
     }
   },
-  "guideInputMenuDesc": "Selecione o texto em qualquer app — o popup com Copiar/Compartilhar aparece. Toque em ⋮ para mais opções e escolha TransKey: {feature}.",
+  "guideInputMenuDesc": "Selecione o texto em qualquer app — o menu com Copiar/Compartilhar aparece. Toque em ⋮ para mais opções e escolha TransKey: {feature}.",
   "@guideInputMenuDesc": {
     "placeholders": {
       "feature": {
@@ -451,7 +451,7 @@
   "permRestrictedSettings": "Permitir configurações restritas",
   "permRestrictedSettingsBody": "O Android 13+ bloqueia apps instalados por fora da loja em Acessibilidade por padrão. Toque em ⋮ no canto superior direito → \"Permitir configurações restritas\".",
   "permAccessibility": "Acessibilidade (opcional)",
-  "permAccessibilityBody": "Permite que o TransKey cole sugestões de resposta direto no campo de texto focado. Pule se você não se importar em colar você mesmo.",
+  "permAccessibilityBody": "Permite que o TransKey cole sugestões de resposta direto no campo de texto ativo. Pule se você não se importar em colar você mesmo.",
   "permEnabled": "Ativado",
   "permEnable": "Ativar",
   "permDone": "Concluído",
@@ -558,7 +558,7 @@
   "cameraSettingsShowOriginalHint": "Sempre mostrar o texto fonte abaixo de cada cartão de tradução.",
   "cameraSettingsOpacity": "Opacidade da sobreposição",
   "cameraSettingsOpacityHint": "Transparência do fundo do cartão. Menor = a foto atrás aparece mais.",
-  "cameraSettingsPrimaryColor": "Cor de overlay única",
+  "cameraSettingsPrimaryColor": "Cor única para todos os cartões",
   "cameraSettingsPrimaryColorHint": "Usar uma única cor para todos os cards em vez de detectar a cor da foto.",
   "cameraSceneAuto": "Auto",
   "cameraSceneDocument": "Documento",
@@ -567,6 +567,16 @@
   "cameraSceneScreenshot": "Captura de tela",
   "cameraSceneManga": "Quadrinhos",
   "cameraSceneOther": "Outro",
+  "cameraScenePickerTitle": "O que você quer capturar?",
+  "cameraScenePickerHint": "Escolha um modo primeiro para resultados mais precisos. Você pode trocar pela barra de opções abaixo.",
+  "cameraSceneAutoDesc": "Escolhe automaticamente o melhor modo",
+  "cameraSceneMangaDesc": "Manga / manhwa / manhua / quadrinhos - um cartão por balão",
+  "cameraSceneMenuDesc": "Cardápio de restaurante - ignora preços óbvios",
+  "cameraSceneSignDesc": "Vitrines, placas, faixas",
+  "cameraSceneDocumentDesc": "Documentos oficiais, livros, papéis",
+  "cameraSceneScreenshotDesc": "Captura de tela de app ou site",
+  "mangaNoDialogue": "Nenhum diálogo encontrado",
+  "splittingItems": "Separando itens…",
   "cameraDetected": "Detectado: {scene}",
   "cameraWhatIsThis": "O que é isto?",
   "cameraWhatIsThisHint": "Toque em um texto da visualização para perguntar",

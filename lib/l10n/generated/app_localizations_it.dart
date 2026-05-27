@@ -942,7 +942,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Traduci, Rispondi, Riassumi, Spiega e Migliora — tutte basate sull\'IA. Le funzioni Pro sono contrassegnate con un\'icona a lucchetto.';
+      'Traduci, Rispondi, Riassumi, Spiega e Migliora. Le funzioni Pro sono contrassegnate con un\'icona a lucchetto.';
 
   @override
   String get guideTitle => 'Come usare';
@@ -1029,7 +1029,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'Seleziona il testo in qualsiasi app — appare il popup con Copia/Condividi. Tocca ⋮ per altre opzioni, poi scegli TransKey: $feature.';
+    return 'Seleziona il testo in qualsiasi app — appare il menu con Copia/Condividi. Tocca ⋮ per altre opzioni, poi scegli TransKey: $feature.';
   }
 
   @override
@@ -1355,7 +1355,7 @@ class AppLocalizationsIt extends AppLocalizations {
       'Trasparenza dello sfondo della scheda. Più basso = la foto dietro è più visibile.';
 
   @override
-  String get cameraSettingsPrimaryColor => 'Colore overlay unico';
+  String get cameraSettingsPrimaryColor => 'Colore unico delle schede';
 
   @override
   String get cameraSettingsPrimaryColorHint =>
@@ -1381,6 +1381,40 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Altro';
+
+  @override
+  String get cameraScenePickerTitle => 'Cosa vuoi catturare?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Scegli prima una modalità per risultati più precisi. Puoi cambiare dalla barra di selezione qui sotto.';
+
+  @override
+  String get cameraSceneAutoDesc =>
+      'Sceglie automaticamente la modalità migliore';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Manga / manhwa / manhua / fumetto - una scheda per nuvoletta';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Menu del ristorante - salta i prezzi evidenti';
+
+  @override
+  String get cameraSceneSignDesc => 'Vetrine, insegne, banner';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Documenti ufficiali, libri, documenti';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'Screenshot di app o sito web';
+
+  @override
+  String get mangaNoDialogue => 'Nessun dialogo trovato';
+
+  @override
+  String get splittingItems => 'Suddivisione elementi…';
 
   @override
   String cameraDetected(String scene) {

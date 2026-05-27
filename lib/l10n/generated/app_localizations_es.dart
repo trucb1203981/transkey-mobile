@@ -941,7 +941,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Traducir, Responder, Resumir, Explicar y Refinar — todo con IA. Las funciones Pro están marcadas con un candado.';
+      'Traducir, Responder, Resumir, Explicar y Refinar. Las funciones Pro están marcadas con un candado.';
 
   @override
   String get guideTitle => 'Cómo usar';
@@ -956,7 +956,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Cada función solo lee el texto cuando haces algo a propósito — copiar texto, escanear la pantalla, seleccionar un área, usar el botón Compartir del sistema, o tocar TransKey desde el menú de selección. La Accesibilidad se usa solo para que el resultado de Reply se pegue directamente en el chat en el que estás escribiendo.';
+      'Cada función solo lee el texto cuando haces algo a propósito — copiar texto, escanear la pantalla, seleccionar un área, usar el botón Compartir del sistema, o tocar TransKey desde el menú de selección. La Accesibilidad se usa solo para que la respuesta se pegue directamente en el chat en el que estás escribiendo.';
 
   @override
   String get guideFeatureTranslate => 'Traducir';
@@ -1053,7 +1053,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Concede el permiso de burbuja flotante para empezar. La Accesibilidad es opcional y solo se necesita para pegar Respuesta con un toque.';
+      'Concede el permiso de burbuja flotante para empezar. La Accesibilidad es opcional y solo se necesita para pegar la respuesta con un toque.';
 
   @override
   String get permFloatingBubble => 'Burbuja flotante';
@@ -1067,14 +1067,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ bloquea por defecto la Accesibilidad para apps sideload. Toca ⋮ arriba a la derecha → \"Permitir configuración restringida\".';
+      'Android 13+ bloquea por defecto la Accesibilidad para apps instaladas fuera de la tienda. Toca ⋮ arriba a la derecha → \"Permitir configuración restringida\".';
 
   @override
   String get permAccessibility => 'Accesibilidad (opcional)';
 
   @override
   String get permAccessibilityBody =>
-      'Permite a TransKey pegar sugerencias de Respuesta directamente en el campo enfocado. Omite si no te importa pegar manualmente.';
+      'Permite a TransKey pegar sugerencias de respuesta directamente en el campo activo. Omite si no te importa pegar manualmente.';
 
   @override
   String get permEnabled => 'Activado';
@@ -1090,7 +1090,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'La Accesibilidad es opcional. Sin ella, las sugerencias de Respuesta van al portapapeles y las pegas tú.';
+      'La Accesibilidad es opcional. Sin ella, las sugerencias de respuesta van al portapapeles y las pegas tú.';
 
   @override
   String get permSkipForNow => 'Omitir por ahora';
@@ -1353,7 +1353,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Transparencia del fondo de la tarjeta. Más bajo = la foto detrás se ve más.';
 
   @override
-  String get cameraSettingsPrimaryColor => 'Color de overlay único';
+  String get cameraSettingsPrimaryColor => 'Color único de superposición';
 
   @override
   String get cameraSettingsPrimaryColorHint =>
@@ -1379,6 +1379,40 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Otro';
+
+  @override
+  String get cameraScenePickerTitle => '¿Qué quieres capturar?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Elige un modo primero para obtener resultados más precisos. Puedes cambiar desde la barra de opciones de abajo.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Elige automáticamente el mejor modo';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Manga / manhwa / manhua / cómic - una tarjeta por bocadillo';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Menú de restaurante - omite precios obvios';
+
+  @override
+  String get cameraSceneSignDesc => 'Escaparates, letreros, carteles';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Documentos oficiales, libros, papeles';
+
+  @override
+  String get cameraSceneScreenshotDesc =>
+      'Captura de pantalla de app o sitio web';
+
+  @override
+  String get mangaNoDialogue => 'No se encontró diálogo';
+
+  @override
+  String get splittingItems => 'Dividiendo elementos…';
 
   @override
   String cameraDetected(String scene) {

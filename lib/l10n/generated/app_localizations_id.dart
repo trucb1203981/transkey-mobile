@@ -911,7 +911,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupStep2DescAndroid =>
-      'Izin overlay memungkinkan TransKey menampilkan tombol melayang di atas aplikasi lain untuk terjemahan cepat.';
+      'Izin tampil di atas aplikasi lain memungkinkan TransKey menampilkan tombol melayang untuk terjemahan cepat.';
 
   @override
   String get setupStep3Title => 'Semua siap!';
@@ -929,7 +929,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupStep4DescIOS =>
-      'Pilih teks apa pun → ketuk \"Bagikan\" → pilih TransKey. Atau salin teks dan buka TransKey — ia akan membaca clipboard Anda secara otomatis.';
+      'Pilih teks apa pun → ketuk \"Bagikan\" → pilih TransKey. Atau salin teks dan buka TransKey — ia akan membaca papan klip Anda secara otomatis.';
 
   @override
   String get setupStep4DescAndroid =>
@@ -940,7 +940,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Terjemahkan, Balas, Ringkas, Jelaskan & Perbaiki — semuanya didukung AI. Fitur Pro ditandai dengan ikon gembok.';
+      'Terjemahkan, Balas, Ringkas, Jelaskan & Perbaiki. Fitur Pro ditandai dengan ikon gembok.';
 
   @override
   String get guideTitle => 'Cara menggunakan';
@@ -1065,14 +1065,14 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ memblokir aplikasi yang di-sideload dari Aksesibilitas secara bawaan. Ketuk ⋮ di kanan atas → \"Izinkan pengaturan terbatas\".';
+      'Android 13+ memblokir aplikasi yang diinstal di luar Play Store dari Aksesibilitas secara bawaan. Ketuk ⋮ di kanan atas → \"Izinkan pengaturan terbatas\".';
 
   @override
   String get permAccessibility => 'Aksesibilitas (opsional)';
 
   @override
   String get permAccessibilityBody =>
-      'Memungkinkan TransKey menempelkan saran balasan langsung ke kolom teks yang sedang fokus. Lewati jika Anda tidak keberatan menempelkannya sendiri.';
+      'Memungkinkan TransKey menempelkan saran balasan langsung ke kolom teks yang sedang aktif. Lewati jika Anda tidak keberatan menempelkannya sendiri.';
 
   @override
   String get permEnabled => 'Aktif';
@@ -1088,7 +1088,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'Aksesibilitas opsional. Tanpa itu, saran balasan akan masuk ke clipboard dan Anda perlu menempelkannya sendiri.';
+      'Aksesibilitas opsional. Tanpa itu, saran balasan akan masuk ke papan klip dan Anda perlu menempelkannya sendiri.';
 
   @override
   String get permSkipForNow => 'Lewati untuk saat ini';
@@ -1175,7 +1175,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get captureKeepaliveExplain =>
-      'Setelah memindai layar, biarkan izin tangkapan layar tetap aktif agar Anda dapat mengetuk dua kali tombol (atau memilih Pindai layar lagi) tanpa permintaan izin sistem. Jendela yang lebih panjang menghemat ketukan tetapi membuat indikator casting tetap terlihat dan sedikit memanaskan perangkat.';
+      'Setelah memindai layar, biarkan izin tangkapan layar tetap aktif agar Anda dapat mengetuk dua kali tombol (atau memilih Pindai layar lagi) tanpa permintaan izin sistem. Jendela yang lebih panjang menghemat ketukan tetapi membuat indikator perekaman layar tetap terlihat dan sedikit memanaskan perangkat.';
 
   @override
   String get bubbleIdleTitle => 'Bubble auto-stop';
@@ -1209,7 +1209,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get captureKeepaliveLongHint =>
-      'Kecepatan pindai ulang maksimum. Indikator casting tetap aktif lebih lama.';
+      'Kecepatan pindai ulang maksimum. Indikator perekaman layar tetap aktif lebih lama.';
 
   @override
   String captureKeepaliveMinutes(int count) {
@@ -1343,14 +1343,14 @@ class AppLocalizationsId extends AppLocalizations {
       'Selalu tampilkan teks sumber di bawah setiap kartu terjemahan.';
 
   @override
-  String get cameraSettingsOpacity => 'Opasitas overlay';
+  String get cameraSettingsOpacity => 'Transparansi kartu';
 
   @override
   String get cameraSettingsOpacityHint =>
       'Transparansi latar kartu. Lebih rendah = foto di belakang lebih terlihat.';
 
   @override
-  String get cameraSettingsPrimaryColor => 'Warna overlay tunggal';
+  String get cameraSettingsPrimaryColor => 'Satu warna untuk semua kartu';
 
   @override
   String get cameraSettingsPrimaryColorHint =>
@@ -1376,6 +1376,40 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Lainnya';
+
+  @override
+  String get cameraScenePickerTitle => 'Apa yang ingin Anda tangkap?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Pilih mode terlebih dahulu untuk hasil yang lebih akurat. Anda bisa beralih dari bilah pilihan di bawah.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Otomatis memilih mode terbaik';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Manga / manhwa / manhua / komik - satu kartu per balon dialog';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Menu restoran - melewatkan harga yang jelas';
+
+  @override
+  String get cameraSceneSignDesc => 'Etalase toko, papan nama, spanduk';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Dokumen resmi, buku, kertas';
+
+  @override
+  String get cameraSceneScreenshotDesc =>
+      'Tangkapan layar aplikasi atau situs web';
+
+  @override
+  String get mangaNoDialogue => 'Tidak ada dialog ditemukan';
+
+  @override
+  String get splittingItems => 'Memisahkan item…';
 
   @override
   String cameraDetected(String scene) {

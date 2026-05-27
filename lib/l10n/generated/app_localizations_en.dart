@@ -938,7 +938,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.';
+      'Translate, Reply, Summarize, Explain & Refine. Pro features are marked with a lock icon.';
 
   @override
   String get guideTitle => 'How to use';
@@ -1373,6 +1373,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Other';
+
+  @override
+  String get cameraScenePickerTitle => 'What do you want to capture?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Pick a mode first for more accurate results. You can still switch from the chip bar below.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Automatically picks the best mode';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Manga / manhwa / manhua / comic - one card per speech balloon';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Restaurant menu - skips prices when obvious';
+
+  @override
+  String get cameraSceneSignDesc => 'Storefronts, signboards, banners';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Official documents, books, papers';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'App or website screenshot';
+
+  @override
+  String get mangaNoDialogue => 'No dialogue found';
+
+  @override
+  String get splittingItems => 'Splitting items…';
 
   @override
   String cameraDetected(String scene) {

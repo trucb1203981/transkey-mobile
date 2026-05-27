@@ -940,7 +940,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'ترجمة ورد وتلخيص وشرح وتحسين النص — كلها مدعومة بالذكاء الاصطناعي. ميزات Pro مُعلَّمة برمز قفل.';
+      'ترجمة ورد وتلخيص وشرح وتحسين النص. ميزات Pro مُعلَّمة برمز قفل.';
 
   @override
   String get guideTitle => 'كيفية الاستخدام';
@@ -1370,6 +1370,38 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'أخرى';
+
+  @override
+  String get cameraScenePickerTitle => 'ماذا تريد التقاطه؟';
+
+  @override
+  String get cameraScenePickerHint =>
+      'اختر وضعًا أولاً للحصول على نتائج أكثر دقة. يمكنك التبديل من شريط الاختيار أدناه.';
+
+  @override
+  String get cameraSceneAutoDesc => 'يختار الوضع الأفضل تلقائيًا';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'مانغا / مانهوا / مانغوا / كوميك - بطاقة واحدة لكل فقاعة كلام';
+
+  @override
+  String get cameraSceneMenuDesc => 'قائمة مطعم - يتخطى الأسعار الواضحة';
+
+  @override
+  String get cameraSceneSignDesc => 'الواجهات واللافتات والبانرات';
+
+  @override
+  String get cameraSceneDocumentDesc => 'وثائق رسمية وكتب وأوراق';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'لقطة شاشة لتطبيق أو موقع إلكتروني';
+
+  @override
+  String get mangaNoDialogue => 'لم يتم العثور على حوار';
+
+  @override
+  String get splittingItems => 'جارٍ تقسيم العناصر…';
 
   @override
   String cameraDetected(String scene) {

@@ -1841,7 +1841,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupStep5Desc.
   ///
   /// In en, this message translates to:
-  /// **'Translate, Reply, Summarize, Explain & Refine — all powered by AI. Pro features are marked with a lock icon.'**
+  /// **'Translate, Reply, Summarize, Explain & Refine. Pro features are marked with a lock icon.'**
   String get setupStep5Desc;
 
   /// No description provided for @guideTitle.
@@ -2617,6 +2617,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get cameraSceneOther;
+
+  /// No description provided for @cameraScenePickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want to capture?'**
+  String get cameraScenePickerTitle;
+
+  /// No description provided for @cameraScenePickerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a mode first for more accurate results. You can still switch from the chip bar below.'**
+  String get cameraScenePickerHint;
+
+  /// No description provided for @cameraSceneAutoDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically picks the best mode'**
+  String get cameraSceneAutoDesc;
+
+  /// No description provided for @cameraSceneMangaDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Manga / manhwa / manhua / comic - one card per speech balloon'**
+  String get cameraSceneMangaDesc;
+
+  /// No description provided for @cameraSceneMenuDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Restaurant menu - skips prices when obvious'**
+  String get cameraSceneMenuDesc;
+
+  /// No description provided for @cameraSceneSignDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Storefronts, signboards, banners'**
+  String get cameraSceneSignDesc;
+
+  /// No description provided for @cameraSceneDocumentDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Official documents, books, papers'**
+  String get cameraSceneDocumentDesc;
+
+  /// No description provided for @cameraSceneScreenshotDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'App or website screenshot'**
+  String get cameraSceneScreenshotDesc;
+
+  /// No description provided for @mangaNoDialogue.
+  ///
+  /// In en, this message translates to:
+  /// **'No dialogue found'**
+  String get mangaNoDialogue;
+
+  /// No description provided for @splittingItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Splitting items…'**
+  String get splittingItems;
 
   /// Badge label confirming what the AI thinks the captured image is (placeholder is a localized scene name).
   ///

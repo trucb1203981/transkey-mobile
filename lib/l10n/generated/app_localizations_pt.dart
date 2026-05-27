@@ -945,7 +945,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Traduzir, Responder, Resumir, Explicar e Aprimorar — tudo com IA. Os recursos Pro estão marcados com um ícone de cadeado.';
+      'Traduzir, Responder, Resumir, Explicar e Aprimorar. Os recursos Pro estão marcados com um ícone de cadeado.';
 
   @override
   String get guideTitle => 'Como usar';
@@ -1032,7 +1032,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String guideInputMenuDesc(String feature) {
-    return 'Selecione o texto em qualquer app — o popup com Copiar/Compartilhar aparece. Toque em ⋮ para mais opções e escolha TransKey: $feature.';
+    return 'Selecione o texto em qualquer app — o menu com Copiar/Compartilhar aparece. Toque em ⋮ para mais opções e escolha TransKey: $feature.';
   }
 
   @override
@@ -1079,7 +1079,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get permAccessibilityBody =>
-      'Permite que o TransKey cole sugestões de resposta direto no campo de texto focado. Pule se você não se importar em colar você mesmo.';
+      'Permite que o TransKey cole sugestões de resposta direto no campo de texto ativo. Pule se você não se importar em colar você mesmo.';
 
   @override
   String get permEnabled => 'Ativado';
@@ -1358,7 +1358,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Transparência do fundo do cartão. Menor = a foto atrás aparece mais.';
 
   @override
-  String get cameraSettingsPrimaryColor => 'Cor de overlay única';
+  String get cameraSettingsPrimaryColor => 'Cor única para todos os cartões';
 
   @override
   String get cameraSettingsPrimaryColorHint =>
@@ -1384,6 +1384,39 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Outro';
+
+  @override
+  String get cameraScenePickerTitle => 'O que você quer capturar?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Escolha um modo primeiro para resultados mais precisos. Você pode trocar pela barra de opções abaixo.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Escolhe automaticamente o melhor modo';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Manga / manhwa / manhua / quadrinhos - um cartão por balão';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Cardápio de restaurante - ignora preços óbvios';
+
+  @override
+  String get cameraSceneSignDesc => 'Vitrines, placas, faixas';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Documentos oficiais, livros, papéis';
+
+  @override
+  String get cameraSceneScreenshotDesc => 'Captura de tela de app ou site';
+
+  @override
+  String get mangaNoDialogue => 'Nenhum diálogo encontrado';
+
+  @override
+  String get splittingItems => 'Separando itens…';
 
   @override
   String cameraDetected(String scene) {

@@ -944,7 +944,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupStep5Desc =>
-      'Traduire, Répondre, Résumer, Expliquer & Affiner — tout est propulsé par l’IA. Les fonctionnalités Pro sont marquées d’un cadenas.';
+      'Traduire, Répondre, Résumer, Expliquer & Affiner. Les fonctionnalités Pro sont marquées d’un cadenas.';
 
   @override
   String get guideTitle => 'Comment utiliser';
@@ -959,7 +959,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Chaque fonctionnalité ne lit le texte qu\'après une action volontaire de votre part — copier du texte, scanner l\'écran, sélectionner une zone, utiliser le bouton Partager du système, ou taper TransKey depuis le menu de sélection. L\'Accessibilité ne sert qu\'à coller le résultat de Reply directement dans la boîte de chat en cours.';
+      'Chaque fonctionnalité ne lit le texte qu\'après une action volontaire de votre part — copier du texte, scanner l\'écran, sélectionner une zone, utiliser le bouton Partager du système, ou taper TransKey depuis le menu de sélection. L\'Accessibilité ne sert qu\'à coller la réponse directement dans la boîte de chat en cours.';
 
   @override
   String get guideFeatureTranslate => 'Traduire';
@@ -1056,7 +1056,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Accordez l\'autorisation de bulle flottante pour commencer. L\'Accessibilité est optionnelle et n\'est nécessaire que pour le collage de Réponse en un tap.';
+      'Accordez l\'autorisation de bulle flottante pour commencer. L\'Accessibilité est optionnelle et n\'est nécessaire que pour coller la réponse en un appui.';
 
   @override
   String get permFloatingBubble => 'Bulle flottante';
@@ -1077,7 +1077,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get permAccessibilityBody =>
-      'Permet à TransKey de coller les suggestions de Réponse directement dans le champ ciblé. Ignorez si le collage manuel ne vous dérange pas.';
+      'Permet à TransKey de coller les suggestions de réponse directement dans le champ actif. Ignorez si le collage manuel ne vous dérange pas.';
 
   @override
   String get permEnabled => 'Activé';
@@ -1093,7 +1093,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'L\'Accessibilité est optionnelle. Sans elle, les suggestions de Réponse arrivent dans le presse-papiers et vous les collez vous-même.';
+      'L\'Accessibilité est optionnelle. Sans elle, les suggestions de réponse arrivent dans le presse-papiers et vous les collez vous-même.';
 
   @override
   String get permSkipForNow => 'Ignorer pour l\'instant';
@@ -1177,11 +1177,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get captureKeepaliveTitle => 'Fenêtre de re-capture rapide';
 
   @override
-  String get captureKeepaliveHint => 'double tap = re-scanner';
+  String get captureKeepaliveHint => 'double appui = re-scanner';
 
   @override
   String get captureKeepaliveExplain =>
-      'Après une capture d’écran, conserve l’autorisation pendant cette durée pour qu’un double tap (ou re-sélection de Lens) n’affiche plus l’invite système. Plus long = moins d’interactions, mais l’indicateur de diffusion reste visible et l’appareil chauffe légèrement.';
+      'Après une capture d’écran, conserve l’autorisation pendant cette durée pour qu’un double appui (ou re-sélection de Lens) n’affiche plus l’invite système. Plus long = moins d’interactions, mais l’indicateur de diffusion reste visible et l’appareil chauffe légèrement.';
 
   @override
   String get bubbleIdleTitle => 'Bubble auto-stop';
@@ -1357,7 +1357,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Transparence du fond de la carte. Plus bas = la photo derrière est plus visible.';
 
   @override
-  String get cameraSettingsPrimaryColor => 'Couleur d\'overlay unique';
+  String get cameraSettingsPrimaryColor => 'Couleur unique des étiquettes';
 
   @override
   String get cameraSettingsPrimaryColorHint =>
@@ -1383,6 +1383,40 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get cameraSceneOther => 'Autre';
+
+  @override
+  String get cameraScenePickerTitle => 'Que voulez-vous capturer ?';
+
+  @override
+  String get cameraScenePickerHint =>
+      'Choisissez d\'abord un mode pour des résultats plus précis. Vous pouvez changer depuis la barre d\'options ci-dessous.';
+
+  @override
+  String get cameraSceneAutoDesc => 'Choisit automatiquement le meilleur mode';
+
+  @override
+  String get cameraSceneMangaDesc =>
+      'Manga / manhwa / manhua / BD - une carte par bulle';
+
+  @override
+  String get cameraSceneMenuDesc =>
+      'Menu de restaurant - ignore les prix évidents';
+
+  @override
+  String get cameraSceneSignDesc => 'Vitrines, enseignes, bannières';
+
+  @override
+  String get cameraSceneDocumentDesc => 'Documents officiels, livres, papiers';
+
+  @override
+  String get cameraSceneScreenshotDesc =>
+      'Capture d\'écran d\'app ou de site web';
+
+  @override
+  String get mangaNoDialogue => 'Aucun dialogue trouvé';
+
+  @override
+  String get splittingItems => 'Séparation des éléments…';
 
   @override
   String cameraDetected(String scene) {

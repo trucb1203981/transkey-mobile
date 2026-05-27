@@ -898,10 +898,10 @@ class AppLocalizationsZh extends AppLocalizations {
       '在任意应用中选择文本 → 点击\"分享\" → 选择 TransKey。或复制文本后使用悬浮气泡。';
 
   @override
-  String get setupStep5Title => 'AI 功能';
+  String get setupStep5Title => '智能功能';
 
   @override
-  String get setupStep5Desc => '翻译、回复、总结、解释、润色 — 均由 AI 驱动。Pro 功能带有锁形图标。';
+  String get setupStep5Desc => '翻译、回复、总结、解释、润色。Pro 功能带有锁形图标。';
 
   @override
   String get guideTitle => '使用方法';
@@ -914,7 +914,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      '所有功能仅在你主动操作后才读取内容 — 复制文本、扫描屏幕、选取区域、使用系统分享按钮,或从文本选择菜单点 TransKey。辅助功能只用于把 Reply 结果直接粘贴到你正在输入的聊天框。';
+      '所有功能仅在你主动操作后才读取内容 — 复制文本、扫描屏幕、选取区域、使用系统分享按钮,或从文本选择菜单点 TransKey。辅助功能只用于把回复结果直接粘贴到你正在输入的聊天框。';
 
   @override
   String get guideFeatureTranslate => '翻译';
@@ -977,7 +977,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String guideInputMenuDesc(String feature) {
-    return '在任意应用选中文本,出现 复制/分享 弹窗。点 ⋮ 查看更多,然后选 TransKey: $feature。';
+    return '在任意应用选中文本,出现 复制/分享 菜单。点 ⋮ 查看更多,然后选 TransKey: $feature。';
   }
 
   @override
@@ -1000,7 +1000,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get setupTransKey => '设置 TransKey';
 
   @override
-  String get setupTransKeyBody => '授予悬浮气泡权限即可开始。辅助功能为可选项,仅用于一键粘贴 Reply。';
+  String get setupTransKeyBody => '授予悬浮气泡权限即可开始。辅助功能为可选项,仅用于一键粘贴回复。';
 
   @override
   String get permFloatingBubble => '悬浮气泡';
@@ -1013,14 +1013,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ 默认禁止旁加载应用使用辅助功能。点击右上角 ⋮ → \"允许受限设置\"。';
+      'Android 13+ 默认禁止从应用商店之外安装的应用使用辅助功能。点击右上角 ⋮ → \"允许受限设置\"。';
 
   @override
   String get permAccessibility => '辅助功能 (可选)';
 
   @override
   String get permAccessibilityBody =>
-      '允许 TransKey 将 Reply 建议直接粘贴到当前聚焦的输入框。如果你不介意手动粘贴可以跳过。';
+      '允许 TransKey 将回复建议直接粘贴到当前输入框。如果你不介意手动粘贴可以跳过。';
 
   @override
   String get permEnabled => '已启用';
@@ -1035,7 +1035,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get permOpenAppDetails => '打开应用详情';
 
   @override
-  String get permSkipHint => '辅助功能为可选项。没有它,Reply 建议会进入剪贴板,你需要自己粘贴。';
+  String get permSkipHint => '辅助功能为可选项。没有它,回复建议会进入剪贴板,你需要自己粘贴。';
 
   @override
   String get permSkipForNow => '暂时跳过';
@@ -1309,6 +1309,36 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cameraSceneOther => '其他';
+
+  @override
+  String get cameraScenePickerTitle => '您想捕捉什么？';
+
+  @override
+  String get cameraScenePickerHint => '先选择模式可获得更准确的结果。您也可以从下方的标签栏切换。';
+
+  @override
+  String get cameraSceneAutoDesc => '自动选择最佳模式';
+
+  @override
+  String get cameraSceneMangaDesc => '漫画 / 条漫 / 国漫 / 连环画 - 每个气泡一张卡片';
+
+  @override
+  String get cameraSceneMenuDesc => '餐厅菜单 - 明显的价格会跳过';
+
+  @override
+  String get cameraSceneSignDesc => '店铺招牌、广告牌、横幅';
+
+  @override
+  String get cameraSceneDocumentDesc => '官方文件、书籍、论文';
+
+  @override
+  String get cameraSceneScreenshotDesc => '应用或网站截图';
+
+  @override
+  String get mangaNoDialogue => '未找到对话';
+
+  @override
+  String get splittingItems => '正在拆分项目…';
 
   @override
   String cameraDetected(String scene) {
