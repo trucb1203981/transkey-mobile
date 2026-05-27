@@ -499,6 +499,36 @@ final _kHanRunRe = RegExp(r'[一-鿿㐀-䶿]{2,}');
 bool _lensHasResidualSourceScript(String t) =>
     _kKanaHangulRe.hasMatch(t) || _kHanRunRe.hasMatch(t);
 
+// Client mirror of the server's `isStructurallyUntranslatable` (translate.cjk.ts).
+// A WHOLE block that is purely a URL / email / number / symbol run, OR has no
+// 2+ consecutive letters anywhere, is something NO model will translate — it
+// comes back as an exact echo. Filtering these client-side BEFORE the batch
+// call saves the input tokens + the round-trip, and lets the overlay show them
+// instantly. Critically this only matches PURE-noise WHOLE blocks: mixed
+// content like "Truy cập example.com để xem" has a letter run and is NOT
+// filtered, so a URL embedded in a sentence still reaches the model with its
+// translatable context intact (the concern that ruled out naive URL stripping).
+final _kUrlOnlyRe = RegExp(r'^https?://\S+$', caseSensitive: false);
+final _kDomainOnlyRe = RegExp(
+  r'^[\w.-]+\.(com|net|org|edu|gov|io|app|dev|co|jp|vn|uk|de|fr|ru|cn|kr|tw|hk|sg|in|au|ca|br)(/\S*)?$',
+  caseSensitive: false,
+);
+final _kEmailRe = RegExp(r'^[\w.+-]+@[\w.-]+\.[a-z]{2,}$', caseSensitive: false);
+final _kSymbolsNumsRe =
+    RegExp(r'''^[\d\s%+|\-.,:/\\()\[\]{}<>~`!?@#$^&*"'_=]+$''');
+final _kTwoLetterRunRe = RegExp(r'\p{L}{2,}', unicode: true);
+
+bool _lensIsStructurallyUntranslatable(String text) {
+  final t = text.trim();
+  if (t.length < 2) return true;
+  if (_kUrlOnlyRe.hasMatch(t)) return true;
+  if (_kDomainOnlyRe.hasMatch(t)) return true;
+  if (_kEmailRe.hasMatch(t)) return true;
+  if (_kSymbolsNumsRe.hasMatch(t)) return true;
+  if (!_kTwoLetterRunRe.hasMatch(t)) return true; // no 2+ consecutive letters
+  return false;
+}
+
 /// Progressive-emit hook: push one chunk of translations up to the
 /// native side so [LensOverlayView.applyTranslations] can patch the
 /// already-shown chips in place. Fire-and-forget — any platform-side
@@ -608,7 +638,17 @@ Future<List<String>> _lensBatchChunk(
   final out = List<String>.from(texts);
   var missTexts = <String>[];
   var missIdx = <int>[];
+  var noiseSkipped = 0;
   for (var i = 0; i < texts.length; i++) {
+    // Noise pre-filter: a WHOLE block that's purely a URL / number / symbol
+    // run (status-bar speed, page markers, prices, bare URLs) is left as-is
+    // — no model translates it, so don't pay tokens or the round-trip. Mixed
+    // sentences keep their letter runs and fall through to translation.
+    if (_lensIsStructurallyUntranslatable(texts[i])) {
+      out[i] = texts[i];
+      noiseSkipped++;
+      continue;
+    }
     final cached = _lensTransCache[_lensCacheKey(sourceLang, targetLang, texts[i])];
     if (cached != null) {
       _lensCachePut(_lensCacheKey(sourceLang, targetLang, texts[i]), cached);
@@ -618,7 +658,7 @@ Future<List<String>> _lensBatchChunk(
       missIdx.add(i);
     }
   }
-  final t1Hits = texts.length - missTexts.length;
+  final t1Hits = texts.length - missTexts.length - noiseSkipped;
 
   // Tier 2: persistent SQLite for tier-1 misses. Manga has high text
   // repetition ACROSS app sessions (character speech patterns repeat
@@ -655,7 +695,7 @@ Future<List<String>> _lensBatchChunk(
   }
 
   if (missTexts.isEmpty) {
-    debugPrint('$tag fully-cached n=${texts.length} (t1=$t1Hits t2=$t2Hits)');
+    debugPrint('$tag no-llm n=${texts.length} (t1=$t1Hits t2=$t2Hits noise=$noiseSkipped)');
     return out;
   }
   try {
@@ -729,7 +769,7 @@ Future<List<String>> _lensBatchChunk(
     }
     final provider = data?['provider'] ?? '?';
     final model = data?['model'] ?? '?';
-    debugPrint('$tag dt=${dt}ms n=${texts.length} t1=$t1Hits t2=$t2Hits sent=${missTexts.length} good=${missTexts.length - fallback} fallback=$fallback provider=$provider model=$model');
+    debugPrint('$tag dt=${dt}ms n=${texts.length} t1=$t1Hits t2=$t2Hits noise=$noiseSkipped sent=${missTexts.length} good=${missTexts.length - fallback} fallback=$fallback provider=$provider model=$model');
     if (fallback == missTexts.length) {
       final firstIn = missTexts.isNotEmpty ? missTexts.first : '';
       final firstRaw = raw.isNotEmpty ? raw.first.toString() : '';
