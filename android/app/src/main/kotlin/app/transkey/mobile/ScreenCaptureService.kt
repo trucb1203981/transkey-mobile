@@ -366,6 +366,26 @@ class ScreenCaptureService : Service() {
         else Bitmap.createBitmap(padded, 0, 0, width, height)
     }
 
+    /**
+     * Height of the system status bar in pixels (top of screen).
+     * Returns 0 when the resource is unavailable so callers can skip the crop.
+     */
+    private fun getStatusBarHeight(): Int {
+        val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resId > 0) resources.getDimensionPixelSize(resId) else 0
+    }
+
+    /**
+     * Height of the system navigation bar in pixels (bottom of screen).
+     * On gesture-nav devices this is typically 20-40 dp (just the swipe
+     * handle area). On 3-button-nav devices it is ~48-56 dp. Returns 0
+     * on devices that report no nav bar (e.g. full-screen / no-bar mode).
+     */
+    private fun getNavBarHeight(): Int {
+        val resId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (resId > 0) resources.getDimensionPixelSize(resId) else 0
+    }
+
     private fun runOcr(bitmap: Bitmap) {
         // Region mode: defer OCR to BubbleService regardless of downstream
         // flow. The user dragged the "Region select" entry to crop the
@@ -382,6 +402,33 @@ class ScreenCaptureService : Service() {
         when (ScreenCaptureManager.flow) {
             ScreenCaptureManager.Flow.LENS -> {
                 val hint = ScreenCaptureManager.languageHint
+
+                // Crop system bars (status bar on top, navigation bar on bottom)
+                // BEFORE OCR. These bars contain non-translatable UI elements:
+                //   top:  network speed "KB/S", signal "ll", battery "74", time
+                //   bottom: gesture handle area, back/home/recents buttons
+                // ML Kit picks them up as OCR blocks, and since no model
+                // translates them (translation == source), they trip the server's
+                // script-leak quality gate — causing the sequential provider ladder
+                // to run 60+ s on a screen that would otherwise finish in 5 s.
+                // Cropping them out at the source eliminates all false-positive leaks.
+                // Safety guard: only crop when the remaining content area is at
+                // least 3× the combined bar height to avoid decimating the bitmap
+                // in landscape or very small captures.
+                val sbHeight = getStatusBarHeight()
+                val navHeight = getNavBarHeight()
+                val totalCrop = sbHeight + navHeight
+                val ocrBitmap = if (totalCrop > 0 && bitmap.height > totalCrop * 3) {
+                    val cropped = Bitmap.createBitmap(
+                        bitmap, 0, sbHeight,
+                        bitmap.width, bitmap.height - totalCrop,
+                    )
+                    // Original full-screen bitmap is no longer needed; recycle it
+                    // so the large ARGB_8888 allocation is freed before OCR runs.
+                    if (!bitmap.isRecycled) bitmap.recycle()
+                    cropped
+                } else bitmap
+
                 // Parallel compression: when the source is pinned to a vision-
                 // only script we already know the vision LLM path is likely.
                 // Start JPEG compression on a background thread NOW, in
@@ -402,19 +449,19 @@ class ScreenCaptureService : Service() {
                             // Reuse BubbleService's compressBitmapToB64 logic
                             // inline here to avoid a cross-service dependency.
                             val maxEdge = 1600
-                            val maxSide = maxOf(bitmap.width, bitmap.height)
+                            val maxSide = maxOf(ocrBitmap.width, ocrBitmap.height)
                             val upload = if (maxSide > maxEdge) {
                                 val scale = maxEdge.toFloat() / maxSide
                                 android.graphics.Bitmap.createScaledBitmap(
-                                    bitmap,
-                                    (bitmap.width * scale).toInt().coerceAtLeast(1),
-                                    (bitmap.height * scale).toInt().coerceAtLeast(1),
+                                    ocrBitmap,
+                                    (ocrBitmap.width * scale).toInt().coerceAtLeast(1),
+                                    (ocrBitmap.height * scale).toInt().coerceAtLeast(1),
                                     true,
                                 )
-                            } else bitmap
+                            } else ocrBitmap
                             val baos = java.io.ByteArrayOutputStream()
                             upload.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
-                            if (upload !== bitmap && !upload.isRecycled) upload.recycle()
+                            if (upload !== ocrBitmap && !upload.isRecycled) upload.recycle()
                             future.complete(
                                 android.util.Base64.encodeToString(
                                     baos.toByteArray(), android.util.Base64.NO_WRAP,
@@ -428,19 +475,23 @@ class ScreenCaptureService : Service() {
                     ScreenCaptureManager.pendingVisionB64 = null
                 }
                 OcrHelper.recognizeBlocks(
-                    bitmap,
+                    ocrBitmap,
                     hintLang = hint,
                 ) { blocks ->
                     handler.post {
                         if (blocks.isNullOrEmpty()) {
                             // Recycle the bitmap ourselves since the overlay
                             // path won't be invoked to consume it.
-                            if (!bitmap.isRecycled) bitmap.recycle()
+                            if (!ocrBitmap.isRecycled) ocrBitmap.recycle()
                             deliverEmptyToBubble()
                         } else {
-                            // Hand off the bitmap + blocks; the overlay
+                            // Hand off the cropped bitmap + blocks; the overlay
                             // owns them now and will recycle when it dismisses.
-                            ScreenCaptureManager.screenshot = bitmap
+                            // Using the cropped bitmap means the overlay renders
+                            // starting from below the status bar — block
+                            // coordinates are already relative to it, so no
+                            // offset adjustment is needed.
+                            ScreenCaptureManager.screenshot = ocrBitmap
                             ScreenCaptureManager.blocks = blocks
                             deliverLensReadyToBubble()
                         }

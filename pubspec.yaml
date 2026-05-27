@@ -50,6 +50,12 @@ dependencies:
   # Play Billing + server-side receipt verification + webhook to our API.
   purchases_flutter: ^8.4.0
 
+  # Persistent SQLite cache for Lens translations (manga has high phrase
+  # repetition: "やめろ!", "助けて!", "本当に?", etc.). Survives app restart
+  # so a returning manga reader hits the cache instead of paying the LLM
+  # call. 30-day TTL + 10k-entry LRU eviction.
+  sqflite: ^2.3.3
+
   # Camera (camera translate feature)
   camera: ^0.11.0
   google_mlkit_text_recognition: ^0.14.0

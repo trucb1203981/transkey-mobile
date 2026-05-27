@@ -14,6 +14,7 @@ import 'core/api/dio_client.dart';
 import 'core/auth/auth_provider.dart';
 import 'core/auth/session_store.dart';
 import 'core/bubble/bubble_manager.dart';
+import 'core/cache/lens_translation_cache.dart';
 import 'core/locale/locale_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/tracking/crash_reporter.dart';
@@ -148,6 +149,11 @@ void main() async {
       // a FlutterSecureStorage.read() disk round-trip. The result is stored in
       // SessionStore._cache and returned instantly on subsequent load() calls.
       unawaited(SessionStore().load());
+
+      // Open the Lens translation cache DB so the first cache lookup on a
+      // Lens scan doesn't pay the openDatabase() cost (~20-80ms). The connection
+      // is reused for the whole app session. See LensTranslationCache.
+      LensTranslationCache.instance.warmUp();
     },
     (error, stack) {
       // Last-resort sink for anything the FlutterError / PlatformDispatcher
@@ -593,25 +599,63 @@ Future<List<String>> _lensBatchChunk(
   // Cache pre-pass: pull any already-translated texts out of the chunk so
   // we only spend an LLM call on the genuinely-new ones. On a full re-scan
   // of the same screen every slot hits, so the chunk returns ~instantly.
+  //
+  // Two-tier lookup:
+  //   Tier 1 (in-memory `_lensTransCache`): hot path, ~2000 entries, survives
+  //     the Flutter engine's lifetime — instant hit.
+  //   Tier 2 ([LensTranslationCache] SQLite): cold path, ~10k entries, 30-day
+  //     TTL, survives APP RESTART. Hit promotes to tier 1.
   final out = List<String>.from(texts);
-  final missTexts = <String>[];
-  final missIdx = <int>[];
+  var missTexts = <String>[];
+  var missIdx = <int>[];
   for (var i = 0; i < texts.length; i++) {
     final cached = _lensTransCache[_lensCacheKey(sourceLang, targetLang, texts[i])];
     if (cached != null) {
       _lensCachePut(_lensCacheKey(sourceLang, targetLang, texts[i]), cached);
+      out[i] = cached;
     } else {
       missTexts.add(texts[i]);
       missIdx.add(i);
     }
   }
-  // Apply cache hits up front so positions stay correct.
-  for (var i = 0; i < texts.length; i++) {
-    final cached = _lensTransCache[_lensCacheKey(sourceLang, targetLang, texts[i])];
-    if (cached != null) out[i] = cached;
+  final t1Hits = texts.length - missTexts.length;
+
+  // Tier 2: persistent SQLite for tier-1 misses. Manga has high text
+  // repetition ACROSS app sessions (character speech patterns repeat
+  // chapter to chapter); the persistent layer turns 2nd-day re-reads into
+  // 0-cost hits.
+  var t2Hits = 0;
+  if (missTexts.isNotEmpty) {
+    try {
+      final t2 = await LensTranslationCache.instance
+          .getBatch(missTexts, targetLang, sourceLang);
+      if (t2.isNotEmpty) {
+        final stillMissTexts = <String>[];
+        final stillMissIdx = <int>[];
+        for (var k = 0; k < missTexts.length; k++) {
+          final hit = t2[missTexts[k]];
+          if (hit != null) {
+            out[missIdx[k]] = hit;
+            // Promote to tier 1 so subsequent chunks / re-scans this session
+            // skip the disk hop.
+            _lensCachePut(_lensCacheKey(sourceLang, targetLang, missTexts[k]), hit);
+            t2Hits++;
+          } else {
+            stillMissTexts.add(missTexts[k]);
+            stillMissIdx.add(missIdx[k]);
+          }
+        }
+        missTexts = stillMissTexts;
+        missIdx = stillMissIdx;
+      }
+    } catch (e) {
+      // Tier 2 is best-effort — DB failure must not break translation.
+      debugPrint('$tag tier-2 cache lookup failed: $e');
+    }
   }
+
   if (missTexts.isEmpty) {
-    debugPrint('$tag fully-cached n=${texts.length} (0 LLM)');
+    debugPrint('$tag fully-cached n=${texts.length} (t1=$t1Hits t2=$t2Hits)');
     return out;
   }
   try {
@@ -660,6 +704,7 @@ Future<List<String>> _lensBatchChunk(
     // Merge fresh translations back into their original positions and cache
     // the GOOD ones (a translation that actually differs from the source).
     var fallback = 0;
+    final tier2Writes = <String, String>{};
     for (var j = 0; j < missTexts.length; j++) {
       final value = j < raw.length ? raw[j] : null;
       final original = missTexts[j];
@@ -671,16 +716,20 @@ Future<List<String>> _lensBatchChunk(
         // a fresh attempt at a clean translation instead of the leak.
         if (!_lensHasResidualSourceScript(value)) {
           _lensCachePut(_lensCacheKey(sourceLang, targetLang, original), value);
+          tier2Writes[original] = value;
         }
       } else {
         out[missIdx[j]] = original;
         fallback++;
       }
     }
+    // Tier 2 write: batched insert, fire-and-forget. Survives app restart.
+    if (tier2Writes.isNotEmpty) {
+      LensTranslationCache.instance.putBatch(tier2Writes, targetLang, sourceLang);
+    }
     final provider = data?['provider'] ?? '?';
     final model = data?['model'] ?? '?';
-    final hits = texts.length - missTexts.length;
-    debugPrint('$tag dt=${dt}ms n=${texts.length} hits=$hits sent=${missTexts.length} good=${missTexts.length - fallback} fallback=$fallback provider=$provider model=$model');
+    debugPrint('$tag dt=${dt}ms n=${texts.length} t1=$t1Hits t2=$t2Hits sent=${missTexts.length} good=${missTexts.length - fallback} fallback=$fallback provider=$provider model=$model');
     if (fallback == missTexts.length) {
       final firstIn = missTexts.isNotEmpty ? missTexts.first : '';
       final firstRaw = raw.isNotEmpty ? raw.first.toString() : '';
