@@ -96,4 +96,5 @@
     <string name="lens_source_mismatch">Detectado %1$s — toca para retraducir</string>
     <string name="lens_reopen_result">Reabrir traducción</string>
     <string name="lens_empty_for_source">Sin texto en %1$s — probando visión...</string>
+    <string name="lens_source_from">De: %1$s</string>
 </resources>

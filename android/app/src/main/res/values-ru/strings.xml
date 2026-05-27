@@ -102,4 +102,5 @@
     <string name="lens_source_mismatch">Обнаружен %1$s — нажмите, чтобы перевести заново</string>
     <string name="lens_reopen_result">Открыть перевод снова</string>
     <string name="lens_empty_for_source">Текст %1$s не найден — пробую распознавание...</string>
+    <string name="lens_source_from">Из: %1$s</string>
 </resources>

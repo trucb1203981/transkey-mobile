@@ -94,4 +94,5 @@
     <string name="lens_source_mismatch">Có vẻ là %1$s — chạm để dịch lại</string>
     <string name="lens_reopen_result">Mở lại bản dịch</string>
     <string name="lens_empty_for_source">Không thấy text %1$s — đang dùng nhận dạng ảnh...</string>
+    <string name="lens_source_from">Từ: %1$s</string>
 </resources>

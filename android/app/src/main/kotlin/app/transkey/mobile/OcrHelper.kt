@@ -282,7 +282,7 @@ object OcrHelper {
     private fun looksLikeContent(text: String): Boolean {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return false
-        if (trimmed.length >= 8) return true
+        if (trimmed.length >= 5) return true
         if (trimmed.any { it.isWhitespace() }) return true
         if (trimmed.any { it in PUNCT_CHARS }) return true
         // CJK scripts pack meaning much more densely than Latin — a 3-char
@@ -369,6 +369,25 @@ object OcrHelper {
      * (vision call on a Latin screen) is far higher than the cost of
      * being right (ML Kit free path on a supported script).
      */
+    /**
+     * Pre-warm the Latin on-device OCR model so the first real Lens scan
+     * doesn't pay the ~100-200 ms cold-start overhead of loading the TFLite
+     * model from disk. Called once from [BubbleService.onCreate] on a
+     * background thread; the recognizer is closed immediately after — ML Kit
+     * keeps the model in its own internal cache so subsequent real scans
+     * start at full speed.
+     */
+    fun warmUp(dummy: Bitmap) {
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        try {
+            val image = InputImage.fromBitmap(dummy, 0)
+            recognizer.process(image).addOnCompleteListener { recognizer.close() }
+        } catch (e: Exception) {
+            Log.w(TAG, "warmUp failed: ${e.message}")
+            recognizer.close()
+        }
+    }
+
     fun needsVisionForSource(hintLang: String?): Boolean {
         val lang = hintLang?.lowercase()?.split('-', '_')?.firstOrNull() ?: return false
         return lang in VISION_ONLY_LANGS

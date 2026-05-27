@@ -82,7 +82,25 @@ class SessionStore {
 
   final FlutterSecureStorage _storage;
 
+  // ── In-process static cache ────────────────────────────────────────────────
+  // FlutterSecureStorage.read() is a JNI call into EncryptedSharedPreferences
+  // that can take 5-30 ms on stock Android and up to 200-500 ms on
+  // MIUI / ColorOS / FuntouchOS skins. The Lens hot path calls load() on
+  // every trigger (batch AND vision), so the disk read adds visible latency.
+  //
+  // The session token changes only on login / logout / token refresh — all of
+  // which go through save() or clear() below, which update _cache immediately.
+  // The TTL is a safety net for edge-cases (process keeps running >30 min
+  // after a password change on another device), not the primary eviction path.
+  static AuthSession? _cache;
+  static DateTime? _cachedAt;
+  static const _kCacheTtl = Duration(minutes: 30);
+
   Future<void> save(AuthSession session) async {
+    // Update cache immediately so the very next load() call (e.g. the Lens
+    // batch that fires right after a token refresh) sees the new token.
+    _cache = session;
+    _cachedAt = DateTime.now();
     final value = jsonEncode(session.toMap());
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -101,18 +119,37 @@ class SessionStore {
   }
 
   Future<AuthSession?> load() async {
+    // Fast path: return cached session if it's still fresh.
+    final now = DateTime.now();
+    if (_cache != null &&
+        _cachedAt != null &&
+        now.difference(_cachedAt!) < _kCacheTtl) {
+      return _cache;
+    }
+    // Cache miss / expired — read from secure storage and populate cache.
     final raw = await _readRaw();
-    if (raw == null) return null;
+    if (raw == null) {
+      _cache = null;
+      _cachedAt = null;
+      return null;
+    }
     try {
-      return AuthSession.fromMap(
+      final session = AuthSession.fromMap(
         jsonDecode(raw) as Map<String, dynamic>,
       );
+      _cache = session;
+      _cachedAt = now;
+      return session;
     } catch (_) {
       return null;
     }
   }
 
   Future<void> clear() async {
+    // Invalidate cache immediately so the next load() returns null, even if
+    // the secure-storage delete is still in flight.
+    _cache = null;
+    _cachedAt = null;
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_kSessionKey);

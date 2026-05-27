@@ -143,6 +143,11 @@ void main() async {
       // Fire-and-forget: don't make the first frame wait on platform channels.
       // tryAutoStart() reads SharedPreferences + invokes the Android bubble plugin.
       unawaited(_rootContainer.read(bubbleManagerProvider.notifier).tryAutoStart());
+
+      // Pre-warm the session cache so the very first Lens trigger doesn't pay
+      // a FlutterSecureStorage.read() disk round-trip. The result is stored in
+      // SessionStore._cache and returned instantly on subsequent load() calls.
+      unawaited(SessionStore().load());
     },
     (error, stack) {
       // Last-resort sink for anything the FlutterError / PlatformDispatcher

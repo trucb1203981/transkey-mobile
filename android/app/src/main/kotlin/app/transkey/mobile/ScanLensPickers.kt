@@ -206,7 +206,7 @@ internal fun BubbleService.hideScanDisclosure() {
 }
 
 @SuppressLint("ClickableViewAccessibility")
-internal fun BubbleService.showLensProgress() {
+internal fun BubbleService.showLensProgress(sourceLabel: String? = null) {
     if (lensProgressView != null) return
     ensureWindowManager()
     val style = BubbleStyle.of(this)
@@ -231,13 +231,28 @@ internal fun BubbleService.showLensProgress() {
             (22 * dp).toInt(), (22 * dp).toInt(),
         )
     })
-    card.addView(TextView(this).apply {
+    // Vertical stack: main label on top, optional "From: Language" hint below.
+    val textStack = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding((12 * dp).toInt(), 0, 0, 0)
+    }
+    textStack.addView(TextView(this).apply {
         text = localized(R.string.bubble_lens_translating)
         setTextColor(textCol)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
         typeface = Typeface.DEFAULT_BOLD
-        setPadding((12 * dp).toInt(), 0, 0, 0)
     })
+    if (sourceLabel != null) {
+        // Shown at 67% alpha so it's readable but clearly secondary.
+        // Lets the user notice a wrong source-language selection at a glance.
+        textStack.addView(TextView(this).apply {
+            text = localized(R.string.lens_source_from, sourceLabel)
+            setTextColor((textCol and 0x00FFFFFF) or 0xAA000000.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setPadding(0, (2 * dp).toInt(), 0, 0)
+        })
+    }
+    card.addView(textStack)
     backdrop.addView(card, FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.WRAP_CONTENT,
         FrameLayout.LayoutParams.WRAP_CONTENT,

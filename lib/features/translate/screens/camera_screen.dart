@@ -1944,6 +1944,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         'scene':  scene.id,
       });
       await _captureWithVision(path, bytes, size, scene: scene.id);
+      // Google Vision as a last resort if LLM found nothing in the sign.
+      // Vision's document OCR handles printed/structured signage well even
+      // when stylized fonts stump the LLM; an extra call is cheap vs showing
+      // a "no text" error when the image actually has readable content.
+      if (mounted && _blocks.isEmpty) {
+        await _captureWithGoogleVision(path, bytes, size, scene: scene.id);
+      }
       return;
     }
 
@@ -1973,6 +1980,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         'source_lang': sourceLang,
       });
       await _captureWithVision(path, bytes, size, scene: scene.id);
+      // Google Vision has strong multilingual OCR (supports 100+ scripts including
+      // Thai, Arabic, Cyrillic, Hebrew, etc.) — if LLM Vision returns empty for
+      // these scripts, Vision often succeeds where the LLM couldn't.
+      if (mounted && _blocks.isEmpty) {
+        await _captureWithGoogleVision(path, bytes, size, scene: scene.id);
+      }
       return;
     }
 
@@ -2060,18 +2073,23 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         'has_high_conf':     hasHighConfBlock,
         if (sourceWantsVision) 'source_lang': sourceLang,
       });
-      // Hybrid tier 2: try Google Cloud Vision OCR (cheap, high recall)
-      // BEFORE the pricier vision LLM. It returns true when it produced a
-      // result; false when the server has no Vision key or found nothing,
-      // in which case we fall through to the LLM tier below.
-      if (await _captureWithGoogleVision(path, bytes, size, scene: scene.id)) {
-        return;
-      }
-      // Carry the user's selected scene into the vision path. This is the
-      // critical bit for handwritten / chalkboard menus: with scene=menu,
-      // the response gets split per-line so each dish row is its own card
-      // instead of one giant aggregate block.
+      // Tier 2: LLM Vision (Gemini / Groq) — OCR + translation in one shot.
+      // Cheaper than Google Vision + text-LLM combined (~$0.0004 vs ~$0.0016
+      // per image) and handles stylised/cursive fonts Vision can't read.
       await _captureWithVision(path, bytes, size, scene: scene.id);
+      // Tier 3: Google Vision as a last resort ONLY when LLM Vision returned
+      // no blocks. Vision's dedicated OCR has higher recall on dense/small/
+      // mixed-script text (receipts, fine-print menus, multi-column layouts)
+      // — cases where the LLM gets uncertain and returns nothing.
+      // Skipped when LLM already produced blocks (any confidence) so we pay
+      // Google Vision's ~$0.0015/image only when genuinely needed.
+      if (mounted && _blocks.isEmpty) {
+        ref.read(trackingServiceProvider).event('vision_fallback', properties: {
+          'reason': 'llm_vision_empty',
+          'scene': scene.id,
+        });
+        await _captureWithGoogleVision(path, bytes, size, scene: scene.id);
+      }
       return;
     }
 

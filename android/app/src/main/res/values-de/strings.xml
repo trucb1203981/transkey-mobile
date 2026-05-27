@@ -96,4 +96,5 @@
     <string name="lens_source_mismatch">%1$s erkannt — tippen zum Neuübersetzen</string>
     <string name="lens_reopen_result">Übersetzung erneut öffnen</string>
     <string name="lens_empty_for_source">Kein %1$s-Text gefunden — versuche Bilderkennung...</string>
+    <string name="lens_source_from">Von: %1$s</string>
 </resources>

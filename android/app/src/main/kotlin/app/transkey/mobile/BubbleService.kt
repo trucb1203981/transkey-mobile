@@ -490,6 +490,22 @@ class BubbleService : Service() {
             startForeground(NOTIFICATION_ID, buildBubbleNotification())
         }
         tts = TextToSpeech(this) { status -> ttsReady = (status == TextToSpeech.SUCCESS) }
+
+        // Pre-warm the Latin ML Kit recognizer so the first Lens scan doesn't
+        // pay the ~100-200 ms TFLite model-load cold start. A 4×4 dummy bitmap
+        // is enough to trigger the model initialisation; it's released right
+        // after. ML Kit caches the model internally, so subsequent real scans
+        // start at full speed. Run on a background thread — never block onCreate.
+        Thread {
+            try {
+                val dummy = android.graphics.Bitmap.createBitmap(
+                    4, 4, android.graphics.Bitmap.Config.ARGB_8888,
+                )
+                OcrHelper.warmUp(dummy)
+            } catch (e: Throwable) {
+                android.util.Log.w("TKBubble", "ML Kit warm-up failed: ${e.message}")
+            }
+        }.start()
     }
 
     /**
@@ -1615,7 +1631,18 @@ class BubbleService : Service() {
         // the server's sourceMismatch detector on the transcription tells
         // the user which language to actually pick.
         val hint = ScreenCaptureManager.languageHint
-        val forceVision = OcrHelper.needsVisionForSource(hint)
+        var forceVision = OcrHelper.needsVisionForSource(hint)
+        // Latin-override: source is pinned to a vision-only script (e.g. "ru"),
+        // but ML Kit already returned dominantly Latin/ASCII content — the screen
+        // is plain English. Sending this to vision would only add 2-5 s of latency
+        // with no quality improvement. Override to the fast batch path; the server's
+        // sourceMismatch detector will still surface the "Detected English — switch?"
+        // banner so the user knows their pin is wrong.
+        if (forceVision && !blocks.isEmpty() && blocksDominantlyLatin(blocks)) {
+            android.util.Log.w("TKBubble", "lens: forceVision overridden — Latin blocks detected, hint=$hint")
+            forceVision = false
+            ScreenCaptureManager.languageHint = null // let server auto-detect source
+        }
         // Hallucination gate: ML Kit's per-language recognizer doesn't refuse
         // unknown scripts — feed it Arabic / Thai / etc. with pin=ja and it
         // returns garbage Latin/digits PLUS the occasional fake kana char
@@ -1640,7 +1667,13 @@ class BubbleService : Service() {
         // can take seconds. Previously showLensProgress() lived only on the
         // batch path, so the vision route showed nothing during the wait
         // and the user couldn't tell it was working.
-        showLensProgress()
+        // Pass the original hint (pre-Latin-override) so the "From: X" label
+        // in the spinner reflects the user's actual selection even when the
+        // override cleared languageHint for the server call.
+        val progressSourceLabel = if (!hint.isNullOrEmpty() && hint != "auto")
+            (getEffectiveLangLabels()[hint] ?: hint)
+        else null
+        showLensProgress(sourceLabel = progressSourceLabel)
         if (forceVision || emptyMlkitFallback) {
             runLensVisionTranslate(
                 bitmap = bitmap,
@@ -1824,6 +1857,59 @@ class BubbleService : Service() {
     }
 
     /**
+     * Downscale [bitmap] to at most 1600 px on the long edge, then encode as
+     * JPEG (q=85) and return the Base64 string. Matches the camera-service
+     * `compressForVision` parameters so LLM token cost stays consistent across
+     * both paths.
+     *
+     * Called inline from [runLensVisionTranslate] when the pre-computed result
+     * from [ScreenCaptureManager.pendingVisionB64] is not available; otherwise
+     * the caller picks up the future's value instead and skips this call.
+     */
+    private fun compressBitmapToB64(bitmap: Bitmap): String {
+        val maxEdge = 1600
+        val maxSide = maxOf(bitmap.width, bitmap.height)
+        val upload = if (maxSide > maxEdge) {
+            val scale = maxEdge.toFloat() / maxSide
+            try {
+                Bitmap.createScaledBitmap(
+                    bitmap,
+                    (bitmap.width * scale).toInt().coerceAtLeast(1),
+                    (bitmap.height * scale).toInt().coerceAtLeast(1),
+                    true,
+                )
+            } catch (e: Throwable) {
+                android.util.Log.w("TKBubble", "lens-vision: scale failed: ${e.message}")
+                bitmap
+            }
+        } else bitmap
+        val baos = java.io.ByteArrayOutputStream()
+        upload.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+        if (upload !== bitmap && !upload.isRecycled) upload.recycle()
+        return android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP)
+    }
+
+    /**
+     * Returns true when the OCR result is overwhelmingly ASCII/Latin, regardless
+     * of the source-language pin. Used to bypass [OcrHelper.needsVisionForSource]
+     * when the user has a vision-only language pinned (e.g. "ru") but the actual
+     * screen content is plain English — ML Kit already read it correctly, so the
+     * expensive vision path would only add latency with no quality gain.
+     *
+     * Threshold: >65% of non-whitespace codepoints in the Basic Latin (U+0020-U+007E)
+     * or Latin Extended (U+00C0-U+024F) ranges. Minimum 15 chars to avoid flipping
+     * on near-empty results.
+     */
+    private fun blocksDominantlyLatin(blocks: List<OcrHelper.Block>): Boolean {
+        val joined = blocks.joinToString("") { it.text }.filter { c -> !c.isWhitespace() }
+        if (joined.length < 15) return false
+        val latinCount = joined.count { c ->
+            c.code in 0x20..0x7E || c.code in 0xC0..0x024F
+        }
+        return latinCount.toFloat() / joined.length > 0.65f
+    }
+
+    /**
      * Region mode: capture done, bitmap is sitting in the manager. Show
      * the rubber-band selector. On confirm we crop the bitmap, OCR the
      * sub-image, OFFSET each block's bounds back into full-screen coords
@@ -1866,36 +1952,18 @@ class BubbleService : Service() {
             onError(localized(R.string.bubble_panel_app_not_ready))
             return
         }
-        // Cap long edge for the upload to keep token cost predictable
-        // (vision input tokens scale with image pixels). 1600 px tracks
-        // the camera-service compressForVision long-edge cap so behaviour
-        // stays consistent between camera and Lens.
-        val maxEdge = 1600
         val origW = bitmap.width
         val origH = bitmap.height
-        val maxSide = maxOf(origW, origH)
-        val upload = if (maxSide > maxEdge) {
-            val scale = maxEdge.toFloat() / maxSide
-            try {
-                Bitmap.createScaledBitmap(
-                    bitmap,
-                    (origW * scale).toInt().coerceAtLeast(1),
-                    (origH * scale).toInt().coerceAtLeast(1),
-                    true,
-                )
-            } catch (e: Throwable) {
-                android.util.Log.w("TKBubble", "lens-vision: scale failed: ${e.message}")
-                bitmap
-            }
-        } else bitmap
-        // Encode to JPEG q=85: balance between upload size and OCR
-        // legibility. Quality below ~80 starts chewing fine-print
-        // characters on dense menus; above 85 only adds bytes.
-        val baos = java.io.ByteArrayOutputStream()
-        upload.compress(Bitmap.CompressFormat.JPEG, 85, baos)
-        if (upload !== bitmap && !upload.isRecycled) upload.recycle()
-        val b64 = android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP)
         val target = ScreenCaptureManager.targetLang
+
+        // Use pre-computed base64 when ScreenCaptureService started compression
+        // in parallel with ML Kit OCR (vision-only source hint). getNow() returns
+        // the result immediately if compression finished, or null if it's still
+        // running — in the null case we compress synchronously (same as before).
+        // Typical overlap: OCR ~200 ms, compress ~80 ms → getNow almost always hits.
+        val precomputed = ScreenCaptureManager.pendingVisionB64?.getNow(null)
+        ScreenCaptureManager.pendingVisionB64 = null // consume the slot
+        val b64 = precomputed ?: compressBitmapToB64(bitmap)
 
         val channel = io.flutter.plugin.common.MethodChannel(
             engine.dartExecutor.binaryMessenger, METHOD_CHANNEL,
@@ -2078,46 +2146,20 @@ class BubbleService : Service() {
             Toast.makeText(this, localized(R.string.bubble_scan_empty), Toast.LENGTH_LONG).show()
             return
         }
-        showLensProgress()
-        // Region mode + unsupported script: route the CROPPED bitmap
-        // through vision. We keep the full screenshot (`bitmap`) live for
-        // the underlying Lens overlay; the cropped pixels are only used
-        // for the network call. Server returns boxes in the cropped's
-        // pixel space, then runLensVisionTranslate adds rect.left/top so
-        // the chips line up with the full screenshot beneath.
         val regionHint = ScreenCaptureManager.languageHint
-        if (OcrHelper.needsVisionForSource(regionHint)) {
-            // Aggregate into a single overlay item (matches the ML Kit
-            // region behaviour: the user-drawn box is treated as ONE
-            // unit, so one chip covers the whole selection).
-            runLensVisionTranslate(
-                bitmap = cropped,
-                offsetX = rect.left,
-                offsetY = rect.top,
-                sourceLang = if (regionHint.isNullOrEmpty()) null else regionHint,
-                aggregateToSingleItem = true,
-                aggregateBounds = rect,
-                renderBitmap = bitmap, // overlay sits on the FULL screenshot
-                onError = { msg ->
-                    handler.post {
-                        hideLensProgress()
-                        ScreenCaptureManager.clearAll()
-                        restoreBubbleVisibility()
-                        if (!cropped.isRecycled) cropped.recycle()
-                        if (!bitmap.isRecycled) bitmap.recycle()
-                        Toast.makeText(this, msg ?: localized(R.string.bubble_panel_translation_failed), Toast.LENGTH_LONG).show()
-                    }
-                },
-                onSuccessRecycle = { if (!cropped.isRecycled) cropped.recycle() },
-            )
-            return
-        }
-        OcrHelper.recognizeBlocks(cropped, ScreenCaptureManager.languageHint) { blocks ->
+        val regionSourceLabel = if (!regionHint.isNullOrEmpty() && regionHint != "auto")
+            (getEffectiveLangLabels()[regionHint] ?: regionHint)
+        else null
+        showLensProgress(sourceLabel = regionSourceLabel)
+        // Always attempt ML Kit first, even when the source is pinned to a
+        // vision-only script (e.g. "ru", "ar", "th"). If the on-screen text
+        // is actually Latin/ASCII, blocksDominantlyLatin() inside handleLensReady()
+        // will override forceVision and take the fast batch path — avoiding the
+        // 2-5 s vision round-trip when it isn't needed.
+        // Vision is only triggered here as a genuine last resort: ML Kit returned
+        // empty blocks AND the source pin is a script ML Kit can't recognise.
+        OcrHelper.recognizeBlocks(cropped, regionHint) { blocks ->
             handler.post {
-                // The cropped bitmap was only needed for OCR — recycle it
-                // immediately so we don't hold ~MBs of pixels alongside the
-                // still-live full screenshot.
-                if (!cropped.isRecycled) cropped.recycle()
                 val offset = blocks
                     ?.map { block ->
                         val newBounds = android.graphics.Rect(
@@ -2130,6 +2172,38 @@ class BubbleService : Service() {
                     }
                     ?: emptyList()
                 if (offset.isEmpty()) {
+                    // ML Kit found nothing. If the source pin is a vision-only
+                    // script, ML Kit's recognizer couldn't read those glyphs —
+                    // fall back to vision so the server can transcribe and the
+                    // sourceMismatch banner can fire. Otherwise just toast.
+                    if (OcrHelper.needsVisionForSource(regionHint)) {
+                        // Aggregate into a single overlay item (matches the ML Kit
+                        // region behaviour: the user-drawn box = ONE chip).
+                        runLensVisionTranslate(
+                            bitmap = cropped,
+                            offsetX = rect.left,
+                            offsetY = rect.top,
+                            sourceLang = if (regionHint.isNullOrEmpty()) null else regionHint,
+                            aggregateToSingleItem = true,
+                            aggregateBounds = rect,
+                            renderBitmap = bitmap, // overlay sits on the FULL screenshot
+                            onError = { msg ->
+                                handler.post {
+                                    hideLensProgress()
+                                    ScreenCaptureManager.clearAll()
+                                    restoreBubbleVisibility()
+                                    if (!cropped.isRecycled) cropped.recycle()
+                                    if (!bitmap.isRecycled) bitmap.recycle()
+                                    Toast.makeText(this, msg ?: localized(R.string.bubble_panel_translation_failed), Toast.LENGTH_LONG).show()
+                                }
+                            },
+                            onSuccessRecycle = { if (!cropped.isRecycled) cropped.recycle() },
+                        )
+                        return@post
+                    }
+                    // Not a vision-only pin — OCR should have worked; treat
+                    // the empty result as "no readable text in the selection".
+                    if (!cropped.isRecycled) cropped.recycle()
                     hideLensProgress()
                     ScreenCaptureManager.clearAll()
                     restoreBubbleVisibility()
@@ -2140,6 +2214,8 @@ class BubbleService : Service() {
                     ).show()
                     return@post
                 }
+                // OCR succeeded — the cropped pixels are no longer needed.
+                if (!cropped.isRecycled) cropped.recycle()
                 // Branch on pendingMode: Translate uses the Lens visual
                 // overlay; Summarize (and any future non-Translate mode
                 // that supports Region) feeds OCR text into the input

@@ -381,9 +381,55 @@ class ScreenCaptureService : Service() {
 
         when (ScreenCaptureManager.flow) {
             ScreenCaptureManager.Flow.LENS -> {
+                val hint = ScreenCaptureManager.languageHint
+                // Parallel compression: when the source is pinned to a vision-
+                // only script we already know the vision LLM path is likely.
+                // Start JPEG compression on a background thread NOW, in
+                // parallel with ML Kit OCR — by the time OCR finishes (~200ms)
+                // the compression (~80ms) is already done. BubbleService picks
+                // up the result via CompletableFuture.getNow() and skips the
+                // inline compress. The future is cancelled in clearAll() if the
+                // overlay is dismissed before it's consumed.
+                // NOTE: blocksDominantlyLatin() may still route the call to the
+                // batch path even when forceVision=true; in that case the future
+                // completes but its result is simply never consumed (no waste —
+                // the background thread has already returned by then).
+                if (OcrHelper.needsVisionForSource(hint)) {
+                    val future = java.util.concurrent.CompletableFuture<String?>()
+                    ScreenCaptureManager.pendingVisionB64 = future
+                    Thread {
+                        try {
+                            // Reuse BubbleService's compressBitmapToB64 logic
+                            // inline here to avoid a cross-service dependency.
+                            val maxEdge = 1600
+                            val maxSide = maxOf(bitmap.width, bitmap.height)
+                            val upload = if (maxSide > maxEdge) {
+                                val scale = maxEdge.toFloat() / maxSide
+                                android.graphics.Bitmap.createScaledBitmap(
+                                    bitmap,
+                                    (bitmap.width * scale).toInt().coerceAtLeast(1),
+                                    (bitmap.height * scale).toInt().coerceAtLeast(1),
+                                    true,
+                                )
+                            } else bitmap
+                            val baos = java.io.ByteArrayOutputStream()
+                            upload.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
+                            if (upload !== bitmap && !upload.isRecycled) upload.recycle()
+                            future.complete(
+                                android.util.Base64.encodeToString(
+                                    baos.toByteArray(), android.util.Base64.NO_WRAP,
+                                ),
+                            )
+                        } catch (e: Throwable) {
+                            future.complete(null) // BubbleService falls back to inline compress
+                        }
+                    }.start()
+                } else {
+                    ScreenCaptureManager.pendingVisionB64 = null
+                }
                 OcrHelper.recognizeBlocks(
                     bitmap,
-                    hintLang = ScreenCaptureManager.languageHint,
+                    hintLang = hint,
                 ) { blocks ->
                     handler.post {
                         if (blocks.isNullOrEmpty()) {

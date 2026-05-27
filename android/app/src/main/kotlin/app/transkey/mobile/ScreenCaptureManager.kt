@@ -47,6 +47,14 @@ object ScreenCaptureManager {
     @Volatile var screenshot: Bitmap? = null
     @Volatile var blocks: List<OcrHelper.Block> = emptyList()
 
+    /**
+     * Pre-computed JPEG base64 for the current screenshot, started in
+     * parallel with ML Kit OCR when the source hint is a vision-only script.
+     * [BubbleService.runLensVisionTranslate] picks this up via [getNow] to
+     * skip a sequential 50-150 ms compress call. Cleared in [clearAll].
+     */
+    @Volatile var pendingVisionB64: java.util.concurrent.CompletableFuture<String?>? = null
+
     fun clearToken() {
         resultCode = 0
         resultIntent = null
@@ -60,6 +68,8 @@ object ScreenCaptureManager {
         blocks = emptyList()
         languageHint = null
         regionMode = false
+        pendingVisionB64?.cancel(true)
+        pendingVisionB64 = null
     }
 
     /**

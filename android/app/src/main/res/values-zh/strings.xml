@@ -96,4 +96,5 @@
     <string name="lens_source_mismatch">检测到%1$s — 点按重新翻译</string>
     <string name="lens_reopen_result">重新打开翻译</string>
     <string name="lens_empty_for_source">未找到%1$s文本 — 正在尝试视觉识别...</string>
+    <string name="lens_source_from">来自：%1$s</string>
 </resources>

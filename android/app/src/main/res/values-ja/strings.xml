@@ -96,4 +96,5 @@
     <string name="lens_source_mismatch">%1$s を検出 — タップして再翻訳</string>
     <string name="lens_reopen_result">翻訳を再表示</string>
     <string name="lens_empty_for_source">%1$sのテキストが見つかりません — ビジョンで試行中...</string>
+    <string name="lens_source_from">%1$s から</string>
 </resources>
