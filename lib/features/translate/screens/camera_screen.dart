@@ -3683,41 +3683,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     );
   }
 
-  /// True when [text] is sound-effect / onomatopoeia / OCR-garble that
-  /// every translation model leaves verbatim — sending it to
-  /// /translate-batch just bloats the payload and warns the server-
-  /// side leak detector. Patterns mirror the backend's
-  /// isStructurallyUntranslatable (api/translate.cjk.ts):
-  ///   - 3+ consecutive same letter (EEEK, RAAAAH, あああ)
-  ///   - same token repeated (BLAU BLAU, SHAKA SHAKA)
-  ///   - a token mixing ASCII letters AND digits (BO0OM, KiloJS9)
-  /// Language-agnostic by design — works for any script.
-  // Match 3+ same LETTER only (Unicode \p{L}) — NOT punctuation. The
-  // earlier `(.)\1{2,}` form caught real-dialogue ellipses ("..." has
-  // 3 identical dots) and double-exclamations ("!!!"), silently
-  // dropping every "GROW UP..." style line.
-  static final RegExp _kRepeatedLetterRe = RegExp(r'(\p{L})\1{2,}', unicode: true);
-  static final RegExp _kRepeatedTokenRe = RegExp(
-      r'^(\S{2,})[\s-]+\1\b', caseSensitive: false);
-  static final RegExp _kGarbledLetterDigitRe = RegExp(
-      r'\b(?=\S*[A-Za-z])(?=\S*\d)[A-Za-z0-9]{3,}\b');
-  static bool _looksUntranslatable(String text) {
-    final t = text.trim();
-    if (t.length < 2) return true;
-    // Length cap: only short blocks count as PURE onomatopoeia /
-    // garbled. A long bubble like "AAA, QUEEN CANDELLE, LIGHT OF MY
-    // LIFE..." contains a 3-A run but is mostly real dialogue — let
-    // the backend handle it (its leak-gate exempt is just the
-    // exact-echo skip; the LLM will still translate the dialogue
-    // portion). The 20-char floor covers EEEK!! / BLAU BLAU /
-    // SHAKA SHAKA STRUM and the typical OCR-garble fragments
-    // without false-positiving on mixed content.
-    if (t.length > 20) return false;
-    if (_kRepeatedLetterRe.hasMatch(t)) return true;
-    if (_kRepeatedTokenRe.hasMatch(t)) return true;
-    if (_kGarbledLetterDigitRe.hasMatch(t)) return true;
-    return false;
-  }
+  // _looksUntranslatable removed 2026-05-29: the structural regexes
+  // (3+ repeated letter / repeated token / letter+digit mix) all run
+  // server-side in isStructurallyUntranslatable, where they only
+  // exempt the EXACT-echo leak count — they don't drop the block from
+  // the request. Mirroring them on the client meant a long bubble
+  // starting with "AAA, " or containing "..." was SKIPPED outright,
+  // surfacing English on real dialogue. A char-length cap doesn't
+  // scale across scripts (20 Latin chars ≈ 4-5 short words; 20 CJK
+  // chars ≈ a full sentence), so any cap is wrong for at least one
+  // language. Trusting the backend keeps behaviour script-symmetric.
 
   ({
     List<String?> results,
@@ -3737,19 +3712,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final missTexts = <String>[];
     var cacheHits = 0;
     for (var i = 0; i < texts.length; i++) {
-      // Defense in depth: a block the backend would mark
-      // "structurally untranslatable" (sound effects "EEEK!!",
-      // repeated stutter "BLAU BLAU", OCR garble "BO0OM") is left
-      // unchanged by every LLM anyway — sending it would just bloat
-      // the /translate-batch payload and trigger leak warnings
-      // server-side. Short-circuit to source-as-translation so the
-      // wire never carries it. Matches the patterns in
-      // api/translate.cjk.ts isStructurallyUntranslatable.
-      if (_looksUntranslatable(texts[i])) {
-        results[i] = texts[i];
-        cacheHits++;
-        continue;
-      }
       final cached = forceRefresh
           ? null
           : TranslationCache.instance.lookup(
