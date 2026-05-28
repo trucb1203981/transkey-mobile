@@ -2630,48 +2630,67 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       String? detectedSrc;
 
       if (probe.missIndices.isNotEmpty) {
-        try {
-          final api = ref.read(apiClientProvider);
-          for (var s = 0;
-              s < probe.missTexts.length;
-              s += _batchChunkSize) {
-            final end =
-                math.min(s + _batchChunkSize, probe.missTexts.length);
-            final resp = await api.dio.post('/translate-batch', data: {
-              'texts': probe.missTexts.sublist(s, end),
-              'targetLang': targetLang,
-              'appHint': 'camera',
-              'scene': scene.id,
-            }).timeout(const Duration(seconds: 60));
-            final data = resp.data as Map?;
-            if (detectedSrc == null) {
-              final rawSrc =
-                  (data?['detectedSourceLang'] as String?)?.toLowerCase();
-              if (rawSrc != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrc)) {
-                detectedSrc = rawSrc;
-              }
-            }
-            final raw = data?['translations'] as List?;
-            for (var k = 0; k < end - s; k++) {
-              final origIdx = probe.missIndices[s + k];
-              final origText = texts[origIdx];
-              final v = (raw != null && k < raw.length) ? raw[k] : null;
-              final tr =
-                  (v is String && v.trim().isNotEmpty) ? v : origText;
-              translations[origIdx] = tr;
-              if (tr != origText) {
-                TranslationCache.instance.store(
-                  text: origText,
-                  sourceLang: sourceLang,
-                  targetLang: targetLang,
-                  scene: scene.id,
-                  translation: tr,
-                );
+        final api = ref.read(apiClientProvider);
+        for (var s = 0;
+            s < probe.missTexts.length;
+            s += _batchChunkSize) {
+          final end =
+              math.min(s + _batchChunkSize, probe.missTexts.length);
+          // Per-chunk try + ONE retry on failure. A server-side
+          // race_all_failed (both providers timeout / rate-limited
+          // simultaneously — observed on the longest page-5 batch
+          // when groq Key #7 was 60 s rate-limited and openai was
+          // slow) used to leave the whole page untranslated because
+          // the outer try caught the first failure and broke the
+          // loop. Now: retry the failing chunk once after a 1.5 s
+          // backoff; on second failure leave THAT chunk as source
+          // and continue to the next chunk so the rest of the page
+          // still ships translations.
+          dynamic resp;
+          for (var attempt = 0; attempt < 2; attempt++) {
+            try {
+              resp = await api.dio.post('/translate-batch', data: {
+                'texts': probe.missTexts.sublist(s, end),
+                'targetLang': targetLang,
+                'appHint': 'camera',
+                'scene': scene.id,
+              }).timeout(const Duration(seconds: 60));
+              break; // success
+            } catch (e) {
+              debugPrint('[Camera] translate-batch chunk failed '
+                  '(attempt ${attempt + 1}/2): $e');
+              if (attempt == 0) {
+                await Future.delayed(const Duration(milliseconds: 1500));
               }
             }
           }
-        } catch (e) {
-          debugPrint('[Camera] Hybrid translate-batch failed: $e');
+          if (resp == null) continue; // both attempts failed, leave chunk
+          final data = resp.data as Map?;
+          if (detectedSrc == null) {
+            final rawSrc =
+                (data?['detectedSourceLang'] as String?)?.toLowerCase();
+            if (rawSrc != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrc)) {
+              detectedSrc = rawSrc;
+            }
+          }
+          final raw = data?['translations'] as List?;
+          for (var k = 0; k < end - s; k++) {
+            final origIdx = probe.missIndices[s + k];
+            final origText = texts[origIdx];
+            final v = (raw != null && k < raw.length) ? raw[k] : null;
+            final tr =
+                (v is String && v.trim().isNotEmpty) ? v : origText;
+            translations[origIdx] = tr;
+            if (tr != origText) {
+              TranslationCache.instance.store(
+                text: origText,
+                sourceLang: sourceLang,
+                targetLang: targetLang,
+                scene: scene.id,
+                translation: tr,
+              );
+            }
+          }
         }
       }
 
