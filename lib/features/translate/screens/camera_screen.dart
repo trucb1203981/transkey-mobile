@@ -3704,6 +3704,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   static bool _looksUntranslatable(String text) {
     final t = text.trim();
     if (t.length < 2) return true;
+    // Length cap: only short blocks count as PURE onomatopoeia /
+    // garbled. A long bubble like "AAA, QUEEN CANDELLE, LIGHT OF MY
+    // LIFE..." contains a 3-A run but is mostly real dialogue — let
+    // the backend handle it (its leak-gate exempt is just the
+    // exact-echo skip; the LLM will still translate the dialogue
+    // portion). The 20-char floor covers EEEK!! / BLAU BLAU /
+    // SHAKA SHAKA STRUM and the typical OCR-garble fragments
+    // without false-positiving on mixed content.
+    if (t.length > 20) return false;
     if (_kRepeatedLetterRe.hasMatch(t)) return true;
     if (_kRepeatedTokenRe.hasMatch(t)) return true;
     if (_kGarbledLetterDigitRe.hasMatch(t)) return true;
