@@ -3692,7 +3692,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   ///   - same token repeated (BLAU BLAU, SHAKA SHAKA)
   ///   - a token mixing ASCII letters AND digits (BO0OM, KiloJS9)
   /// Language-agnostic by design — works for any script.
-  static final RegExp _kRepeatedLetterRe = RegExp(r'(.)\1{2,}', unicode: true);
+  // Match 3+ same LETTER only (Unicode \p{L}) — NOT punctuation. The
+  // earlier `(.)\1{2,}` form caught real-dialogue ellipses ("..." has
+  // 3 identical dots) and double-exclamations ("!!!"), silently
+  // dropping every "GROW UP..." style line.
+  static final RegExp _kRepeatedLetterRe = RegExp(r'(\p{L})\1{2,}', unicode: true);
   static final RegExp _kRepeatedTokenRe = RegExp(
       r'^(\S{2,})[\s-]+\1\b', caseSensitive: false);
   static final RegExp _kGarbledLetterDigitRe = RegExp(
