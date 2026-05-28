@@ -3759,7 +3759,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               scene: scene.id,
             );
       if (cached != null) {
-        results[i] = cached;
+        results[i] = _normalizeTranslation(cached);
         cacheHits++;
       } else {
         missIndices.add(i);
