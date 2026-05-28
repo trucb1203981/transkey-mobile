@@ -32,7 +32,15 @@ class _CardLayout {
 
 const double _kCardHPad = 4.0;
 const double _kCardVPad = 0.0;
-const double _kMinFontSize = 7.0;
+// Raised 7 → 9. OCR-path bboxes are tight around the text mass (TABD
+// per-line + BubbleDetector glyph clusters), so a 7 pt floor produced
+// unreadable cards on small dialogue bubbles even when the vision-
+// catch-up path on the same page rendered comfortably at 12-14 pt.
+// Tried 10 first but adjacent dense bubbles' cards visibly overlapped
+// neighbouring text on action pages; 9 keeps the readability gain
+// without the overlap regression. Overflow handling stays unchanged:
+// the card grows downward when even 9 pt doesn't fit.
+const double _kMinFontSize = 9.0;
 const double _kMaxFontSize = 28.0;
 
 /// Bridges the overlay's internal view state (card visibility + the
@@ -824,26 +832,37 @@ class _BlockCard extends StatelessWidget {
         opacity: fadedForDelete ? 0.5 : 1.0,
         child: Material(
           type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                displayText,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: fontSize,
-                  fontWeight:
-                      isTranslated ? FontWeight.w500 : FontWeight.normal,
-                  height: 1.25,
+          // Pan to drag. Tap (no movement) opens the action sheet via the
+          // inner InkWell; long-press is reserved for the action menu
+          // (explain / split). Pan needs a small initial slop to fire,
+          // so a quick tap never gets misread as a drag.
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanStart: (_) => onDragStart?.call(),
+            onPanUpdate: (d) => onDrag(d.delta),
+            onPanEnd: (_) => onDragEnd?.call(),
+            onPanCancel: () => onDragEnd?.call(),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  displayText,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: fontSize,
+                    fontWeight:
+                        isTranslated ? FontWeight.w500 : FontWeight.normal,
+                    height: 1.25,
+                  ),
                 ),
               ),
             ),
