@@ -2337,14 +2337,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           final origText = texts[origIdx];
           final v = (raw != null && k < raw.length) ? raw[k] : null;
           final tr = (v is String && v.trim().isNotEmpty) ? v : origText;
-          translations[origIdx] = tr;
-          if (tr != origText) {
+          final clean = _normalizeTranslation(tr);
+          translations[origIdx] = clean;
+          if (clean != origText) {
             TranslationCache.instance.store(
               text: origText,
               sourceLang: sourceLang,
               targetLang: targetLang,
               scene: scene.id,
-              translation: tr,
+              translation: clean,
             );
           }
         }
@@ -2680,14 +2681,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             final v = (raw != null && k < raw.length) ? raw[k] : null;
             final tr =
                 (v is String && v.trim().isNotEmpty) ? v : origText;
-            translations[origIdx] = tr;
-            if (tr != origText) {
+            final clean = _normalizeTranslation(tr);
+            translations[origIdx] = clean;
+            if (clean != origText) {
               TranslationCache.instance.store(
                 text: origText,
                 sourceLang: sourceLang,
                 targetLang: targetLang,
                 scene: scene.id,
-                translation: tr,
+                translation: clean,
               );
             }
           }
@@ -3700,6 +3702,23 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     return _probeTranslationCacheImpl(
       texts, targetLang, sourceLang, scene, forceRefresh,
     );
+  }
+
+  /// Some LLM providers (most often the openai backup hedge) emit
+  /// translations with LITERAL `\n` sequences — two characters,
+  /// backslash + n — instead of the real LF character. JSON parse
+  /// preserves them as-is, so Flutter's Text widget then renders the
+  /// "\n" visibly in the bubble overlay instead of breaking the line.
+  /// Normalize the common escaped-whitespace sequences back to their
+  /// actual characters on the way in. Applied at every translation
+  /// boundary so the cache stores the clean form and re-renders
+  /// stay correct.
+  static String _normalizeTranslation(String s) {
+    return s
+        .replaceAll(r'\r\n', '\n')
+        .replaceAll(r'\n', '\n')
+        .replaceAll(r'\r', '\n')
+        .replaceAll(r'\t', ' ');
   }
 
   // _looksUntranslatable removed 2026-05-29: the structural regexes
