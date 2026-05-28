@@ -11,6 +11,7 @@ import 'package:image/image.dart' as img;
 import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'bubble_detector.dart';
 import 'dbnet_text_detector.dart';
 
 /// Text quality based on OCR confidence.
@@ -762,13 +763,20 @@ class CameraService {
     bool autoDetect = true,
     String scene = 'auto',
     bool aggressivePasses = true,
+    bool? perLineOverride,
   }) async {
     // Menu + screenshot expect ONE OcrBlock per LINE (one dish row, one
     // UI label / chat message), not per ML Kit "block" (which can bundle
     // adjacent rows into a single multi-line group). Aggregate scenes
     // (document / sign / auto) collapse everything later so block-level
     // is fine and slightly faster.
-    final perLine = scene == 'menu' || scene == 'screenshot';
+    //
+    // [perLineOverride] forces per-line vs per-block irrespective of
+    // scene — used by the manga OCR-hybrid path where we need many
+    // small bboxes (matching the per-bubble layout vision returns)
+    // even though the scene is "manga".
+    final perLine =
+        perLineOverride ?? (scene == 'menu' || scene == 'screenshot');
     // Up to three OCR passes run in parallel — union of all gives the best
     // recall for stylized / low-contrast signage and handwriting:
     //   1. ORIGINAL (auto-detect all scripts) — base quality, catches
@@ -837,6 +845,386 @@ class CameraService {
 
     final deduped = _dedupeAndFilter(merged);
     return _mergeForScene(deduped, scene);
+  }
+
+  /// Detect text regions via DBNet then ML-Kit-OCR each region
+  /// individually. Returns per-region [OcrBlock]s with bbox + text +
+  /// confidence. Used by the manga gallery hybrid path so each speech
+  /// bubble is its own block (matching what the vision LLM returns)
+  /// while the actual recognition stays on-device and free.
+  ///
+  /// Returns an empty list if DBNet is unavailable (model not bundled)
+  /// or finds nothing — callers should fall back to plain ML Kit OCR.
+  ///
+  /// [scriptHint] selects which ML Kit recognizer to use for the
+  /// per-region OCR. Pass the dominant script of the page (Japanese
+  /// for manga, Chinese for manhua, Korean for manhwa). Latin falls
+  /// back to the default Latin recognizer.
+  /// Find image regions that carry text-like edge density but are NOT
+  /// covered by any rect in [covered]. These are the catch-up targets
+  /// for a vision-LLM pass: the on-device pipeline detected the
+  /// PRESENCE of glyphs (dense local edges) but couldn't READ them
+  /// (text too small / stylized for ML Kit, border too broken for
+  /// flood-fill). Returns rects in ORIGINAL image coordinates, capped
+  /// at [maxRegions] (largest-density first) to bound the number of
+  /// downstream vision calls. Empty list when the page is fully
+  /// covered or has no unread text-dense areas.
+  Future<List<Rect>> findUncoveredTextRegions(
+    String imagePath,
+    List<Rect> covered, {
+    int maxRegions = 3,
+  }) async {
+    try {
+      return await compute(
+        _uncoveredRegionsIsolate,
+        _UncoveredArgs(
+          imagePath: imagePath,
+          covered: covered
+              .map((r) => [r.left, r.top, r.right, r.bottom])
+              .toList(),
+          maxRegions: maxRegions,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[CameraService] findUncoveredTextRegions failed: $e');
+      return const [];
+    }
+  }
+
+  /// Crop [rect] (original-image coords) out of the image at
+  /// [imagePath] and return it as JPEG bytes. Used by the vision
+  /// catch-up pass to send a focused crop (not the whole page) to
+  /// the vision LLM. Returns null on decode failure or a degenerate
+  /// rect.
+  Future<Uint8List?> cropRegionJpeg(String imagePath, Rect rect) async {
+    try {
+      final bytes = await File(imagePath).readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return null;
+      final l = rect.left.clamp(0, decoded.width - 1).round();
+      final t = rect.top.clamp(0, decoded.height - 1).round();
+      final w = rect.width.clamp(1, decoded.width - l).round();
+      final h = rect.height.clamp(1, decoded.height - t).round();
+      if (w < 16 || h < 16) return null;
+      final crop = img.copyCrop(decoded, x: l, y: t, width: w, height: h);
+      return Uint8List.fromList(img.encodeJpg(crop, quality: 90));
+    } catch (e) {
+      debugPrint('[CameraService] cropRegionJpeg failed: $e');
+      return null;
+    }
+  }
+
+  Future<List<OcrBlock>> recognizePerRegion(
+    String imagePath, {
+    String? scriptHint,
+  }) async {
+    // Region candidates come from two detectors stacked: DBNet for
+    // photographic / printed-text scenes, BubbleDetector for manga-style
+    // line-art speech bubbles. DBNet has zero recall on manga (verified
+    // empirically: 0 regions returned across 5 manga pages); the bubble
+    // detector picks up the closed-contour bubbles classical CV finds
+    // trivially without an ML model.
+    await _dbnet.load();
+    final dbnetBoxes = <Rect>[];
+    if (_dbnet.isAvailable) {
+      try {
+        final regions = await _dbnet.detect(imagePath);
+        debugPrint('[CameraService] recognizePerRegion: '
+            'DBNet detected ${regions.length} regions in $imagePath');
+        dbnetBoxes.addAll(regions.map((r) => r.box));
+      } catch (e) {
+        debugPrint('[CameraService] recognizePerRegion: DBNet error: $e');
+      }
+    } else {
+      debugPrint('[CameraService] recognizePerRegion: DBNet model not loaded');
+    }
+
+    final boxes = <Rect>[...dbnetBoxes];
+    final bubbleBoxes = <Rect>[];
+    if (boxes.isEmpty) {
+      // Multi-pass union: pass 1 at the default 220 luminance threshold
+      // catches solid-white-interior bubbles; pass 2 at 200 catches
+      // flashback / memory bubbles drawn with a light screentone fill
+      // inside. Run in parallel — both go to compute() isolates so the
+      // cost is mostly latency-overlapped, not 2× wall time.
+      final passResults = await Future.wait([
+        BubbleDetector.detect(imagePath),
+        BubbleDetector.detect(imagePath, whiteThreshold: 200),
+      ]);
+      final pass1 = passResults[0];
+      final pass2 = passResults[1];
+      bubbleBoxes.addAll(pass1);
+      // Dedupe pass-2 against pass-1: drop a pass-2 box if it
+      // overlaps a pass-1 box (IoU > 0.5) OR if it geometrically
+      // CONTAINS two-or-more pass-1 boxes (lower threshold tends to
+      // merge adjacent bubbles whose borders share a near-black
+      // gradient at 200 — the merged giant would otherwise mask the
+      // smaller pass-1 detections in OCR).
+      for (final b2 in pass2) {
+        final overlaps =
+            pass1.any((b1) => _iouRect(b1, b2) > 0.5);
+        if (overlaps) continue;
+        final containedCount =
+            pass1.where((b1) => _rectContains(b2, b1)).length;
+        if (containedCount >= 2) continue;
+        bubbleBoxes.add(b2);
+      }
+      debugPrint('[CameraService] recognizePerRegion: '
+          'BubbleDetector pass1=${pass1.length} pass2=${pass2.length} '
+          'union=${bubbleBoxes.length} in $imagePath');
+      boxes.addAll(bubbleBoxes);
+    }
+
+    // Text-Anchored Bubble Discovery (TABD). Bubbles satisfy two
+    // complementary signals: SHAPE (closed contour, what flood-fill
+    // catches) AND CONTENT (text inside, what ML Kit catches).
+    // When SHAPE detection fails — border with a 2 px gap,
+    // adjacent bubbles whose borders share a gradient and merge
+    // into one giant component, screentone-filled flashback
+    // bubbles whose interior isn't bright enough — the CONTENT
+    // signal is still there. We run ML Kit auto-script on the
+    // whole page, then add any text block that isn't already
+    // covered by a shape detection. Pattern's "no per-line CJK
+    // fallback" rule is honored by dropping any block whose area
+    // exceeds 30% of the page (the giant-block symptom).
+    try {
+      final pageBytes = await File(imagePath).readAsBytes();
+      final pageImg = img.decodeImage(pageBytes);
+      if (pageImg != null) {
+        final pageW = pageImg.width.toDouble();
+        final pageH = pageImg.height.toDouble();
+        final pageArea = pageW * pageH;
+        // Three candidate streams in parallel:
+        //   - perBlock auto (paragraph-grained, robust to all scripts)
+        //   - perLine Latin (line-grained, catches small italic /
+        //     handwritten English text the block grouping skips)
+        //   - perLine Latin on BINARIZED image (Otsu-style B/W
+        //     threshold). Recovers bold stylized display fonts
+        //     (scream bubbles, shouting hearts) and boosts faint /
+        //     low-contrast small text by flattening the histogram.
+        //     This is what unlocked the page-5 flashback bubble
+        //     cluster ("IT DID NOT OCCUR TO ME", "SHE WAS JUST A
+        //     CHILD", "A LONG TIME AGO", "IT WAS IN A COUNTRY", etc.)
+        //     that pure auto + perLine couldn't read.
+        // Tried adding contrast + fillOutline preprocess streams to
+        // catch the last 1-2 bubbles ("I'LL WAIT UNTIL DEATH" witch
+        // whisper, "AAA QUEEN CANDELLE" decorative shouting). Neither
+        // ML Kit pass surfaced them — those bubbles appear to sit
+        // below ML Kit's intrinsic text detection threshold even
+        // with the most aggressive preprocessing. Reverted to keep
+        // batch latency reasonable.
+        // Pattern bans perLine for CJK because the recognizer
+        // collapses each page to one giant block, but Latin perLine
+        // is the opposite — it OVER-segments, which the area / IoU
+        // filters below thin back down.
+        final tabdResults = await Future.wait([
+          _recognizeAuto(imagePath, perLine: false),
+          _recognizeWithScript(imagePath, TextRecognitionScript.latin,
+              perLine: true),
+          _preprocessAndRecognize(imagePath, _PreprocessMode.binarize,
+              perLine: true, autoDetect: false),
+        ]);
+        final textBlocks = <OcrBlock>[
+          ...tabdResults[0],
+          ...tabdResults[1],
+          ...tabdResults[2],
+        ];
+        // Filter each candidate against the existing SHAPE detections
+        // first (faster path, skips obvious duplicates early).
+        final filtered = <Rect>[];
+        for (final b in textBlocks) {
+          final bb = b.boundingBox;
+          final area = bb.width * bb.height;
+          // Noise floor 0.1 % of page area. Lowered from the original
+          // 0.3 % (which dropped witch "I'LL WAIT" + decorative
+          // shouting "QUEEN CAUDELLE"). Going to 0.05 % was tried and
+          // REVERTED — it let through enough sub-glyph noise that
+          // per-region OCR produced spurious overlays and corrupted
+          // the other pages. 0.1 % is the empirical sweet spot.
+          if (area < pageArea * 0.001) continue;     // noise
+          if (area > pageArea * 0.30) continue;      // giant CJK block
+          final containedByOrphan = boxes
+              .where((existing) => _rectContains(bb, existing))
+              .length;
+          if (containedByOrphan >= 2) continue;       // multi-bubble merge
+          final cx = (bb.left + bb.right) / 2;
+          final cy = (bb.top + bb.bottom) / 2;
+          final coveredByShape = boxes.any((existing) =>
+              cx >= existing.left &&
+              cx <= existing.right &&
+              cy >= existing.top &&
+              cy <= existing.bottom);
+          if (coveredByShape) continue;
+          filtered.add(bb);
+        }
+        // Greedy area-descending dedup: prefer the larger candidate
+        // when two overlap, so a paragraph block trumps its constituent
+        // lines and the per-region OCR only fires once per bubble.
+        filtered.sort((a, b) =>
+            (b.width * b.height).compareTo(a.width * a.height));
+        final greedy = <Rect>[];
+        for (final bb in filtered) {
+          final dup = greedy.any((kept) =>
+              _rectContains(kept, bb) ||
+              _iouRect(kept, bb) > 0.3);
+          if (dup) continue;
+          greedy.add(bb);
+        }
+        // Single-link cluster the survivors by edge-to-edge distance.
+        // Pure perLine catches that no paragraph block contains (when
+        // the bubble's interior fragments at the auto-detector level)
+        // would otherwise emit one orphan PER LINE — bad UX, the user
+        // sees a stack of tiny cards. Threshold uses the SHORTER page
+        // edge × 3 % (~24 px on a 800-wide image) so it merges intra-
+        // bubble line spacing (~12-20 px) without crossing the inter-
+        // bubble gutter (~40+ px). The earlier 4 % × longer-edge
+        // formula clustered "YOU THINK I GOT ANY STRONGER?" with the
+        // separate "JUST LIKE MAMA!!" bubble below it.
+        final clusterThresh = math.min(pageW, pageH) * 0.03;
+        final orphans = _clusterRectsSingleLink(greedy, clusterThresh);
+        // Pad orphans outward by ~6 % of the box's longer side so
+        // the per-region OCR pulls a slight margin around the
+        // recognized text — captures glyph descenders / quote marks
+        // the ML Kit "block" bbox typically clips. Clamp to image
+        // bounds so the per-region crop doesn't fail.
+        final padded = orphans.map((bb) {
+          final pad = math.max(bb.width, bb.height) * 0.06;
+          return Rect.fromLTRB(
+            (bb.left - pad).clamp(0.0, pageW),
+            (bb.top - pad).clamp(0.0, pageH),
+            (bb.right + pad).clamp(0.0, pageW),
+            (bb.bottom + pad).clamp(0.0, pageH),
+          );
+        }).toList();
+        boxes.addAll(padded);
+        bubbleBoxes.addAll(padded);
+        debugPrint('[CameraService] recognizePerRegion: '
+            'TABD textBlocks=${textBlocks.length} '
+            'orphans=${orphans.length} in $imagePath');
+      }
+    } catch (e) {
+      debugPrint('[CameraService] TABD failed: $e');
+    }
+
+    // Debug-only annotated dump so you can adb-pull the temp file
+    // and see which detector contributed which box (DBNet blue,
+    // Bubble red — TABD orphans render as red too since they go
+    // into bubbleBoxes). Stripped in release builds via kDebugMode.
+    if (kDebugMode) {
+      unawaited(_dumpDetectionDebug(imagePath, dbnetBoxes, bubbleBoxes));
+    }
+
+    if (boxes.isEmpty) return const [];
+
+    try {
+      final bytes = await File(imagePath).readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return const [];
+
+      // Always run Latin recognizer; add scriptHint recognizer when
+      // it's a different script (Japanese / Chinese / Korean). Manga
+      // is mostly Japanese, but English / Spanish / French manga
+      // exist and Japanese recognizer on Latin text returns garbage
+      // (1-2 chars per bubble), which fails the >= 2 char floor and
+      // surfaces as untranslated bubbles on the rendered page.
+      final hintedScript = _scriptForLang(scriptHint);
+      final recognizers = <TextRecognitionScript, TextRecognizer>{
+        TextRecognitionScript.latin:
+            TextRecognizer(script: TextRecognitionScript.latin),
+      };
+      if (hintedScript != null && hintedScript != TextRecognitionScript.latin) {
+        recognizers[hintedScript] = TextRecognizer(script: hintedScript);
+      }
+      final tempDir = await getTemporaryDirectory();
+      final logLines = <String>[];
+      try {
+        // Parallel per-region pipeline: write crop → OCR (one call
+        // per script in parallel) → pick best by meaningful char
+        // count → cleanup. ML Kit's processImage has an internal
+        // queue per recognizer; running multiple recognizers in
+        // parallel is fine and the per-crop file IO overlaps too.
+        final futures = boxes.map<Future<OcrBlock?>>((box) async {
+          final l = box.left.clamp(0, decoded.width - 1).round();
+          final t = box.top.clamp(0, decoded.height - 1).round();
+          final w = box.width.clamp(1, decoded.width - l).round();
+          final h = box.height.clamp(1, decoded.height - t).round();
+          // ML Kit's InputImage requires BOTH sides >= 32 px or
+          // processImage throws "InputImage width and height should
+          // be at least 32". A thrown exception here used to bubble up
+          // through Future.wait and abort the WHOLE page's OCR, which
+          // returned [] → the caller fell back to a full-page vision
+          // call (27 blocks, gemini, ~$0.0065 cost spike). Skip the
+          // sub-32 crop instead.
+          if (w < 32 || h < 32) return null;
+          final cropped =
+              img.copyCrop(decoded, x: l, y: t, width: w, height: h);
+          // Unique enough — microsecond + Object.identityHash collision
+          // requires same μs AND same VM-allocated identity, vanishingly
+          // unlikely. Avoids the duplicate filenames that microseconds
+          // alone would produce when futures fire within the same μs.
+          final cropPath =
+              '${tempDir.path}/dbnet_region_${DateTime.now().microsecondsSinceEpoch}'
+              '_${identityHashCode(box)}.jpg';
+          try {
+            await File(cropPath)
+                .writeAsBytes(img.encodeJpg(cropped, quality: 90));
+            final input = InputImage.fromFilePath(cropPath);
+            final scriptList = recognizers.entries.toList();
+            final ocrResults = await Future.wait(
+                scriptList.map((e) => e.value.processImage(input)));
+            // Pick best per "meaningful char count" — letters /
+            // digits / CJK only. Punctuation and whitespace don't
+            // count, so a 5-char garbage like "* * *" loses to a
+            // 4-char real word.
+            var bestText = '';
+            var bestScore = 0;
+            var bestScript = '';
+            for (var i = 0; i < ocrResults.length; i++) {
+              final t = ocrResults[i].text.trim();
+              final score = _meaningfulCharCount(t);
+              if (score > bestScore) {
+                bestScore = score;
+                bestText = t;
+                bestScript = scriptList[i].key.name;
+              }
+            }
+            if (kDebugMode) {
+              logLines.add(
+                  '[$bestScript] bbox=$l,$t+${w}x$h score=$bestScore '
+                  'text="${bestText.replaceAll('\n', ' / ')}"');
+            }
+            if (bestText.isEmpty || bestScore < 2) return null;
+            return OcrBlock(
+              text: bestText,
+              boundingBox: box,
+              confidence: null,
+            );
+          } catch (e) {
+            // Defense in depth: a single bad crop (ML Kit throw, IO
+            // error) must NOT abort the whole page's OCR. Skip just
+            // this region — Future.wait then still resolves the rest.
+            debugPrint('[CameraService] per-region OCR skipped: $e');
+            return null;
+          } finally {
+            try {
+              await File(cropPath).delete();
+            } catch (_) {}
+          }
+        }).toList();
+        final results = await Future.wait(futures);
+        if (kDebugMode && logLines.isNotEmpty) {
+          unawaited(_dumpOcrLog(imagePath, logLines));
+        }
+        return results.whereType<OcrBlock>().toList();
+      } finally {
+        for (final r in recognizers.values) {
+          r.close();
+        }
+      }
+    } catch (e) {
+      debugPrint('[CameraService] recognizePerRegion failed: $e');
+      return const [];
+    }
   }
 
   /// Run DBNet on [imagePath] and return only the regions that don't
@@ -988,23 +1376,36 @@ class CameraService {
         final filtered = _filterMenuMetadata(blocks)
             .where((b) => !_isMenuNoise(b.text))
             .toList();
-        final merged = _mergeSameLine(filtered, hGapMultiplier: 1.2);
-        return merged
-            .map((block) {
-              final stripped = _stripTrailingPrice(block.text);
-              if (stripped == block.text) return block;
-              return OcrBlock(
-                text: stripped,
-                boundingBox: block.boundingBox,
-                confidence: block.confidence,
-              );
-            })
-            // After stripping prices, re-run the noise filter on the result
-            // in case the "dish" was actually "65k" hiding behind a token
-            // the first pass didn't catch.
-            .where((block) =>
-                block.text.trim().isNotEmpty && !_isMenuNoise(block.text))
-            .toList();
+        // Detect columns first so _mergeSameLine and _separateVertically
+        // run within each column independently — prevents cross-column
+        // merging and avoids wrongly shifting right-column blocks down.
+        final columns = _detectColumns(filtered);
+        final allRows = <OcrBlock>[];
+        for (final col in columns) {
+          final merged = _mergeSameLine(col, hGapMultiplier: 1.2);
+          final priceStripped = merged
+              .map((block) {
+                final stripped = _stripTrailingPrice(block.text);
+                if (stripped == block.text) return block;
+                return OcrBlock(
+                  text: stripped,
+                  boundingBox: block.boundingBox,
+                  confidence: block.confidence,
+                );
+              })
+              .where((block) =>
+                  block.text.trim().isNotEmpty && !_isMenuNoise(block.text))
+              .toList();
+          allRows.addAll(_separateVertically(priceStripped));
+        }
+        // Re-sort the combined columns into reading order
+        // (top-to-bottom, left-to-right within each row).
+        allRows.sort((a, b) {
+          final dy = a.boundingBox.top - b.boundingBox.top;
+          if (dy.abs() > 12) return dy < 0 ? -1 : 1;
+          return a.boundingBox.left.compareTo(b.boundingBox.left);
+        });
+        return allRows;
 
       case 'sign':
         // A sign reads as ONE message. Same-line + paragraph merge,
@@ -1040,13 +1441,13 @@ class CameraService {
         //   • vGap 0.9 — only tightly-grouped lines (same bubble)
         //   • hOverlap 0.4 — UI elements usually align well
         //   • heightRatio 0.8–1.3 — same UI element uses uniform font
-        return _mergeParagraph(
+        return _separateVertically(_mergeParagraph(
           _mergeSameLine(blocks, hGapMultiplier: 1.2),
           vGapMultiplier: 0.9,
           hOverlapRatio: 0.4,
           heightRatioMin: 0.8,
           heightRatioMax: 1.3,
-        );
+        ));
 
       case 'auto':
       default:
@@ -1666,9 +2067,9 @@ class CameraService {
   ///   • Horizontal gap < [hGapMultiplier] × line height
   ///   • B is to the right of A (gap >= small overlap tolerance)
   ///
-  /// Scene-tuned via [hGapMultiplier]: menu rows pass 3.0 to catch dish
-  /// names separated from prices by leader dots / wide whitespace;
-  /// document/screenshot pass 1.2 for tight prose.
+  /// Scene-tuned via [hGapMultiplier]: all current scenes pass 1.2 (tight
+  /// prose / same-row fragments). Menu price stripping + vertical de-overlap
+  /// happen in [_mergeForScene] and [_separateVertically] after this step.
   List<OcrBlock> _mergeSameLine(List<OcrBlock> blocks, {double hGapMultiplier = 1.2}) {
     if (blocks.length < 2) return blocks;
     final sorted = [...blocks];
@@ -1878,6 +2279,137 @@ class CameraService {
     );
   }
 
+  /// Split [blocks] into logical columns by finding horizontal "empty bands"
+  /// — contiguous ranges of X where no block's bounding box has coverage.
+  ///
+  /// Returns a list of column groups in left-to-right order. Single-column
+  /// layouts (or any layout with no clear gap) return one group containing
+  /// all blocks.
+  ///
+  /// Why this matters for menu: a two-section menu places two independent
+  /// dish lists side-by-side. Without column detection:
+  ///   • [_mergeSameLine] could merge a left-column dish with a right-column
+  ///     dish if they're on the same Y and the gap is narrow.
+  ///   • [_separateVertically] would compare rows across columns and
+  ///     incorrectly shift right-column blocks downward.
+  ///
+  /// The minimum gap threshold (1.5 × average line height) is conservative
+  /// enough to ignore the intra-column dish-name ↔ price gap (~0–0.5 ×
+  /// lineH) while reliably catching real column separators (≥ 2–3 × lineH).
+  List<List<OcrBlock>> _detectColumns(List<OcrBlock> blocks) {
+    if (blocks.length < 2) return [blocks];
+
+    final allLeft = blocks.map((b) => b.boundingBox.left).reduce(math.min);
+    final allRight = blocks.map((b) => b.boundingBox.right).reduce(math.max);
+    final totalW = allRight - allLeft;
+    if (totalW <= 0) return [blocks];
+
+    final avgH = blocks.map((b) => b.boundingBox.height).reduce((a, b) => a + b) /
+        blocks.length;
+    final minGapW = avgH * 1.5;
+
+    // Build a 1-D coverage mask across the horizontal extent.
+    final maskW = totalW.ceil().clamp(1, 4096);
+    final covered = List<bool>.filled(maskW, false);
+    for (final block in blocks) {
+      final l = (block.boundingBox.left - allLeft).floor().clamp(0, maskW - 1);
+      final r = (block.boundingBox.right - allLeft).ceil().clamp(0, maskW);
+      for (var x = l; x < r; x++) {
+        covered[x] = true;
+      }
+    }
+
+    // Collect midpoints of empty bands wide enough to be column separators.
+    final separators = <double>[];
+    var gapStart = -1;
+    for (var x = 0; x <= maskW; x++) {
+      final empty = x == maskW || !covered[x];
+      if (empty) {
+        if (gapStart < 0) gapStart = x;
+      } else {
+        if (gapStart >= 0) {
+          final gapW = x - gapStart;
+          if (gapW >= minGapW) {
+            separators.add(allLeft + gapStart + gapW / 2);
+          }
+          gapStart = -1;
+        }
+      }
+    }
+
+    if (separators.isEmpty) return [blocks];
+
+    // Partition blocks at each separator boundary.
+    final boundaries = [
+      double.negativeInfinity,
+      ...separators,
+      double.infinity,
+    ];
+    final groups = <List<OcrBlock>>[];
+    for (var i = 0; i < boundaries.length - 1; i++) {
+      final lo = boundaries[i];
+      final hi = boundaries[i + 1];
+      final group = blocks.where((b) {
+        final cx = (b.boundingBox.left + b.boundingBox.right) / 2;
+        return cx > lo && cx <= hi;
+      }).toList();
+      if (group.isNotEmpty) groups.add(group);
+    }
+    return groups.isEmpty ? [blocks] : groups;
+  }
+
+  /// Remove vertical overlap between adjacent blocks IN THE SAME COLUMN.
+  ///
+  /// ML Kit adds small leading/descender padding to each bounding box.
+  /// On a dense menu (rows 5–10 px apart) adjacent boxes often overlap
+  /// by 1–5 px — low enough to escape the IoU > 0.45 dedup threshold
+  /// but enough to make two overlay cards visually stack.
+  ///
+  /// IMPORTANT: only shifts blocks that share horizontal extent (same
+  /// column region). Two blocks from different columns that happen to
+  /// have the same Y are NOT shifted — a naive top-only sort would push
+  /// the right-column block down even though it visually belongs to the
+  /// same row as the left-column block.
+  List<OcrBlock> _separateVertically(List<OcrBlock> blocks) {
+    if (blocks.length < 2) return blocks;
+    final sorted = [...blocks]
+      ..sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
+    final result = <OcrBlock>[sorted.first];
+    for (var i = 1; i < sorted.length; i++) {
+      final prev = result.last;
+      final curr = sorted[i];
+      final vOverlap = prev.boundingBox.bottom - curr.boundingBox.top;
+      // Horizontal overlap: positive means the two blocks share column space.
+      final hOverlap =
+          math.min(prev.boundingBox.right, curr.boundingBox.right) -
+          math.max(prev.boundingBox.left, curr.boundingBox.left);
+      // Only shift when BOTH vertically and horizontally overlapping —
+      // i.e. the blocks are in the same column and the rows bleed into
+      // each other. Different-column blocks at the same Y have hOverlap ≤ 0
+      // and must not be shifted.
+      if (vOverlap <= 0 || hOverlap <= 0) {
+        result.add(curr);
+        continue;
+      }
+      // Move curr's top flush with prev's bottom. Keep at least 4 px
+      // of height so the card stays tappable.
+      final newTop = prev.boundingBox.bottom;
+      final newBottom = math.max(newTop + 4.0, curr.boundingBox.bottom);
+      result.add(OcrBlock(
+        text: curr.text,
+        boundingBox: Rect.fromLTRB(
+          curr.boundingBox.left,
+          newTop,
+          curr.boundingBox.right,
+          newBottom,
+        ),
+        confidence: curr.confidence,
+        items: curr.items,
+      ));
+    }
+    return result;
+  }
+
   OcrBlock _mergeBlocks(OcrBlock a, OcrBlock b, {required String separator}) {
     final text = '${a.text.trim()}$separator${b.text.trim()}';
     final box = Rect.fromLTRB(
@@ -1913,6 +2445,345 @@ class CameraService {
     _controller?.dispose();
     _controller = null;
     _isInitialized = false;
+  }
+
+  /// Intersection-over-union for two axis-aligned rectangles. Returns
+  /// 0 when disjoint, 1 when identical. Used to dedupe the multi-pass
+  /// BubbleDetector union in [recognizePerRegion].
+  static double _iouRect(Rect a, Rect b) {
+    final l = math.max(a.left, b.left);
+    final t = math.max(a.top, b.top);
+    final r = math.min(a.right, b.right);
+    final bo = math.min(a.bottom, b.bottom);
+    if (r <= l || bo <= t) return 0.0;
+    final inter = (r - l) * (bo - t);
+    final union = a.width * a.height + b.width * b.height - inter;
+    return union <= 0 ? 0.0 : inter / union;
+  }
+
+  /// Single-link agglomerative clustering on [rects]. Two rects join
+  /// the same cluster if their edge-to-edge distance is below [thresh].
+  /// Each cluster's bbox is the axis-aligned union of its members.
+  /// Used by [recognizePerRegion]'s TABD step to fuse per-line
+  /// detections (one orphan per text line) into one orphan per bubble
+  /// so the user sees a single overlay card, not a stack.
+  static List<Rect> _clusterRectsSingleLink(
+      List<Rect> rects, double thresh) {
+    final n = rects.length;
+    if (n <= 1) return List<Rect>.of(rects);
+    final parent = List<int>.generate(n, (i) => i);
+    int find(int i) {
+      var root = i;
+      while (parent[root] != root) {
+        root = parent[root];
+      }
+      // path compression
+      var cur = i;
+      while (parent[cur] != root) {
+        final next = parent[cur];
+        parent[cur] = root;
+        cur = next;
+      }
+      return root;
+    }
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        if (_rectGapDistance(rects[i], rects[j]) < thresh) {
+          final ri = find(i);
+          final rj = find(j);
+          if (ri != rj) parent[ri] = rj;
+        }
+      }
+    }
+    final groups = <int, List<Rect>>{};
+    for (var i = 0; i < n; i++) {
+      groups.putIfAbsent(find(i), () => <Rect>[]).add(rects[i]);
+    }
+    return groups.values.map(_unionBbox).toList();
+  }
+
+  /// Euclidean distance between two axis-aligned rectangles' nearest
+  /// edges. Zero when they overlap or touch. Used as the cluster
+  /// linkage metric for [_clusterRectsSingleLink].
+  static double _rectGapDistance(Rect a, Rect b) {
+    final dx = math.max(0.0, math.max(a.left - b.right, b.left - a.right));
+    final dy = math.max(0.0, math.max(a.top - b.bottom, b.top - a.bottom));
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  /// Axis-aligned bounding box that encloses every rect in [rects].
+  static Rect _unionBbox(List<Rect> rects) {
+    var l = rects[0].left;
+    var t = rects[0].top;
+    var r = rects[0].right;
+    var bo = rects[0].bottom;
+    for (var i = 1; i < rects.length; i++) {
+      if (rects[i].left < l) l = rects[i].left;
+      if (rects[i].top < t) t = rects[i].top;
+      if (rects[i].right > r) r = rects[i].right;
+      if (rects[i].bottom > bo) bo = rects[i].bottom;
+    }
+    return Rect.fromLTRB(l, t, r, bo);
+  }
+
+  /// True when [outer] geometrically contains [inner] (with a 2-px
+  /// tolerance so a slightly-larger outer box still passes when the
+  /// inner detection bbox sits flush to its bounds).
+  static bool _rectContains(Rect outer, Rect inner) {
+    const slack = 2.0;
+    return outer.left - slack <= inner.left &&
+        outer.top - slack <= inner.top &&
+        outer.right + slack >= inner.right &&
+        outer.bottom + slack >= inner.bottom;
+  }
+
+  /// Count "meaningful" characters in [s] — Latin letters, digits, and
+  /// CJK / kana / hangul codepoints. Punctuation, whitespace, and
+  /// symbols don't count. Used to pick the better OCR result when
+  /// running multiple ML Kit script recognizers on the same crop.
+  static int _meaningfulCharCount(String s) {
+    var count = 0;
+    for (final rune in s.runes) {
+      if ((rune >= 0x30 && rune <= 0x39) ||              // 0-9
+          (rune >= 0x41 && rune <= 0x5A) ||              // A-Z
+          (rune >= 0x61 && rune <= 0x7A) ||              // a-z
+          (rune >= 0x3040 && rune <= 0x309F) ||          // hiragana
+          (rune >= 0x30A0 && rune <= 0x30FF) ||          // katakana
+          (rune >= 0x4E00 && rune <= 0x9FFF) ||          // CJK unified
+          (rune >= 0xAC00 && rune <= 0xD7AF)) {          // hangul syllables
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Persist the per-region OCR log to a text file next to the JPEG
+  /// debug dump. Debug builds only — gated at the call site.
+  Future<void> _dumpOcrLog(String imagePath, List<String> lines) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final out =
+          '${dir.path}/ocr_log_${DateTime.now().millisecondsSinceEpoch}.txt';
+      final src = imagePath.split('/').last;
+      final body = 'src=$src\n${lines.join('\n')}\n';
+      await File(out).writeAsString(body);
+      debugPrint('[CameraService] OCR log → $out (${lines.length} regions)');
+    } catch (e) {
+      debugPrint('[CameraService] OCR log dump failed: $e');
+    }
+  }
+
+  /// Annotate the input capture with the per-detector boxes and write
+  /// a JPEG to the temp dir. Debug builds only — kDebugMode gates the
+  /// call site so release users don't accumulate dump files.
+  /// DBNet boxes render blue, BubbleDetector boxes render red.
+  Future<void> _dumpDetectionDebug(
+    String imagePath,
+    List<Rect> dbnetBoxes,
+    List<Rect> bubbleBoxes,
+  ) async {
+    try {
+      final bytes = await File(imagePath).readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return;
+      for (final box in dbnetBoxes) {
+        img.drawRect(
+          decoded,
+          x1: box.left.round(),
+          y1: box.top.round(),
+          x2: box.right.round(),
+          y2: box.bottom.round(),
+          color: img.ColorRgb8(40, 120, 255),
+          thickness: 3,
+        );
+      }
+      for (final box in bubbleBoxes) {
+        img.drawRect(
+          decoded,
+          x1: box.left.round(),
+          y1: box.top.round(),
+          x2: box.right.round(),
+          y2: box.bottom.round(),
+          color: img.ColorRgb8(255, 80, 80),
+          thickness: 3,
+        );
+      }
+      final dir = await getTemporaryDirectory();
+      final out =
+          '${dir.path}/lens_debug_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(out).writeAsBytes(img.encodeJpg(decoded, quality: 80));
+      debugPrint(
+          '[CameraService] debug dump → $out (DBNet=blue Bubble=red)');
+    } catch (e) {
+      debugPrint('[CameraService] debug dump failed: $e');
+    }
+  }
+}
+
+/// Isolate transport for [CameraService.findUncoveredTextRegions].
+class _UncoveredArgs {
+  _UncoveredArgs({
+    required this.imagePath,
+    required this.covered,
+    required this.maxRegions,
+  });
+  final String imagePath;
+  // Each covered rect as [left, top, right, bottom] in original coords.
+  final List<List<double>> covered;
+  final int maxRegions;
+}
+
+/// Edge-density text detector minus already-covered regions. Returns
+/// the bounding rects (original coords) of text-dense areas that no
+/// existing detection covers — vision-LLM catch-up targets. Mirrors
+/// the SHAPE/CONTENT detectors' downscale-600 + Sobel + integral-image
+/// approach so coordinates line up.
+List<Rect> _uncoveredRegionsIsolate(_UncoveredArgs args) {
+  const procW = 600;
+  const sobelThresh = 40;
+  const windowSize = 16;
+  const densityThresh = 0.18;
+  // Slightly larger min than EdgeDensity's own — we only want
+  // bubble-sized unread areas here, not single stray glyphs.
+  const minAreaRatio = 0.0015;
+  const maxAreaRatio = 0.20;
+  try {
+    final bytes = File(args.imagePath).readAsBytesSync();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return const [];
+    final origW = decoded.width;
+    final origH = decoded.height;
+    final scale = procW / origW;
+    final procH = (origH * scale).toInt();
+    if (procH < 8) return const [];
+    final small = img.copyResize(decoded,
+        width: procW, height: procH, interpolation: img.Interpolation.linear);
+
+    // Luminance.
+    final lum = Uint8List(procW * procH);
+    for (var y = 0; y < procH; y++) {
+      for (var x = 0; x < procW; x++) {
+        final p = small.getPixel(x, y);
+        lum[y * procW + x] =
+            (0.2126 * p.r + 0.7152 * p.g + 0.0722 * p.b).toInt();
+      }
+    }
+    // Sobel |gx|+|gy| → edge mask.
+    final edge = Uint8List(procW * procH);
+    for (var y = 1; y < procH - 1; y++) {
+      final ym1 = (y - 1) * procW, y0 = y * procW, yp1 = (y + 1) * procW;
+      for (var x = 1; x < procW - 1; x++) {
+        final gx = -lum[ym1 + x - 1] +
+            lum[ym1 + x + 1] +
+            -2 * lum[y0 + x - 1] +
+            2 * lum[y0 + x + 1] +
+            -lum[yp1 + x - 1] +
+            lum[yp1 + x + 1];
+        final gy = -lum[ym1 + x - 1] -
+            2 * lum[ym1 + x] -
+            lum[ym1 + x + 1] +
+            lum[yp1 + x - 1] +
+            2 * lum[yp1 + x] +
+            lum[yp1 + x + 1];
+        edge[y0 + x] = (gx.abs() + gy.abs()) > sobelThresh ? 1 : 0;
+      }
+    }
+    // Integral image.
+    const iw = procW + 1;
+    final ih = procH + 1;
+    final integral = Int32List(iw * ih);
+    for (var y = 1; y <= procH; y++) {
+      var rowSum = 0;
+      for (var x = 1; x <= procW; x++) {
+        rowSum += edge[(y - 1) * procW + (x - 1)];
+        integral[y * iw + x] = integral[(y - 1) * iw + x] + rowSum;
+      }
+    }
+    // Covered mask in proc coords.
+    final coveredMask = Uint8List(procW * procH);
+    for (final c in args.covered) {
+      final cl = (c[0] * scale).floor().clamp(0, procW - 1);
+      final ct = (c[1] * scale).floor().clamp(0, procH - 1);
+      final cr = (c[2] * scale).ceil().clamp(0, procW - 1);
+      final cb = (c[3] * scale).ceil().clamp(0, procH - 1);
+      for (var y = ct; y <= cb; y++) {
+        for (var x = cl; x <= cr; x++) {
+          coveredMask[y * procW + x] = 1;
+        }
+      }
+    }
+    // Text-candidate mask = high density AND not covered.
+    const half = windowSize ~/ 2;
+    const winArea = windowSize * windowSize;
+    final cand = Uint8List(procW * procH);
+    for (var y = 0; y < procH; y++) {
+      final y1 = math.max(0, y - half);
+      final y2 = math.min(procH - 1, y + half - 1);
+      for (var x = 0; x < procW; x++) {
+        if (coveredMask[y * procW + x] == 1) continue;
+        final x1 = math.max(0, x - half);
+        final x2 = math.min(procW - 1, x + half - 1);
+        final sum = integral[(y2 + 1) * iw + (x2 + 1)] -
+            integral[y1 * iw + (x2 + 1)] -
+            integral[(y2 + 1) * iw + x1] +
+            integral[y1 * iw + x1];
+        if (sum / winArea > densityThresh) cand[y * procW + x] = 1;
+      }
+    }
+    // Connected components.
+    final visited = Uint8List(procW * procH);
+    final found = <List<num>>[]; // [area, l, t, r, b]
+    final stack = <int>[];
+    final totalArea = procW * procH;
+    final minArea = (totalArea * minAreaRatio).toInt();
+    final maxArea = (totalArea * maxAreaRatio).toInt();
+    for (var seed = 0; seed < cand.length; seed++) {
+      if (visited[seed] != 0 || cand[seed] == 0) continue;
+      stack.clear();
+      stack.add(seed);
+      visited[seed] = 1;
+      var minX = procW, minY = procH, maxX = 0, maxY = 0, area = 0;
+      while (stack.isNotEmpty) {
+        final cur = stack.removeLast();
+        final cx = cur % procW, cy = cur ~/ procW;
+        area++;
+        if (cx < minX) minX = cx;
+        if (cy < minY) minY = cy;
+        if (cx > maxX) maxX = cx;
+        if (cy > maxY) maxY = cy;
+        for (var dy = -1; dy <= 1; dy++) {
+          for (var dx = -1; dx <= 1; dx++) {
+            if (dx == 0 && dy == 0) continue;
+            final nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= procW || ny >= procH) continue;
+            final n = ny * procW + nx;
+            if (visited[n] == 0 && cand[n] == 1) {
+              visited[n] = 1;
+              stack.add(n);
+            }
+          }
+        }
+      }
+      if (area < minArea || area > maxArea) continue;
+      found.add([area, minX, minY, maxX, maxY]);
+    }
+    // Largest-density-area first, cap to maxRegions.
+    found.sort((a, b) => (b[0]).compareTo(a[0]));
+    final inv = 1.0 / scale;
+    final out = <Rect>[];
+    for (var i = 0; i < found.length && i < args.maxRegions; i++) {
+      final f = found[i];
+      // Pad outward so the vision crop has bubble context.
+      const pad = 10.0;
+      final l = ((f[1] - pad) * inv).clamp(0.0, origW.toDouble());
+      final t = ((f[2] - pad) * inv).clamp(0.0, origH.toDouble());
+      final r = ((f[3] + pad) * inv).clamp(0.0, origW.toDouble());
+      final b = ((f[4] + pad) * inv).clamp(0.0, origH.toDouble());
+      out.add(Rect.fromLTRB(l, t, r, b));
+    }
+    return out;
+  } catch (_) {
+    return const [];
   }
 }
 

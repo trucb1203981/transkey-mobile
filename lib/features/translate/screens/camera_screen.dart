@@ -180,6 +180,54 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   int _batchTotal = 0;
   int _batchDone = 0;
 
+  /// In-UI debug log for batch timing. Release builds strip
+  /// developer.log so this surface is the only way the user can see
+  /// per-image timing without a debug APK.
+  final List<String> _batchDebugLog = [];
+  void _dbg(String msg) {
+    if (!mounted) return;
+    setState(() {
+      _batchDebugLog.add(msg);
+      if (_batchDebugLog.length > 30) {
+        _batchDebugLog.removeAt(0);
+      }
+    });
+  }
+
+  /// Stagger between consecutive /translate-image requests in the
+  /// parallel-vision manga batch. Firing 5 concurrent vision calls
+  /// burns through the per-key Gemini quota in ~5-10s; the late
+  /// images then fall through the model-ladder retry to the
+  /// full-fat (≈6x cost, 2-3x latency) gemini-2.5-flash. Spacing
+  /// each call by [_kVisionStaggerMs] avoids the burst spike while
+  /// keeping total wall time well below sequential.
+  static const int _kVisionStaggerMs = 800;
+
+  /// Minimum total OCR char-count for the hybrid manga path to skip
+  /// the vision LLM. Below this the OCR result is too thin to trust
+  /// (likely vertical text / sound effects / stylized fonts that ML
+  /// Kit misses) and we fall back to vision. Tuned from per-image
+  /// debug logs on 5-page manga batches: real manga consistently
+  /// yields 500-1000+ chars; pages that fall below 50 are usually
+  /// art-only with sound effects only.
+  static const int _kMangaOcrMinChars = 50;
+
+  /// Minimum area (fraction of page) an uncovered text region must
+  /// reach before it's worth a vision-LLM catch-up call. Large
+  /// edge-dense regions are real multi-word dialogue bubbles the
+  /// on-device OCR couldn't read; small ones are sound effects /
+  /// stray fragments not worth ~$0.0005-0.007 per call. ~1.2 % of a
+  /// 1280x1920 page ≈ a 5-6 line dialogue bubble.
+  static const double _kVisionCatchUpMinAreaRatio = 0.012;
+
+  /// Upper bound for a vision catch-up region (fraction of page). A
+  /// region bigger than this isn't a single bubble — it's a whole
+  /// panel the OCR missed. Cropping it sends a near-full-page image to
+  /// vision (20-30 blocks, spillover re-reads, gemini cost spike if
+  /// groq is rate-limited), so we skip it rather than pay ~$0.007. ~5 %
+  /// of a 1280x1920 page comfortably contains the largest real bubble.
+  static const double _kVisionCatchUpMaxAreaRatio = 0.05;
+
   /// Hard cap on how many images one gallery pick can process. Prevents
   /// a 20-image flood from monopolising the OCR pipeline + LLM quota.
   /// 5 covers a typical menu (2-4 pages); larger numbers tank the UX
@@ -409,7 +457,44 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           if (_step == _CameraStep.preview && _isBlurry) _buildBlurOverlay(l),
           if (_cameraStoppedForBackground)
             _buildBackgroundPauseOverlay(l),
+          // Debug overlay temporarily disabled. Re-enable by
+          // restoring the `if (_batchDebugLog.isNotEmpty) ...` line
+          // when investigating batch latency again.
         ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildBatchDebugOverlay() {
+    return Positioned(
+      top: 80,
+      left: 8,
+      right: 8,
+      child: IgnorePointer(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final line in _batchDebugLog)
+                Text(
+                  line,
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    height: 1.25,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1736,6 +1821,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         maxWidth: 1600,
         maxHeight: 1600,
         imageQuality: 90,
+        // Enforce the batch cap at the picker UI so the user can't tick
+        // more than [_kMaxBatchImages] checkboxes in the first place —
+        // less confusing than letting them pick 10 and silently dropping
+        // 5. Honored natively by iOS PHPicker and Android 13+ Photo
+        // Picker; older Android falls back to a non-limiting picker, so
+        // the post-pick trim + snackbar below stays as a safety net.
+        limit: _kMaxBatchImages,
       );
     } catch (e) {
       debugPrint('[Camera] Gallery pick failed: $e');
@@ -1868,76 +1960,172 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  /// Parallel-OCR batch path for the common menu/document gallery flow.
-  /// All ML Kit OCR calls fire in parallel via Future.wait (each
-  /// recognizeText is pure - no shared state writes). The for-loop
-  /// below the await drains the futures in pick-order and runs the
-  /// stateful translate step for each. The FIRST image's translated
-  /// snapshot transitions the UI out of the spinner immediately so
-  /// the user can browse it while later images finish in the
-  /// background.
+  /// Parallel OCR + translate batch path for the common menu / document /
+  /// screenshot / auto gallery flow. Each image runs its FULL pipeline
+  /// (OCR + /translate-batch) as a single pure future; all N futures fire
+  /// concurrently, then drain in pick-order so the gallery walker
+  /// (◀ image i ▶) stays in the order the user selected. The FIRST
+  /// image's snapshot flips the UI out of the translating spinner so the
+  /// user starts reading while images 2..N keep translating in the
+  /// background — by the time they swipe to page 2, its translation is
+  /// usually already done.
+  ///
+  /// Mirrors the parallel-vision path used for manga ([_runBatchParallelVision]):
+  /// per-image work is bundled into one pure future, kicked off all at once,
+  /// drained in submission order.
   Future<void> _runBatchParallelOcr(
     List<XFile> picked, {
     required CameraScene scene,
   }) async {
     final settings = ref.read(cameraSettingsProvider).valueOrNull ??
         CameraSettings.defaults;
+    final batchSw = Stopwatch()..start();
+    _batchDebugLog.clear();
+    _dbg('start ${picked.length} imgs scene=${scene.id}');
 
-    // Phase 1: kick off ALL OCR jobs in parallel. Each future decodes
-    // its own image and returns the per-image OCR result (or null on
-    // failure). Construction with .toList() materialises the futures
-    // so they all start before any awaits below.
-    final ocrJobs = picked.map((file) => _runOcrPure(
-          file.path,
-          scene: scene.id,
-          confidenceThreshold: settings.confidenceThreshold,
-        )).toList();
+    final jobs = <Future<_BatchSnapshot?>>[];
+    for (var i = 0; i < picked.length; i++) {
+      final imgIdx = i;
+      final imgSw = Stopwatch()..start();
+      final fut = _runOcrAndTranslatePure(
+        picked[i],
+        scene: scene,
+        confidenceThreshold: settings.confidenceThreshold,
+      ).then((snap) {
+        _dbg('img$imgIdx pipeline +${batchSw.elapsedMilliseconds}ms '
+            '(self ${imgSw.elapsedMilliseconds}ms, '
+            '${snap == null ? "null" : "${snap.blocks.length}b"})');
+        return snap;
+      });
+      jobs.add(fut);
+    }
 
-    // Phase 2: drain in pick-order and translate sequentially. First
-    // completed translation flips the UI out of the spinner.
-    for (var i = 0; i < ocrJobs.length; i++) {
+    for (var i = 0; i < jobs.length; i++) {
       if (!mounted) return;
-      final ocr = await ocrJobs[i];
+      final drainSw = Stopwatch()..start();
+      final snap = await jobs[i];
       if (!mounted) return;
-      if (ocr == null) {
+      if (snap == null) {
+        _dbg('img$i drained null +${batchSw.elapsedMilliseconds}ms');
         setState(() => _batchDone = i + 1);
         continue;
       }
-      // Move this image's OCR result into the shared singletons so the
-      // existing _translateAndShow path (which reads from state) can
-      // translate it. setState here is safe because the for-loop is
-      // serial — only one image is "active" at a time.
-      setState(() {
-        _capturedPath = ocr.path;
-        _capturedImageSize = ocr.size;
-        _blocks = ocr.blocks;
-        _translations = List<String>.filled(ocr.blocks.length, '');
-        _error = ocr.blocks.isEmpty ? 'No text found' : null;
-        _visionConfidence = null;
-        _detectedScene = null;
-        _captureSourceLang = null;
-      });
-      if (ocr.blocks.isNotEmpty) {
-        try {
-          await _translateAndShow();
-        } catch (e) {
-          debugPrint('[Camera] Gallery translate $i failed: $e');
-        }
-      }
-      if (!mounted) return;
-      if (_capturedPath == ocr.path && _capturedImageSize != null) {
-        _batchQueue.add(_snapshotActive());
-      }
+      _batchQueue.add(snap);
+      final isFirst = _batchQueue.length == 1;
       setState(() {
         _batchDone = i + 1;
-        // First successful image: transition out of the translating
-        // spinner so the user starts browsing while the rest process.
-        if (_batchQueue.length == 1) {
+        if (isFirst) {
+          _activeBatchIndex = 0;
+          _restoreFromSnapshot(snap);
           _isBatchProcessing = false;
           _step = _resultStepRespectingBatch();
         }
       });
+      _dbg('img$i SHOWN +${batchSw.elapsedMilliseconds}ms '
+          '(wait ${drainSw.elapsedMilliseconds}ms, first=$isFirst)');
     }
+    _dbg('END total ${batchSw.elapsedMilliseconds}ms');
+  }
+
+  /// Pure (no shared-state writes) OCR + translate for one gallery image.
+  /// Returns the ready [_BatchSnapshot], or `null` if OCR itself failed
+  /// to produce anything we can show (e.g. unreadable image). A snapshot
+  /// with empty blocks is still returned with `error = 'No text found'`
+  /// so the gallery walker can present it as "no text" rather than
+  /// silently dropping the slot.
+  Future<_BatchSnapshot?> _runOcrAndTranslatePure(
+    XFile file, {
+    required CameraScene scene,
+    required double confidenceThreshold,
+  }) async {
+    final sw = Stopwatch()..start();
+    final ocr = await _runOcrPure(
+      file.path,
+      scene: scene.id,
+      confidenceThreshold: confidenceThreshold,
+    );
+    final ocrMs = sw.elapsedMilliseconds;
+    final shortName = file.path.split('/').last;
+    _dbg('  $shortName OCR ${ocrMs}ms '
+        '(${ocr == null ? "null" : "${ocr.blocks.length}b"})');
+    if (ocr == null) return null;
+    if (ocr.blocks.isEmpty) {
+      return _BatchSnapshot(
+        path: ocr.path,
+        imageSize: ocr.size,
+        blocks: const [],
+        translations: const [],
+        error: 'No text found',
+      );
+    }
+
+    final texts = ocr.blocks.map((b) => b.text).toList();
+    final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+    final targetLang = langSettings?.targetLang ?? 'en';
+    final sourceLang = langSettings?.sourceLang ?? 'auto';
+    final probe = _probeTranslationCache(texts);
+    // Seed translations with cache hits + original text for misses
+    // (the placeholder gets overwritten in-place as network results land).
+    final translations = List<String>.generate(
+      texts.length,
+      (i) => probe.results[i] ?? texts[i],
+    );
+    String? detectedSrc;
+
+    if (probe.missIndices.isNotEmpty) {
+      try {
+        final api = ref.read(apiClientProvider);
+        for (var s = 0; s < probe.missTexts.length; s += _batchChunkSize) {
+          final end = math.min(s + _batchChunkSize, probe.missTexts.length);
+          final resp = await api.dio.post('/translate-batch', data: {
+            'texts': probe.missTexts.sublist(s, end),
+            'targetLang': targetLang,
+            'appHint': 'camera',
+            'scene': scene.id,
+          }).timeout(const Duration(seconds: 60));
+          final data = resp.data as Map?;
+          if (detectedSrc == null) {
+            final raw = (data?['detectedSourceLang'] as String?)?.toLowerCase();
+            if (raw != null && RegExp(r'^[a-z]{2}$').hasMatch(raw)) {
+              detectedSrc = raw;
+            }
+          }
+          final raw = data?['translations'] as List?;
+          for (var k = 0; k < end - s; k++) {
+            final origIdx = probe.missIndices[s + k];
+            final origText = texts[origIdx];
+            final v = (raw != null && k < raw.length) ? raw[k] : null;
+            final tr =
+                (v is String && v.trim().isNotEmpty) ? v : origText;
+            translations[origIdx] = tr;
+            if (tr != origText) {
+              TranslationCache.instance.store(
+                text: origText,
+                sourceLang: sourceLang,
+                targetLang: targetLang,
+                scene: scene.id,
+                translation: tr,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[Camera] Batch translate failed for ${ocr.path}: $e');
+        // Misses keep their original-text placeholder so the snapshot
+        // still renders something readable.
+      }
+    }
+
+    _dbg('  $shortName tx ${sw.elapsedMilliseconds - ocrMs}ms '
+        '(${probe.cacheHits}/${texts.length} hit, '
+        '${probe.missIndices.length} api)');
+    return _BatchSnapshot(
+      path: ocr.path,
+      imageSize: ocr.size,
+      blocks: ocr.blocks,
+      translations: translations,
+      sourceLang: detectedSrc,
+    );
   }
 
   /// Parallel-vision batch path for the COMIC/MANGA scene. Mirrors
@@ -1949,27 +2137,222 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     List<XFile> picked, {
     required CameraScene scene,
   }) async {
-    // Phase 1: kick off ALL vision calls in parallel (pure — no shared
-    // state writes), materialised with .toList() so they all start now.
-    final jobs =
-        picked.map((file) => _runVisionPure(file.path, scene: scene.id)).toList();
+    final batchSw = Stopwatch()..start();
+    _batchDebugLog.clear();
+    _dbg('vision start ${picked.length} imgs stagger=${_kVisionStaggerMs}ms');
 
-    // Phase 2: drain in pick-order; first ready page surfaces immediately.
+    // Stagger vision calls so we don't slam the server's per-key Gemini
+    // quota all at once. Firing 5 concurrent /translate-image requests
+    // rate-limits the LLM key within ~5-10s, falling the late images
+    // through the model-ladder retry (cheap flash-lite → full flash =
+    // ~6x cost + 2-3x latency). Spacing them by [_kVisionStaggerMs]
+    // keeps total wall time low while staying under the per-second
+    // burst threshold that triggers throttling.
+    // Hybrid manga path: try ML Kit OCR first (cheap + on-device,
+    // ~400ms). When OCR pulls enough text (>= _kManaOcrMinChars CJK
+    // chars) we run /translate-batch on the per-line blocks instead
+    // of /translate-image. Wins:
+    //   - Cost:    $0 OCR + ~$0.0002 batch  vs $0.001-0.007 vision
+    //   - Latency: ~2s total                vs 8-27s vision
+    //   - No Gemini rate-limit cascade (text path uses cheaper batch
+    //     route on the server).
+    // When OCR yield is too low, we fall back to vision the same way
+    // the live capture flow does (vertical text / sound effects /
+    // stylized fonts that ML Kit misses).
+    final settings = ref.read(cameraSettingsProvider).valueOrNull ??
+        CameraSettings.defaults;
+
+    final jobs = <Future<_BatchSnapshot>>[];
+    for (var i = 0; i < picked.length; i++) {
+      final imgIdx = i;
+      final delayMs = _kVisionStaggerMs * i;
+      final fut = Future<_BatchSnapshot>(() async {
+        if (delayMs > 0) {
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
+        final imgSw = Stopwatch()..start();
+        _dbg('img$imgIdx start +${batchSw.elapsedMilliseconds}ms');
+
+        // Step 1: ML Kit OCR pre-flight (per-line for bbox granularity
+        // matching what vision returns).
+        final ocrSw = Stopwatch()..start();
+        final ocrSnap = await _runOcrAndTranslatePerLine(
+          picked[i],
+          scene: scene,
+          confidenceThreshold: settings.confidenceThreshold,
+        );
+        final ocrMs = ocrSw.elapsedMilliseconds;
+
+        if (ocrSnap != null) {
+          final chars = ocrSnap.blocks
+              .fold<int>(0, (sum, b) => sum + b.text.length);
+          if (chars >= _kMangaOcrMinChars) {
+            _dbg('img$imgIdx HYBRID-OCR '
+                '+${batchSw.elapsedMilliseconds}ms '
+                '(${ocrSnap.blocks.length}b/${chars}c, ocr+tx ${ocrMs}ms)');
+            return ocrSnap;
+          }
+          _dbg('img$imgIdx OCR weak (${chars}c < $_kMangaOcrMinChars) '
+              '→ vision');
+        }
+
+        // Step 2: vision fallback.
+        final visionSw = Stopwatch()..start();
+        final snap = await _runVisionPure(picked[i].path, scene: scene.id);
+        _dbg('img$imgIdx VISION +${batchSw.elapsedMilliseconds}ms '
+            '(vision ${visionSw.elapsedMilliseconds}ms, '
+            '${snap.blocks.length}b, total ${imgSw.elapsedMilliseconds}ms)');
+        return snap;
+      });
+      jobs.add(fut);
+    }
+
     for (var i = 0; i < jobs.length; i++) {
       if (!mounted) return;
+      final drainSw = Stopwatch()..start();
       final snap = await jobs[i];
       if (!mounted) return;
       _batchQueue.add(snap);
+      final isFirst = _batchQueue.length == 1;
       setState(() {
         _batchDone = i + 1;
-        if (_batchQueue.length == 1) {
+        if (isFirst) {
           _activeBatchIndex = 0;
           _restoreFromSnapshot(snap);
           _isBatchProcessing = false;
           _step = _resultStepRespectingBatch();
         }
       });
+      _dbg('img$i SHOWN +${batchSw.elapsedMilliseconds}ms '
+          '(wait ${drainSw.elapsedMilliseconds}ms, first=$isFirst)');
     }
+    _dbg('OCR phase END +${batchSw.elapsedMilliseconds}ms');
+
+    // Deferred vision catch-up — runs AFTER every page is on screen
+    // with its OCR translations. Sequential (one vision call at a
+    // time) across all pages so we never trigger the per-key rate-limit
+    // cascade that forces the expensive gemini fallback. Fire-and-
+    // forget: the OCR result already stands, this just fills in the
+    // few hard bubbles progressively as each call returns.
+    unawaited(_runVisionCatchUpSequential(scene: scene, sw: batchSw));
+  }
+
+  /// Sequentially drain every queued page's [pendingVisionRegions]:
+  /// one tight crop + vision call at a time, dedupe against that page's
+  /// existing blocks, translate the survivors, and splice them into the
+  /// page (updating the on-screen singletons when it's the active page).
+  /// One call at a time is the whole point — it keeps total concurrent
+  /// vision pressure at 1, so the server's groq key never rate-limits
+  /// into the costly gemini ladder.
+  Future<void> _runVisionCatchUpSequential({
+    required CameraScene scene,
+    required Stopwatch sw,
+  }) async {
+    for (var pageIdx = 0; pageIdx < _batchQueue.length; pageIdx++) {
+      if (!mounted) return;
+      final snap = _batchQueue[pageIdx];
+      final regions = snap.pendingVisionRegions;
+      if (regions.isEmpty) continue;
+      snap.pendingVisionRegions = const []; // claim — don't re-process
+
+      final newBlocks = <OcrBlock>[];
+      for (final region in regions) {
+        if (!mounted) return;
+        // One region → one tight crop → one vision call (sequential).
+        final visionBlocks =
+            await _visionCatchUpCrops(snap.path, [region]);
+        // Dedup against this page's already-shown blocks AND the
+        // catch-up blocks already accepted on this page.
+        for (final vb in visionBlocks) {
+          final c = vb.boundingBox.center;
+          bool insideAny(List<OcrBlock> list) => list.any((ob) {
+                final b = ob.boundingBox;
+                final centerInside = c.dx >= b.left &&
+                    c.dx <= b.right &&
+                    c.dy >= b.top &&
+                    c.dy <= b.bottom;
+                return centerInside || _rectIoU(b, vb.boundingBox) > 0.3;
+              });
+          if (insideAny(snap.blocks)) continue;
+          if (insideAny(newBlocks)) continue;
+          newBlocks.add(vb);
+        }
+      }
+      if (newBlocks.isEmpty || !mounted) continue;
+
+      // Translate the survivors (cache + one small /translate-batch).
+      final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+      final targetLang = langSettings?.targetLang ?? 'en';
+      final sourceLang = langSettings?.sourceLang ?? 'auto';
+      final newTexts = newBlocks.map((b) => b.text).toList();
+      final newTranslations = await _translateTexts(newTexts,
+          scene: scene, targetLang: targetLang, sourceLang: sourceLang);
+
+      if (!mounted) continue;
+      // Splice into the page. Update the on-screen singletons too when
+      // this is the page the user is currently looking at.
+      setState(() {
+        snap.blocks = [...snap.blocks, ...newBlocks];
+        snap.translations = [...snap.translations, ...newTranslations];
+        if (pageIdx == _activeBatchIndex) {
+          _blocks = snap.blocks;
+          _translations = snap.translations;
+        }
+      });
+      _dbg('catch-up page$pageIdx +${newBlocks.length}b '
+          '+${sw.elapsedMilliseconds}ms');
+    }
+    _dbg('catch-up phase END +${sw.elapsedMilliseconds}ms');
+  }
+
+  /// Translate [texts] via the translation cache + a single
+  /// /translate-batch call for the misses. Returns a same-length list
+  /// (falls back to source text on failure). Shared by the deferred
+  /// vision catch-up.
+  Future<List<String>> _translateTexts(
+    List<String> texts, {
+    required CameraScene scene,
+    required String targetLang,
+    required String sourceLang,
+  }) async {
+    final probe = _probeTranslationCache(texts);
+    final translations = List<String>.generate(
+      texts.length,
+      (i) => probe.results[i] ?? texts[i],
+    );
+    if (probe.missIndices.isEmpty) return translations;
+    try {
+      final api = ref.read(apiClientProvider);
+      for (var s = 0; s < probe.missTexts.length; s += _batchChunkSize) {
+        final end = math.min(s + _batchChunkSize, probe.missTexts.length);
+        final resp = await api.dio.post('/translate-batch', data: {
+          'texts': probe.missTexts.sublist(s, end),
+          'targetLang': targetLang,
+          'appHint': 'camera',
+          'scene': scene.id,
+        }).timeout(const Duration(seconds: 60));
+        final raw = (resp.data as Map?)?['translations'] as List?;
+        for (var k = 0; k < end - s; k++) {
+          final origIdx = probe.missIndices[s + k];
+          final origText = texts[origIdx];
+          final v = (raw != null && k < raw.length) ? raw[k] : null;
+          final tr = (v is String && v.trim().isNotEmpty) ? v : origText;
+          translations[origIdx] = tr;
+          if (tr != origText) {
+            TranslationCache.instance.store(
+              text: origText,
+              sourceLang: sourceLang,
+              targetLang: targetLang,
+              scene: scene.id,
+              translation: tr,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[Camera] catch-up translate failed: $e');
+    }
+    return translations;
   }
 
   /// Pure (no shared-state writes) vision round-trip used by the parallel
@@ -2145,6 +2528,247 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// Pure (no shared-state writes) decode + ML Kit OCR pass used by
   /// the parallel batch path. Returns the per-image data needed to
   /// later run translation through the existing stateful helpers.
+  /// Hybrid manga path: ML Kit OCR (forced per-line so we get many
+  /// small bboxes matching the per-bubble layout vision returns) +
+  /// /translate-batch. Returns a [_BatchSnapshot] ready to render
+  /// exactly like the vision response, or null if OCR yielded
+  /// nothing usable. Caller compares the char-count to a threshold
+  /// before deciding whether to use this or fall back to vision.
+  Future<_BatchSnapshot?> _runOcrAndTranslatePerLine(
+    XFile file, {
+    required CameraScene scene,
+    required double confidenceThreshold,
+  }) async {
+    try {
+      final bytes = await File(file.path).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final size = Size(
+        frame.image.width.toDouble(),
+        frame.image.height.toDouble(),
+      );
+      frame.image.dispose();
+      codec.dispose();
+
+      // Try DBNet (PaddleOCR) region detector FIRST — it gives one bbox
+      // per speech bubble / text cluster (matching what the vision LLM
+      // returns), then we OCR each region with the appropriate ML Kit
+      // script. Falls back to plain block/line OCR when DBNet isn't
+      // bundled or returns nothing usable.
+      final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+      final sourceHint = langSettings?.sourceLang;
+      // Manga is overwhelmingly Japanese; allow Chinese / Korean if the
+      // user has pinned the source explicitly.
+      final scriptHint = (sourceHint != null && sourceHint != 'auto')
+          ? sourceHint
+          : 'ja';
+      final List<OcrBlock> ocrBlocks =
+          await _cameraService.recognizePerRegion(file.path, scriptHint: scriptHint);
+      _dbg('  ${file.path.split('/').last} DBNet=${ocrBlocks.length}b');
+
+      // No fallback to per-line OCR — for Japanese / Chinese manga
+      // ML Kit returns ONE big block per page covering nearly the
+      // whole image, which surfaces as the "block khổng lồ" overlay
+      // the user explicitly didn't want. When BubbleDetector finds
+      // nothing, returning null lets the caller route through the
+      // vision LLM (per-bubble) instead.
+      if (ocrBlocks.isEmpty) return null;
+
+      // DEFER vision catch-up. Find the large uncovered text regions
+      // now (cheap, on-device edge density minus OCR coverage), but
+      // DON'T call vision here — that would block this page's display.
+      // Stash the regions on the snapshot; the sequential background
+      // pass (_runVisionCatchUpSequential) drains them one tight crop
+      // at a time AFTER the page is on screen, so:
+      //   - the user sees the OCR result immediately (progressive),
+      //   - vision calls run one-at-a-time (no rate-limit cascade →
+      //     no gemini cost spike),
+      //   - each crop is tight to a single unread bubble (no spillover
+      //     re-reading OCR-covered text → no double cost).
+      // The gate keeps only regions large enough to be a real
+      // multi-word bubble; sound-effect fragments stay below it.
+      var pendingRegions = const <Rect>[];
+      try {
+        final covered = ocrBlocks.map((b) => b.boundingBox).toList();
+        final uncovered =
+            await _cameraService.findUncoveredTextRegions(file.path, covered);
+        final pageArea = size.width * size.height;
+        pendingRegions = (pageArea <= 0
+                ? <Rect>[]
+                : uncovered.where((r) {
+                    final ratio = (r.width * r.height) / pageArea;
+                    // Band, not just a floor: a region must be a real
+                    // multi-word bubble (>= min) but NOT a whole missed
+                    // panel (<= max). A panel-sized crop returns 20-30
+                    // blocks, half of them spillover from OCR-covered
+                    // text, and — if groq is rate-limited from the OCR
+                    // phase — routes to gemini for a ~$0.007 spike. The
+                    // upper bound keeps each catch-up crop bubble-sized
+                    // and cheap.
+                    return ratio >= _kVisionCatchUpMinAreaRatio &&
+                        ratio <= _kVisionCatchUpMaxAreaRatio;
+                  }).toList())
+            .take(2)
+            .toList();
+        if (pendingRegions.isNotEmpty) {
+          _dbg('  deferred vision: ${pendingRegions.length} big region(s) '
+              '(${uncovered.length} total uncovered)');
+        }
+      } catch (e) {
+        debugPrint('[Camera] uncovered-region scan failed: $e');
+      }
+
+      // Translate via /translate-batch (text-only, cheap path).
+      final texts = ocrBlocks.map((b) => b.text).toList();
+      final targetLang = langSettings?.targetLang ?? 'en';
+      final sourceLang = langSettings?.sourceLang ?? 'auto';
+      final probe = _probeTranslationCache(texts);
+      final translations = List<String>.generate(
+        texts.length,
+        (i) => probe.results[i] ?? texts[i],
+      );
+      String? detectedSrc;
+
+      if (probe.missIndices.isNotEmpty) {
+        try {
+          final api = ref.read(apiClientProvider);
+          for (var s = 0;
+              s < probe.missTexts.length;
+              s += _batchChunkSize) {
+            final end =
+                math.min(s + _batchChunkSize, probe.missTexts.length);
+            final resp = await api.dio.post('/translate-batch', data: {
+              'texts': probe.missTexts.sublist(s, end),
+              'targetLang': targetLang,
+              'appHint': 'camera',
+              'scene': scene.id,
+            }).timeout(const Duration(seconds: 60));
+            final data = resp.data as Map?;
+            if (detectedSrc == null) {
+              final rawSrc =
+                  (data?['detectedSourceLang'] as String?)?.toLowerCase();
+              if (rawSrc != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrc)) {
+                detectedSrc = rawSrc;
+              }
+            }
+            final raw = data?['translations'] as List?;
+            for (var k = 0; k < end - s; k++) {
+              final origIdx = probe.missIndices[s + k];
+              final origText = texts[origIdx];
+              final v = (raw != null && k < raw.length) ? raw[k] : null;
+              final tr =
+                  (v is String && v.trim().isNotEmpty) ? v : origText;
+              translations[origIdx] = tr;
+              if (tr != origText) {
+                TranslationCache.instance.store(
+                  text: origText,
+                  sourceLang: sourceLang,
+                  targetLang: targetLang,
+                  scene: scene.id,
+                  translation: tr,
+                );
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('[Camera] Hybrid translate-batch failed: $e');
+        }
+      }
+
+      return _BatchSnapshot(
+        path: file.path,
+        imageSize: size,
+        blocks: ocrBlocks,
+        translations: translations,
+        sourceLang: detectedSrc,
+        pendingVisionRegions: pendingRegions,
+      );
+    } catch (e) {
+      debugPrint('[Camera] Hybrid OCR pipeline failed for ${file.path}: $e');
+      return null;
+    }
+  }
+
+  /// Intersection-over-union for two axis-aligned rects. Used to
+  /// dedupe vision catch-up blocks against the OCR detections.
+  static double _rectIoU(Rect a, Rect b) {
+    final l = math.max(a.left, b.left);
+    final t = math.max(a.top, b.top);
+    final r = math.min(a.right, b.right);
+    final bo = math.min(a.bottom, b.bottom);
+    if (r <= l || bo <= t) return 0.0;
+    final inter = (r - l) * (bo - t);
+    final union = a.width * a.height + b.width * b.height - inter;
+    return union <= 0 ? 0.0 : inter / union;
+  }
+
+  /// Vision-LLM OCR catch-up on focused CROPS. For each large
+  /// uncovered [regions] rect (original coords, already excluding
+  /// OCR-covered area), crop just that region and POST it to
+  /// /translate-image — we never send the OCR-covered parts of the
+  /// page, so we never re-pay for text the OCR path already handled.
+  /// Returns the recognised text as OcrBlocks with bboxes mapped back
+  /// to original coords. Text only; the caller's /translate-batch
+  /// translates uniformly. Caller gates [regions] to large bubbles
+  /// (>= _kVisionCatchUpMinAreaRatio) and caps the count, so this
+  /// fires at most a couple of focused calls on the pages that truly
+  /// have a big unread bubble. Best-effort: a failed crop is skipped.
+  Future<List<OcrBlock>> _visionCatchUpCrops(
+    String path,
+    List<Rect> regions,
+  ) async {
+    final out = <OcrBlock>[];
+    final api = ref.read(apiClientProvider);
+    final langSettings = ref.read(languageSettingsProvider).valueOrNull;
+    final targetLang = langSettings?.targetLang ?? 'en';
+    for (final region in regions) {
+      try {
+        final cropBytes = await _cameraService.cropRegionJpeg(path, region);
+        if (cropBytes == null) continue;
+        final resp = await api.dio.post('/translate-image', data: {
+          'imageBase64': base64Encode(cropBytes),
+          'targetLang': targetLang,
+          'scene': 'manga',
+          'withBoxes': true,
+          'imageWidth': region.width.round(),
+          'imageHeight': region.height.round(),
+        }).timeout(const Duration(seconds: 30));
+        final data = resp.data as Map?;
+        final rawBlocks = data?['blocks'];
+        if (rawBlocks is List && rawBlocks.isNotEmpty) {
+          for (final blk in rawBlocks) {
+            if (blk is! Map) continue;
+            final orig = (blk['original'] as String?)?.trim() ?? '';
+            if (orig.isEmpty) continue;
+            // Map crop-local box back to original coords (crop origin =
+            // region.topLeft). Box format [ymin, xmin, ymax, xmax].
+            final box = blk['box'];
+            Rect bbox;
+            if (box is List && box.length == 4) {
+              double n(int i) =>
+                  (box[i] is num) ? (box[i] as num).toDouble() : 0.0;
+              bbox = Rect.fromLTRB(region.left + n(1), region.top + n(0),
+                  region.left + n(3), region.top + n(2));
+            } else {
+              bbox = region;
+            }
+            out.add(OcrBlock(text: orig, boundingBox: bbox, confidence: null));
+          }
+        } else {
+          final transcription =
+              (data?['transcription'] as String?)?.trim() ?? '';
+          if (transcription.isNotEmpty) {
+            out.add(OcrBlock(
+                text: transcription, boundingBox: region, confidence: null));
+          }
+        }
+      } catch (e) {
+        debugPrint('[Camera] vision catch-up crop failed: $e');
+      }
+    }
+    return out;
+  }
+
   Future<_BatchOcrResult?> _runOcrPure(
     String path, {
     required String scene,
@@ -3052,12 +3676,67 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final sourceLang = langSettings?.sourceLang ?? 'auto';
     final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
         CameraScene.auto;
+    // unused but kept to mirror probe context shape
+    // (target/source/scene already pulled above for the cache key).
+    return _probeTranslationCacheImpl(
+      texts, targetLang, sourceLang, scene, forceRefresh,
+    );
+  }
+
+  /// True when [text] is sound-effect / onomatopoeia / OCR-garble that
+  /// every translation model leaves verbatim — sending it to
+  /// /translate-batch just bloats the payload and warns the server-
+  /// side leak detector. Patterns mirror the backend's
+  /// isStructurallyUntranslatable (api/translate.cjk.ts):
+  ///   - 3+ consecutive same letter (EEEK, RAAAAH, あああ)
+  ///   - same token repeated (BLAU BLAU, SHAKA SHAKA)
+  ///   - a token mixing ASCII letters AND digits (BO0OM, KiloJS9)
+  /// Language-agnostic by design — works for any script.
+  static final RegExp _kRepeatedLetterRe = RegExp(r'(.)\1{2,}', unicode: true);
+  static final RegExp _kRepeatedTokenRe = RegExp(
+      r'^(\S{2,})[\s-]+\1\b', caseSensitive: false);
+  static final RegExp _kGarbledLetterDigitRe = RegExp(
+      r'\b(?=\S*[A-Za-z])(?=\S*\d)[A-Za-z0-9]{3,}\b');
+  static bool _looksUntranslatable(String text) {
+    final t = text.trim();
+    if (t.length < 2) return true;
+    if (_kRepeatedLetterRe.hasMatch(t)) return true;
+    if (_kRepeatedTokenRe.hasMatch(t)) return true;
+    if (_kGarbledLetterDigitRe.hasMatch(t)) return true;
+    return false;
+  }
+
+  ({
+    List<String?> results,
+    List<int> missIndices,
+    List<String> missTexts,
+    int cacheHits,
+  }) _probeTranslationCacheImpl(
+    List<String> texts,
+    String targetLang,
+    String sourceLang,
+    CameraScene scene,
+    bool forceRefresh,
+  ) {
 
     final results = List<String?>.filled(texts.length, null);
     final missIndices = <int>[];
     final missTexts = <String>[];
     var cacheHits = 0;
     for (var i = 0; i < texts.length; i++) {
+      // Defense in depth: a block the backend would mark
+      // "structurally untranslatable" (sound effects "EEEK!!",
+      // repeated stutter "BLAU BLAU", OCR garble "BO0OM") is left
+      // unchanged by every LLM anyway — sending it would just bloat
+      // the /translate-batch payload and trigger leak warnings
+      // server-side. Short-circuit to source-as-translation so the
+      // wire never carries it. Matches the patterns in
+      // api/translate.cjk.ts isStructurallyUntranslatable.
+      if (_looksUntranslatable(texts[i])) {
+        results[i] = texts[i];
+        cacheHits++;
+        continue;
+      }
       final cached = forceRefresh
           ? null
           : TranslationCache.instance.lookup(
@@ -3614,6 +4293,7 @@ class _BatchSnapshot {
     this.detectedScene,
     this.sourceLang,
     this.error,
+    this.pendingVisionRegions = const [],
   });
   final String path;
   final ui.Size imageSize;
@@ -3623,6 +4303,13 @@ class _BatchSnapshot {
   String? detectedScene;
   String? sourceLang;
   String? error;
+
+  /// Large uncovered text regions (original-image coords) that the
+  /// on-device OCR couldn't read. Filled by the OCR phase, drained by
+  /// the deferred sequential vision catch-up — one tight crop + vision
+  /// call per region, AFTER this page is already on screen with its
+  /// OCR translations. Cleared once processed.
+  List<Rect> pendingVisionRegions;
 }
 
 class _ConfidenceChip extends StatelessWidget {
