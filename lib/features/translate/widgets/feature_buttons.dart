@@ -20,6 +20,7 @@ class FeatureButtons extends StatelessWidget {
     required this.isDark,
     required this.features,
     required this.onAction,
+    this.activeMode,
     this.onCamera,
   });
 
@@ -30,11 +31,17 @@ class FeatureButtons extends StatelessWidget {
   /// /admin/features without redeploy).
   final FeatureFlags features;
   final void Function(TranslateMode mode) onAction;
+  /// Currently-active mode whose button should render as primary
+  /// (gradient + glow). Null means no result yet — Translate stays
+  /// highlighted as the default action so cold-start users still see
+  /// a clear primary affordance.
+  final TranslateMode? activeMode;
   final VoidCallback? onCamera;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final current = activeMode ?? TranslateMode.translate;
     return Row(
       children: [
         if (onCamera != null)
@@ -48,23 +55,25 @@ class FeatureButtons extends StatelessWidget {
           icon: Icons.translate,
           label: l.translate,
           isDark: isDark,
-          isPrimary: true,
+          isPrimary: current == TranslateMode.translate,
           locked: !features.translate,
           onTap: () => onAction(TranslateMode.translate),
         ),
         const SizedBox(width: AppSpacing.sm),
         _FeatureBtn(
-          icon: Icons.summarize_outlined,
+          icon: Icons.summarize,
           label: l.summarize,
           isDark: isDark,
+          isPrimary: current == TranslateMode.summarize,
           locked: !features.summarize,
           onTap: () => onAction(TranslateMode.summarize),
         ),
         const SizedBox(width: AppSpacing.sm),
         _FeatureBtn(
-          icon: Icons.lightbulb_outline,
+          icon: Icons.lightbulb,
           label: l.explain,
           isDark: isDark,
+          isPrimary: current == TranslateMode.explain,
           locked: !features.explain,
           onTap: () => onAction(TranslateMode.explain),
         ),
@@ -73,14 +82,16 @@ class FeatureButtons extends StatelessWidget {
           icon: Icons.auto_fix_high,
           label: l.refine,
           isDark: isDark,
+          isPrimary: current == TranslateMode.refine,
           locked: !features.refine,
           onTap: () => onAction(TranslateMode.refine),
         ),
         const SizedBox(width: AppSpacing.sm),
         _FeatureBtn(
-          icon: Icons.reply_outlined,
+          icon: Icons.reply,
           label: l.reply,
           isDark: isDark,
+          isPrimary: current == TranslateMode.reply,
           locked: !features.replyTranslate,
           onTap: () => onAction(TranslateMode.reply),
         ),
@@ -172,51 +183,94 @@ class _FeatureBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const purple = Color(0xFF6366F1);
     final fg = isPrimary
         ? Colors.white
-        : (isDark
-            ? AppColors.textSecondary
-            : AppColors.textSecondaryLight);
+        : locked
+            ? purple
+            : (isDark
+                ? AppColors.textSecondary
+                : AppColors.textSecondaryLight);
 
     return Expanded(
-      child: Material(
-        color: isPrimary
-            ? AppColors.primary
-            : (isDark ? AppColors.surface : AppColors.surfaceLight),
-        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-        child: InkWell(
-          onTap: onTap,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: isPrimary
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                )
+              : locked
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF6366F1).withValues(alpha: 0.10),
+                        const Color(0xFFA855F7).withValues(alpha: 0.10),
+                      ],
+                    )
+                  : null,
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-              border: isPrimary
-                  ? null
-                  : Border.all(
-                      color: isDark
-                          ? AppColors.border
-                          : AppColors.borderLight,
-                    ),
-            ),
+          boxShadow: isPrimary
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.32),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: isPrimary || locked
+              ? Colors.transparent
+              : (isDark ? AppColors.surface : AppColors.surfaceLight),
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+                border: isPrimary
+                    ? null
+                    : Border.all(
+                        color: locked
+                            ? purple.withValues(alpha: 0.4)
+                            : (isDark
+                                ? AppColors.border
+                                : AppColors.borderLight),
+                      ),
+              ),
             child: Column(
               children: [
-                Icon(
-                  locked ? Icons.lock_outline : icon,
-                  size: 18,
-                  color: fg,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(icon, size: 18, color: fg),
+                    if (locked)
+                      const Positioned(
+                        right: -6,
+                        bottom: -4,
+                        child: Icon(Icons.lock,
+                            size: 11, color: purple),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 10,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: locked ? FontWeight.w600 : FontWeight.w500,
                     color: fg,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
+            ),
             ),
           ),
         ),

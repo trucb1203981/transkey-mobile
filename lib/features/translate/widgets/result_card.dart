@@ -41,14 +41,40 @@ class ResultCard extends ConsumerWidget {
     final targetLang = langs?.targetLang ?? 'en';
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         border: Border.all(
             color: isDark ? AppColors.border : AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 3,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Detected source language (only when auto-detect)
@@ -110,6 +136,9 @@ class ResultCard extends ConsumerWidget {
               const SizedBox(width: AppSpacing.sm),
               const _SaveIcon(),
             ],
+          ),
+        ],
+      ),
           ),
         ],
       ),

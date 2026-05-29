@@ -137,7 +137,7 @@ class _KeyboardSetupScreenState extends ConsumerState<KeyboardSetupScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.setupTitle),
+        title: Text(Platform.isIOS ? l.setupTitle : l.setupTitleAndroid),
         leading: widget.showSkip
             ? TextButton(
                 onPressed: () {
@@ -161,7 +161,9 @@ class _KeyboardSetupScreenState extends ConsumerState<KeyboardSetupScreen>
               children: [
                 _StepPage(
                   step: 1,
-                  icon: Icons.keyboard_outlined,
+                  icon: Platform.isIOS
+                      ? Icons.keyboard_outlined
+                      : Icons.layers_outlined,
                   title: Platform.isIOS
                       ? l.setupStep1TitleIOS
                       : l.setupStep1TitleAndroid,
@@ -172,8 +174,10 @@ class _KeyboardSetupScreenState extends ConsumerState<KeyboardSetupScreen>
                 ),
                 _StepPage(
                   step: 2,
-                  icon: Icons.verified_user_outlined,
-                  title: l.setupStep2Title,
+                  icon: Platform.isIOS
+                      ? Icons.verified_user_outlined
+                      : Icons.check_circle_outline,
+                  title: Platform.isIOS ? l.setupStep2Title : l.setupStep2TitleAndroid,
                   description: Platform.isIOS
                       ? l.setupStep2DescIOS
                       : l.setupStep2DescAndroid,
@@ -586,22 +590,88 @@ class _KeyboardSetupScreenState extends ConsumerState<KeyboardSetupScreen>
             size: 64,
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(8),
+          if (Platform.isIOS)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Long press 🌐 → TransKey',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            // Bubble flow illustration: copy → tap bubble → result panel
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.content_copy, size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text('Copy text', style: TextStyle(fontWeight: FontWeight.w500)),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  Platform.isIOS ? 'Long press 🌐 → TransKey' : 'Share text → TransKey',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-              ],
+            const SizedBox(height: 8),
+            const Icon(Icons.arrow_downward, size: 16, color: Colors.grey),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary, width: 1.5),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.radio_button_checked, size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text(
+                    'Tap the TransKey button',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            const Icon(Icons.arrow_downward, size: 16, color: Colors.grey),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.translate, size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text(
+                    'See result without switching apps',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

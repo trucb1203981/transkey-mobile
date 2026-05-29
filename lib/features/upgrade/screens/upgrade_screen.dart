@@ -76,10 +76,20 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              l.upgradeChooseYourPlan,
-              style: theme.textTheme.headlineMedium,
-              textAlign: TextAlign.center,
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+              ).createShader(bounds),
+              child: Text(
+                l.upgradeChooseYourPlan,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(

@@ -207,16 +207,45 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             children: [
               const SizedBox(height: AppSpacing.xl),
               // Logo area
-              const Icon(
-                Icons.translate_rounded,
-                size: 48,
-                color: AppColors.primary,
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                ).createShader(bounds),
+                child: Text(
+                  'TransKey',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
               Text(
-                'TransKey',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: AppColors.primary,
+                AppLocalizations.of(context)!.homeTagline,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),

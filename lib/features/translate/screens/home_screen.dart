@@ -24,6 +24,7 @@ import '../../settings/providers/app_settings_provider.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../../core/api/dio_client.dart';
 import '../../upgrade/providers/usage_provider.dart';
+import '../../upgrade/screens/quota_exhausted_screen.dart';
 import '../../upgrade/services/rewarded_ad_service.dart';
 import '../../upgrade/widgets/paywall_sheet.dart';
 import '../models/translate_models.dart';
@@ -140,12 +141,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Share Extension) may have changed language/tone/reply-lang in
     // SharedPreferences while we were backgrounded. Without these reloads the
     // in-app settings UI would show stale values until next cold start.
+    if (state == AppLifecycleState.paused) {
+      // Reset the quota-wall "already dismissed this foreground" flag so
+      // it re-appears on the next resume / cold start while the user is
+      // still exhausted.
+      QuotaExhaustedScreen.onAppPaused();
+    }
     if (state == AppLifecycleState.resumed) {
       ref.read(languageSettingsProvider.notifier).reload();
       ref.read(appSettingsProvider.notifier).reload();
       ref.read(ttsProvider.notifier).reload();
       ref.read(usageProvider.notifier).refreshIfStale();
       ref.read(authStateProvider.notifier).refreshUser();
+      // After usage refresh resolves, _maybeShowQuotaWall is invoked
+      // from the build-time ref.listen on usageProvider (see
+      // _buildTranslateTab) so we don't need an explicit call here.
       // Pick up admin changes to the language catalog (enable/disable/rename)
       // without forcing a full app restart.
       ref.read(featuresProvider.notifier).refreshIfNeeded();
@@ -362,6 +372,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
+  /// Surface the full-screen quota-exhausted wall if the latest usage
+  /// snapshot says a FREE user has hit either daily cap. The wall is
+  /// strictly free-plan-only: trial / mobile / pro plans have higher or
+  /// unlimited caps where "exhausted" doesn't apply, so we explicitly
+  /// gate on the session-derived plan (the JWT source of truth) AND
+  /// re-check inside [QuotaExhaustedScreen.shouldShow] for defence in
+  /// depth. The screen itself enforces "don't re-pop after dismiss until
+  /// app backgrounds" so this method can be invoked freely from any
+  /// listener / lifecycle hook.
+  void _maybeShowQuotaWall(UsageInfo? usage, String usagePlan) {
+    if (!mounted) return;
+    final sessionPlan =
+        ref.read(authStateProvider).valueOrNull?.session?.plan ?? 'free';
+    if (sessionPlan != 'free' || usagePlan != 'free') return;
+    if (!QuotaExhaustedScreen.shouldShow(plan: sessionPlan, usage: usage)) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) QuotaExhaustedScreen.show(context);
+    });
+  }
+
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
     final l = AppLocalizations.of(context)!;
@@ -460,30 +492,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildTranslateTabWithQuota() {
-    final usage = ref.watch(usageProvider).valueOrNull;
-    final plan = ref.watch(authStateProvider).valueOrNull?.session?.plan ?? 'free';
-    return Column(
-      children: [
-        Expanded(child: _buildTranslateTab()),
-        if (plan == 'free' && usage != null)
-          QuotaBar(
-            used: usage.requestsUsed,
-            limit: usage.requestsLimit,
-            charsUsed: usage.charsUsed,
-            charsLimit: usage.charsLimit,
-            isWatchingAd: _isWatchingProactiveAd,
-            // Server-gated: when /features.ads_enabled is OFF (AdMob still
-            // in review), pass null so QuotaBar drops the "+Ad" affordance
-            // entirely — free users only see the "Upgrade" path until the
-            // flag flips on without an app update.
-            onWatchAd: !_features.adsEnabled || _isWatchingProactiveAd
-                ? null
-                : _watchProactiveAd,
-          ),
-      ],
-    );
-  }
+  Widget _buildTranslateTabWithQuota() => _buildTranslateTab();
 
   bool _isWatchingProactiveAd = false;
 
@@ -574,6 +583,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (sessionPlan != null && sessionPlan != usagePlan) {
         ref.read(authStateProvider.notifier).refreshUser();
       }
+      // Quota-exhausted full-screen wall. Each fresh usage snapshot — at
+      // cold start, on lifecycle resume (refreshIfStale), and after every
+      // translate — funnels through here. The screen has its own gating
+      // (foreground-dismiss flag + isShowing) so we can call freely.
+      _maybeShowQuotaWall(next.valueOrNull, usagePlan);
     });
 
     return SingleChildScrollView(
@@ -581,6 +595,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _HomeHeader(tagline: l.homeTagline, isDark: isDark),
           // Trial countdown / subscription-expired banner — shown above
           // everything so the user can't miss it. The banner widget
           // returns SizedBox.shrink() with no margin when nothing is to
@@ -657,9 +672,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FeatureButtons(
             isDark: isDark,
             features: _features,
+            activeMode: state?.result != null ? state?.mode : null,
             onAction: _handleAction,
           ),
           const SizedBox(height: AppSpacing.md),
+          Consumer(builder: (_, ref, __) {
+            final usage = ref.watch(usageProvider).valueOrNull;
+            final plan = ref.watch(authStateProvider).valueOrNull?.session?.plan ?? 'free';
+            if (plan != 'free' || usage == null) {
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: QuotaBar(
+                used: usage.requestsUsed,
+                limit: usage.requestsLimit,
+                charsUsed: usage.charsUsed,
+                charsLimit: usage.charsLimit,
+                isWatchingAd: _isWatchingProactiveAd,
+                onWatchAd: !_features.adsEnabled || _isWatchingProactiveAd
+                    ? null
+                    : _watchProactiveAd,
+              ),
+            );
+          }),
 
           if (state?.error != null)
             Container(
@@ -696,6 +732,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
+}
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({required this.tagline, required this.isDark});
+
+  final String tagline;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.28),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                ).createShader(bounds),
+                child: Text(
+                  'TransKey',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Text(
+                tagline,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Holds a slot in IndexedStack but defers building its child until the tab
