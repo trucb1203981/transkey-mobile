@@ -103,4 +103,6 @@
     <string name="lens_reopen_result">Riapri traduzione</string>
     <string name="lens_empty_for_source">Nessun testo in %1$s — provo la visione...</string>
     <string name="lens_source_from">Da: %1$s</string>
+    <string name="lens_regrant_prompt">Tocca per tradurre questa app</string>
+    <string name="bubble_hide_for_screenshot">Nascondi bolla per screenshot</string>
 </resources>

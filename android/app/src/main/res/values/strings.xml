@@ -103,4 +103,6 @@
     <string name="lens_reopen_result">Reopen translation</string>
     <string name="lens_empty_for_source">No %1$s text found — trying vision...</string>
     <string name="lens_source_from">From: %1$s</string>
+    <string name="lens_regrant_prompt">Tap to translate this app</string>
+    <string name="bubble_hide_for_screenshot">Hide bubble to screenshot</string>
 </resources>

@@ -58,12 +58,12 @@ class RegionSelectionView(
         style = Paint.Style.FILL
     }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#6C63FF")
+        color = Palette.ACCENT
         style = Paint.Style.STROKE
         strokeWidth = context.resources.displayMetrics.density * 2f
     }
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#6C63FF")
+        color = Palette.ACCENT
         style = Paint.Style.FILL
     }
 
@@ -91,7 +91,7 @@ class RegionSelectionView(
         setWillNotDraw(false)
 
         val dp = context.resources.displayMetrics.density
-        val accent = Color.parseColor("#6C63FF")
+        val accent = Palette.ACCENT
 
         hintView = TextView(context).apply {
             text = context.getString(R.string.bubble_lens_region_hint)

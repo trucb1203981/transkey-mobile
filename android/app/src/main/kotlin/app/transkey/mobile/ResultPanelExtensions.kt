@@ -227,6 +227,11 @@ internal fun BubbleService.showResultPanel(
     val service: BubbleService = this
     ensureWindowManager()
     refreshLocale()
+    // Keep the bubble fully on-screen while the result panel is up —
+    // otherwise it sits half-hidden against the edge under the panel,
+    // which looks broken when the panel closes and we re-anchor.
+    cancelBubbleHalfHide()
+    snapBubbleToEdge(resources.displayMetrics.density, halfHidden = false)
     val style = BubbleStyle.of(this)
     val dp = style.dp
     val isDark = style.isDark
@@ -238,12 +243,37 @@ internal fun BubbleService.showResultPanel(
     if (panel.view == null) {
         val rootCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                setColor(bg)
-                cornerRadius = 18 * dp
+            // Layered background: 3dp brand-gradient strip across the top
+            // (visible only above the inset bg layer) + solid surface fill
+            // below. Mirrors the ResultCard top-accent strip in
+            // lib/.../widgets/result_card.dart so popup + app share the
+            // same brand affordance.
+            val stripPx = (3 * dp).toInt()
+            val cornerR = 18 * dp
+            val gradientLayer = GradientDrawable().apply {
+                colors = intArrayOf(Palette.ACCENT, Palette.ACCENT_END)
+                orientation = GradientDrawable.Orientation.LEFT_RIGHT
+                cornerRadius = cornerR
             }
+            val bgLayer = GradientDrawable().apply {
+                setColor(bg)
+                cornerRadii = floatArrayOf(
+                    0f, 0f,            // top-left
+                    0f, 0f,            // top-right
+                    cornerR, cornerR,  // bottom-right
+                    cornerR, cornerR,  // bottom-left
+                )
+            }
+            background = android.graphics.drawable.LayerDrawable(
+                arrayOf(gradientLayer, bgLayer)
+            ).apply { setLayerInset(1, 0, stripPx, 0, 0) }
             elevation = 12 * dp
-            setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
+            setPadding(
+                (16 * dp).toInt(),
+                (14 * dp).toInt() + stripPx,
+                (16 * dp).toInt(),
+                (14 * dp).toInt(),
+            )
         }
 
         // Header: [source chip] → [target chip]  [spacer]  [tone chip]  [✕]
@@ -831,7 +861,7 @@ internal fun BubbleService.showResultPanel(
             removeAllViews()
             visibility = View.VISIBLE
             val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
-            val accentCol = Color.parseColor("#6C63FF")
+            val accentCol = Palette.ACCENT
             suggestions.forEachIndexed { idx, pair ->
                 val (sourceText, targetText) = pair
                 val chip = LinearLayout(service).apply {
@@ -995,12 +1025,18 @@ internal fun BubbleService.updateModeTabs(accent: Int, mutedCol: Int) {
     val style = BubbleStyle.of(this)
     val dp = style.dp
     val subduedBg = Color.parseColor(if (style.isDark) "#2A2A40" else "#F0EFFF")
-    val primaryBg = Color.parseColor("#7C6EFA")
     for ((mode, tab) in panel.modeButtons) {
         val isActive = mode == currentMode
         val fg = if (isActive) Color.WHITE else accent
         tab.container.background = GradientDrawable().apply {
-            setColor(if (isActive) primaryBg else subduedBg)
+            if (isActive) {
+                // Active tab uses the brand gradient (#6366F1 → #A855F7)
+                // so the popup matches the in-app FeatureButtons primary.
+                colors = intArrayOf(Palette.ACCENT, Palette.ACCENT_END)
+                orientation = GradientDrawable.Orientation.TL_BR
+            } else {
+                setColor(subduedBg)
+            }
             cornerRadius = 14 * dp
         }
         tab.label.setTextColor(fg)
@@ -1023,4 +1059,7 @@ internal fun BubbleService.hideResultPanel() {
     panel.sourceToggle = null
     removeResultPanel()
     setState(STATE_IDLE)
+    // Result panel just closed — settle the bubble back into its
+    // half-hidden idle posture against the screen edge.
+    scheduleBubbleHalfHide(resources.displayMetrics.density)
 }

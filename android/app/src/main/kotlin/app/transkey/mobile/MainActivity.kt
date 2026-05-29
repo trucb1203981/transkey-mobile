@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
 import io.flutter.embedding.android.FlutterActivity
@@ -40,6 +41,36 @@ class MainActivity : FlutterActivity() {
     override fun provideFlutterEngine(context: android.content.Context): FlutterEngine? {
         return FlutterEngineCache.getInstance().get(TransKeyApp.ENGINE_ID)
             ?: super.provideFlutterEngine(context)
+    }
+
+    /**
+     * Guard against the "Play Store update while running" relaunch bug.
+     *
+     * When the app is updated in place and the user taps "Open" (or the
+     * launcher icon) while the process is still alive, the system can route
+     * the MAIN/LAUNCHER intent on top of the live process as a SECOND
+     * MainActivity instead of resuming the existing task. Both instances
+     * share the single process-global pre-warmed FlutterEngine
+     * (TransKeyApp.ENGINE_ID), which can only render to one activity at a
+     * time, so the redundant instance hangs forever on the LaunchTheme
+     * splash ("treo ở logo") while the old task keeps running. The user only
+     * recovers by killing every task to clear the process + engine cache.
+     *
+     * If this activity is NOT the task root and was started by a plain
+     * MAIN/LAUNCHER intent, finish immediately so the existing task is
+     * brought forward instead of stacking a dead duplicate. Pairs with
+     * dropping taskAffinity="" on this activity in the manifest so the
+     * launcher reuses the one true app task in the first place.
+     */
+    override fun onCreate(savedInstanceState: Bundle?) {
+        if (!isTaskRoot &&
+            intent.hasCategory(Intent.CATEGORY_LAUNCHER) &&
+            Intent.ACTION_MAIN == intent.action
+        ) {
+            finish()
+            return
+        }
+        super.onCreate(savedInstanceState)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

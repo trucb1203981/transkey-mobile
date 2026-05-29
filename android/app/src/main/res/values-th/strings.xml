@@ -103,4 +103,6 @@
     <string name="lens_reopen_result">เปิดคำแปลอีกครั้ง</string>
     <string name="lens_empty_for_source">ไม่พบข้อความ %1$s — กำลังลองด้วยภาพ...</string>
     <string name="lens_source_from">จาก: %1$s</string>
+    <string name="lens_regrant_prompt">แตะเพื่อแปลแอปนี้</string>
+    <string name="bubble_hide_for_screenshot">ซ่อนบับเบิลเพื่อจับภาพหน้าจอ</string>
 </resources>

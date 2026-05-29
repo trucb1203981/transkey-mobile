@@ -435,6 +435,71 @@ internal fun BubbleService.hideReopenPill() {
 }
 
 /**
+ * Float a tappable "grant for this app" pill after a single-app
+ * MediaProjection grant failed to capture the now-foreground app (the user
+ * switched apps and pressed capture). The re-consent CANNOT be opened off a
+ * timer — MIUI aborts background activity starts that aren't tied to a live
+ * user gesture — so we surface this pill and let the user's TAP drive the
+ * fresh consent (via [BubbleService.repeatLastScan]). By then the stale
+ * projection is already stopped, so the new consent creates a fresh
+ * projection instead of crashing SystemUI on its reuse branch.
+ *
+ * No auto-dismiss: it stays until tapped, until the next scan
+ * ([hideOverlaysForCapture]), or service teardown.
+ */
+@SuppressLint("ClickableViewAccessibility")
+internal fun BubbleService.showRegrantPill() {
+    hideRegrantPill()
+    ensureWindowManager()
+    refreshLocale()
+    val style = BubbleStyle.of(this)
+    val dp = style.dp
+    val pill = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = GradientDrawable().apply {
+            setColor(style.accent); cornerRadius = 22 * dp
+        }
+        elevation = 18 * dp
+        setPadding((18 * dp).toInt(), (12 * dp).toInt(), (18 * dp).toInt(), (12 * dp).toInt())
+        addView(TextView(this@showRegrantPill).apply {
+            text = localized(R.string.lens_regrant_prompt)
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        setOnClickListener {
+            hideRegrantPill()
+            repeatLastScan()
+        }
+    }
+    regrantPillView = pill
+    // Dedicated WRAP_CONTENT window with FLAG_NOT_TOUCH_MODAL so taps outside
+    // the pill fall through to the app behind it (same rationale as the
+    // reopen pill).
+    val lp = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        y = (90 * dp).toInt()
+    }
+    try { windowManager?.addView(pill, lp) }
+    catch (e: Exception) { android.util.Log.w("TKBubble", "regrant pill add failed: ${e.message}") }
+}
+
+internal fun BubbleService.hideRegrantPill() {
+    regrantPillView?.let { try { windowManager?.removeView(it) } catch (_: Exception) {} }
+    regrantPillView = null
+}
+
+/**
  * Float a small tappable "Reopen translation" pill near the bubble for a
  * few seconds after an accidental dismiss. Tap → restore the cached
  * overlay instantly; ignore → auto-hide and recycle the cached bitmap.

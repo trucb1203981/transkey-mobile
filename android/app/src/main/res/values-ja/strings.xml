@@ -97,4 +97,6 @@
     <string name="lens_reopen_result">翻訳を再表示</string>
     <string name="lens_empty_for_source">%1$sのテキストが見つかりません — ビジョンで試行中...</string>
     <string name="lens_source_from">%1$s から</string>
+    <string name="lens_regrant_prompt">このアプリを翻訳するにはタップ</string>
+    <string name="bubble_hide_for_screenshot">スクショ用にバブルを隠す</string>
 </resources>

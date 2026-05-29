@@ -97,4 +97,6 @@
     <string name="lens_reopen_result">重新打开翻译</string>
     <string name="lens_empty_for_source">未找到%1$s文本 — 正在尝试视觉识别...</string>
     <string name="lens_source_from">来自：%1$s</string>
+    <string name="lens_regrant_prompt">点按以翻译此应用</string>
+    <string name="bubble_hide_for_screenshot">隐藏悬浮球以便截屏</string>
 </resources>

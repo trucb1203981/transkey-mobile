@@ -97,4 +97,6 @@
     <string name="lens_reopen_result">번역 다시 열기</string>
     <string name="lens_empty_for_source">%1$s 텍스트를 찾을 수 없음 — 비전으로 시도...</string>
     <string name="lens_source_from">원문: %1$s</string>
+    <string name="lens_regrant_prompt">이 앱을 번역하려면 탭하세요</string>
+    <string name="bubble_hide_for_screenshot">스크린샷을 위해 버블 숨기기</string>
 </resources>

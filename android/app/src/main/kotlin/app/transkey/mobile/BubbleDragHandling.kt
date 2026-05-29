@@ -33,6 +33,12 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
 
     when (event.action) {
         MotionEvent.ACTION_DOWN -> {
+            // Nudge the bubble fully into view before reading initialX —
+            // when idle it sits half-hidden against the edge (Messenger
+            // chat-head style); the touch should restore full visibility
+            // first so a drag from this point doesn't yank the bubble
+            // through a discontinuous jump.
+            snapBubbleToEdge(dp, halfHidden = false)
             initialX = params.x
             initialY = params.y
             initialTouchX = event.rawX
@@ -75,12 +81,16 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
                     stopBubble()
                     return true
                 }
+                // Snap to the closest edge first (Y stays in-bounds),
+                // then ride the half-hide animation so the bubble settles
+                // peeking out — Messenger chat-head behavior.
                 val sw = resources.displayMetrics.widthPixels
                 val sh = resources.displayMetrics.heightPixels
                 val centerX = params.x + (BUBBLE_SIZE_DP * dp / 2).toInt()
                 params.x = if (centerX < sw / 2) 0 else sw - (BUBBLE_SIZE_DP * dp).toInt()
                 params.y = params.y.coerceIn(0, sh - (BUBBLE_SIZE_DP * dp).toInt())
                 windowManager?.updateViewLayout(bubbleView!!, params)
+                scheduleBubbleHalfHide(dp)
             } else if (event.action == MotionEvent.ACTION_UP && !longPressFired) {
                 onBubbleTapped()
             }
@@ -88,6 +98,49 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
         }
     }
     return false
+}
+
+/// Snap the bubble flush against whichever screen edge it currently
+/// sits closer to. When `halfHidden=true`, the bubble's x is pushed
+/// further so only half of it remains visible — the Messenger
+/// chat-head idle state. Always preserves Y (vertical position is
+/// user-controlled).
+internal fun BubbleService.snapBubbleToEdge(dp: Float, halfHidden: Boolean) {
+    val view = bubbleView ?: return
+    val params = view.layoutParams as? WindowManager.LayoutParams ?: return
+    val sw = resources.displayMetrics.widthPixels
+    val bubbleSize = (BUBBLE_SIZE_DP * dp).toInt()
+    val centerX = params.x + bubbleSize / 2
+    val onLeft = centerX < sw / 2
+    val hiddenInset = bubbleSize / 2
+    params.x = when {
+        halfHidden && onLeft  -> -hiddenInset
+        halfHidden && !onLeft -> sw - bubbleSize + hiddenInset
+        onLeft                -> 0
+        else                  -> sw - bubbleSize
+    }
+    // Slight alpha drop when peeking — closer to the Messenger idle
+    // affordance and signals "tap to bring back" without being
+    // distracting.
+    view.alpha = if (halfHidden) 0.7f else 1.0f
+    windowManager?.updateViewLayout(view, params)
+}
+
+/// Schedule the half-hide a short delay after the user has released
+/// the bubble. The delay lets ripples / state changes settle and avoids
+/// the bubble visually "fleeing" the touch the moment the finger leaves.
+internal fun BubbleService.scheduleBubbleHalfHide(dp: Float) {
+    cancelBubbleHalfHide()
+    bubbleHalfHideRunnable = Runnable { snapBubbleToEdge(dp, halfHidden = true) }
+    handler.postDelayed(bubbleHalfHideRunnable!!, 1200L)
+}
+
+/// Cancel any pending half-hide. Call when a popup (mode picker /
+/// result panel) is about to open so the bubble doesn't slide off
+/// the edge mid-interaction.
+internal fun BubbleService.cancelBubbleHalfHide() {
+    bubbleHalfHideRunnable?.let { handler.removeCallbacks(it) }
+    bubbleHalfHideRunnable = null
 }
 
 internal fun BubbleService.showCloseZone(dp: Float) {

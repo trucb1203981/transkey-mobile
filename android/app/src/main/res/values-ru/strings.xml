@@ -103,4 +103,6 @@
     <string name="lens_reopen_result">Открыть перевод снова</string>
     <string name="lens_empty_for_source">Текст %1$s не найден — пробую распознавание...</string>
     <string name="lens_source_from">Из: %1$s</string>
+    <string name="lens_regrant_prompt">Нажмите, чтобы перевести это приложение</string>
+    <string name="bubble_hide_for_screenshot">Скрыть пузырь для скриншота</string>
 </resources>

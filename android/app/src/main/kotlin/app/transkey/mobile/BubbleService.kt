@@ -76,6 +76,11 @@ class BubbleService : Service() {
         // the bubble would stay GONE (looking to the user like it had
         // crashed) until they killed the service.
         const val ACTION_SCAN_CANCELLED = "transkey.bubble.SCAN_CANCELLED"
+        // ScreenCaptureService hit a single-app grant that can't capture the
+        // now-foreground app. We can't auto re-open consent (MIUI blocks
+        // background activity starts off a timer), so restore the bubble and
+        // show a tappable pill — the user's tap launches the fresh consent.
+        const val ACTION_RECONSENT = "transkey.bubble.RECONSENT"
         // Region mode: capture finished but OCR deferred — show the
         // rubber-band selector on top of the bitmap so the user can crop
         // before we OCR + translate.
@@ -240,6 +245,12 @@ class BubbleService : Service() {
         // tap a half-second later" isn't misread as a double-tap.
         private const val DOUBLE_TAP_WINDOW_MS = 280L
 
+        // "Hide bubble to screenshot" — how long the bubble stays hidden
+        // before auto-returning. 5 s is enough to trigger the system
+        // screenshot (key combo / 3-finger swipe) without the bubble being
+        // gone long enough to feel lost.
+        internal const val SCREENSHOT_HIDE_MS = 5000L
+
         @Volatile private var nextRequestId: Long = 0
     }
 
@@ -399,6 +410,12 @@ class BubbleService : Service() {
     internal var lastLensItems: List<LensOverlayView.Item>? = null
     internal var reopenPillView: View? = null
     internal var reopenDismissRunnable: Runnable? = null
+    // Tappable "re-grant for this app" pill shown when a single-app
+    // MediaProjection grant couldn't capture the now-foreground app. The
+    // re-consent MUST be launched from inside a user tap (MIUI aborts
+    // background activity starts from a timer), so we surface this pill and
+    // let the tap drive the fresh consent.
+    internal var regrantPillView: View? = null
     // Full-translation popup opened by tapping a Lens chip.
     internal var lensDetailView: View? = null
 
@@ -422,6 +439,11 @@ class BubbleService : Service() {
     internal var initialTouchX = 0f
     internal var initialTouchY = 0f
     internal var isDragging = false
+
+    // Delayed snap-to-half-hidden (Messenger chat-head idle). Set by
+    // [scheduleBubbleHalfHide] after the user releases the bubble and
+    // cleared when the user touches it again or any popup is open.
+    internal var bubbleHalfHideRunnable: Runnable? = null
 
     // Long-press bubble → open app home screen.
     internal var longPressFired = false
@@ -628,6 +650,17 @@ class BubbleService : Service() {
                 ScreenCaptureManager.clearAll()
                 restoreBubbleVisibility()
             }
+            ACTION_RECONSENT -> {
+                // Single-app grant couldn't capture the current foreground
+                // app (user switched apps + pressed capture). The capture
+                // service already stopped its projection. Bring the bubble
+                // back and float a pill the user taps to grant the app
+                // they're on — launching consent from that tap satisfies
+                // MIUI's background-activity-start grace, which a timer
+                // launch does not.
+                restoreBubbleVisibility()
+                showRegrantPill()
+            }
         }
         return START_STICKY
     }
@@ -652,6 +685,7 @@ class BubbleService : Service() {
         hideLensDetailPopup()
         hideLensOverlay()
         discardLensCache()
+        hideRegrantPill()
         hideRegionSelectionView()
         releaseScreenCapture()
         hideCloseZone()
@@ -679,7 +713,7 @@ class BubbleService : Service() {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.TRANSPARENT)
-                setStroke((2 * dp).toInt(), Color.parseColor("#6C63FF"))
+                setStroke((2 * dp).toInt(), Palette.ACCENT)
             }
             clipToOutline = true
             outlineProvider = object : android.view.ViewOutlineProvider() {
@@ -711,7 +745,7 @@ class BubbleService : Service() {
             visibility = View.GONE
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#6C63FF"))
+                setColor(Palette.ACCENT)
                 setStroke((1.5f * dp).toInt(), Color.WHITE)
             }
             layoutParams = FrameLayout.LayoutParams(
@@ -727,6 +761,9 @@ class BubbleService : Service() {
 
         container.setOnTouchListener { _, event -> handleBubbleTouch(event, dp) }
         saveBubbleActive(true)
+        // Settle into the Messenger-style idle: shortly after creation
+        // peek half-hidden against the closest edge.
+        scheduleBubbleHalfHide(dp)
     }
 
     // Bubble touch + drag-to-close logic lives in BubbleDragHandling.kt
@@ -804,7 +841,20 @@ class BubbleService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            // FLAG_LAYOUT_NO_LIMITS lets us push the bubble's x past
+            // the screen edge so it can peek half-hidden (Messenger
+            // chat-head idle). Without it Android clamps x to 0 / sw -
+            // bubbleSize and the bubble stays fully on-screen no matter
+            // what we set.
+            //
+            // NB: do NOT add FLAG_SECURE to hide the bubble from the user's
+            // screenshots — on MIUI a FLAG_SECURE window in the stack makes
+            // the system REFUSE the whole screenshot ("can't capture, blocked
+            // by security policy"), not just omit the bubble. Tested on the
+            // user's device 2026-05-29. Screenshot exclusion of the bubble
+            // has to be done another way (detect + briefly hide).
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -847,20 +897,20 @@ class BubbleService : Service() {
         when (currentState) {
             STATE_IDLE -> {
                 (view.background as? GradientDrawable)?.setStroke(
-                    (2 * dp).toInt(), Color.parseColor("#6C63FF"),
+                    (2 * dp).toInt(), Palette.ACCENT,
                 )
                 view.alpha = 0.95f
                 badgeText?.visibility = View.GONE
             }
             STATE_LOADING -> {
                 (view.background as? GradientDrawable)?.setStroke(
-                    (2.5f * dp).toInt(), Color.parseColor("#6C63FF"),
+                    (2.5f * dp).toInt(), Palette.ACCENT,
                 )
                 view.alpha = 1.0f
                 badgeText?.apply {
                     text = "…"
                     visibility = View.VISIBLE
-                    (background as? GradientDrawable)?.setColor(Color.parseColor("#6C63FF"))
+                    (background as? GradientDrawable)?.setColor(Palette.ACCENT)
                 }
             }
             STATE_RESULT -> {
@@ -1318,6 +1368,19 @@ class BubbleService : Service() {
         }
     }
 
+    /**
+     * Re-run the most recent scan/lens action. Used by the "re-grant for
+     * this app" pill: the tap re-enters the normal scan flow, and because
+     * the stale projection is already gone (isProjectionActive == false) it
+     * opens a FRESH system consent — launched from inside this tap so MIUI
+     * permits the activity start.
+     */
+    internal fun repeatLastScan() {
+        val last = lastLensAction ?: return
+        if (last.regionMode) handleLensRegionRequest(last.mode)
+        else handleScanRequest(last.mode)
+    }
+
     /** Open the Flutter camera screen for camera translate.
      *
      * Two steps — BOTH required:
@@ -1563,6 +1626,7 @@ class BubbleService : Service() {
     }
 
     private fun hideOverlaysForCapture() {
+        hideRegrantPill()
         bubbleView?.visibility = View.GONE
         hideModePicker()
         hideLangPicker()
@@ -1575,6 +1639,39 @@ class BubbleService : Service() {
 
     internal fun restoreBubbleVisibility() {
         bubbleView?.visibility = View.VISIBLE
+    }
+
+    private var screenshotHideRunnable: Runnable? = null
+
+    /**
+     * Hide the floating bubble for [SCREENSHOT_HIDE_MS] so the user can take
+     * a clean system screenshot, then bring it back automatically.
+     *
+     * Why this exists at all: the bubble is a third-party overlay, so it
+     * lands in the user's own screenshots. There is no way to exclude just
+     * the bubble on MIUI — FLAG_SECURE makes the system refuse the WHOLE
+     * screenshot, and there's no pre-capture hook to auto-hide it in time.
+     * So a manual, time-boxed hide is the only clean option. No toast or
+     * countdown UI: any transient overlay we show would itself be captured.
+     *
+     * GONE (not removeView) keeps the window + drag position; a GONE view
+     * draws nothing, so it's absent from the screenshot (same mechanism
+     * hideOverlaysForCapture relies on for our own Lens capture).
+     */
+    internal fun hideBubbleForScreenshot() {
+        cancelBubbleHalfHide()
+        screenshotHideRunnable?.let { handler.removeCallbacks(it) }
+        bubbleView?.visibility = View.GONE
+        val restore = Runnable {
+            screenshotHideRunnable = null
+            // Guard: the user may have stopped the bubble during the window.
+            if (bubbleView != null) {
+                bubbleView?.visibility = View.VISIBLE
+                snapBubbleToEdge(resources.displayMetrics.density, halfHidden = false)
+            }
+        }
+        screenshotHideRunnable = restore
+        handler.postDelayed(restore, SCREENSHOT_HIDE_MS)
     }
 
 

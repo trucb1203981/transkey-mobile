@@ -95,4 +95,6 @@
     <string name="lens_reopen_result">Mở lại bản dịch</string>
     <string name="lens_empty_for_source">Không thấy text %1$s — đang dùng nhận dạng ảnh...</string>
     <string name="lens_source_from">Từ: %1$s</string>
+    <string name="lens_regrant_prompt">Chạm để dịch ứng dụng này</string>
+    <string name="bubble_hide_for_screenshot">Ẩn bóng để chụp màn hình</string>
 </resources>

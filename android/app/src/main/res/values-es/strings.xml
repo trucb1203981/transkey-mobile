@@ -97,4 +97,6 @@
     <string name="lens_reopen_result">Reabrir traducción</string>
     <string name="lens_empty_for_source">Sin texto en %1$s — probando visión...</string>
     <string name="lens_source_from">De: %1$s</string>
+    <string name="lens_regrant_prompt">Toca para traducir esta app</string>
+    <string name="bubble_hide_for_screenshot">Ocultar burbuja para captura</string>
 </resources>

@@ -53,8 +53,9 @@ object Palette {
     const val MUTED_DARK_FG  = 0xFF9090A0.toInt()
     const val MUTED_LIGHT_FG = 0xFF6B6B7A.toInt()
 
-    // Brand
-    const val ACCENT         = 0xFF6C63FF.toInt()  // bubble idle stroke + buttons
+    // Brand - matches app gradient #6366F1 → #A855F7 (see lib/.../theme & landing page)
+    const val ACCENT         = 0xFF6366F1.toInt()  // bubble idle stroke + buttons (indigo)
+    const val ACCENT_END     = 0xFFA855F7.toInt()  // purple end-stop for gradient surfaces
 
     // State (loading / success / error)
     const val STATE_LOADING  = 0xFF43E97B.toInt()  // green pulse

@@ -103,4 +103,6 @@
     <string name="lens_reopen_result">إعادة فتح الترجمة</string>
     <string name="lens_empty_for_source">لم يتم العثور على نص %1$s — جاري المحاولة بالرؤية...</string>
     <string name="lens_source_from">من: %1$s</string>
+    <string name="lens_regrant_prompt">اضغط لترجمة هذا التطبيق</string>
+    <string name="bubble_hide_for_screenshot">إخفاء الفقاعة لالتقاط الشاشة</string>
 </resources>

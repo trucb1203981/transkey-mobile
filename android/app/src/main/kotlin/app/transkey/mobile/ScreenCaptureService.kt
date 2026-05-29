@@ -59,6 +59,17 @@ class ScreenCaptureService : Service() {
     @Volatile private var captured = false
 
     /**
+     * True when the in-flight capture is REUSING an already-granted
+     * projection (vs the first capture right after a fresh consent). Drives
+     * [captureTimeoutRunnable]'s recovery branch: a reuse that yields no
+     * frame means a single-app grant whose target app is no longer
+     * foreground (the user switched apps and pressed capture), so we
+     * re-open consent for the new app instead of just failing. A first
+     * capture that times out keeps the old "deliver empty + stop" behaviour.
+     */
+    @Volatile private var reuseCapture = false
+
+    /**
      * Pending auto-release: tears down the projection if the user doesn't
      * trigger another capture within [IDLE_RELEASE_MS]. Without this the
      * VirtualDisplay keeps mirroring the screen every refresh — the
@@ -71,6 +82,45 @@ class ScreenCaptureService : Service() {
     private val idleReleaseRunnable = Runnable {
         Log.d(TAG, "idle release: capture window expired, dropping projection")
         stopProjectionAndSelf()
+    }
+
+    /**
+     * Android 14+ single-app MediaProjection guard.
+     *
+     * When the user picks "This app only" at consent (the default for some
+     * OEMs on Android 14+), the projection captures frames ONLY while the
+     * granted task is in the foreground. Switch to another app and press
+     * capture → the VirtualDisplay stops receiving frames → our ImageReader
+     * listener never fires → `captured` is open but nothing arrives → the
+     * bubble (set to GONE by [BubbleService.hideOverlaysForCapture]) is
+     * never restored.
+     *
+     * This runnable is armed after every `captured = false` and cancelled
+     * inside the listener as soon as ANY frame is delivered. "No frame" is
+     * exactly the "user granted app A but is now capturing app B" signal —
+     * and because we only judge it at capture time (overlays already
+     * hidden), our own Lens overlay occluding the source can never trigger
+     * a false re-consent. Recovery depends on which capture timed out:
+     *  - REUSE capture ([reuseCapture] true): the cached single-app grant
+     *    can't serve the new foreground app → re-open consent so the user
+     *    grants the app they're actually on. A full-screen grant always
+     *    yields a frame, so it never lands here. See [reopenConsent] for the
+     *    two constraints (crash-free + MIUI background-launch grace).
+     *  - FIRST capture (fresh grant): keep the old behaviour — deliver
+     *    empty (restores the bubble) and stop; re-prompting would risk a
+     *    consent loop on a grant the user just made.
+     */
+    private val captureTimeoutRunnable = Runnable {
+        captured = true   // close the gate
+        if (reuseCapture) {
+            Log.w(TAG, "reuse capture got no frame — single-app grant bound to a " +
+                "different app than the current foreground; re-opening consent")
+            reopenConsent()
+        } else {
+            Log.w(TAG, "first capture timed out — no frame; restoring bubble")
+            deliverEmptyToBubble()
+            stopProjectionAndSelf()
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -120,9 +170,16 @@ class ScreenCaptureService : Service() {
         // whole point of caching the grant.
         if (mediaProjection != null && imageReader != null && virtualDisplay != null) {
             captured = true  // close the gate so stale frames get dropped
+            // This capture reuses an existing grant: a no-frame timeout here
+            // means the (single-app) grant's target app is no longer
+            // foreground → re-open consent rather than fail. See
+            // captureTimeoutRunnable.
+            reuseCapture = true
             // Any new capture cancels the pending idle-release; we'll
             // re-arm it after the capture completes.
             handler.removeCallbacks(idleReleaseRunnable)
+            // Also cancel any prior capture timeout — we're starting fresh.
+            handler.removeCallbacks(captureTimeoutRunnable)
             handler.postDelayed({
                 // Drain any frames buffered during the settle window so
                 // acquireLatestImage doesn't hand us a bubble-visible frame.
@@ -133,6 +190,14 @@ class ScreenCaptureService : Service() {
                     }
                 } catch (_: Exception) {}
                 captured = false
+                // Arm the no-frame timeout. Android 14+ single-app
+                // projection stops pushing frames when the granted task
+                // is backgrounded; without this fallback the bubble
+                // stays GONE forever waiting for an image that won't
+                // come. A same-app reuse frame arrives in well under
+                // REUSE_TIMEOUT_MS, so the only thing that trips this is a
+                // genuine "capturing a different app" case.
+                handler.postDelayed(captureTimeoutRunnable, REUSE_TIMEOUT_MS)
             }, CAPTURE_SETTLE_MS)
             return
         }
@@ -215,6 +280,11 @@ class ScreenCaptureService : Service() {
         val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
         imageReader = reader
         reader.setOnImageAvailableListener({ r ->
+            // A frame arrived — clear the "no frame" timeout regardless of
+            // whether we'll use it. Even drop-frames-during-settle count
+            // as "projection IS pushing", so the Android 14+ single-app
+            // freeze didn't happen.
+            handler.removeCallbacks(captureTimeoutRunnable)
             // Defensive: the whole listener is wrapped because system-level
             // events outside our control (screen recorder taking the
             // projection, OEM "you weren't using this so we killed it"
@@ -290,6 +360,16 @@ class ScreenCaptureService : Service() {
                 }
             } catch (_: Exception) {}
             captured = false
+            // This is the FIRST capture on a fresh grant — a timeout here
+            // must NOT loop back into consent (the user just granted), so
+            // mark it non-reuse: captureTimeoutRunnable will deliver empty
+            // and stop instead of re-prompting.
+            reuseCapture = false
+            // Arm the no-frame timeout. Even on first capture (fresh
+            // consent grant) the Android 14+ single-app projection can
+            // refuse to push frames if the user picked the wrong app at
+            // consent — give up after CAPTURE_TIMEOUT_MS and restore.
+            handler.postDelayed(captureTimeoutRunnable, CAPTURE_TIMEOUT_MS)
         }, FIRST_CAPTURE_ARM_MS)
     }
 
@@ -559,6 +639,7 @@ class ScreenCaptureService : Service() {
      */
     private fun stopProjectionAndSelf() {
         handler.removeCallbacks(idleReleaseRunnable)
+        handler.removeCallbacks(captureTimeoutRunnable)
         teardownCapturePipeline()
         try { mediaProjection?.stop() } catch (_: Exception) {}
         mediaProjection = null
@@ -566,6 +647,37 @@ class ScreenCaptureService : Service() {
         // Drop only the projection token — bitmap + blocks (if any) belong
         // to whatever overlay is currently showing them.
         ScreenCaptureManager.clearToken()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    /**
+     * The reused single-app grant couldn't capture the current foreground
+     * app (the user switched apps and pressed capture). We cannot re-open
+     * the system consent ourselves: MIUI aborts background activity starts
+     * that aren't tied to a live user gesture, so launching the consent
+     * activity from this timer is silently denied ("Abort background
+     * activity starts"). Instead we fully release the stale projection (so a
+     * later fresh consent won't hit SystemUI's reuse-branch crash) and hand
+     * off to BubbleService, which restores the bubble and shows a tappable
+     * "grant for this app" pill — the user's TAP then launches consent from
+     * inside a gesture, which MIUI permits.
+     *
+     * [ScreenCaptureManager] still holds the flow / language hint / target
+     * from [BubbleService.launchScanFlow], so the pill's re-scan resumes the
+     * same action.
+     */
+    private fun reopenConsent() {
+        handler.removeCallbacks(idleReleaseRunnable)
+        handler.removeCallbacks(captureTimeoutRunnable)
+        teardownCapturePipeline()
+        try { mediaProjection?.stop() } catch (_: Exception) {}
+        mediaProjection = null
+        isProjectionActive = false
+        ScreenCaptureManager.clearToken()
+        startBubbleService(Intent(this, BubbleService::class.java).apply {
+            action = BubbleService.ACTION_RECONSENT
+        })
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -658,6 +770,32 @@ class ScreenCaptureService : Service() {
          * to mirroring.
          */
         private const val FIRST_CAPTURE_ARM_MS = 500L
+
+        /**
+         * Maximum time we wait for an ImageReader frame after arming the
+         * capture gate. On Android 14+ "single-app" MediaProjection, if
+         * the user's granted task is no longer foreground the projection
+         * stops pushing frames entirely — without this fallback the
+         * bubble (set to GONE for capture) is never restored.
+         *
+         * 3000 ms is long enough that a fast scan still completes via the
+         * real frame path (~50-300 ms typical) but short enough that the
+         * user doesn't sit confused. On timeout we tear down the
+         * projection and force a fresh consent on the next attempt.
+         */
+        private const val CAPTURE_TIMEOUT_MS = 3000L
+
+        /**
+         * No-frame timeout for the REUSE path (capturing on an
+         * already-granted projection). A same-app reuse frame arrives within
+         * ~1-2 display refreshes (the VirtualDisplay is already mirroring),
+         * so 500 ms is a 10× safety margin yet trips quickly when a
+         * single-app grant's target app is no longer foreground (user
+         * switched apps and pressed capture). Kept SHORT on purpose: the
+         * re-consent activity must launch inside MIUI's post-tap
+         * background-activity grace window (~2 s), so detection can't dawdle.
+         */
+        private const val REUSE_TIMEOUT_MS = 500L
 
         /**
          * Default + max for the idle-release window. The actual window is

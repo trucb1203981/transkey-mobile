@@ -67,6 +67,10 @@ internal fun BubbleService.showModePicker() {
     // Pick up any recent in-app UI language change so the picker labels
     // are rendered in the locale the user actually wants.
     refreshLocale()
+    // Cancel any pending half-hide and bring the bubble fully on-screen
+    // so the picker doesn't anchor to an off-screen origin.
+    cancelBubbleHalfHide()
+    snapBubbleToEdge(resources.displayMetrics.density, halfHidden = false)
 
     val style = BubbleStyle.of(this)
     val dp = style.dp
@@ -186,7 +190,6 @@ internal fun BubbleService.showModePicker() {
     }
     ALL_MODES.forEachIndexed { index, mode ->
         val isPrimary = mode == MODE_TRANSLATE
-        val primaryBg = "#7C6EFA"
         val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
         // Plan gate per mode: TRANSLATE is always free; the other 4
         // (SUMMARIZE / EXPLAIN / REFINE / REPLY) are mirrored from
@@ -197,7 +200,7 @@ internal fun BubbleService.showModePicker() {
         val isLocked = gate != null && !readFeatureEnabled(gate.prefsKey)
         val fgColor = when {
             isPrimary -> Color.WHITE
-            isLocked  -> mutedCol
+            isLocked  -> accent
             else      -> accent
         }
 
@@ -206,9 +209,23 @@ internal fun BubbleService.showModePicker() {
             gravity = Gravity.CENTER
             setPadding((4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt())
             background = GradientDrawable().apply {
-                setColor(Color.parseColor(if (isPrimary) primaryBg else subduedBg))
+                when {
+                    isPrimary -> {
+                        // Gradient fill matches app's primary action gradient (#6366F1 → #A855F7).
+                        colors = intArrayOf(Palette.ACCENT, Palette.ACCENT_END)
+                        orientation = GradientDrawable.Orientation.TL_BR
+                    }
+                    isLocked -> {
+                        // Locked mode: subtle purple tint + visible border so the
+                        // "paid feature" cue reads at a glance (mirrors the
+                        // Flutter FeatureButtons locked style).
+                        setColor(Color.argb(26, 0x63, 0x66, 0xF1))   // ~10% indigo
+                        setStroke((1 * dp).toInt(),
+                            Color.argb(102, 0x63, 0x66, 0xF1))       // ~40% indigo
+                    }
+                    else -> setColor(Color.parseColor(subduedBg))
+                }
                 cornerRadius = 14 * dp
-                if (isLocked) alpha = 160  // ~63% opacity so the lock state reads at a glance
             }
             isClickable = true
             isFocusable = true
@@ -428,6 +445,35 @@ internal fun BubbleService.showModePicker() {
         })
     }
 
+    // Small camera icon pinned to the BOTTOM-RIGHT corner of the card —
+    // "hide the bubble for a few seconds so you can take a clean
+    // screenshot" (the bubble is a third-party overlay, so it otherwise
+    // lands in every system screenshot, and there's no way to exclude just
+    // it on MIUI). A camera glyph reads as "capture the screen"; kept as a
+    // compact corner action so it doesn't crowd the main mode rows.
+    card.addView(LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.END
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = (4 * dp).toInt() }
+        addView(ImageView(this@showModePicker).apply {
+            setImageResource(R.drawable.ic_screenshot)
+            setColorFilter(mutedCol)
+            // Padding gives a comfortable touch target around the small glyph.
+            setPadding((6 * dp).toInt(), (6 * dp).toInt(), (2 * dp).toInt(), (2 * dp).toInt())
+            isClickable = true
+            isFocusable = true
+            contentDescription = localized(R.string.bubble_hide_for_screenshot)
+            layoutParams = LinearLayout.LayoutParams((30 * dp).toInt(), (30 * dp).toInt())
+            setOnClickListener {
+                hideModePicker()
+                hideBubbleForScreenshot()
+            }
+        })
+    })
+
     val screenWidth = resources.displayMetrics.widthPixels
     val cardWidth = (screenWidth - (48 * dp).toInt()).coerceAtMost((360 * dp).toInt())
     backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
@@ -454,6 +500,9 @@ internal fun BubbleService.hideModePicker() {
     }
     modePickerView = null
     pendingPickerText = null
+    // Mode picker dismissed — let the bubble peek half-hidden again
+    // so it doesn't sit in the way of whatever app is in the foreground.
+    scheduleBubbleHalfHide(resources.displayMetrics.density)
 }
 
 internal fun BubbleService.onTranslateModePicked(mode: String) {

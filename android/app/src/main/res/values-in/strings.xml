@@ -103,4 +103,6 @@
     <string name="lens_reopen_result">Buka lagi terjemahan</string>
     <string name="lens_empty_for_source">Tidak ada teks %1$s — mencoba vision...</string>
     <string name="lens_source_from">Dari: %1$s</string>
+    <string name="lens_regrant_prompt">Ketuk untuk menerjemahkan aplikasi ini</string>
+    <string name="bubble_hide_for_screenshot">Sembunyikan bubble untuk tangkapan layar</string>
 </resources>
