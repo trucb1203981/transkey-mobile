@@ -20,6 +20,7 @@ class AuthState {
     this.session,
     this.isLoading = false,
     this.error,
+    this.needsEmailVerification = false,
   });
 
   final bool isLoggedIn;
@@ -27,17 +28,25 @@ class AuthState {
   final bool isLoading;
   final String? error; // OAuth error code (e.g. 'pro_device_limit')
 
+  /// True right after a register that requires email verification before
+  /// login. The account exists but has NO session yet; the UI shows a
+  /// "check your inbox" prompt instead of navigating into the app.
+  final bool needsEmailVerification;
+
   AuthState copyWith({
     bool? isLoggedIn,
     AuthSession? session,
     bool? isLoading,
     String? error,
+    bool? needsEmailVerification,
   }) =>
       AuthState(
         isLoggedIn: isLoggedIn ?? this.isLoggedIn,
         session: session ?? this.session,
         isLoading: isLoading ?? this.isLoading,
         error: error,
+        needsEmailVerification:
+            needsEmailVerification ?? this.needsEmailVerification,
       );
 }
 
@@ -146,6 +155,18 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       });
 
       final data = response.data;
+
+      // Registration requires email verification before login. The API
+      // returns an accessToken here, but using it would log unverified
+      // accounts straight into the app (the password-login path is blocked
+      // server-side until verified, so the token would be a backdoor). Don't
+      // save a session; signal the UI to show a "check your inbox" prompt.
+      // (Mirrors desktop auth.service + web AuthModal.)
+      if (data['emailVerificationRequired'] == true) {
+        tracking.event('register_success', properties: {'verify_required': true});
+        return const AuthState(needsEmailVerification: true);
+      }
+
       final user = data['user'] as Map<String, dynamic>;
       final session = AuthSession(
         accessToken: data['accessToken'] as String,

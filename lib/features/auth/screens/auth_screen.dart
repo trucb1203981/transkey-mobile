@@ -108,6 +108,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         return;
       }
 
+      // Register that requires email verification: account created but no
+      // session yet. Stay on this screen and prompt the user to check their
+      // inbox instead of navigating into the app.
+      if (authState.valueOrNull?.needsEmailVerification == true) {
+        setState(() => _errorMessage = l.errorEmailNotVerified);
+        return;
+      }
+
       if (mounted) context.go('/');
     } on DioException catch (e) {
       setState(() => _errorMessage = _messageFor(ApiException.fromDio(e), l));
