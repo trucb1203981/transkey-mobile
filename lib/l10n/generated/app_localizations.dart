@@ -1742,6 +1742,12 @@ abstract class AppLocalizations {
   /// **'Setup Keyboard'**
   String get setupTitle;
 
+  /// No description provided for @setupTitleAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up TransKey'**
+  String get setupTitleAndroid;
+
   /// No description provided for @setupOpenSettings.
   ///
   /// In en, this message translates to:
@@ -1784,6 +1790,12 @@ abstract class AppLocalizations {
   /// **'Allow Full Access'**
   String get setupStep2Title;
 
+  /// No description provided for @setupStep2TitleAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Bubble enabled'**
+  String get setupStep2TitleAndroid;
+
   /// No description provided for @setupStep2DescIOS.
   ///
   /// In en, this message translates to:
@@ -1811,7 +1823,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupStep3DescAndroid.
   ///
   /// In en, this message translates to:
-  /// **'Select text in any app and share it to TransKey, or use the floating bubble for quick translations.'**
+  /// **'The TransKey button is now on your screen. Copy any text, tap the button, pick an action - you\'ll see the result right there without leaving your app.'**
   String get setupStep3DescAndroid;
 
   /// No description provided for @setupStep4Title.
@@ -1829,7 +1841,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupStep4DescAndroid.
   ///
   /// In en, this message translates to:
-  /// **'Select text in any app → tap \"Share\" → choose TransKey. Or use the floating bubble after copying text.'**
+  /// **'Copy text in any app → tap the TransKey button → choose Translate, Reply, or another action → tap anywhere to close when done.'**
   String get setupStep4DescAndroid;
 
   /// No description provided for @setupStep5Title.
@@ -1850,6 +1862,126 @@ abstract class AppLocalizations {
   /// **'How to use'**
   String get guideTitle;
 
+  /// No description provided for @guidePlanCompareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Features by plan'**
+  String get guidePlanCompareTitle;
+
+  /// No description provided for @guidePlanFreeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get guidePlanFreeLabel;
+
+  /// No description provided for @guidePlanPaidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get guidePlanPaidLabel;
+
+  /// No description provided for @guidePlanFreeItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate\nWord list'**
+  String get guidePlanFreeItems;
+
+  /// No description provided for @guidePlanPaidItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera scan\nScreen scan\nSummary\nRefine\nExplain\nReply\nTone selection\nPhonetics'**
+  String get guidePlanPaidItems;
+
+  /// No description provided for @guideSectionFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free features'**
+  String get guideSectionFree;
+
+  /// No description provided for @guideSectionPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid features'**
+  String get guideSectionPaid;
+
+  /// No description provided for @guideFreeBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get guideFreeBadge;
+
+  /// No description provided for @guidePaidBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get guidePaidBadge;
+
+  /// No description provided for @guideInputPaidBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get guideInputPaidBadge;
+
+  /// No description provided for @guideFeatureGlossary.
+  ///
+  /// In en, this message translates to:
+  /// **'Word list'**
+  String get guideFeatureGlossary;
+
+  /// No description provided for @guideFeatureGlossarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save custom word translations that TransKey always uses first'**
+  String get guideFeatureGlossarySubtitle;
+
+  /// No description provided for @guideInputGlossaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'From the Word list tab'**
+  String get guideInputGlossaryTitle;
+
+  /// No description provided for @guideInputGlossaryDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Word list tab and add word pairs. TransKey will use your custom translations first when it sees those words.'**
+  String get guideInputGlossaryDesc;
+
+  /// No description provided for @guideFeatureCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera scan'**
+  String get guideFeatureCamera;
+
+  /// No description provided for @guideFeatureCameraSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photograph text to translate - signs, menus, books'**
+  String get guideFeatureCameraSubtitle;
+
+  /// No description provided for @guideInputCameraTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the camera button'**
+  String get guideInputCameraTitle;
+
+  /// No description provided for @guideInputCameraDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the camera icon at the top of the main screen. Point your phone at any text, take a photo, and see the translation appear on the image.'**
+  String get guideInputCameraDesc;
+
+  /// No description provided for @guideInputVoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak to enter text'**
+  String get guideInputVoiceTitle;
+
+  /// No description provided for @guideInputVoiceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'On the main screen, tap the microphone button and speak. Your words are converted to text and translated automatically.'**
+  String get guideInputVoiceDesc;
+
   /// No description provided for @guideSubtitle.
   ///
   /// In en, this message translates to:
@@ -1865,7 +1997,7 @@ abstract class AppLocalizations {
   /// No description provided for @guideIntroBody.
   ///
   /// In en, this message translates to:
-  /// **'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you\'re typing in.'**
+  /// **'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you are typing in.'**
   String get guideIntroBody;
 
   /// No description provided for @guideFeatureTranslate.
@@ -1925,19 +2057,19 @@ abstract class AppLocalizations {
   /// No description provided for @guideFeatureReplySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Generate a reply suggestion in the target language'**
+  /// **'Get a reply suggestion to send back'**
   String get guideFeatureReplySubtitle;
 
   /// No description provided for @guideInputCopyTitle.
   ///
   /// In en, this message translates to:
-  /// **'Copy text, then tap the bubble'**
+  /// **'Copy text, then tap the button'**
   String get guideInputCopyTitle;
 
   /// No description provided for @guideInputCopyDesc.
   ///
   /// In en, this message translates to:
-  /// **'Copy any text in any app, then tap the floating bubble and pick the action.'**
+  /// **'Copy any text in any app, then tap the TransKey button and pick what you want to do.'**
   String get guideInputCopyDesc;
 
   /// No description provided for @guideInputOcrTitle.
@@ -1949,7 +2081,7 @@ abstract class AppLocalizations {
   /// No description provided for @guideInputOcrDesc.
   ///
   /// In en, this message translates to:
-  /// **'Tap the bubble → Scan screen. TransKey takes one screenshot and reads the text on it.'**
+  /// **'Tap the button → Scan screen. TransKey captures a screenshot and reads the text.'**
   String get guideInputOcrDesc;
 
   /// No description provided for @guideInputRegionTitle.
@@ -1961,7 +2093,7 @@ abstract class AppLocalizations {
   /// No description provided for @guideInputRegionDesc.
   ///
   /// In en, this message translates to:
-  /// **'Tap the bubble → Scan area. Drag a box around just the part you want translated.'**
+  /// **'Tap the button → Scan area. Draw a box around the part you want translated.'**
   String get guideInputRegionDesc;
 
   /// No description provided for @guideInputShareTitle.
@@ -1997,7 +2129,7 @@ abstract class AppLocalizations {
   /// No description provided for @guideReplyA11yBody.
   ///
   /// In en, this message translates to:
-  /// **'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat input you\'re typing in. No extra step.\n\nIf you\'d rather not turn it on, the reply is copied for you — just long-press the chat input and tap Paste.'**
+  /// **'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat box you are typing in. No extra step needed.\n\nIf you would rather not turn it on, the reply is ready to paste — just hold the chat box and tap Paste.'**
   String get guideReplyA11yBody;
 
   /// No description provided for @appPermissions.
@@ -2027,7 +2159,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupTransKeyBody.
   ///
   /// In en, this message translates to:
-  /// **'Grant the floating-bubble permission to get started. Accessibility is optional and only needed for one-tap Reply paste.'**
+  /// **'Allow TransKey to show on your screen while using other apps. Accessibility is optional - only needed to auto-paste replies.'**
   String get setupTransKeyBody;
 
   /// No description provided for @permFloatingBubble.
@@ -2039,7 +2171,7 @@ abstract class AppLocalizations {
   /// No description provided for @permFloatingBubbleBody.
   ///
   /// In en, this message translates to:
-  /// **'Show TransKey over other apps. Required for the bubble to appear.'**
+  /// **'Lets TransKey appear on your screen while you use other apps. Required to start using TransKey.'**
   String get permFloatingBubbleBody;
 
   /// No description provided for @permRestrictedSettings.
@@ -2051,7 +2183,7 @@ abstract class AppLocalizations {
   /// No description provided for @permRestrictedSettingsBody.
   ///
   /// In en, this message translates to:
-  /// **'Android 13+ blocks sideloaded apps from Accessibility by default. Tap ⋮ at the top-right → \"Allow restricted settings\".'**
+  /// **'Some Android phones need an extra step for newly installed apps to use Accessibility. Tap ⋮ at the top-right → \"Allow restricted settings\".'**
   String get permRestrictedSettingsBody;
 
   /// No description provided for @permAccessibility.
@@ -2063,7 +2195,7 @@ abstract class AppLocalizations {
   /// No description provided for @permAccessibilityBody.
   ///
   /// In en, this message translates to:
-  /// **'Lets TransKey paste Reply suggestions directly into the focused text field. Skip if you don\'t mind pasting yourself.'**
+  /// **'Lets TransKey automatically paste the suggested reply into what you\'re typing. Skip if you\'re happy to paste it yourself.'**
   String get permAccessibilityBody;
 
   /// No description provided for @permEnabled.
@@ -2093,7 +2225,7 @@ abstract class AppLocalizations {
   /// No description provided for @permSkipHint.
   ///
   /// In en, this message translates to:
-  /// **'Accessibility is optional. Without it, Reply suggestions land on your clipboard and you\'ll paste them yourself.'**
+  /// **'Accessibility is optional. Without it, you\'ll copy the suggested reply and paste it yourself.'**
   String get permSkipHint;
 
   /// No description provided for @permSkipForNow.
@@ -2564,6 +2696,18 @@ abstract class AppLocalizations {
   /// **'Card background transparency. Lower = see more of the photo behind.'**
   String get cameraSettingsOpacityHint;
 
+  /// No description provided for @cameraSettingsFontScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Font size'**
+  String get cameraSettingsFontScale;
+
+  /// No description provided for @cameraSettingsFontScaleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Make translation text bigger. Text may spill outside the original bubble.'**
+  String get cameraSettingsFontScaleHint;
+
   /// No description provided for @cameraSettingsPrimaryColor.
   ///
   /// In en, this message translates to:
@@ -2971,6 +3115,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restore purchases'**
   String get upgradeRestoreButton;
+
+  /// No description provided for @homeTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate · Summarize · Explain'**
+  String get homeTagline;
+
+  /// No description provided for @historyEmptyTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Your translations will appear here'**
+  String get historyEmptyTagline;
+
+  /// No description provided for @glossaryEmptyTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Save terms you use often for accurate names'**
+  String get glossaryEmptyTagline;
+
+  /// No description provided for @quotaTodayUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s usage'**
+  String get quotaTodayUsage;
+
+  /// No description provided for @quotaWallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used today\'s quota'**
+  String get quotaWallTitle;
+
+  /// No description provided for @quotaWallBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch a short ad to get more translations now, or upgrade for unlimited use.'**
+  String get quotaWallBody;
+
+  /// No description provided for @quotaWallWatchAdCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad for more translations'**
+  String get quotaWallWatchAdCta;
+
+  /// No description provided for @quotaWallUpgradeCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade for unlimited'**
+  String get quotaWallUpgradeCta;
+
+  /// No description provided for @quotaWallCloseCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe later'**
+  String get quotaWallCloseCta;
+
+  /// No description provided for @guideScreenshotTipTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot without the bubble'**
+  String get guideScreenshotTipTitle;
+
+  /// No description provided for @guideScreenshotTipBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the bubble to open the menu, then tap the camera icon in the bottom-right corner. The bubble hides for a few seconds so you can take a clean screenshot, then comes back on its own.'**
+  String get guideScreenshotTipBody;
 }
 
 class _AppLocalizationsDelegate

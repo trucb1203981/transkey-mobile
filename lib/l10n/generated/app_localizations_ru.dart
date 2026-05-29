@@ -884,6 +884,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get setupTitle => 'Настройка клавиатуры';
 
   @override
+  String get setupTitleAndroid => 'Настроить TransKey';
+
+  @override
   String get setupOpenSettings => 'Открыть настройки';
 
   @override
@@ -907,6 +910,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get setupStep2Title => 'Разрешите полный доступ';
 
   @override
+  String get setupStep2TitleAndroid => 'Кнопка включена';
+
+  @override
   String get setupStep2DescIOS =>
       'Нажмите TransKey в списке клавиатур и включите «Разрешить полный доступ». Это необходимо для подключения к интернету для переводов.';
 
@@ -923,7 +929,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'Выделите текст в любом приложении и поделитесь им с TransKey или используйте плавающую кнопку для быстрых переводов.';
+      'Кнопка TransKey теперь на вашем экране. Скопируйте текст, нажмите кнопку, выберите действие - результат появится сразу, не выходя из приложения.';
 
   @override
   String get setupStep4Title => 'Переводите из любого приложения';
@@ -934,7 +940,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'Выделите текст в любом приложении → нажмите «Поделиться» → выберите TransKey. Или используйте плавающую кнопку после копирования текста.';
+      'Скопируйте текст в любом приложении → нажмите кнопку TransKey → выберите Перевести, Ответить или другую функцию → нажмите в любом месте для закрытия.';
 
   @override
   String get setupStep5Title => 'Умные функции';
@@ -945,6 +951,72 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get guideTitle => 'Как использовать';
+
+  @override
+  String get guidePlanCompareTitle => 'Функции по тарифу';
+
+  @override
+  String get guidePlanFreeLabel => 'Бесплатно';
+
+  @override
+  String get guidePlanPaidLabel => 'Платно';
+
+  @override
+  String get guidePlanFreeItems => 'Перевод\nСловарь';
+
+  @override
+  String get guidePlanPaidItems =>
+      'Сканирование камерой\nСканирование экрана\nКраткое изложение\nУлучшение\nОбъяснение\nОтветить\nТональность\nФонетика';
+
+  @override
+  String get guideSectionFree => 'Бесплатные функции';
+
+  @override
+  String get guideSectionPaid => 'Платные функции';
+
+  @override
+  String get guideFreeBadge => 'Бесплатно';
+
+  @override
+  String get guidePaidBadge => 'Платно';
+
+  @override
+  String get guideInputPaidBadge => 'Платно';
+
+  @override
+  String get guideFeatureGlossary => 'Словарь';
+
+  @override
+  String get guideFeatureGlossarySubtitle =>
+      'Сохраните свои переводы, которые всегда будут использоваться первыми';
+
+  @override
+  String get guideInputGlossaryTitle => 'Из вкладки Словарь';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      'Откройте вкладку Словарь и добавьте пары слов. TransKey будет использовать ваши переводы первыми при встрече этих слов.';
+
+  @override
+  String get guideFeatureCamera => 'Сканирование камерой';
+
+  @override
+  String get guideFeatureCameraSubtitle =>
+      'Сфотографируйте текст для перевода - вывески, меню, книги';
+
+  @override
+  String get guideInputCameraTitle => 'Нажмите кнопку камеры';
+
+  @override
+  String get guideInputCameraDesc =>
+      'Нажмите иконку камеры вверху главного экрана. Направьте телефон на текст, сделайте фото - перевод появится прямо на снимке.';
+
+  @override
+  String get guideInputVoiceTitle => 'Говорите для ввода текста';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'На главном экране нажмите кнопку микрофона и говорите. Ваша речь будет преобразована в текст и автоматически переведена.';
 
   @override
   String get guideSubtitle => 'Все способы получения текста для каждой функции';
@@ -1052,28 +1124,28 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Выдайте разрешение на плавающую кнопку, чтобы начать. Специальные возможности по желанию и нужны только для вставки ответа одним касанием.';
+      'Разрешите TransKey показываться на экране при использовании других приложений. Специальные возможности по желанию - только для автоматической вставки ответов.';
 
   @override
   String get permFloatingBubble => 'Плавающая кнопка';
 
   @override
   String get permFloatingBubbleBody =>
-      'Показывать TransKey поверх других приложений. Необходимо, чтобы кнопка появлялась.';
+      'TransKey отображается на экране, пока вы используете другие приложения. Обязательно для использования TransKey.';
 
   @override
   String get permRestrictedSettings => 'Разрешить ограниченные настройки';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ по умолчанию блокирует приложения, установленные не из магазина, в Специальных возможностях. Нажмите ⋮ в правом верхнем углу → «Разрешить ограниченные настройки».';
+      'На некоторых Android-устройствах нужен дополнительный шаг, чтобы новые приложения могли использовать специальные возможности. Нажмите ⋮ в правом верхнем углу → «Разрешить ограниченные настройки».';
 
   @override
   String get permAccessibility => 'Специальные возможности (по желанию)';
 
   @override
   String get permAccessibilityBody =>
-      'Позволяет TransKey вставлять подсказки ответа прямо в активное текстовое поле. Пропустите, если не против вставлять самостоятельно.';
+      'TransKey автоматически вставляет предложенный ответ туда, где вы печатаете. Пропустите, если не против вставлять самостоятельно.';
 
   @override
   String get permEnabled => 'Включено';
@@ -1089,7 +1161,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'Специальные возможности необязательны. Без них подсказки ответа попадут в буфер обмена, и вам придётся вставлять их самостоятельно.';
+      'Специальные возможности необязательны. Без них нужно будет вставлять предложенный ответ самостоятельно.';
 
   @override
   String get permSkipForNow => 'Пропустить пока';
@@ -1352,6 +1424,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Прозрачность фона карточки. Меньше = фото сзади видно лучше.';
 
   @override
+  String get cameraSettingsFontScale => 'Размер шрифта';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      'Увеличить переведённый текст. Текст может выходить за пределы пузыря.';
+
+  @override
   String get cameraSettingsPrimaryColor => 'Единый цвет оверлея';
 
   @override
@@ -1573,4 +1652,40 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Восстановить покупки';
+
+  @override
+  String get homeTagline => 'Переводи · Резюмируй · Объясняй';
+
+  @override
+  String get historyEmptyTagline => 'Ваши переводы появятся здесь';
+
+  @override
+  String get glossaryEmptyTagline =>
+      'Сохраняйте часто используемые термины для точных имён';
+
+  @override
+  String get quotaTodayUsage => 'Использование сегодня';
+
+  @override
+  String get quotaWallTitle => 'Вы исчерпали дневную квоту';
+
+  @override
+  String get quotaWallBody =>
+      'Посмотрите короткое видео, чтобы получить больше переводов сейчас, или повысьте тариф для безлимитного использования.';
+
+  @override
+  String get quotaWallWatchAdCta => 'Смотреть рекламу за переводы';
+
+  @override
+  String get quotaWallUpgradeCta => 'Повысить до безлимита';
+
+  @override
+  String get quotaWallCloseCta => 'Позже';
+
+  @override
+  String get guideScreenshotTipTitle => 'Скриншот без пузыря';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'Нажмите на пузырь, чтобы открыть меню, затем нажмите значок камеры в правом нижнем углу. Пузырь скроется на несколько секунд, чтобы вы сделали чистый скриншот, а потом вернётся сам.';
 }

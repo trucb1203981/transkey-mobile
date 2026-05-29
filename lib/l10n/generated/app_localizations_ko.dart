@@ -855,6 +855,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get setupTitle => '키보드 설정';
 
   @override
+  String get setupTitleAndroid => 'TransKey 설정';
+
+  @override
   String get setupOpenSettings => '설정 열기';
 
   @override
@@ -878,6 +881,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get setupStep2Title => '전체 액세스 허용';
 
   @override
+  String get setupStep2TitleAndroid => '버블이 활성화되었습니다';
+
+  @override
   String get setupStep2DescIOS =>
       '키보드 목록에서 TransKey를 탭하고 \"전체 액세스 허용\"을 활성화하세요. 번역을 위해 인터넷 연결이 필요합니다.';
 
@@ -894,7 +900,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      '어떤 앱에서든 텍스트를 선택하여 TransKey에 공유하거나 플로팅 버블로 빠르게 번역하세요.';
+      'TransKey 버튼이 화면에 나타났습니다. 텍스트를 복사하고 버튼을 탭하여 원하는 기능을 선택하면 앱을 떠나지 않고 결과가 바로 표시됩니다.';
 
   @override
   String get setupStep4Title => '어떤 앱에서든 번역';
@@ -905,7 +911,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      '어떤 앱에서든 텍스트 선택 → \"공유\" 탭 → TransKey 선택. 또는 텍스트 복사 후 플로팅 버블 사용.';
+      '앱에서 텍스트 복사 → TransKey 버튼 탭 → 번역, 답장 또는 다른 기능 선택 → 완료 후 화면 탭으로 닫기';
 
   @override
   String get setupStep5Title => '스마트 기능';
@@ -915,6 +921,70 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get guideTitle => '사용법';
+
+  @override
+  String get guidePlanCompareTitle => '요금제별 기능';
+
+  @override
+  String get guidePlanFreeLabel => '무료';
+
+  @override
+  String get guidePlanPaidLabel => '유료';
+
+  @override
+  String get guidePlanFreeItems => '번역\n단어장';
+
+  @override
+  String get guidePlanPaidItems =>
+      '카메라 번역\n화면 스캔\n요약\n문장 다듬기\n설명\n답장\n어조 선택\n발음 표기';
+
+  @override
+  String get guideSectionFree => '무료 기능';
+
+  @override
+  String get guideSectionPaid => '유료 기능';
+
+  @override
+  String get guideFreeBadge => '무료';
+
+  @override
+  String get guidePaidBadge => '유료';
+
+  @override
+  String get guideInputPaidBadge => '유료';
+
+  @override
+  String get guideFeatureGlossary => '단어장';
+
+  @override
+  String get guideFeatureGlossarySubtitle => 'TransKey가 항상 먼저 사용할 맞춤 번역을 저장';
+
+  @override
+  String get guideInputGlossaryTitle => '단어장 탭에서';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      '단어장 탭을 열고 단어 쌍을 추가하세요. 해당 단어를 만나면 맞춤 번역을 우선 사용합니다.';
+
+  @override
+  String get guideFeatureCamera => '카메라 번역';
+
+  @override
+  String get guideFeatureCameraSubtitle => '간판, 메뉴, 책 등의 글자를 찍어서 번역';
+
+  @override
+  String get guideInputCameraTitle => '카메라 버튼 탭';
+
+  @override
+  String get guideInputCameraDesc =>
+      '메인 화면 상단의 카메라 아이콘을 탭하세요. 텍스트를 향해 촬영하면 이미지 위에 번역이 나타납니다.';
+
+  @override
+  String get guideInputVoiceTitle => '말로 텍스트 입력';
+
+  @override
+  String get guideInputVoiceDesc =>
+      '메인 화면에서 마이크 버튼을 탭하고 말하세요. 말한 내용이 자동으로 변환되어 번역됩니다.';
 
   @override
   String get guideSubtitle => '각 기능에서 텍스트를 가져오는 모든 방법';
@@ -1012,27 +1082,28 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      '플로팅 버블 권한만 부여하면 시작할 수 있습니다. 접근성은 선택사항이며 한 번의 탭으로 답장을 붙여넣을 때만 필요합니다.';
+      '다른 앱을 사용하는 동안 TransKey를 화면에 표시합니다. 접근성은 선택 사항으로 자동 붙여넣기가 필요할 때만 사용합니다.';
 
   @override
   String get permFloatingBubble => '플로팅 버블';
 
   @override
-  String get permFloatingBubbleBody => '다른 앱 위에 TransKey 표시. 버블이 나타나는 데 필수.';
+  String get permFloatingBubbleBody =>
+      '다른 앱을 사용하면서 TransKey를 화면에 표시합니다. TransKey를 사용하려면 필수입니다.';
 
   @override
   String get permRestrictedSettings => '제한된 설정 허용';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+는 스토어 외부에서 설치한 앱의 접근성을 기본 차단합니다. 우상단 ⋮ → \"제한된 설정 허용\".';
+      '일부 Android 기기는 새로 설치한 앱이 접근성을 사용하기 위해 추가 단계가 필요합니다. 오른쪽 상단 ⋮ → \"제한된 설정 허용\".';
 
   @override
   String get permAccessibility => '접근성 (선택)';
 
   @override
   String get permAccessibilityBody =>
-      '답장 제안을 입력 중인 텍스트 필드에 직접 붙여넣습니다. 수동 붙여넣기가 괜찮으면 건너뛰세요.';
+      'TransKey가 답장 제안을 현재 입력 중인 곳에 자동으로 붙여넣습니다. 직접 붙여넣는 게 괜찮으면 건너뛰세요.';
 
   @override
   String get permEnabled => '활성화됨';
@@ -1047,7 +1118,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get permOpenAppDetails => '앱 정보 열기';
 
   @override
-  String get permSkipHint => '접근성은 선택사항입니다. 없으면 답장 결과가 클립보드로 가고 직접 붙여넣어야 합니다.';
+  String get permSkipHint =>
+      '접근성은 선택 사항입니다. 없어도 답장 제안을 사용할 수 있지만 직접 붙여넣어야 합니다.';
 
   @override
   String get permSkipForNow => '지금은 건너뛰기';
@@ -1298,6 +1370,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraSettingsOpacityHint => '카드 배경 투명도. 낮을수록 뒤의 사진이 더 보임.';
 
   @override
+  String get cameraSettingsFontScale => '글자 크기';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      '번역 텍스트를 크게. 텍스트가 말풍선 밖으로 넘칠 수 있습니다.';
+
+  @override
   String get cameraSettingsPrimaryColor => '통일 오버레이 색상';
 
   @override
@@ -1507,4 +1586,39 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => '구매 복원';
+
+  @override
+  String get homeTagline => '번역 · 요약 · 설명';
+
+  @override
+  String get historyEmptyTagline => '번역 결과가 여기에 표시됩니다';
+
+  @override
+  String get glossaryEmptyTagline => '자주 사용하는 용어를 저장해 정확한 이름 유지';
+
+  @override
+  String get quotaTodayUsage => '오늘의 사용량';
+
+  @override
+  String get quotaWallTitle => '오늘 사용량을 모두 썼어요';
+
+  @override
+  String get quotaWallBody =>
+      '짧은 광고를 보면 추가 번역을 받을 수 있거나, 업그레이드하면 무제한 사용할 수 있습니다.';
+
+  @override
+  String get quotaWallWatchAdCta => '광고 보고 번역 추가';
+
+  @override
+  String get quotaWallUpgradeCta => '업그레이드해서 무제한 사용';
+
+  @override
+  String get quotaWallCloseCta => '나중에';
+
+  @override
+  String get guideScreenshotTipTitle => '버블 없이 스크린샷 찍기';
+
+  @override
+  String get guideScreenshotTipBody =>
+      '버블을 탭해 메뉴를 연 다음 오른쪽 아래의 카메라 아이콘을 탭하세요. 버블이 몇 초간 사라져 깔끔하게 스크린샷을 찍을 수 있고, 이후 자동으로 다시 나타납니다.';
 }

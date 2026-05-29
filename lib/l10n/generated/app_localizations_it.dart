@@ -885,6 +885,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get setupTitle => 'Configura tastiera';
 
   @override
+  String get setupTitleAndroid => 'Configura TransKey';
+
+  @override
   String get setupOpenSettings => 'Apri impostazioni';
 
   @override
@@ -908,6 +911,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get setupStep2Title => 'Consenti accesso completo';
 
   @override
+  String get setupStep2TitleAndroid => 'Pulsante attivato';
+
+  @override
   String get setupStep2DescIOS =>
       'Tocca TransKey nell\'elenco delle tastiere e attiva \"Consenti accesso completo\". È necessario per la connessione a Internet per le traduzioni.';
 
@@ -924,7 +930,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'Seleziona il testo in qualsiasi app e condividilo con TransKey, oppure usa il pulsante mobile per traduzioni rapide.';
+      'Il pulsante TransKey è ora visibile sullo schermo. Copia un testo, tocca il pulsante, scegli un\'azione - il risultato appare subito senza uscire dalla tua app.';
 
   @override
   String get setupStep4Title => 'Traduci da qualsiasi app';
@@ -935,7 +941,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'Seleziona il testo in qualsiasi app → tocca \"Condividi\" → scegli TransKey. Oppure usa il pulsante mobile dopo aver copiato il testo.';
+      'Copia il testo in qualsiasi app → tocca il pulsante TransKey → scegli Traduci, Rispondi o un\'altra funzione → tocca ovunque per chiudere quando hai finito.';
 
   @override
   String get setupStep5Title => 'Funzioni intelligenti';
@@ -946,6 +952,72 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get guideTitle => 'Come usare';
+
+  @override
+  String get guidePlanCompareTitle => 'Funzioni per piano';
+
+  @override
+  String get guidePlanFreeLabel => 'Gratuito';
+
+  @override
+  String get guidePlanPaidLabel => 'A pagamento';
+
+  @override
+  String get guidePlanFreeItems => 'Traduci\nLista parole';
+
+  @override
+  String get guidePlanPaidItems =>
+      'Scansione fotocamera\nScansiona schermo\nRiepilogo\nMigliorare\nSpiegare\nRispondi\nTono\nFonetica';
+
+  @override
+  String get guideSectionFree => 'Funzioni gratuite';
+
+  @override
+  String get guideSectionPaid => 'Funzioni a pagamento';
+
+  @override
+  String get guideFreeBadge => 'Gratuito';
+
+  @override
+  String get guidePaidBadge => 'A pagamento';
+
+  @override
+  String get guideInputPaidBadge => 'A pagamento';
+
+  @override
+  String get guideFeatureGlossary => 'Glossario';
+
+  @override
+  String get guideFeatureGlossarySubtitle =>
+      'Salva traduzioni personalizzate sempre prioritarie';
+
+  @override
+  String get guideInputGlossaryTitle => 'Dal tab Glossario';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      'Apri il tab Glossario e aggiungi coppie di parole. TransKey userà le tue traduzioni per prime quando trova quelle parole.';
+
+  @override
+  String get guideFeatureCamera => 'Scansione fotocamera';
+
+  @override
+  String get guideFeatureCameraSubtitle =>
+      'Fotografa testo da tradurre - insegne, menu, libri';
+
+  @override
+  String get guideInputCameraTitle => 'Tocca il pulsante fotocamera';
+
+  @override
+  String get guideInputCameraDesc =>
+      'Tocca l\'icona fotocamera in cima alla schermata principale. Punta il telefono al testo, scatta una foto e la traduzione appare sull\'immagine.';
+
+  @override
+  String get guideInputVoiceTitle => 'Parla per inserire testo';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'Nella schermata principale, tocca il pulsante microfono e parla. Le tue parole vengono convertite in testo e tradotte automaticamente.';
 
   @override
   String get guideSubtitle =>
@@ -1055,28 +1127,28 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Concedi l\'autorizzazione del pulsante mobile per iniziare. L\'Accessibilità è facoltativa e serve solo per incollare la risposta con un tocco.';
+      'Consenti a TransKey di apparire sullo schermo mentre usi altre app. L\'accessibilità è facoltativa - solo se vuoi incollare le risposte in automatico.';
 
   @override
   String get permFloatingBubble => 'Pulsante mobile';
 
   @override
   String get permFloatingBubbleBody =>
-      'Mostra TransKey sopra altre app. Necessario affinché il pulsante appaia.';
+      'TransKey appare sullo schermo mentre usi altre app. Obbligatorio per iniziare a usare TransKey.';
 
   @override
   String get permRestrictedSettings => 'Consenti impostazioni limitate';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ blocca per impostazione predefinita le app installate da fuori store nell\'Accessibilità. Tocca ⋮ in alto a destra → \"Consenti impostazioni limitate\".';
+      'Alcuni telefoni Android richiedono un passaggio in più per far sì che le nuove app possano usare l\'accessibilità. Tocca ⋮ in alto a destra → \"Consenti impostazioni limitate\".';
 
   @override
   String get permAccessibility => 'Accessibilità (facoltativa)';
 
   @override
   String get permAccessibilityBody =>
-      'Consente a TransKey di incollare i suggerimenti di risposta direttamente nel campo di testo attivo. Salta se non ti dispiace incollare da solo.';
+      'TransKey incolla automaticamente la risposta suggerita dove stai scrivendo. Salta se non ti dispiace incollarla tu stesso.';
 
   @override
   String get permEnabled => 'Attivata';
@@ -1092,7 +1164,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'L\'Accessibilità è facoltativa. Senza di essa, i suggerimenti di risposta finiscono negli appunti e dovrai incollarli da solo.';
+      'L\'accessibilità è facoltativa. Senza di essa dovrai incollare tu stesso la risposta suggerita.';
 
   @override
   String get permSkipForNow => 'Salta per ora';
@@ -1355,6 +1427,13 @@ class AppLocalizationsIt extends AppLocalizations {
       'Trasparenza dello sfondo della scheda. Più basso = la foto dietro è più visibile.';
 
   @override
+  String get cameraSettingsFontScale => 'Dimensione testo';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      'Ingrandire il testo tradotto. Il testo può uscire dal fumetto.';
+
+  @override
   String get cameraSettingsPrimaryColor => 'Colore unico delle schede';
 
   @override
@@ -1578,4 +1657,40 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Ripristina acquisti';
+
+  @override
+  String get homeTagline => 'Traduci · Riassumi · Spiega';
+
+  @override
+  String get historyEmptyTagline => 'Le tue traduzioni appariranno qui';
+
+  @override
+  String get glossaryEmptyTagline =>
+      'Salva i termini che usi spesso per nomi accurati';
+
+  @override
+  String get quotaTodayUsage => 'Utilizzo di oggi';
+
+  @override
+  String get quotaWallTitle => 'Hai esaurito la quota di oggi';
+
+  @override
+  String get quotaWallBody =>
+      'Guarda un breve annuncio per ottenere subito più traduzioni, oppure passa al piano superiore per usarlo senza limiti.';
+
+  @override
+  String get quotaWallWatchAdCta => 'Guarda un annuncio per più traduzioni';
+
+  @override
+  String get quotaWallUpgradeCta => 'Passa al piano illimitato';
+
+  @override
+  String get quotaWallCloseCta => 'Più tardi';
+
+  @override
+  String get guideScreenshotTipTitle => 'Screenshot senza la bolla';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'Tocca la bolla per aprire il menu, poi tocca l\'icona della fotocamera in basso a destra. La bolla scompare per qualche secondo così puoi fare uno screenshot pulito, poi torna da sola.';
 }

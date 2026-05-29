@@ -735,6 +735,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       usePrimaryColor: settings.usePrimaryOverlayColor,
       pendingIndices: _pendingIndices,
       mangaMode: settings.scene == CameraScene.manga,
+      fontScale: settings.overlayFontScale,
       onBackgroundTap: settings.scene == CameraScene.manga
           ? () => setState(() => _mangaUiVisible = !_mangaUiVisible)
           : null,
@@ -1198,7 +1199,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     return GestureDetector(
       // Manga: horizontal swipe switches batch pages; tap empty area
       // toggles UI chrome visibility.
-      onHorizontalDragEnd: isManga && _batchQueue.length > 1
+      onHorizontalDragEnd: isManga && _batchTotal > 1
           ? (details) {
               final velocity = details.primaryVelocity ?? 0;
               if (velocity < -300) {
@@ -1293,13 +1294,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           ),
         ),
 
-        // Multi-pick batch nav — shown only when the gallery flow
-        // produced more than one image. Centered horizontally at the
-        // top so it doesn't fight either confidence chip (left) or
-        // the close X (also left in the top bar — different row).
+        // Multi-pick batch nav. Shows from the moment more than one
+        // image was picked, even while later pages are still being
+        // processed in the background — without this, users see only
+        // page 1 with no signal that pages 2..N are coming, and assume
+        // the rest failed to translate. The widget renders a small
+        // spinner + pending count whenever queue is shorter than total.
         // Outside the RepaintBoundary so a Share screenshot doesn't
         // bake "2 / 4" + arrow controls into the exported PNG.
-        if (_batchQueue.length > 1 && (!isManga || _mangaUiVisible))
+        if (_batchTotal > 1 && (!isManga || _mangaUiVisible))
           Positioned(
             top: 0,
             left: 0,
@@ -1310,7 +1313,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 child: Center(
                   child: _BatchPageNav(
                     currentIndex: _activeBatchIndex,
-                    total: _batchQueue.length,
+                    loaded: _batchQueue.length,
+                    total: _batchTotal,
                     onPrev: () => _switchBatch(_activeBatchIndex - 1),
                     onNext: () => _switchBatch(_activeBatchIndex + 1),
                   ),
@@ -2262,19 +2266,47 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         final visionBlocks =
             await _visionCatchUpCrops(snap.path, [region]);
         // Dedup against this page's already-shown blocks AND the
-        // catch-up blocks already accepted on this page.
+        // catch-up blocks already accepted on this page. Three signals
+        // run together because each catches a real failure mode the
+        // others miss:
+        //   1. visionCenter ∈ ocrBbox - vision bbox is a small extra
+        //      bubble inside an OCR-covered area.
+        //   2. ocrCenter ∈ visionBbox - vision bbox is the FULL bubble
+        //      that the OCR detected only as a tight glyph rectangle
+        //      INSIDE the bubble. This is the case the prior dedup
+        //      missed: vision center could be far outside the tight
+        //      OCR rect even though they're the same bubble.
+        //   3. IoU > 0.15 - residual partial overlap (threshold dropped
+        //      from 0.3 because the tight-glyph vs whole-bubble case
+        //      gives IoU around 0.10-0.25).
+        //   4. Source-text near-match - cheap last-line check that
+        //      catches multi-pass duplicates the geometry checks miss
+        //      (same German bubble re-OCR'd with slight bbox drift).
         for (final vb in visionBlocks) {
-          final c = vb.boundingBox.center;
-          bool insideAny(List<OcrBlock> list) => list.any((ob) {
+          final vc = vb.boundingBox.center;
+          final vbb = vb.boundingBox;
+          final vbText = _normForDedup(vb.text);
+          bool dupAgainst(List<OcrBlock> list) => list.any((ob) {
                 final b = ob.boundingBox;
-                final centerInside = c.dx >= b.left &&
-                    c.dx <= b.right &&
-                    c.dy >= b.top &&
-                    c.dy <= b.bottom;
-                return centerInside || _rectIoU(b, vb.boundingBox) > 0.3;
+                final visionInOcr = vc.dx >= b.left &&
+                    vc.dx <= b.right &&
+                    vc.dy >= b.top &&
+                    vc.dy <= b.bottom;
+                final oc = b.center;
+                final ocrInVision = oc.dx >= vbb.left &&
+                    oc.dx <= vbb.right &&
+                    oc.dy >= vbb.top &&
+                    oc.dy <= vbb.bottom;
+                if (visionInOcr || ocrInVision) return true;
+                if (_rectIoU(b, vbb) > 0.15) return true;
+                if (vbText.isNotEmpty &&
+                    vbText == _normForDedup(ob.text)) {
+                  return true;
+                }
+                return false;
               });
-          if (insideAny(snap.blocks)) continue;
-          if (insideAny(newBlocks)) continue;
+          if (dupAgainst(snap.blocks)) continue;
+          if (dupAgainst(newBlocks)) continue;
           newBlocks.add(vb);
         }
       }
@@ -2708,6 +2740,24 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       debugPrint('[Camera] Hybrid OCR pipeline failed for ${file.path}: $e');
       return null;
     }
+  }
+
+  /// Normalize a source text for the dedup near-match check: lowercase,
+  /// strip whitespace, drop punctuation that varies between OCR passes
+  /// (commas, exclamation, ellipsis). Two OCR variants of the same
+  /// bubble usually agree on the letter stream but disagree on dots and
+  /// case, so this comparison catches them while still rejecting truly
+  /// distinct bubbles.
+  static String _normForDedup(String s) {
+    final lower = s.toLowerCase();
+    final buf = StringBuffer();
+    for (final r in lower.runes) {
+      final ch = String.fromCharCode(r);
+      if (RegExp(r'[\p{L}\p{N}]', unicode: true).hasMatch(ch)) {
+        buf.write(ch);
+      }
+    }
+    return buf.toString();
   }
 
   /// Intersection-over-union for two axis-aligned rects. Used to
@@ -4217,11 +4267,19 @@ class _ZoomPresetPill extends StatelessWidget {
 class _BatchPageNav extends StatelessWidget {
   const _BatchPageNav({
     required this.currentIndex,
+    required this.loaded,
     required this.total,
     required this.onPrev,
     required this.onNext,
   });
   final int currentIndex;
+  // Number of pages already processed and stored in the batch queue.
+  // Drives nav-arrow enable state — user can only navigate to a loaded
+  // snapshot, never to a slot the OCR/translate phase has not produced
+  // yet.
+  final int loaded;
+  // Total pages the user picked. Drives the "X / Y" display so the user
+  // sees the full batch size from the start, not just what has finished.
   final int total;
   final VoidCallback onPrev;
   final VoidCallback onNext;
@@ -4229,7 +4287,8 @@ class _BatchPageNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canPrev = currentIndex > 0;
-    final canNext = currentIndex < total - 1;
+    final canNext = currentIndex < loaded - 1;
+    final pending = total - loaded;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
@@ -4263,6 +4322,28 @@ class _BatchPageNav extends StatelessWidget {
               ),
             ),
           ),
+          if (pending > 0) ...[
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.6,
+                color: Colors.white70,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, right: 2),
+              child: Text(
+                '+$pending',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.chevron_right, size: 22),
             color: canNext ? Colors.white : Colors.white38,

@@ -1121,6 +1121,24 @@ class CameraService {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return const [];
 
+      // Reject panel-sized bboxes before per-region OCR. BubbleDetector
+      // pass 2 (whiteThreshold 200) on a dark night panel can flood-fill
+      // the entire panel as a single "bubble" and pass-1 dedup doesn't
+      // catch the case when there are NO pass-1 boxes in the same area.
+      // The per-region OCR then runs on the whole panel and ML Kit
+      // returns a garbled mega-block whose card sits at the panel
+      // TOP-LEFT instead of the actual bubble text inside. Anything
+      // above 10 % of page area is empirically a mis-detection - the
+      // largest legitimate manga speech bubble is well under that
+      // (sound-effect bubbles are flagged by the TABD area cap earlier).
+      final pageAreaPx = decoded.width.toDouble() * decoded.height.toDouble();
+      const kMaxBoxAreaRatio = 0.10;
+      boxes.removeWhere((b) {
+        return pageAreaPx > 0 &&
+            (b.width * b.height) / pageAreaPx > kMaxBoxAreaRatio;
+      });
+      if (boxes.isEmpty) return const [];
+
       // Always run Latin recognizer; add scriptHint recognizer when
       // it's a different script (Japanese / Chinese / Korean). Manga
       // is mostly Japanese, but English / Spanish / French manga
@@ -1179,6 +1197,7 @@ class CameraService {
             var bestText = '';
             var bestScore = 0;
             var bestScript = '';
+            int bestIdx = -1;
             for (var i = 0; i < ocrResults.length; i++) {
               final t = ocrResults[i].text.trim();
               final score = _meaningfulCharCount(t);
@@ -1186,6 +1205,7 @@ class CameraService {
                 bestScore = score;
                 bestText = t;
                 bestScript = scriptList[i].key.name;
+                bestIdx = i;
               }
             }
             if (kDebugMode) {
@@ -1194,9 +1214,51 @@ class CameraService {
                   'text="${bestText.replaceAll('\n', ' / ')}"');
             }
             if (bestText.isEmpty || bestScore < 2) return null;
+            // Tighten the bbox to the UNION of the per-line glyph rects
+            // ML Kit reports inside the crop, mapped back to source
+            // image coords. Without this the OcrBlock carries the input
+            // crop region as its bbox - which can be a panel-spanning
+            // BubbleDetector match wrapping a single small bubble - and
+            // the downstream overlay then renders the card at the top-
+            // left of the panel rather than where the source text
+            // actually sits. Line bboxes are in CROP-LOCAL coords so we
+            // add the crop origin (l, t) to map back.
+            Rect tightBox = box;
+            if (bestIdx >= 0) {
+              double? minX, minY, maxX, maxY;
+              for (final blk in ocrResults[bestIdx].blocks) {
+                for (final line in blk.lines) {
+                  final lr = line.boundingBox;
+                  final lx0 = lr.left.toDouble();
+                  final ly0 = lr.top.toDouble();
+                  final lx1 = lr.right.toDouble();
+                  final ly1 = lr.bottom.toDouble();
+                  minX = (minX == null) ? lx0 : math.min(minX, lx0);
+                  minY = (minY == null) ? ly0 : math.min(minY, ly0);
+                  maxX = (maxX == null) ? lx1 : math.max(maxX, lx1);
+                  maxY = (maxY == null) ? ly1 : math.max(maxY, ly1);
+                }
+              }
+              if (minX != null &&
+                  minY != null &&
+                  maxX != null &&
+                  maxY != null &&
+                  maxX > minX &&
+                  maxY > minY) {
+                // Pad by 4 % of the longer side so descender / ascender
+                // pixels aren't clipped by the card border.
+                final pad = math.max(maxX - minX, maxY - minY) * 0.04;
+                tightBox = Rect.fromLTRB(
+                  (l + minX - pad).clamp(0.0, decoded.width.toDouble()),
+                  (t + minY - pad).clamp(0.0, decoded.height.toDouble()),
+                  (l + maxX + pad).clamp(0.0, decoded.width.toDouble()),
+                  (t + maxY + pad).clamp(0.0, decoded.height.toDouble()),
+                );
+              }
+            }
             return OcrBlock(
               text: bestText,
-              boundingBox: box,
+              boundingBox: tightBox,
               confidence: null,
             );
           } catch (e) {
@@ -1215,7 +1277,25 @@ class CameraService {
         if (kDebugMode && logLines.isNotEmpty) {
           unawaited(_dumpOcrLog(imagePath, logLines));
         }
-        return results.whereType<OcrBlock>().toList();
+        // Post-OCR text+geometry dedup. Each bbox (SHAPE from
+        // BubbleDetector + TABD orphans + DBNet text boxes) ran an
+        // independent per-region OCR; when two bboxes covered the same
+        // bubble the OCR text comes out near-identical on both, and the
+        // upstream center-inside filter at the bbox-build stage can miss
+        // pairs whose centers happen to land outside each other (tight
+        // glyph bbox vs whole-bubble shape bbox is the common case).
+        // The translation pipeline downstream sees these as two distinct
+        // blocks: one usually translates cleanly while the other lands
+        // on a structural-untranslatable / cache-miss path and renders
+        // as RAW SOURCE TEXT next to the translated card - the user
+        // perceives this as "overlay double".
+        //
+        // Dedup rule: pairs whose normalized text matches AND bboxes
+        // overlap (or one contains the other) collapse to the larger
+        // bbox - the larger one is empirically the bubble-shape match
+        // and keeps the user's tap region intuitive.
+        final ocrBlocks = results.whereType<OcrBlock>().toList();
+        return _dedupSameTextOverlapping(ocrBlocks);
       } finally {
         for (final r in recognizers.values) {
           r.close();
@@ -2535,6 +2615,111 @@ class CameraService {
         outer.top - slack <= inner.top &&
         outer.right + slack >= inner.right &&
         outer.bottom + slack >= inner.bottom;
+  }
+
+  /// Collapse OcrBlocks that are the same bubble detected twice.
+  ///
+  /// Picking the right keeper of an overlapping pair turns out to need
+  /// TWO axes, not one:
+  ///   - **Position (bbox)** — must come from the LARGER bbox so the
+  ///     card lands at the bubble-shape boundary (BubbleDetector match)
+  ///     instead of the tight-glyph rectangle (TABD orphan / DBNet).
+  ///     Picking the small bbox makes the rendered card sit visibly
+  ///     off-centre inside the original speech bubble.
+  ///   - **Text** — must come from the OCR pass with the BEST read of
+  ///     the bubble (more meaningful characters), regardless of which
+  ///     bbox produced it. Picking the small-bbox text can be a
+  ///     garbled fragment that the downstream translate pipeline then
+  ///     hands back unchanged, surfacing as RAW SOURCE next to a clean
+  ///     translation - the original "overlay double" complaint.
+  ///
+  /// So for each cluster of overlapping blocks we MERGE: bbox = the
+  /// largest, text = the one with the most meaningful chars. This way
+  /// the card sits where the bubble actually is, AND downstream
+  /// translation gets the cleanest source text.
+  ///
+  /// Overlap rule: rectContains in either direction (SHAPE + TABD-orphan
+  /// pair) OR IoU > 0.4 (two SHAPE candidates from multi-threshold).
+  /// Sibling close-but-not-overlapping bubbles stay untouched.
+  static List<OcrBlock> _dedupSameTextOverlapping(List<OcrBlock> blocks) {
+    if (blocks.length < 2) return blocks;
+    // Union-find clusters of overlapping blocks. O(n²) is fine — per
+    // page n is typically < 30.
+    final parent = List<int>.generate(blocks.length, (i) => i);
+    int find(int x) {
+      while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+      }
+      return x;
+    }
+
+    void union(int a, int b) {
+      final ra = find(a);
+      final rb = find(b);
+      if (ra != rb) parent[ra] = rb;
+    }
+
+    bool overlap(Rect a, Rect b) {
+      if (_rectContains(a, b) || _rectContains(b, a)) return true;
+      return _iouRect(a, b) > 0.4;
+    }
+
+    for (var i = 0; i < blocks.length; i++) {
+      for (var j = i + 1; j < blocks.length; j++) {
+        if (overlap(blocks[i].boundingBox, blocks[j].boundingBox)) {
+          union(i, j);
+        }
+      }
+    }
+
+    final clusters = <int, List<int>>{};
+    for (var i = 0; i < blocks.length; i++) {
+      clusters.putIfAbsent(find(i), () => []).add(i);
+    }
+
+    final merged = <OcrBlock>[];
+    for (final members in clusters.values) {
+      if (members.length == 1) {
+        merged.add(blocks[members.first]);
+        continue;
+      }
+      // Pick the SMALLEST bbox for the keeper position. When a cluster
+      // contains a tight glyph-rectangle bbox (TABD orphan / DBNet)
+      // AND a much larger bbox (BubbleDetector shape, or a panel-sized
+      // mis-detection that swept in via union-find chaining), the small
+      // bbox is the more reliable estimate of where the actual text
+      // pixels sit in the original art. Picking the large bbox makes
+      // the card render at the bubble/panel TOP-LEFT instead of the
+      // text position - user reports "block đặt không đúng vị trí bóng,
+      // không phải vị trí viền mà vị trí text của art".
+      int bestBboxIdx = members.first;
+      double bestArea = double.infinity;
+      for (final m in members) {
+        final r = blocks[m].boundingBox;
+        final a = r.width * r.height;
+        if (a < bestArea) {
+          bestArea = a;
+          bestBboxIdx = m;
+        }
+      }
+      // Pick the OCR text with the most meaningful characters.
+      int bestTextIdx = members.first;
+      int bestScore = -1;
+      for (final m in members) {
+        final s = _meaningfulCharCount(blocks[m].text);
+        if (s > bestScore) {
+          bestScore = s;
+          bestTextIdx = m;
+        }
+      }
+      merged.add(OcrBlock(
+        text: blocks[bestTextIdx].text,
+        boundingBox: blocks[bestBboxIdx].boundingBox,
+        confidence: blocks[bestBboxIdx].confidence,
+      ));
+    }
+    return merged;
   }
 
   /// Count "meaningful" characters in [s] — Latin letters, digits, and

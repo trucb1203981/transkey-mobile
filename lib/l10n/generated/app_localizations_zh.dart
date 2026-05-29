@@ -850,6 +850,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get setupTitle => '设置键盘';
 
   @override
+  String get setupTitleAndroid => '设置 TransKey';
+
+  @override
   String get setupOpenSettings => '打开设置';
 
   @override
@@ -871,6 +874,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get setupStep2Title => '允许完全访问';
 
   @override
+  String get setupStep2TitleAndroid => '按钮已启用';
+
+  @override
   String get setupStep2DescIOS => '点击键盘列表中的 TransKey 并启用\"允许完全访问\"。翻译需要网络连接。';
 
   @override
@@ -884,7 +890,8 @@ class AppLocalizationsZh extends AppLocalizations {
       '在任意应用中输入时,长按地球仪键🌐切换到 TransKey。点击\"回复\"立即翻译您的消息。';
 
   @override
-  String get setupStep3DescAndroid => '在任意应用中选择文本并分享到 TransKey,或使用悬浮气泡进行快速翻译。';
+  String get setupStep3DescAndroid =>
+      'TransKey 按钮现已出现在屏幕上。复制任意文本，点击按钮，选择操作 - 结果立即显示，无需离开当前应用。';
 
   @override
   String get setupStep4Title => '从任意应用翻译';
@@ -895,7 +902,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      '在任意应用中选择文本 → 点击\"分享\" → 选择 TransKey。或复制文本后使用悬浮气泡。';
+      '在任意应用中复制文本 → 点击 TransKey 按钮 → 选择翻译、回复或其他功能 → 完成后点击任意处关闭。';
 
   @override
   String get setupStep5Title => '智能功能';
@@ -905,6 +912,67 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get guideTitle => '使用方法';
+
+  @override
+  String get guidePlanCompareTitle => '按套餐的功能';
+
+  @override
+  String get guidePlanFreeLabel => '免费';
+
+  @override
+  String get guidePlanPaidLabel => '付费';
+
+  @override
+  String get guidePlanFreeItems => '翻译\n词典';
+
+  @override
+  String get guidePlanPaidItems => '拍照翻译\n屏幕扫描\n摘要\n润色\n解释\n回复\n语气选择\n音标';
+
+  @override
+  String get guideSectionFree => '免费功能';
+
+  @override
+  String get guideSectionPaid => '付费功能';
+
+  @override
+  String get guideFreeBadge => '免费';
+
+  @override
+  String get guidePaidBadge => '付费';
+
+  @override
+  String get guideInputPaidBadge => '付费';
+
+  @override
+  String get guideFeatureGlossary => '词典';
+
+  @override
+  String get guideFeatureGlossarySubtitle => '保存自定义翻译，TransKey 始终优先使用';
+
+  @override
+  String get guideInputGlossaryTitle => '从词典选项卡';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      '打开词典选项卡并添加词对。TransKey 遇到这些词时会优先使用您的自定义翻译。';
+
+  @override
+  String get guideFeatureCamera => '拍照翻译';
+
+  @override
+  String get guideFeatureCameraSubtitle => '拍摄文字进行翻译 - 标识、菜单、书籍';
+
+  @override
+  String get guideInputCameraTitle => '点击相机按钮';
+
+  @override
+  String get guideInputCameraDesc => '点击主屏幕顶部的相机图标，将手机对准文字，拍照后翻译结果将显示在图片上。';
+
+  @override
+  String get guideInputVoiceTitle => '语音输入';
+
+  @override
+  String get guideInputVoiceDesc => '在主屏幕上点击麦克风按钮并说话，您的话语将自动转换为文字并翻译。';
 
   @override
   String get guideSubtitle => '每个功能可用的所有文本输入方式';
@@ -1000,27 +1068,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get setupTransKey => '设置 TransKey';
 
   @override
-  String get setupTransKeyBody => '授予悬浮气泡权限即可开始。辅助功能为可选项,仅用于一键粘贴回复。';
+  String get setupTransKeyBody =>
+      '允许 TransKey 在您使用其他应用时显示在屏幕上。辅助功能可选 - 仅在需要自动粘贴回复时使用。';
 
   @override
   String get permFloatingBubble => '悬浮气泡';
 
   @override
-  String get permFloatingBubbleBody => '在其他应用上方显示 TransKey。气泡显示必需。';
+  String get permFloatingBubbleBody =>
+      '让 TransKey 在您使用其他应用时出现在屏幕上。开始使用 TransKey 必须开启。';
 
   @override
   String get permRestrictedSettings => '允许受限设置';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ 默认禁止从应用商店之外安装的应用使用辅助功能。点击右上角 ⋮ → \"允许受限设置\"。';
+      '部分 Android 手机需要额外步骤才能让新安装的应用使用辅助功能。点击右上角 ⋮ → \"允许受限设置\"。';
 
   @override
   String get permAccessibility => '辅助功能 (可选)';
 
   @override
   String get permAccessibilityBody =>
-      '允许 TransKey 将回复建议直接粘贴到当前输入框。如果你不介意手动粘贴可以跳过。';
+      '让 TransKey 自动将建议的回复粘贴到您正在输入的位置。如果您不介意自己粘贴，可以跳过。';
 
   @override
   String get permEnabled => '已启用';
@@ -1035,7 +1105,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get permOpenAppDetails => '打开应用详情';
 
   @override
-  String get permSkipHint => '辅助功能为可选项。没有它,回复建议会进入剪贴板,你需要自己粘贴。';
+  String get permSkipHint => '辅助功能为可选项。没有它，您需要自己复制并粘贴建议的回复。';
 
   @override
   String get permSkipForNow => '暂时跳过';
@@ -1284,6 +1354,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraSettingsOpacityHint => '卡片背景透明度。低 = 后面照片更可见。';
 
   @override
+  String get cameraSettingsFontScale => '字号';
+
+  @override
+  String get cameraSettingsFontScaleHint => '放大翻译文字。文字可能溢出对话框。';
+
+  @override
   String get cameraSettingsPrimaryColor => '统一覆盖颜色';
 
   @override
@@ -1489,4 +1565,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => '恢复购买';
+
+  @override
+  String get homeTagline => '翻译 · 摘要 · 解释';
+
+  @override
+  String get historyEmptyTagline => '您的翻译将显示在此处';
+
+  @override
+  String get glossaryEmptyTagline => '保存常用术语以获得准确的名称';
+
+  @override
+  String get quotaTodayUsage => '今日用量';
+
+  @override
+  String get quotaWallTitle => '今天的额度已用完';
+
+  @override
+  String get quotaWallBody => '观看一段短广告即可立即获得更多翻译次数,或升级享受无限使用。';
+
+  @override
+  String get quotaWallWatchAdCta => '观看广告获得更多次数';
+
+  @override
+  String get quotaWallUpgradeCta => '升级享受无限使用';
+
+  @override
+  String get quotaWallCloseCta => '稍后再说';
+
+  @override
+  String get guideScreenshotTipTitle => '截屏时不显示悬浮球';
+
+  @override
+  String get guideScreenshotTipBody =>
+      '点按悬浮球打开菜单，然后点按右下角的相机图标。悬浮球会隐藏几秒，让你拍出干净的截屏，之后会自动恢复。';
 }

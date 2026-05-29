@@ -30,8 +30,13 @@ class _CardLayout {
   final double fontSize;
 }
 
-const double _kCardHPad = 4.0;
-const double _kCardVPad = 0.0;
+// Card text inset. _kCardVPad was 0 historically (when the card was
+// fixed to the bbox and FittedBox shrank text to fit), which let
+// descender/ascender pixels touch the rounded edges and visually clip.
+// Now that the card sizes tightly to the rendered text we add real
+// padding both axes so glyphs always sit clear of the card border.
+const double _kCardHPad = 5.0;
+const double _kCardVPad = 4.0;
 // Raised 7 → 9. OCR-path bboxes are tight around the text mass (TABD
 // per-line + BubbleDetector glyph clusters), so a 7 pt floor produced
 // unreadable cards on small dialogue bubbles even when the vision-
@@ -42,6 +47,13 @@ const double _kCardVPad = 0.0;
 // the card grows downward when even 9 pt doesn't fit.
 const double _kMinFontSize = 9.0;
 const double _kMaxFontSize = 28.0;
+
+// Client-side last-line guard against a single OCR/Vision/server block
+// covering most of the page. Anything above this fraction of the view
+// area gets skipped before being rendered as a card. 0.25 = no card may
+// exceed a quarter of the screen, which is well above any legitimate
+// dialogue bubble while comfortably below a panel-covering merge bug.
+const double _kMaxBboxAreaRatio = 0.25;
 
 /// Bridges the overlay's internal view state (card visibility + the
 /// drag/dismiss edits) out to the host screen so the action-bar buttons
@@ -116,6 +128,7 @@ class CameraResultOverlay extends StatefulWidget {
     this.usePrimaryColor = false,
     this.pendingIndices = const {},
     this.mangaMode = false,
+    this.fontScale = 1.0,
     this.onBackgroundTap,
     this.onExplain,
     this.onBlockTap,
@@ -161,6 +174,13 @@ class CameraResultOverlay extends StatefulWidget {
   final Set<int> pendingIndices;
 
   final bool mangaMode;
+
+  /// User-tunable multiplier on the overlay font. At 1.0 the auto fitter
+  /// chooses a size that fits the source bbox; above 1.0 the text is
+  /// rendered at the chosen size WITHOUT being shrunk back to fit, and
+  /// is allowed to paint outside the card (the card background stays
+  /// anchored to the bbox so only glyphs overflow).
+  final double fontScale;
 
   final VoidCallback? onBackgroundTap;
   final ValueChanged<OcrBlock>? onExplain;
@@ -211,6 +231,9 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
 
   static const double _kTrashRadius = 80;
   static const double _kTrashBottomGap = 80;
+
+  double get _minFont => _kMinFontSize;
+  double get _maxFont => _kMaxFontSize;
 
   @override
   void initState() {
@@ -316,7 +339,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
   /// readable starting font.
   double _estimateSourceFont(double boxHeight, int lines) {
     final lineH = boxHeight / lines;
-    return (lineH / 1.25).clamp(_kMinFontSize, _kMaxFontSize);
+    return (lineH / 1.25).clamp(_minFont, _maxFont);
   }
 
   /// Solve for the font size at which [text] wrapped to [maxWidth]
@@ -377,7 +400,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     // Analytic shrink: h scales ~ font². Solve for font that puts h at
     // innerH, clamped to the readable floor.
     final ratio = math.sqrt(innerH / h);
-    font = (startFont * ratio).clamp(_kMinFontSize, startFont);
+    font = (startFont * ratio).clamp(_minFont, startFont);
     h = measureAt(font);
 
     // Refine: wrap discretization can leave us still over by a line.
@@ -386,8 +409,8 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     // (a low cap used to bail early, leaving an above-floor font whose
     // text still overflowed and produced the debug stripe).
     var safety = 0;
-    while (h > innerH && font > _kMinFontSize && safety < 30) {
-      font = math.max(_kMinFontSize, font - 1);
+    while (h > innerH && font > _minFont && safety < 30) {
+      font = math.max(_minFont, font - 1);
       h = measureAt(font);
       safety++;
     }
@@ -419,6 +442,20 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
           final top = box.top * scaleY + fit.offsetY;
           final boxW = box.width * scaleX;
           final boxH = box.height * scaleY;
+          // Client-side panel-cover guard. Any bbox whose mapped area
+          // exceeds _kMaxBboxAreaRatio of the view is treated as an
+          // OCR/Vision/server-side mis-grouping (multiple bubbles merged
+          // into one mega-block, or margin expansion over-inflated) and
+          // skipped client-side. This is a last-line of defense: the
+          // real fix is upstream (BubbleDetector fill-ratio guard, TABD
+          // cluster, server margin cap) - but dropping it here keeps a
+          // single bad block from painting a card over an entire panel
+          // even if every upstream guard slips.
+          final viewArea = viewSize.width * viewSize.height;
+          if (viewArea > 0 &&
+              (boxW * boxH) / viewArea > _kMaxBboxAreaRatio) {
+            continue;
+          }
           // Clamp the right edge so a card anchored near the screen
           // edge can't paint off-screen. Left/top stay untouched so the
           // position invariant holds.
@@ -436,24 +473,53 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               : (isTranslated ? translation : block.text);
 
           if (widget.mangaMode) {
-            // Manga: card = bounding box dimensions, font 6sp.
-            // Server handles overlap resolution + margin expansion.
+            // Manga: card = TIGHT to translated text + small padding,
+            // anchored at the bbox top-left so it sits exactly where the
+            // source text started. Width stays clamped to the bbox so
+            // text wraps the same; height grows downward past the bbox
+            // when fontScale > 1.0 (the slider scales BOTH the font AND
+            // the card so the text always sits inside the card).
             const mangaFont = 6.0;
-            const expandH = 1.10;
-            final expW = boxW * expandH;
-            var expLeft = left + (boxW - expW) / 2;
-            var expCardW =
-                math.min(expW, math.max(40.0, viewSize.width - expLeft - 4));
-            if (expCardW < expW) {
-              expLeft += (expW - expCardW) / 2;
-            }
+            final renderedManga = mangaFont * widget.fontScale;
+            final tpManga = TextPainter(
+              text: TextSpan(
+                text: displayText,
+                style: TextStyle(
+                  fontSize: renderedManga,
+                  fontWeight:
+                      isTranslated ? FontWeight.w500 : FontWeight.normal,
+                  height: 1.25,
+                ),
+              ),
+              textDirection: TextDirection.ltr,
+            )..layout(maxWidth: math.max(20, cardWidth - 10));
+            // 5px L + 5px R = 10 horizontal; 4px T + 4px B = 8 vertical.
+            // Padding matches the Container padding inside the manga
+            // card so glyphs sit clear of the pill border on every side.
+            final mangaTightW = math.min(cardWidth, tpManga.size.width + 10);
+            // Height grows with measured text at any scale; at 1.0 the
+            // common case stays clamped to boxH (no visual change for
+            // existing pages); at > 1.0 the card extends below the bbox.
+            final mangaTightH = widget.fontScale > 1.0
+                ? tpManga.size.height + 8
+                : math.min(boxH, tpManga.size.height + 8);
+            // Anchor the card at the CENTER of the bbox in manga mode.
+            // Manga bubbles are usually wider than the source text and
+            // the text is centered inside the bubble - center anchoring
+            // makes the card land near the actual source glyphs even
+            // when the OCR/BubbleDetector bbox over-extends across the
+            // panel (the case the bbox-area filter can't fully prevent
+            // because a panel-spanning bbox can still be under the 10 %
+            // page-area cap).
+            final mangaLeft = left + (boxW - mangaTightW) / 2;
+            final mangaTop = top + (boxH - mangaTightH) / 2;
 
             cards.add(_CardLayout(
               index: i,
-              left: expLeft,
-              top: top,
-              width: expCardW,
-              height: boxH,
+              left: mangaLeft,
+              top: mangaTop,
+              width: mangaTightW,
+              height: mangaTightH,
               fontSize: mangaFont,
             ));
           } else {
@@ -472,12 +538,17 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
 
             final fontSize = fit1.fontSize;
             // Hard-lock the card to the source OCR box height. Earlier
-            // versions let it grow when content exceeded the box, but that
-            // caused cards to bleed into the row below on dense menus
-            // (visible block-on-block overlap). FittedBox(scaleDown) below
-            // is the safety net for the rare case where text doesn't fit
-            // at _kMinFontSize - it shrinks visually rather than the card
-            // growing into a neighbour.
+            // versions let it grow when content exceeded the box, but
+            // that caused cards to bleed into the row below on dense
+            // menus and (when the user pushed the font-scale slider)
+            // into the adjacent manga panel. FittedBox(scaleDown) below
+            // is the safety net for the rare case where text doesn't
+            // fit at the chosen floor - it shrinks visually rather than
+            // the card growing into a neighbour. The slider therefore
+            // only has visible effect on bubbles whose source box is
+            // already roomy enough; tight bubbles stay at the
+            // fit-to-box size, which is the right trade-off because the
+            // alternative (covering adjacent art) is worse.
             var cardHeight = boxH;
 
             // "Show original always" rides under the translation - it needs
@@ -495,12 +566,42 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                   6;
             }
 
+            // TIGHT background: measure the actually-rendered text and
+            // shrink the card to fit. Anchored at the bbox top-left so
+            // the card sits exactly where the source text was. At
+            // fontScale > 1.0 the card grows downward past the bbox so
+            // the bigger text stays INSIDE the card (replaces the old
+            // OverflowBox approach: text never paints outside the bg).
+            // Falls back to full bbox in "show original" mode where the
+            // source-text strip needs the full width.
+            var tightW = cardWidth;
+            var tightH = cardHeight;
+            if (!(widget.showOriginalAlways && isTranslated)) {
+              final renderedFont = fontSize * widget.fontScale;
+              final tp = TextPainter(
+                text: TextSpan(
+                  text: displayText,
+                  style: TextStyle(
+                    fontSize: renderedFont,
+                    fontWeight:
+                        isTranslated ? FontWeight.w500 : FontWeight.normal,
+                    height: 1.25,
+                  ),
+                ),
+                textDirection: TextDirection.ltr,
+              )..layout(maxWidth: math.max(20, cardWidth - _kCardHPad * 2));
+              tightW = math.min(cardWidth, tp.size.width + _kCardHPad * 2);
+              tightH = widget.fontScale > 1.0
+                  ? tp.size.height + _kCardVPad * 2
+                  : math.min(cardHeight, tp.size.height + _kCardVPad * 2);
+            }
+
             cards.add(_CardLayout(
               index: i,
               left: left,
               top: top,
-              width: cardWidth,
-              height: cardHeight,
+              width: tightW,
+              height: tightH,
               fontSize: fontSize,
             ));
           }
@@ -521,33 +622,6 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                 },
               ),
             ),
-            // Debug — draw the raw OCR bounding box (mapped to view coords)
-            // as a thin red outline for every visible card. Lets the user
-            // see at a glance whether the card SHOULD have landed exactly
-            // there. Toggle with the chip in the top-right corner.
-            if (_overlayVisible && _debugShowBoxes)
-              for (var i = 0; i < widget.blocks.length; i++)
-                if (!_dismissed.contains(i) &&
-                    (!widget.hideLowConfidence ||
-                        !widget.blocks[i].isLowConfidence))
-                  Positioned(
-                    left: widget.blocks[i].boundingBox.left * scaleX +
-                        fit.offsetX,
-                    top: widget.blocks[i].boundingBox.top * scaleY +
-                        fit.offsetY,
-                    width: widget.blocks[i].boundingBox.width * scaleX,
-                    height: widget.blocks[i].boundingBox.height * scaleY,
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFFFF1744),
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
             if (_overlayVisible)
               for (final card in cards)
                 _BlockCard(
@@ -560,6 +634,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                   width: card.width,
                   height: card.height,
                   fontSize: card.fontSize,
+                  fontScale: widget.fontScale,
                   showOriginal: widget.showOriginal,
                   showOriginalAlways: widget.showOriginalAlways,
                   overlayOpacity: widget.overlayOpacity,
@@ -619,6 +694,36 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                       ? null
                       : () => widget.onExplain!(widget.blocks[card.index]),
                 ),
+            // Debug overlay — raw OCR/Vision bbox outlined in bright red
+            // ON TOP of the cards so it stays visible even when the card
+            // background blends into a dark panel. Lets the user instantly
+            // tell whether a "panel-covering" overlay is actually one
+            // mega-bbox (upstream OCR merge / margin over-expansion) or
+            // multiple legitimate small bboxes that just happen to sit on
+            // a dark scene.
+            if (_overlayVisible && _debugShowBoxes)
+              for (var i = 0; i < widget.blocks.length; i++)
+                if (!_dismissed.contains(i) &&
+                    (!widget.hideLowConfidence ||
+                        !widget.blocks[i].isLowConfidence))
+                  Positioned(
+                    left: widget.blocks[i].boundingBox.left * scaleX +
+                        fit.offsetX,
+                    top: widget.blocks[i].boundingBox.top * scaleY +
+                        fit.offsetY,
+                    width: widget.blocks[i].boundingBox.width * scaleX,
+                    height: widget.blocks[i].boundingBox.height * scaleY,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFFFF1744),
+                            width: 3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
             if (_overlayVisible && _draggingIndex != null)
               Positioned(
                 left: viewSize.width / 2 - _kTrashRadius,
@@ -773,6 +878,7 @@ class _BlockCard extends StatelessWidget {
     required this.width,
     required this.height,
     required this.fontSize,
+    required this.fontScale,
     required this.showOriginal,
     required this.showOriginalAlways,
     required this.overlayOpacity,
@@ -795,6 +901,13 @@ class _BlockCard extends StatelessWidget {
   final double width;
   final double height;
   final double fontSize;
+  // User multiplier on rendered font. At 1.0 = current behavior
+  // (FittedBox shrinks to fit bbox). Above 1.0 the renderer multiplies
+  // the chosen fontSize by this, drops the FittedBox so the bigger text
+  // isn't scaled back, and lets the overflow paint past the card
+  // bounds (the card background stays anchored to the bbox so only
+  // glyphs spill out). Width still wraps at the card width.
+  final double fontScale;
   final bool showOriginal;
   final bool showOriginalAlways;
   final double overlayOpacity;
@@ -847,18 +960,28 @@ class _BlockCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.85),
+                  // Was a hardcoded 0.85 black. Now drives off the
+                  // user's overlayOpacity slider so manga cards fade
+                  // with the same slider that fades normal-mode cards;
+                  // dragging the slider shows the original art through
+                  // the bubble in real time.
+                  color: Colors.black
+                      .withValues(alpha: overlayOpacity.clamp(0.0, 1.0)),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 alignment: Alignment.center,
+                // Card width/height computed by parent to fit the
+                // rendered text (fontSize * fontScale) + small padding,
+                // so the text sits naturally inside without FittedBox
+                // shrink or OverflowBox spill.
                 child: Text(
                   displayText,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: fontSize,
+                    fontSize: fontSize * fontScale,
                     fontWeight:
                         isTranslated ? FontWeight.w500 : FontWeight.normal,
                     height: 1.25,
@@ -886,33 +1009,22 @@ class _BlockCard extends StatelessWidget {
     final fillColor = bgColor.withValues(alpha: alpha);
     final textColor = _textColorFor(bgColor);
 
-    // FittedBox(scaleDown) + SizedBox(width:innerW) is the safety net for
-    // the residual measurement-vs-render gap _fitFont can't fully close
-    // (strut metrics, leading distribution etc.). The fitter still picks
-    // the primary font size; this wrapper only triggers when actual
-    // rendered content slightly exceeds the box, scaling it down
-    // uniformly so neighbouring cards never get overlapped.
-    final cardBody = Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: _kCardHPad, vertical: _kCardVPad),
-      decoration: BoxDecoration(
-        color: fillColor,
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.topLeft,
-        child: SizedBox(
-          width: width - _kCardHPad * 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
+    // The parent layout sized this card to exactly fit the rendered
+    // text + padding (via TextPainter measurement before adding to the
+    // cards list), so the text fits inside the card naturally - no
+    // FittedBox shrink, no OverflowBox spill. fontScale > 1.0 already
+    // baked into the card width/height by the parent.
+    final renderedFont = fontSize * fontScale;
+    final innerW = width - _kCardHPad * 2;
+    final textColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
           Text(
             displayText,
             style: TextStyle(
               color: textColor,
-              fontSize: fontSize,
+              fontSize: renderedFont,
               fontWeight: isTranslated
                   ? FontWeight.w500
                   : FontWeight.normal,
@@ -946,9 +1058,16 @@ class _BlockCard extends StatelessWidget {
               ),
             ),
         ],
+    );
+
+    final cardBody = Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: _kCardHPad, vertical: _kCardVPad),
+      decoration: BoxDecoration(
+        color: fillColor,
+        borderRadius: BorderRadius.circular(3),
       ),
-        ),
-      ),
+      child: SizedBox(width: innerW, child: textColumn),
     );
 
     return Positioned(

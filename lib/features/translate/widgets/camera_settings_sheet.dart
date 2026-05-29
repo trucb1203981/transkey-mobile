@@ -128,6 +128,33 @@ class CameraSettingsSheet extends ConsumerWidget {
                       .setOverlayOpacity(v),
                 ),
                 const SizedBox(height: 16),
+                _SliderRow(
+                  label: l.cameraSettingsFontScale,
+                  hint: l.cameraSettingsFontScaleHint,
+                  value: settings.overlayFontScale,
+                  min: kOverlayFontScaleMin,
+                  max: kOverlayFontScaleMax,
+                  divisions: 20,
+                  valueLabel:
+                      '${settings.overlayFontScale.toStringAsFixed(1)}×',
+                  onChanged: (v) => ref
+                      .read(cameraSettingsProvider.notifier)
+                      .setOverlayFontScale(v),
+                  trailing: settings.overlayFontScale != kOverlayFontScaleDefault
+                      ? TextButton(
+                          onPressed: () => ref
+                              .read(cameraSettingsProvider.notifier)
+                              .resetOverlayFontScale(),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(0, 28),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            foregroundColor: Colors.lightBlueAccent,
+                          ),
+                          child: Text(l.cameraSettingsReset),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 16),
                 _SwitchRow(
                   label: l.cameraSettingsPrimaryColor,
                   hint: l.cameraSettingsPrimaryColorHint,
@@ -158,6 +185,7 @@ class _SliderRow extends StatelessWidget {
     required this.divisions,
     required this.valueLabel,
     required this.onChanged,
+    this.trailing,
   });
 
   final String label;
@@ -168,6 +196,10 @@ class _SliderRow extends StatelessWidget {
   final int divisions;
   final String valueLabel;
   final ValueChanged<double> onChanged;
+  // Optional widget shown on the right of the value label - used for a
+  // per-row Reset button (e.g. font scale) so the user can snap back to
+  // the default without hunting the global Reset at the top.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -194,6 +226,10 @@ class _SliderRow extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            if (trailing != null) ...[
+              const SizedBox(width: 4),
+              trailing!,
+            ],
           ],
         ),
         Text(

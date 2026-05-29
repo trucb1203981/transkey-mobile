@@ -881,6 +881,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setupTitle => 'Setup Keyboard';
 
   @override
+  String get setupTitleAndroid => 'Set up TransKey';
+
+  @override
   String get setupOpenSettings => 'Open Settings';
 
   @override
@@ -904,6 +907,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setupStep2Title => 'Allow Full Access';
 
   @override
+  String get setupStep2TitleAndroid => 'Bubble enabled';
+
+  @override
   String get setupStep2DescIOS =>
       'Tap TransKey in the keyboard list and enable \"Allow Full Access\". This is needed to connect to the internet for translations.';
 
@@ -920,7 +926,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'Select text in any app and share it to TransKey, or use the floating bubble for quick translations.';
+      'The TransKey button is now on your screen. Copy any text, tap the button, pick an action - you\'ll see the result right there without leaving your app.';
 
   @override
   String get setupStep4Title => 'Translate from Any App';
@@ -931,7 +937,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'Select text in any app → tap \"Share\" → choose TransKey. Or use the floating bubble after copying text.';
+      'Copy text in any app → tap the TransKey button → choose Translate, Reply, or another action → tap anywhere to close when done.';
 
   @override
   String get setupStep5Title => 'Smart Features';
@@ -944,6 +950,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String get guideTitle => 'How to use';
 
   @override
+  String get guidePlanCompareTitle => 'Features by plan';
+
+  @override
+  String get guidePlanFreeLabel => 'Free';
+
+  @override
+  String get guidePlanPaidLabel => 'Paid';
+
+  @override
+  String get guidePlanFreeItems => 'Translate\nWord list';
+
+  @override
+  String get guidePlanPaidItems =>
+      'Camera scan\nScreen scan\nSummary\nRefine\nExplain\nReply\nTone selection\nPhonetics';
+
+  @override
+  String get guideSectionFree => 'Free features';
+
+  @override
+  String get guideSectionPaid => 'Paid features';
+
+  @override
+  String get guideFreeBadge => 'Free';
+
+  @override
+  String get guidePaidBadge => 'Paid';
+
+  @override
+  String get guideInputPaidBadge => 'Paid';
+
+  @override
+  String get guideFeatureGlossary => 'Word list';
+
+  @override
+  String get guideFeatureGlossarySubtitle =>
+      'Save custom word translations that TransKey always uses first';
+
+  @override
+  String get guideInputGlossaryTitle => 'From the Word list tab';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      'Open the Word list tab and add word pairs. TransKey will use your custom translations first when it sees those words.';
+
+  @override
+  String get guideFeatureCamera => 'Camera scan';
+
+  @override
+  String get guideFeatureCameraSubtitle =>
+      'Photograph text to translate - signs, menus, books';
+
+  @override
+  String get guideInputCameraTitle => 'Tap the camera button';
+
+  @override
+  String get guideInputCameraDesc =>
+      'Tap the camera icon at the top of the main screen. Point your phone at any text, take a photo, and see the translation appear on the image.';
+
+  @override
+  String get guideInputVoiceTitle => 'Speak to enter text';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'On the main screen, tap the microphone button and speak. Your words are converted to text and translated automatically.';
+
+  @override
   String get guideSubtitle => 'All the ways to capture text for each feature';
 
   @override
@@ -952,7 +1024,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you\'re typing in.';
+      'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you are typing in.';
 
   @override
   String get guideFeatureTranslate => 'Translate';
@@ -986,29 +1058,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get guideFeatureReply => 'Reply';
 
   @override
-  String get guideFeatureReplySubtitle =>
-      'Generate a reply suggestion in the target language';
+  String get guideFeatureReplySubtitle => 'Get a reply suggestion to send back';
 
   @override
-  String get guideInputCopyTitle => 'Copy text, then tap the bubble';
+  String get guideInputCopyTitle => 'Copy text, then tap the button';
 
   @override
   String get guideInputCopyDesc =>
-      'Copy any text in any app, then tap the floating bubble and pick the action.';
+      'Copy any text in any app, then tap the TransKey button and pick what you want to do.';
 
   @override
   String get guideInputOcrTitle => 'Scan the whole screen';
 
   @override
   String get guideInputOcrDesc =>
-      'Tap the bubble → Scan screen. TransKey takes one screenshot and reads the text on it.';
+      'Tap the button → Scan screen. TransKey captures a screenshot and reads the text.';
 
   @override
   String get guideInputRegionTitle => 'Scan part of the screen';
 
   @override
   String get guideInputRegionDesc =>
-      'Tap the bubble → Scan area. Drag a box around just the part you want translated.';
+      'Tap the button → Scan area. Draw a box around the part you want translated.';
 
   @override
   String get guideInputShareTitle => 'From the Share button';
@@ -1033,7 +1104,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guideReplyA11yBody =>
-      'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat input you\'re typing in. No extra step.\n\nIf you\'d rather not turn it on, the reply is copied for you — just long-press the chat input and tap Paste.';
+      'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat box you are typing in. No extra step needed.\n\nIf you would rather not turn it on, the reply is ready to paste — just hold the chat box and tap Paste.';
 
   @override
   String get appPermissions => 'App permissions';
@@ -1049,28 +1120,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Grant the floating-bubble permission to get started. Accessibility is optional and only needed for one-tap Reply paste.';
+      'Allow TransKey to show on your screen while using other apps. Accessibility is optional - only needed to auto-paste replies.';
 
   @override
   String get permFloatingBubble => 'Floating bubble';
 
   @override
   String get permFloatingBubbleBody =>
-      'Show TransKey over other apps. Required for the bubble to appear.';
+      'Lets TransKey appear on your screen while you use other apps. Required to start using TransKey.';
 
   @override
   String get permRestrictedSettings => 'Allow restricted settings';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ blocks sideloaded apps from Accessibility by default. Tap ⋮ at the top-right → \"Allow restricted settings\".';
+      'Some Android phones need an extra step for newly installed apps to use Accessibility. Tap ⋮ at the top-right → \"Allow restricted settings\".';
 
   @override
   String get permAccessibility => 'Accessibility (optional)';
 
   @override
   String get permAccessibilityBody =>
-      'Lets TransKey paste Reply suggestions directly into the focused text field. Skip if you don\'t mind pasting yourself.';
+      'Lets TransKey automatically paste the suggested reply into what you\'re typing. Skip if you\'re happy to paste it yourself.';
 
   @override
   String get permEnabled => 'Enabled';
@@ -1086,7 +1157,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'Accessibility is optional. Without it, Reply suggestions land on your clipboard and you\'ll paste them yourself.';
+      'Accessibility is optional. Without it, you\'ll copy the suggested reply and paste it yourself.';
 
   @override
   String get permSkipForNow => 'Skip for now';
@@ -1347,6 +1418,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Card background transparency. Lower = see more of the photo behind.';
 
   @override
+  String get cameraSettingsFontScale => 'Font size';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      'Make translation text bigger. Text may spill outside the original bubble.';
+
+  @override
   String get cameraSettingsPrimaryColor => 'Single overlay color';
 
   @override
@@ -1565,4 +1643,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Restore purchases';
+
+  @override
+  String get homeTagline => 'Translate · Summarize · Explain';
+
+  @override
+  String get historyEmptyTagline => 'Your translations will appear here';
+
+  @override
+  String get glossaryEmptyTagline =>
+      'Save terms you use often for accurate names';
+
+  @override
+  String get quotaTodayUsage => 'Today\'s usage';
+
+  @override
+  String get quotaWallTitle => 'You\'ve used today\'s quota';
+
+  @override
+  String get quotaWallBody =>
+      'Watch a short ad to get more translations now, or upgrade for unlimited use.';
+
+  @override
+  String get quotaWallWatchAdCta => 'Watch ad for more translations';
+
+  @override
+  String get quotaWallUpgradeCta => 'Upgrade for unlimited';
+
+  @override
+  String get quotaWallCloseCta => 'Maybe later';
+
+  @override
+  String get guideScreenshotTipTitle => 'Screenshot without the bubble';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'Tap the bubble to open the menu, then tap the camera icon in the bottom-right corner. The bubble hides for a few seconds so you can take a clean screenshot, then comes back on its own.';
 }

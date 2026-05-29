@@ -883,6 +883,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get setupTitle => 'إعداد لوحة المفاتيح';
 
   @override
+  String get setupTitleAndroid => 'إعداد TransKey';
+
+  @override
   String get setupOpenSettings => 'فتح الإعدادات';
 
   @override
@@ -906,6 +909,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get setupStep2Title => 'السماح بالوصول الكامل';
 
   @override
+  String get setupStep2TitleAndroid => 'الزر العائم جاهز';
+
+  @override
   String get setupStep2DescIOS =>
       'اضغط على TransKey في قائمة لوحات المفاتيح وفعّل \"السماح بالوصول الكامل\". هذا ضروري للاتصال بالإنترنت من أجل الترجمات.';
 
@@ -922,7 +928,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'حدد النص في أي تطبيق وشاركه مع TransKey، أو استخدم الزر العائم للترجمات السريعة.';
+      'زر TransKey جاهز على شاشتك. انسخ أي نص، اضغط على الزر، اختر ما تريد - تظهر النتيجة فوراً دون مغادرة التطبيق.';
 
   @override
   String get setupStep4Title => 'الترجمة من أي تطبيق';
@@ -933,7 +939,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'حدد النص في أي تطبيق → اضغط \"مشاركة\" → اختر TransKey. أو استخدم الزر العائم بعد نسخ النص.';
+      'انسخ النص في أي تطبيق → اضغط على زر TransKey → اختر ترجمة أو رد أو ميزة أخرى → انقر في أي مكان للإغلاق عند الانتهاء.';
 
   @override
   String get setupStep5Title => 'ميزات ذكية';
@@ -944,6 +950,72 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get guideTitle => 'كيفية الاستخدام';
+
+  @override
+  String get guidePlanCompareTitle => 'الميزات حسب الخطة';
+
+  @override
+  String get guidePlanFreeLabel => 'مجاني';
+
+  @override
+  String get guidePlanPaidLabel => 'مدفوع';
+
+  @override
+  String get guidePlanFreeItems => 'ترجمة\nقائمة الكلمات';
+
+  @override
+  String get guidePlanPaidItems =>
+      'مسح الكاميرا\nمسح الشاشة\nملخص\nتحسين\nشرح\nرد\nاختيار النبرة\nالنطق';
+
+  @override
+  String get guideSectionFree => 'الميزات المجانية';
+
+  @override
+  String get guideSectionPaid => 'الميزات المدفوعة';
+
+  @override
+  String get guideFreeBadge => 'مجاني';
+
+  @override
+  String get guidePaidBadge => 'مدفوع';
+
+  @override
+  String get guideInputPaidBadge => 'مدفوع';
+
+  @override
+  String get guideFeatureGlossary => 'قائمة الكلمات';
+
+  @override
+  String get guideFeatureGlossarySubtitle =>
+      'احفظ ترجمات مخصصة تستخدمها TransKey دائمًا أولًا';
+
+  @override
+  String get guideInputGlossaryTitle => 'من تبويب قائمة الكلمات';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      'افتح تبويب قائمة الكلمات وأضف أزواج الكلمات. ستستخدم TransKey ترجماتك المخصصة أولًا عند رؤية تلك الكلمات.';
+
+  @override
+  String get guideFeatureCamera => 'مسح الكاميرا';
+
+  @override
+  String get guideFeatureCameraSubtitle =>
+      'صوِّر النص للترجمة - لافتات وقوائم طعام وكتب';
+
+  @override
+  String get guideInputCameraTitle => 'اضغط على زر الكاميرا';
+
+  @override
+  String get guideInputCameraDesc =>
+      'اضغط على أيقونة الكاميرا في أعلى الشاشة الرئيسية. وجِّه هاتفك نحو النص والتقط صورة لرؤية الترجمة فوقها.';
+
+  @override
+  String get guideInputVoiceTitle => 'تحدث لإدخال نص';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'في الشاشة الرئيسية، اضغط على زر الميكروفون وتحدث. سيتم تحويل كلامك إلى نص وترجمته تلقائيًا.';
 
   @override
   String get guideSubtitle => 'جميع طرق التقاط النص لكل ميزة';
@@ -1047,28 +1119,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'امنح إذن الزر العائم للبدء. إمكانية الوصول اختيارية ومطلوبة فقط للصق الرد بضغطة واحدة.';
+      'اسمح لـ TransKey بالظهور على شاشتك أثناء استخدام تطبيقات أخرى. إمكانية الوصول اختيارية - فقط إذا أردت لصق الردود تلقائياً.';
 
   @override
   String get permFloatingBubble => 'الزر العائم';
 
   @override
   String get permFloatingBubbleBody =>
-      'عرض TransKey فوق التطبيقات الأخرى. مطلوب ليظهر الزر العائم.';
+      'يجعل TransKey يظهر على شاشتك أثناء استخدام تطبيقات أخرى. ضروري لبدء استخدام TransKey.';
 
   @override
   String get permRestrictedSettings => 'السماح بالإعدادات المقيدة';
 
   @override
   String get permRestrictedSettingsBody =>
-      'يحجب Android 13+ التطبيقات المثبتة من خارج المتجر عن إمكانية الوصول افتراضيًا. اضغط على ⋮ في الزاوية العلوية اليمنى → \"السماح بالإعدادات المقيدة\".';
+      'بعض هواتف Android تحتاج خطوة إضافية للسماح للتطبيقات المثبتة حديثاً باستخدام إمكانية الوصول. اضغط ⋮ أعلى اليمين → \"السماح بالإعدادات المقيدة\".';
 
   @override
   String get permAccessibility => 'إمكانية الوصول (اختيارية)';
 
   @override
   String get permAccessibilityBody =>
-      'تتيح لـ TransKey لصق اقتراحات الرد مباشرة في حقل النص النشط. تخطَّ ذلك إذا لم يكن لديك مانع في اللصق بنفسك.';
+      'يتيح لـ TransKey لصق الرد المقترح تلقائياً في مكان الكتابة. تخطَّ إذا كنت لا تمانع اللصق بنفسك.';
 
   @override
   String get permEnabled => 'مفعّل';
@@ -1084,7 +1156,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'إمكانية الوصول اختيارية. بدونها ستظهر اقتراحات الرد في حافظتك وعليك لصقها بنفسك.';
+      'إمكانية الوصول اختيارية. بدونها ستحتاج للصق الرد المقترح بنفسك.';
 
   @override
   String get permSkipForNow => 'تخطٍ في الوقت الحالي';
@@ -1344,6 +1416,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'شفافية خلفية البطاقة. أقل = الصورة خلفها أوضح.';
 
   @override
+  String get cameraSettingsFontScale => 'حجم الخط';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      'تكبير النص المترجم. قد يمتد النص خارج الفقاعة.';
+
+  @override
   String get cameraSettingsPrimaryColor => 'لون تراكب موحد';
 
   @override
@@ -1560,4 +1639,40 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'استعادة المشتريات';
+
+  @override
+  String get homeTagline => 'ترجم · لخّص · اشرح';
+
+  @override
+  String get historyEmptyTagline => 'ستظهر ترجماتك هنا';
+
+  @override
+  String get glossaryEmptyTagline =>
+      'احفظ المصطلحات التي تستخدمها كثيرًا للأسماء الدقيقة';
+
+  @override
+  String get quotaTodayUsage => 'استخدام اليوم';
+
+  @override
+  String get quotaWallTitle => 'لقد استنفدت الحصة اليومية';
+
+  @override
+  String get quotaWallBody =>
+      'شاهد إعلانًا قصيرًا للحصول على المزيد من الترجمات الآن، أو قم بالترقية للاستخدام غير المحدود.';
+
+  @override
+  String get quotaWallWatchAdCta => 'شاهد إعلانًا لمزيد من الترجمات';
+
+  @override
+  String get quotaWallUpgradeCta => 'الترقية للاستخدام غير المحدود';
+
+  @override
+  String get quotaWallCloseCta => 'ربما لاحقًا';
+
+  @override
+  String get guideScreenshotTipTitle => 'لقطة شاشة بدون الفقاعة';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'اضغط على الفقاعة لفتح القائمة، ثم اضغط على أيقونة الكاميرا في الزاوية السفلية اليمنى. ستختفي الفقاعة لبضع ثوانٍ حتى تتمكن من التقاط لقطة شاشة نظيفة، ثم تعود تلقائيًا.';
 }

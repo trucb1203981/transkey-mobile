@@ -877,6 +877,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get setupTitle => 'ตั้งค่าแป้นพิมพ์';
 
   @override
+  String get setupTitleAndroid => 'ตั้งค่า TransKey';
+
+  @override
   String get setupOpenSettings => 'เปิดการตั้งค่า';
 
   @override
@@ -900,6 +903,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get setupStep2Title => 'อนุญาตการเข้าถึงเต็มรูปแบบ';
 
   @override
+  String get setupStep2TitleAndroid => 'เปิดใช้งานปุ่มแล้ว';
+
+  @override
   String get setupStep2DescIOS =>
       'แตะ TransKey ในรายการแป้นพิมพ์ แล้วเปิด \"อนุญาตการเข้าถึงเต็มรูปแบบ\" จำเป็นสำหรับการเชื่อมต่ออินเทอร์เน็ตเพื่อแปล';
 
@@ -916,7 +922,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'เลือกข้อความในแอปใด ๆ แล้วแชร์มาที่ TransKey หรือใช้ปุ่มลอยสำหรับการแปลด่วน';
+      'ปุ่ม TransKey ปรากฏบนหน้าจอแล้ว คัดลอกข้อความ แตะปุ่ม เลือกสิ่งที่ต้องการ - ผลลัพธ์ปรากฏทันทีโดยไม่ต้องออกจากแอป';
 
   @override
   String get setupStep4Title => 'แปลจากแอปใดก็ได้';
@@ -927,7 +933,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'เลือกข้อความในแอปใด ๆ → แตะ \"แชร์\" → เลือก TransKey หรือใช้ปุ่มลอยหลังจากคัดลอกข้อความ';
+      'คัดลอกข้อความในแอปใด ๆ → แตะปุ่ม TransKey → เลือกแปล ตอบ หรือฟีเจอร์อื่น ๆ → แตะที่ไหนก็ได้เพื่อปิดเมื่อเสร็จ';
 
   @override
   String get setupStep5Title => 'ฟีเจอร์อัจฉริยะ';
@@ -938,6 +944,72 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get guideTitle => 'วิธีใช้งาน';
+
+  @override
+  String get guidePlanCompareTitle => 'ฟีเจอร์ตามแพ็กเกจ';
+
+  @override
+  String get guidePlanFreeLabel => 'ฟรี';
+
+  @override
+  String get guidePlanPaidLabel => 'มีค่าใช้จ่าย';
+
+  @override
+  String get guidePlanFreeItems => 'แปลภาษา\nรายการคำศัพท์';
+
+  @override
+  String get guidePlanPaidItems =>
+      'สแกนกล้อง\nสแกนหน้าจอ\nสรุป\nปรับปรุง\nอธิบาย\nตอบกลับ\nเลือกโทน\nสัทอักษร';
+
+  @override
+  String get guideSectionFree => 'ฟีเจอร์ฟรี';
+
+  @override
+  String get guideSectionPaid => 'ฟีเจอร์มีค่าใช้จ่าย';
+
+  @override
+  String get guideFreeBadge => 'ฟรี';
+
+  @override
+  String get guidePaidBadge => 'มีค่าใช้จ่าย';
+
+  @override
+  String get guideInputPaidBadge => 'มีค่าใช้จ่าย';
+
+  @override
+  String get guideFeatureGlossary => 'คลังคำ';
+
+  @override
+  String get guideFeatureGlossarySubtitle =>
+      'บันทึกการแปลที่กำหนดเองเพื่อให้ TransKey ใช้ก่อนเสมอ';
+
+  @override
+  String get guideInputGlossaryTitle => 'จากแท็บคลังคำ';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      'เปิดแท็บคลังคำแล้วเพิ่มคู่คำ TransKey จะใช้การแปลของคุณก่อนเมื่อพบคำเหล่านั้น';
+
+  @override
+  String get guideFeatureCamera => 'สแกนกล้อง';
+
+  @override
+  String get guideFeatureCameraSubtitle =>
+      'ถ่ายภาพข้อความเพื่อแปล - ป้าย เมนู หนังสือ';
+
+  @override
+  String get guideInputCameraTitle => 'แตะปุ่มกล้อง';
+
+  @override
+  String get guideInputCameraDesc =>
+      'แตะไอคอนกล้องที่ด้านบนของหน้าจอหลัก ชี้โทรศัพท์ไปที่ข้อความ ถ่ายภาพ แล้วดูคำแปลปรากฏบนภาพ';
+
+  @override
+  String get guideInputVoiceTitle => 'พูดเพื่อป้อนข้อความ';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'ในหน้าจอหลัก แตะปุ่มไมโครโฟนแล้วพูด คำพูดของคุณจะถูกแปลงเป็นข้อความและแปลอัตโนมัติ';
 
   @override
   String get guideSubtitle => 'ทุกวิธีในการนำข้อความเข้าสู่แต่ละฟีเจอร์';
@@ -1041,28 +1113,28 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'อนุญาตสิทธิ์ปุ่มลอยเพื่อเริ่มต้นใช้งาน การเข้าถึงเป็นทางเลือก จำเป็นเฉพาะเมื่อต้องการให้วางคำตอบด้วยแตะเดียว';
+      'อนุญาตให้ TransKey แสดงบนหน้าจอขณะใช้แอปอื่น การช่วยเหลือพิเศษเป็นทางเลือก - ใช้เฉพาะเมื่อต้องการวางคำตอบอัตโนมัติ';
 
   @override
   String get permFloatingBubble => 'ปุ่มลอย';
 
   @override
   String get permFloatingBubbleBody =>
-      'แสดง TransKey ทับแอปอื่น จำเป็นเพื่อให้ปุ่มลอยปรากฏ';
+      'TransKey แสดงบนหน้าจอขณะคุณใช้แอปอื่น จำเป็นต้องเปิดเพื่อใช้ TransKey';
 
   @override
   String get permRestrictedSettings => 'อนุญาตการตั้งค่าที่จำกัด';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ บล็อกแอปที่ติดตั้งจากภายนอกไม่ให้ใช้การเข้าถึงโดยค่าเริ่มต้น แตะ ⋮ ที่มุมขวาบน → \"อนุญาตการตั้งค่าที่จำกัด\"';
+      'บางโทรศัพท์ Android ต้องการขั้นตอนเพิ่มเติมเพื่อให้แอปที่เพิ่งติดตั้งสามารถใช้การช่วยเหลือพิเศษได้ แตะ ⋮ ที่มุมขวาบน → \"อนุญาตการตั้งค่าที่จำกัด\"';
 
   @override
   String get permAccessibility => 'การเข้าถึง (ไม่บังคับ)';
 
   @override
   String get permAccessibilityBody =>
-      'ช่วยให้ TransKey วางข้อเสนอแนะการตอบโดยตรงในช่องข้อความที่กำลังพิมพ์อยู่ ข้ามได้ถ้าคุณไม่ขัดข้องที่จะวางเอง';
+      'TransKey วางคำตอบที่แนะนำอัตโนมัติในตำแหน่งที่คุณพิมพ์อยู่ ข้ามได้ถ้าคุณไม่ขัดข้องที่จะวางเอง';
 
   @override
   String get permEnabled => 'เปิดใช้งานแล้ว';
@@ -1078,7 +1150,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'การเข้าถึงเป็นทางเลือก ถ้าไม่เปิด ข้อเสนอแนะการตอบจะอยู่ในคลิปบอร์ดและคุณต้องวางเอง';
+      'การช่วยเหลือพิเศษเป็นทางเลือก ถ้าไม่เปิด คุณจะต้องวางคำตอบที่แนะนำเอง';
 
   @override
   String get permSkipForNow => 'ข้ามไปก่อน';
@@ -1336,6 +1408,13 @@ class AppLocalizationsTh extends AppLocalizations {
       'ความโปร่งของพื้นหลังการ์ด ต่ำ = เห็นรูปด้านหลังมากขึ้น';
 
   @override
+  String get cameraSettingsFontScale => 'ขนาดตัวอักษร';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      'ขยายข้อความแปล ข้อความอาจล้นออกนอกบอลลูน';
+
+  @override
   String get cameraSettingsPrimaryColor => 'สีโอเวอร์เลย์เดียว';
 
   @override
@@ -1553,4 +1632,39 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'กู้คืนการซื้อ';
+
+  @override
+  String get homeTagline => 'แปล · สรุป · อธิบาย';
+
+  @override
+  String get historyEmptyTagline => 'คำแปลของคุณจะปรากฏที่นี่';
+
+  @override
+  String get glossaryEmptyTagline => 'บันทึกคำที่ใช้บ่อยเพื่อให้ชื่อแปลถูกต้อง';
+
+  @override
+  String get quotaTodayUsage => 'การใช้งานวันนี้';
+
+  @override
+  String get quotaWallTitle => 'คุณใช้โควต้าวันนี้หมดแล้ว';
+
+  @override
+  String get quotaWallBody =>
+      'ดูโฆษณาสั้น ๆ เพื่อรับการแปลเพิ่มทันที หรืออัปเกรดเพื่อใช้งานไม่จำกัด';
+
+  @override
+  String get quotaWallWatchAdCta => 'ดูโฆษณาเพื่อแปลเพิ่ม';
+
+  @override
+  String get quotaWallUpgradeCta => 'อัปเกรดใช้งานไม่จำกัด';
+
+  @override
+  String get quotaWallCloseCta => 'ไว้ค่อย';
+
+  @override
+  String get guideScreenshotTipTitle => 'จับภาพหน้าจอโดยไม่ติดบับเบิล';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'แตะบับเบิลเพื่อเปิดเมนู แล้วแตะไอคอนกล้องที่มุมขวาล่าง บับเบิลจะซ่อนไปสองสามวินาทีเพื่อให้คุณจับภาพหน้าจอได้สะอาด แล้วจะกลับมาเอง';
 }

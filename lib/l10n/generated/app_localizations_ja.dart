@@ -855,6 +855,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupTitle => 'キーボードを設定';
 
   @override
+  String get setupTitleAndroid => 'TransKey を設定';
+
+  @override
   String get setupOpenSettings => '設定を開く';
 
   @override
@@ -878,6 +881,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupStep2Title => 'フルアクセスを許可';
 
   @override
+  String get setupStep2TitleAndroid => 'バブルが有効です';
+
+  @override
   String get setupStep2DescIOS =>
       'キーボード一覧のTransKeyをタップし、「フルアクセスを許可」を有効にしてください。翻訳のためにインターネット接続が必要です。';
 
@@ -894,7 +900,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'アプリでテキストを選択してTransKeyに共有するか、フローティングバブルで素早く翻訳できます。';
+      'TransKeyボタンが画面に表示されました。テキストをコピーしてボタンをタップ、操作を選ぶだけ - アプリを離れずに結果が表示されます。';
 
   @override
   String get setupStep4Title => 'どのアプリからでも翻訳';
@@ -905,7 +911,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'テキストを選択 → 「共有」 → TransKey を選ぶ。またはコピー後にフローティングバブルを使えます。';
+      'アプリでテキストをコピー → TransKeyボタンをタップ → 翻訳・返信など操作を選ぶ → 終わったら画面をタップして閉じる';
 
   @override
   String get setupStep5Title => 'スマート機能';
@@ -915,6 +921,70 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get guideTitle => '使い方';
+
+  @override
+  String get guidePlanCompareTitle => 'プランの機能一覧';
+
+  @override
+  String get guidePlanFreeLabel => '無料';
+
+  @override
+  String get guidePlanPaidLabel => '有料';
+
+  @override
+  String get guidePlanFreeItems => '翻訳\n単語帳';
+
+  @override
+  String get guidePlanPaidItems =>
+      'カメラ翻訳\n画面スキャン\n要約\n文章改善\n解説\n返信\nトーン選択\n発音記号';
+
+  @override
+  String get guideSectionFree => '無料の機能';
+
+  @override
+  String get guideSectionPaid => '有料の機能';
+
+  @override
+  String get guideFreeBadge => '無料';
+
+  @override
+  String get guidePaidBadge => '有料';
+
+  @override
+  String get guideInputPaidBadge => '有料';
+
+  @override
+  String get guideFeatureGlossary => '用語集';
+
+  @override
+  String get guideFeatureGlossarySubtitle => '優先的に使うカスタム翻訳を保存';
+
+  @override
+  String get guideInputGlossaryTitle => '用語集タブから';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      '用語集タブを開いて単語ペアを追加。TransKey はそれらの単語を見つけたときに優先的にカスタム訳を使います。';
+
+  @override
+  String get guideFeatureCamera => 'カメラ翻訳';
+
+  @override
+  String get guideFeatureCameraSubtitle => '看板・メニュー・本など文字を撮影して翻訳';
+
+  @override
+  String get guideInputCameraTitle => 'カメラボタンをタップ';
+
+  @override
+  String get guideInputCameraDesc =>
+      'ホーム画面上部のカメラアイコンをタップ。テキストにカメラを向けて撮影すると翻訳が画像上に表示されます。';
+
+  @override
+  String get guideInputVoiceTitle => '音声でテキストを入力';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'ホーム画面でマイクボタンをタップして話すと、音声がテキストに変換されて自動翻訳されます。';
 
   @override
   String get guideSubtitle => '各機能でテキストを取り込むあらゆる方法';
@@ -1012,26 +1082,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'フローティングバブル権限を付与するだけで始められます。アクセシビリティは任意で、ワンタップで返信を貼り付けるためにのみ必要です。';
+      '他のアプリ使用中もTransKeyを画面に表示できるようにします。アクセシビリティはオプションで、返信の自動貼り付けが必要な場合のみ使います。';
 
   @override
   String get permFloatingBubble => 'フローティングバブル';
 
   @override
-  String get permFloatingBubbleBody => '他のアプリの上に TransKey を表示。バブル表示に必須。';
+  String get permFloatingBubbleBody =>
+      '他のアプリを使いながらTransKeyを画面に表示します。TransKeyを使うために必須です。';
 
   @override
   String get permRestrictedSettings => '制限付き設定を許可';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ はストア外からインストールしたアプリのアクセシビリティを既定でブロックします。右上の ⋮ → \"制限付き設定を許可\"。';
+      '一部のAndroid端末では、新しくインストールしたアプリがアクセシビリティを使うために追加の手順が必要です。右上の ⋮ → \"制限付き設定を許可\"。';
 
   @override
   String get permAccessibility => 'アクセシビリティ(任意)';
 
   @override
-  String get permAccessibilityBody => '返信候補を入力中の欄に直接ペースト。手動ペーストでよければスキップ可能。';
+  String get permAccessibilityBody =>
+      '返信の提案を入力中の場所に自動で貼り付けます。自分で貼り付けるのが問題なければスキップできます。';
 
   @override
   String get permEnabled => '有効';
@@ -1046,7 +1118,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get permOpenAppDetails => 'アプリ詳細を開く';
 
   @override
-  String get permSkipHint => 'アクセシビリティは任意です。なしでも返信結果はクリップボードに入り、自分でペーストできます。';
+  String get permSkipHint =>
+      'アクセシビリティはオプションです。なくても返信の提案は利用できますが、自分で貼り付ける必要があります。';
 
   @override
   String get permSkipForNow => '後で';
@@ -1295,6 +1368,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraSettingsOpacityHint => 'カード背景の透明度。低い = 後ろの写真がより見える。';
 
   @override
+  String get cameraSettingsFontScale => '文字サイズ';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      '翻訳テキストを大きくします。テキストが吹き出しからはみ出る場合があります。';
+
+  @override
   String get cameraSettingsPrimaryColor => '統一オーバーレイカラー';
 
   @override
@@ -1503,4 +1583,38 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => '購入を復元';
+
+  @override
+  String get homeTagline => '翻訳 · 要約 · 解説';
+
+  @override
+  String get historyEmptyTagline => '翻訳がここに表示されます';
+
+  @override
+  String get glossaryEmptyTagline => 'よく使う用語を保存して正確な名前にする';
+
+  @override
+  String get quotaTodayUsage => '今日の使用量';
+
+  @override
+  String get quotaWallTitle => '本日の利用枠を使い切りました';
+
+  @override
+  String get quotaWallBody => '短い広告を見て翻訳回数を追加するか、アップグレードして無制限に使えます。';
+
+  @override
+  String get quotaWallWatchAdCta => '広告を見て回数を追加';
+
+  @override
+  String get quotaWallUpgradeCta => 'アップグレードして無制限利用';
+
+  @override
+  String get quotaWallCloseCta => 'あとで';
+
+  @override
+  String get guideScreenshotTipTitle => 'バブルを写さずにスクショ';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'バブルをタップしてメニューを開き、右下のカメラアイコンをタップします。バブルが数秒間消えるので、きれいなスクリーンショットを撮れます。その後は自動で戻ります。';
 }

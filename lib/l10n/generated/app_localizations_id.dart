@@ -883,6 +883,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get setupTitle => 'Atur keyboard';
 
   @override
+  String get setupTitleAndroid => 'Atur TransKey';
+
+  @override
   String get setupOpenSettings => 'Buka pengaturan';
 
   @override
@@ -906,6 +909,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get setupStep2Title => 'Izinkan akses penuh';
 
   @override
+  String get setupStep2TitleAndroid => 'Tombol diaktifkan';
+
+  @override
   String get setupStep2DescIOS =>
       'Ketuk TransKey di daftar keyboard dan aktifkan \"Izinkan Akses Penuh\". Ini diperlukan untuk koneksi internet untuk terjemahan.';
 
@@ -922,7 +928,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'Pilih teks di aplikasi mana pun dan bagikan ke TransKey, atau gunakan tombol melayang untuk terjemahan cepat.';
+      'Tombol TransKey kini ada di layar Anda. Salin teks apa pun, ketuk tombol, pilih tindakan - hasilnya langsung muncul tanpa meninggalkan aplikasi.';
 
   @override
   String get setupStep4Title => 'Terjemahkan dari aplikasi mana pun';
@@ -933,7 +939,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'Pilih teks di aplikasi mana pun → ketuk \"Bagikan\" → pilih TransKey. Atau gunakan tombol melayang setelah menyalin teks.';
+      'Salin teks di app mana pun → ketuk tombol TransKey → pilih Terjemahkan, Balas, atau fungsi lain → ketuk di mana saja untuk menutup setelah selesai.';
 
   @override
   String get setupStep5Title => 'Fitur cerdas';
@@ -944,6 +950,72 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get guideTitle => 'Cara menggunakan';
+
+  @override
+  String get guidePlanCompareTitle => 'Fitur berdasarkan paket';
+
+  @override
+  String get guidePlanFreeLabel => 'Gratis';
+
+  @override
+  String get guidePlanPaidLabel => 'Berbayar';
+
+  @override
+  String get guidePlanFreeItems => 'Terjemahkan\nDaftar kata';
+
+  @override
+  String get guidePlanPaidItems =>
+      'Kamera scan\nPindai layar\nRingkasan\nPerbaiki\nJelaskan\nBalas\nPilih nada\nFonetik';
+
+  @override
+  String get guideSectionFree => 'Fitur gratis';
+
+  @override
+  String get guideSectionPaid => 'Fitur berbayar';
+
+  @override
+  String get guideFreeBadge => 'Gratis';
+
+  @override
+  String get guidePaidBadge => 'Berbayar';
+
+  @override
+  String get guideInputPaidBadge => 'Berbayar';
+
+  @override
+  String get guideFeatureGlossary => 'Daftar Kata';
+
+  @override
+  String get guideFeatureGlossarySubtitle =>
+      'Simpan terjemahan khusus yang selalu digunakan TransKey terlebih dahulu';
+
+  @override
+  String get guideInputGlossaryTitle => 'Dari tab Daftar Kata';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      'Buka tab Daftar Kata dan tambahkan pasangan kata. TransKey akan memprioritaskan terjemahanmu saat menemukan kata-kata itu.';
+
+  @override
+  String get guideFeatureCamera => 'Kamera scan';
+
+  @override
+  String get guideFeatureCameraSubtitle =>
+      'Foto teks untuk diterjemahkan - rambu, menu, buku';
+
+  @override
+  String get guideInputCameraTitle => 'Ketuk tombol kamera';
+
+  @override
+  String get guideInputCameraDesc =>
+      'Ketuk ikon kamera di bagian atas layar utama. Arahkan ponsel ke teks, ambil foto, dan terjemahan akan muncul di atas gambar.';
+
+  @override
+  String get guideInputVoiceTitle => 'Bicara untuk memasukkan teks';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'Di layar utama, ketuk tombol mikrofon dan bicara. Kata-kata Anda diubah menjadi teks dan diterjemahkan otomatis.';
 
   @override
   String get guideSubtitle => 'Semua cara untuk menangkap teks di setiap fitur';
@@ -1051,28 +1123,28 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Berikan izin tombol melayang untuk memulai. Aksesibilitas bersifat opsional dan hanya diperlukan untuk Tempel Balasan satu ketukan.';
+      'Izinkan TransKey muncul di layar saat menggunakan app lain. Aksesibilitas opsional - hanya untuk menempel balasan secara otomatis.';
 
   @override
   String get permFloatingBubble => 'Tombol melayang';
 
   @override
   String get permFloatingBubbleBody =>
-      'Tampilkan TransKey di atas aplikasi lain. Diperlukan agar tombol melayang muncul.';
+      'TransKey muncul di layar saat Anda menggunakan app lain. Wajib untuk mulai menggunakan TransKey.';
 
   @override
   String get permRestrictedSettings => 'Izinkan pengaturan terbatas';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ memblokir aplikasi yang diinstal di luar Play Store dari Aksesibilitas secara bawaan. Ketuk ⋮ di kanan atas → \"Izinkan pengaturan terbatas\".';
+      'Beberapa ponsel Android butuh langkah tambahan agar app yang baru dipasang bisa menggunakan Aksesibilitas. Ketuk ⋮ di kanan atas → \"Izinkan pengaturan terbatas\".';
 
   @override
   String get permAccessibility => 'Aksesibilitas (opsional)';
 
   @override
   String get permAccessibilityBody =>
-      'Memungkinkan TransKey menempelkan saran balasan langsung ke kolom teks yang sedang aktif. Lewati jika Anda tidak keberatan menempelkannya sendiri.';
+      'TransKey otomatis menempelkan balasan yang disarankan ke tempat Anda sedang mengetik. Lewati jika Anda tidak keberatan menempelnya sendiri.';
 
   @override
   String get permEnabled => 'Aktif';
@@ -1088,7 +1160,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'Aksesibilitas opsional. Tanpa itu, saran balasan akan masuk ke papan klip dan Anda perlu menempelkannya sendiri.';
+      'Aksesibilitas opsional. Tanpa itu, Anda perlu menempelkan balasan yang disarankan sendiri.';
 
   @override
   String get permSkipForNow => 'Lewati untuk saat ini';
@@ -1350,6 +1422,13 @@ class AppLocalizationsId extends AppLocalizations {
       'Transparansi latar kartu. Lebih rendah = foto di belakang lebih terlihat.';
 
   @override
+  String get cameraSettingsFontScale => 'Ukuran huruf';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      'Perbesar teks terjemahan. Teks dapat melebihi balon dialog.';
+
+  @override
   String get cameraSettingsPrimaryColor => 'Satu warna untuk semua kartu';
 
   @override
@@ -1572,4 +1651,40 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Pulihkan pembelian';
+
+  @override
+  String get homeTagline => 'Terjemahkan · Ringkas · Jelaskan';
+
+  @override
+  String get historyEmptyTagline => 'Terjemahan Anda akan muncul di sini';
+
+  @override
+  String get glossaryEmptyTagline =>
+      'Simpan istilah yang sering digunakan untuk nama yang akurat';
+
+  @override
+  String get quotaTodayUsage => 'Penggunaan hari ini';
+
+  @override
+  String get quotaWallTitle => 'Kuota harianmu sudah habis';
+
+  @override
+  String get quotaWallBody =>
+      'Tonton iklan singkat untuk mendapatkan lebih banyak terjemahan sekarang, atau upgrade untuk penggunaan tak terbatas.';
+
+  @override
+  String get quotaWallWatchAdCta => 'Tonton iklan untuk tambahan';
+
+  @override
+  String get quotaWallUpgradeCta => 'Upgrade untuk tanpa batas';
+
+  @override
+  String get quotaWallCloseCta => 'Nanti saja';
+
+  @override
+  String get guideScreenshotTipTitle => 'Tangkapan layar tanpa bubble';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'Ketuk bubble untuk membuka menu, lalu ketuk ikon kamera di pojok kanan bawah. Bubble akan tersembunyi beberapa detik agar Anda bisa mengambil tangkapan layar yang bersih, lalu muncul kembali sendiri.';
 }

@@ -10,6 +10,17 @@ const _kShowOriginalAlwaysKey = 'tk_cam_show_original';
 const _kOverlayOpacityKey = 'tk_cam_overlay_opacity';
 const _kSceneKey = 'tk_cam_scene';
 const _kPrimaryColorKey = 'tk_cam_primary_color';
+const _kOverlayFontScaleKey = 'tk_cam_overlay_font_scale_v2';
+
+// User-tunable multiplier on the overlay font. Unlike the earlier
+// attempt this version DOES NOT shrink the rendered text back to fit
+// the bbox - at >1.0 the text grows past the bubble bounds and paints
+// over the surrounding art. The card background stays anchored to the
+// bbox so only the text glyphs spill out. Reset button in the settings
+// sheet snaps back to 1.0.
+const double kOverlayFontScaleMin = 1.0;
+const double kOverlayFontScaleMax = 3.0;
+const double kOverlayFontScaleDefault = 1.0;
 
 /// Capture scene the user picks before / during capture. The value flows
 /// to the server's translate-batch prompt as a "scene" hint and also
@@ -48,6 +59,7 @@ class CameraSettings {
     required this.overlayOpacity,
     required this.usePrimaryOverlayColor,
     required this.scene,
+    required this.overlayFontScale,
   });
 
   /// OCR blocks with confidence below this are dropped before translation.
@@ -81,6 +93,15 @@ class CameraSettings {
   /// actually make this decision).
   final CameraScene scene;
 
+  /// Multiplier applied to the rendered overlay font. At 1.0 the auto
+  /// fitter picks a size that fits the bbox; above 1.0 the user has
+  /// chosen "I want bigger text even if it spills out of the bubble" -
+  /// the renderer honours the chosen size without shrinking it back and
+  /// without clipping the overflowing glyphs (only the card background
+  /// stays bbox-anchored). Reset button in the settings sheet returns
+  /// to 1.0.
+  final double overlayFontScale;
+
   static const defaults = CameraSettings(
     confidenceThreshold: kOcrConfidenceFloor,
     hideLowConfidence: false,
@@ -88,6 +109,7 @@ class CameraSettings {
     overlayOpacity: 0.80,
     usePrimaryOverlayColor: false,
     scene: CameraScene.auto,
+    overlayFontScale: kOverlayFontScaleDefault,
   );
 
   CameraSettings copyWith({
@@ -97,6 +119,7 @@ class CameraSettings {
     double? overlayOpacity,
     bool? usePrimaryOverlayColor,
     CameraScene? scene,
+    double? overlayFontScale,
   }) =>
       CameraSettings(
         confidenceThreshold:
@@ -108,6 +131,7 @@ class CameraSettings {
         usePrimaryOverlayColor:
             usePrimaryOverlayColor ?? this.usePrimaryOverlayColor,
         scene: scene ?? this.scene,
+        overlayFontScale: overlayFontScale ?? this.overlayFontScale,
       );
 }
 
@@ -127,6 +151,9 @@ class CameraSettingsNotifier extends AsyncNotifier<CameraSettings> {
       usePrimaryOverlayColor: prefs.getBool(_kPrimaryColorKey) ??
           CameraSettings.defaults.usePrimaryOverlayColor,
       scene: cameraSceneFromId(prefs.getString(_kSceneKey)),
+      overlayFontScale: (prefs.getDouble(_kOverlayFontScaleKey) ??
+              kOverlayFontScaleDefault)
+          .clamp(kOverlayFontScaleMin, kOverlayFontScaleMax),
     );
   }
 
@@ -182,6 +209,18 @@ class CameraSettingsNotifier extends AsyncNotifier<CameraSettings> {
     state = AsyncData(current.copyWith(usePrimaryOverlayColor: value));
   }
 
+  Future<void> setOverlayFontScale(double value) async {
+    final clamped = value.clamp(kOverlayFontScaleMin, kOverlayFontScaleMax);
+    final current = state.valueOrNull;
+    if (current == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_kOverlayFontScaleKey, clamped);
+    state = AsyncData(current.copyWith(overlayFontScale: clamped));
+  }
+
+  Future<void> resetOverlayFontScale() =>
+      setOverlayFontScale(kOverlayFontScaleDefault);
+
   Future<void> resetToDefaults() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kConfidenceKey);
@@ -190,6 +229,7 @@ class CameraSettingsNotifier extends AsyncNotifier<CameraSettings> {
     await prefs.remove(_kOverlayOpacityKey);
     await prefs.remove(_kPrimaryColorKey);
     await prefs.remove(_kSceneKey);
+    await prefs.remove(_kOverlayFontScaleKey);
     state = const AsyncData(CameraSettings.defaults);
   }
 }

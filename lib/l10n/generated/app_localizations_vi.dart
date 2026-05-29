@@ -18,7 +18,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get explain => 'Giải thích';
 
   @override
-  String get refine => 'Cải thiện văn bản';
+  String get refine => 'Cải thiện';
 
   @override
   String get reply => 'Phản hồi';
@@ -874,6 +874,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get setupTitle => 'Cài đặt bàn phím';
 
   @override
+  String get setupTitleAndroid => 'Cài đặt Nút TransKey';
+
+  @override
   String get setupOpenSettings => 'Mở Cài đặt';
 
   @override
@@ -897,6 +900,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get setupStep2Title => 'Cho phép truy cập đầy đủ';
 
   @override
+  String get setupStep2TitleAndroid => 'Nút đã được bật';
+
+  @override
   String get setupStep2DescIOS =>
       'Chọn TransKey trong danh sách bàn phím và bật \"Cho phép truy cập đầy đủ\". Cần thiết để kết nối Internet cho việc dịch.';
 
@@ -913,7 +919,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get setupStep3DescAndroid =>
-      'Chọn văn bản trong ứng dụng bất kỳ rồi chia sẻ sang TransKey, hoặc dùng bong bóng nổi để dịch nhanh.';
+      'Nút TransKey đã xuất hiện trên màn hình. Sao chép văn bản bất kỳ, nhấn vào nút, chọn thao tác - kết quả hiện ngay mà không cần rời app.';
 
   @override
   String get setupStep4Title => 'Dịch từ mọi app';
@@ -924,7 +930,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get setupStep4DescAndroid =>
-      'Chọn văn bản trong ứng dụng bất kỳ → nhấn \"Chia sẻ\" → chọn TransKey. Hoặc dùng bong bóng nổi sau khi sao chép.';
+      'Sao chép văn bản trong app bất kỳ → nhấn Nút TransKey → chọn Dịch, Trả lời hoặc thao tác khác → nhấn vào màn hình để đóng khi xong.';
 
   @override
   String get setupStep5Title => 'Tính năng thông minh';
@@ -935,6 +941,72 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get guideTitle => 'Cách sử dụng';
+
+  @override
+  String get guidePlanCompareTitle => 'Tính năng theo gói';
+
+  @override
+  String get guidePlanFreeLabel => 'Miễn phí';
+
+  @override
+  String get guidePlanPaidLabel => 'Trả phí';
+
+  @override
+  String get guidePlanFreeItems => 'Dịch\nTừ điển';
+
+  @override
+  String get guidePlanPaidItems =>
+      'Dịch ảnh chụp\nDịch màn hình\nTóm tắt\nTrau chuốt\nGiải thích\nTrả lời\nChọn giọng văn\nPhiên âm';
+
+  @override
+  String get guideSectionFree => 'Tính năng miễn phí';
+
+  @override
+  String get guideSectionPaid => 'Tính năng trả phí';
+
+  @override
+  String get guideFreeBadge => 'Miễn phí';
+
+  @override
+  String get guidePaidBadge => 'Trả phí';
+
+  @override
+  String get guideInputPaidBadge => 'Trả phí';
+
+  @override
+  String get guideFeatureGlossary => 'Từ điển';
+
+  @override
+  String get guideFeatureGlossarySubtitle =>
+      'Lưu bản dịch riêng để TransKey dùng ưu tiên';
+
+  @override
+  String get guideInputGlossaryTitle => 'Từ tab Từ điển';
+
+  @override
+  String get guideInputGlossaryDesc =>
+      'Mở tab Từ điển và thêm cặp từ. TransKey sẽ ưu tiên dùng bản dịch của bạn khi gặp từ đó.';
+
+  @override
+  String get guideFeatureCamera => 'Dịch ảnh chụp';
+
+  @override
+  String get guideFeatureCameraSubtitle =>
+      'Chụp ảnh văn bản để dịch - biển hiệu, thực đơn, sách';
+
+  @override
+  String get guideInputCameraTitle => 'Nhấn nút camera';
+
+  @override
+  String get guideInputCameraDesc =>
+      'Nhấn biểu tượng camera trên màn hình chính. Chĩa điện thoại vào văn bản, chụp ảnh, rồi xem bản dịch hiện ngay trên ảnh.';
+
+  @override
+  String get guideInputVoiceTitle => 'Nói để nhập văn bản';
+
+  @override
+  String get guideInputVoiceDesc =>
+      'Trên màn hình chính, nhấn nút micro và nói. Lời nói được chuyển thành văn bản và dịch tự động.';
 
   @override
   String get guideSubtitle => 'Tất cả cách để lấy text cho mỗi tính năng';
@@ -960,11 +1032,11 @@ class AppLocalizationsVi extends AppLocalizations {
       'Rút gọn nội dung dài thành vài gạch đầu dòng';
 
   @override
-  String get guideFeatureRefine => 'Cải thiện văn bản';
+  String get guideFeatureRefine => 'Trau chuốt văn bản';
 
   @override
   String get guideFeatureRefineSubtitle =>
-      'Sửa ngữ pháp / làm rõ bản nháp của bạn';
+      'Sửa ngữ pháp, làm mượt bản nháp của bạn';
 
   @override
   String get guideFeatureExplain => 'Giải thích';
@@ -978,7 +1050,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get guideFeatureReplySubtitle =>
-      'Tạo câu trả lời gợi ý theo ngôn ngữ đích';
+      'Gợi ý câu trả lời bằng ngôn ngữ của đối phương';
 
   @override
   String get guideInputCopyTitle => 'Sao chép văn bản rồi chạm Nút TransKey';
@@ -1039,28 +1111,28 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get setupTransKeyBody =>
-      'Cấp quyền hiển thị Nút TransKey để bắt đầu. Trợ năng là tùy chọn, chỉ cần cho tính năng dán câu trả lời một chạm.';
+      'Cho phép Nút TransKey xuất hiện trên màn hình khi dùng app khác. Trợ năng là tùy chọn - chỉ cần để tự động dán câu trả lời.';
 
   @override
   String get permFloatingBubble => 'Nút TransKey nổi';
 
   @override
   String get permFloatingBubbleBody =>
-      'Hiển thị TransKey trên các ứng dụng khác. Cần để nút TransKey xuất hiện.';
+      'Cho phép Nút TransKey hiện trên màn hình khi bạn đang dùng app khác. Bắt buộc để sử dụng TransKey.';
 
   @override
   String get permRestrictedSettings => 'Cho phép cài đặt giới hạn';
 
   @override
   String get permRestrictedSettingsBody =>
-      'Android 13+ chặn các ứng dụng cài ngoài cửa hàng không cho dùng Trợ năng. Chạm ⋮ ở góc trên phải → \"Cho phép cài đặt giới hạn\".';
+      'Một số điện thoại Android cần thêm bước để ứng dụng mới dùng được Trợ năng. Nhấn ⋮ ở góc trên phải → \"Cho phép cài đặt bị giới hạn\".';
 
   @override
   String get permAccessibility => 'Trợ năng (tùy chọn)';
 
   @override
   String get permAccessibilityBody =>
-      'Cho phép TransKey dán câu trả lời thẳng vào ô bạn đang gõ. Bỏ qua nếu bạn không ngại dán tay.';
+      'Cho phép TransKey tự động dán câu trả lời vào ô bạn đang nhập. Bỏ qua nếu bạn tự dán được.';
 
   @override
   String get permEnabled => 'Đã bật';
@@ -1076,7 +1148,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get permSkipHint =>
-      'Trợ năng là tùy chọn. Không có nó, câu trả lời được sao chép sẵn và bạn dán thủ công.';
+      'Trợ năng là tùy chọn. Nếu không bật, bạn sẽ tự dán câu trả lời gợi ý.';
 
   @override
   String get permSkipForNow => 'Bỏ qua';
@@ -1337,6 +1409,13 @@ class AppLocalizationsVi extends AppLocalizations {
       'Độ mờ nền của thẻ dịch. Thấp hơn = thấy ảnh gốc rõ hơn.';
 
   @override
+  String get cameraSettingsFontScale => 'Cỡ chữ';
+
+  @override
+  String get cameraSettingsFontScaleHint =>
+      'Phóng to chữ dịch. Chữ có thể tràn ra ngoài bóng thoại.';
+
+  @override
   String get cameraSettingsPrimaryColor => 'Màu phủ đồng nhất';
 
   @override
@@ -1554,4 +1633,40 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Khôi phục giao dịch';
+
+  @override
+  String get homeTagline => 'Dịch · Tóm tắt · Giải thích';
+
+  @override
+  String get historyEmptyTagline => 'Bản dịch của bạn sẽ hiện ở đây';
+
+  @override
+  String get glossaryEmptyTagline =>
+      'Lưu các từ dùng thường xuyên để dịch tên chính xác';
+
+  @override
+  String get quotaTodayUsage => 'Lượt dùng hôm nay';
+
+  @override
+  String get quotaWallTitle => 'Bạn đã dùng hết lượt hôm nay';
+
+  @override
+  String get quotaWallBody =>
+      'Xem một quảng cáo ngắn để có thêm lượt dịch ngay, hoặc nâng cấp để dùng không giới hạn.';
+
+  @override
+  String get quotaWallWatchAdCta => 'Xem quảng cáo để thêm lượt';
+
+  @override
+  String get quotaWallUpgradeCta => 'Nâng cấp để dùng không giới hạn';
+
+  @override
+  String get quotaWallCloseCta => 'Để sau';
+
+  @override
+  String get guideScreenshotTipTitle => 'Chụp màn hình không dính bóng';
+
+  @override
+  String get guideScreenshotTipBody =>
+      'Chạm vào bóng để mở menu, rồi chạm biểu tượng máy ảnh ở góc dưới bên phải. Bóng sẽ tạm ẩn vài giây để bạn chụp màn hình, rồi tự hiện lại.';
 }
