@@ -104,7 +104,11 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   void _invalidateUserScopedProviders() {
     ref.invalidate(usageProvider);
     ref.invalidate(translateProvider);
-    ref.invalidate(historyProvider);
+    // NOTE: do NOT invalidate historyProvider here. It already `ref.watch`es
+    // authStateProvider, so it auto-rebuilds for the new user on every
+    // login/logout. Invalidating it from inside the auth notifier creates a
+    // circular dependency (auth -> history -> auth) that Riverpod throws as
+    // CircularDependencyError, surfacing as a login/logout failure.
     ref.invalidate(glossaryProvider);
     ref.invalidate(subscriptionProvider);
     ref.invalidate(devicesProvider);
