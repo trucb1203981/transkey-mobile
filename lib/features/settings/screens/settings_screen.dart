@@ -250,71 +250,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
                 const SizedBox(height: AppSpacing.md),
                 _sectionHeader(t.sectionOther),
-                if (Platform.isAndroid) ...[
-                  SwitchListTile(
-                    secondary: const Icon(Icons.bubble_chart_outlined),
-                    title: Text(t.floatingBubble),
-                    subtitle: Text(
-                      bubbleRunning ? t.bubbleActive : t.bubbleInactive,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: bubbleRunning
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                    value: bubbleRunning,
-                    onChanged: (_) async => _toggleBubble(bubbleRunning),
+                // Single consolidated entry into the dedicated Keyboard
+                // Settings screen, which now groups EVERYTHING keyboard-
+                // related in one place: app permissions, floating bubble,
+                // and the TransKey system keyboard (IME). The standalone
+                // bubble block and the separate IME shortcut that used to
+                // sit out here were folded into that screen so there is one
+                // obvious destination. A keyboard icon (not the old bubble
+                // icon) matches the "Keyboard Settings" label; the dot on
+                // it mirrors the accessibility status.
+                ListTile(
+                  leading: Icon(
+                    Icons.keyboard_outlined,
+                    color: (!Platform.isAndroid || _accessibilityEnabled)
+                        ? null
+                        : Colors.orange,
                   ),
-                  // Permission walkthrough re-entry point. Users who Skip
-                  // the post-login onboarding (especially without reading
-                  // it) have no other surface to discover the 3-step
-                  // permission setup. Status dot at the leading icon
-                  // signals at a glance whether anything still needs
-                  // attention — green when accessibility is on (which on
-                  // Android 13+ implies restricted-settings was already
-                  // unlocked too), amber otherwise.
-                  ListTile(
-                    leading: Icon(
-                      Icons.security_outlined,
-                      color: _accessibilityEnabled
-                          ? AppColors.primary
-                          : Colors.orange,
-                    ),
-                    title: Text(t.appPermissions),
-                    subtitle: Text(
-                      _accessibilityEnabled
-                          ? t.permissionsAllSet
-                          : t.permissionsNeedSetup,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _accessibilityEnabled
-                            ? AppColors.primary
-                            : Colors.orange,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () async {
-                      await context.push('/accessibility-setup');
-                      if (mounted) _refreshAccessibility();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.bubble_chart_outlined),
-                    title: Text(t.bubbleSetup),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () => context.push('/keyboard-setup?skip=false'),
-                  ),
-                  _captureKeepaliveTile(t, settings.captureKeepaliveSeconds),
-                  _bubbleIdleTile(t, settings.bubbleIdleMinutes),
-                ] else ...[
-                  ListTile(
-                    leading: const Icon(Icons.keyboard_outlined),
-                    title: Text(t.keyboardSetup),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () => context.push('/keyboard-setup?skip=false'),
-                  ),
-                ],
+                  title: Text(t.keyboardSettingsTitle),
+                  subtitle: Platform.isAndroid
+                      ? Text(
+                          bubbleRunning
+                              ? t.bubbleActive
+                              : (_accessibilityEnabled
+                                  ? t.bubbleInactive
+                                  : t.permissionsNeedSetup),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: bubbleRunning
+                                ? AppColors.primary
+                                : (_accessibilityEnabled
+                                    ? AppColors.textSecondary
+                                    : Colors.orange),
+                          ),
+                        )
+                      : null,
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () async {
+                    await context.push('/settings/keyboard');
+                    if (mounted) _refreshAccessibility();
+                  },
+                ),
                 ListTile(
                   leading: const Icon(Icons.menu_book_outlined),
                   title: Text(t.guideTitle),
@@ -344,6 +319,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   trailing: const Icon(Icons.chevron_right, size: 20),
                   onTap: () => launchUrl(Uri.parse('https://transkey.app/privacy')),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.workspace_premium_outlined),
+                  title: Text(t.openSourceLicenses),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => showLicensePage(
+                    context: context,
+                    applicationName: 'TransKey',
+                    applicationVersion: _version,
+                  ),
+                ),
                 if (_version.isNotEmpty)
                   ListTile(
                     leading: const Icon(Icons.info_outline),
@@ -355,30 +340,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               ],
             ),
     );
-  }
-
-  // ── Account section ──
-
-  Future<void> _toggleBubble(bool currentlyRunning) async {
-    final bm = ref.read(bubbleManagerProvider.notifier);
-    if (currentlyRunning) {
-      await bm.stopBubble();
-      // No setState — BubbleService.saveBubbleActive(false) broadcasts
-      // bubbleStateChanged and BubbleManager.state flips, which the
-      // build() ref.watch picks up.
-      return;
-    }
-    final hasPermission = await bm.checkPermission();
-    if (!hasPermission) {
-      if (!mounted) return;
-      // Push keyboard-setup; once the user grants overlay permission
-      // there, KeyboardSetupScreen._checkAndStartBubble starts the bubble
-      // and the native bubbleStateChanged broadcast flips the toggle.
-      // No await/refresh dance needed.
-      context.push('/keyboard-setup?skip=false');
-      return;
-    }
-    await bm.startBubble();
   }
 
   // ── Tiles ──
@@ -594,7 +555,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   Future<void> _showSpeedPicker(double current, AppLocalizations t) async {
-    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75];
+    const speeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75];
     final picked = await OptionPickerSheet.show<double>(
       context,
       title: t.speedPickerTitle,
@@ -621,96 +582,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
-  Widget _captureKeepaliveTile(AppLocalizations t, int seconds) {
-    return ListTile(
-      leading: const Icon(Icons.screenshot_monitor_outlined),
-      title: Text(t.captureKeepaliveTitle),
-      subtitle: Text(
-        seconds == 0
-            ? t.captureKeepaliveOff
-            : '${_keepaliveLabel(seconds, t)} · ${t.captureKeepaliveHint}',
-        style: const TextStyle(fontSize: 12),
-      ),
-      trailing: const Icon(Icons.chevron_right, size: 20),
-      onTap: () => _showCaptureKeepalivePicker(seconds, t),
-    );
-  }
-
-  String _keepaliveLabel(int seconds, AppLocalizations t) {
-    if (seconds == 0) return t.captureKeepaliveOff;
-    if (seconds % 60 == 0) {
-      final mins = seconds ~/ 60;
-      return t.captureKeepaliveMinutes(mins);
-    }
-    return '$seconds ${t.autoCloseUnit}';
-  }
-
-  Future<void> _showCaptureKeepalivePicker(int current, AppLocalizations t) async {
-    String hintFor(int secs) => secs == 0
-        ? t.captureKeepaliveOffHint
-        : (secs == captureKeepaliveDefault
-            ? t.captureKeepaliveDefaultHint
-            : (secs > captureKeepaliveDefault
-                ? t.captureKeepaliveLongHint
-                : t.captureKeepaliveShortHint));
-    final picked = await OptionPickerSheet.show<int>(
-      context,
-      title: t.captureKeepaliveTitle,
-      explanation: t.captureKeepaliveExplain,
-      selectedValue: current,
-      options: [
-        for (final secs in captureKeepaliveOptions)
-          PickerOption(
-            value: secs,
-            label: _keepaliveLabel(secs, t),
-            subtitle: hintFor(secs),
-          ),
-      ],
-    );
-    if (picked != null && mounted) {
-      await ref
-          .read(appSettingsProvider.notifier)
-          .setCaptureKeepaliveSeconds(picked);
-    }
-  }
-
-  Widget _bubbleIdleTile(AppLocalizations t, int minutes) {
-    return ListTile(
-      leading: const Icon(Icons.timer_outlined),
-      title: Text(t.bubbleIdleTitle),
-      subtitle: Text(
-        minutes == 0
-            ? t.bubbleIdleOff
-            : t.bubbleIdleMinutes(minutes),
-        style: const TextStyle(fontSize: 12),
-      ),
-      trailing: const Icon(Icons.chevron_right, size: 20),
-      onTap: () => _showBubbleIdlePicker(minutes, t),
-    );
-  }
-
-  Future<void> _showBubbleIdlePicker(int current, AppLocalizations t) async {
-    final picked = await OptionPickerSheet.show<int>(
-      context,
-      title: t.bubbleIdleTitle,
-      explanation: t.bubbleIdleExplain,
-      selectedValue: current,
-      options: [
-        for (final mins in bubbleIdleOptions)
-          PickerOption(
-            value: mins,
-            label: mins == 0
-                ? t.bubbleIdleOff
-                : t.bubbleIdleMinutes(mins),
-          ),
-      ],
-    );
-    if (picked != null && mounted) {
-      await ref
-          .read(appSettingsProvider.notifier)
-          .setBubbleIdleMinutes(picked);
-    }
-  }
+  // Capture-keepalive + bubble-idle tiles moved to KeyboardSettingsScreen
+  // (same impls live there) so all bubble knobs sit on one screen.
 
   Future<void> _showTonePicker(String current, AppLocalizations t,
       {required bool isReply}) async {

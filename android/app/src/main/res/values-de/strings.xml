@@ -99,4 +99,31 @@
     <string name="lens_source_from">Von: %1$s</string>
     <string name="lens_regrant_prompt">Tippen, um diese App zu übersetzen</string>
     <string name="bubble_hide_for_screenshot">Bubble zum Screenshot ausblenden</string>
+    <string name="ime_action_translate">Übersetzen</string>
+    <string name="ime_action_refine">Verfeinern</string>
+    <string name="ime_processing">Wird verarbeitet…</string>
+    <string name="ime_no_text">Zuerst Text eingeben</string>
+    <string name="ime_lang_from">Von</string>
+    <string name="ime_lang_to">Nach</string>
+    <string name="ime_lang_swap">Tauschen</string>
+    <string name="ime_settings_title">Tastatureinstellungen</string>
+    <string name="ime_set_autocorrect">Autokorrektur</string>
+    <string name="ime_set_haptic">Tastenvibration</string>
+    <string name="ime_set_autocap">Autom. Großschreibung</string>
+    <string name="ime_set_double_space">Doppelte Leertaste = Punkt</string>
+    <string name="ime_set_tone">Übersetzungston</string>
+    <string name="ime_set_open_app">Alle Einstellungen in der App öffnen</string>
+    <string name="ime_on">An</string>
+    <string name="ime_off">Aus</string>
+    <string name="ime_set_app_lang">App-Sprache</string>
+    <string name="ime_history">Verlauf</string>
+    <string name="ime_explain">Erklären</string>
+    <string name="ime_history_empty">Noch keine Übersetzungen</string>
+    <string name="ime_settings_short">Einstellungen</string>
+    <string name="ime_voice_lang">Sprache der Spracheingabe</string>
+    <string name="ime_section_features">Funktionen</string>
+    <string name="ime_section_options">Optionen</string>
+    <string name="ime_open_bubble">Schwebende Bubble</string>
+    <string name="ime_back_keyboard">← Tastatur</string>
+    <string name="ime_input_lang">Eingabesprache</string>
 </resources>

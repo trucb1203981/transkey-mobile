@@ -213,6 +213,31 @@ class AppLocalizationsTh extends AppLocalizations {
   String get keyboardSetup => 'ตั้งค่าแป้นพิมพ์';
 
   @override
+  String get keyboardSettingsTitle => 'บับเบิลและคีย์บอร์ด';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'บับเบิลและสิทธิ์';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'พฤติกรรมบับเบิล';
+
+  @override
+  String get imeSectionTitle => 'แป้นพิมพ์';
+
+  @override
+  String get imeKeyboardTitle => 'แป้นพิมพ์ TransKey';
+
+  @override
+  String get imeStatusActive => 'ใช้งานอยู่ — พิมพ์ผ่าน TransKey';
+
+  @override
+  String get imeStatusEnabledNotSelected =>
+      'เปิดใช้แล้ว แตะเพื่อสลับเป็น TransKey';
+
+  @override
+  String get imeStatusNotEnabled => 'ยังไม่ได้เปิด แตะเพื่อเปิดในตั้งค่าระบบ';
+
+  @override
   String get bubbleSetup => 'ตั้งค่าปุ่มลอย';
 
   @override
@@ -232,6 +257,9 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'นโยบายความเป็นส่วนตัว';
+
+  @override
+  String get openSourceLicenses => 'ใบอนุญาตโอเพนซอร์ส';
 
   @override
   String get version => 'เวอร์ชัน';

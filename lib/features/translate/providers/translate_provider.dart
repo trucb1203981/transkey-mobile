@@ -11,6 +11,7 @@ import '../../history/providers/history_provider.dart';
 import '../../settings/providers/app_settings_provider.dart';
 import '../../upgrade/providers/usage_provider.dart';
 import '../models/translate_models.dart';
+import '../services/bubble_translate_cache.dart';
 
 class TranslateState {
   const TranslateState({
@@ -65,8 +66,13 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
   @override
   Future<TranslateState> build() async => const TranslateState();
 
-  static const _maxCacheSize = 50;
-  final _cache = <String, TranslateResult>{};
+  // Shared, persistent translate cache. The floating bubble AND the TransKey
+  // keyboard write to the SAME SharedPreferences-backed store (see
+  // [BubbleTranslateCache] + main.dart `_translateForBubble`). Routing the
+  // in-app home flow through it too means an identical request translated on
+  // any of the three surfaces is reused everywhere - instant, free, and it
+  // survives an app restart (the old in-memory Map was lost on every launch).
+  final _cache = BubbleTranslateCache();
 
   // Monotonic request token: only the latest in-flight request is allowed to
   // write to state. Drop responses from earlier (now-stale) requests so a
@@ -80,15 +86,49 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
   String _cacheKey(
     String text,
     String targetLang,
+    String sourceLang,
     TranslateMode mode,
     Map<String, dynamic> body,
-  ) {
-    final tone = body['toneOverride'] ?? '';
-    final roman = body['withRomanization'] == true ? '1' : '0';
-    final isReply = body['isReply'] == true ? '1' : '0';
-    final suggestions = body['suggestReplies'] == true ? '1' : '0';
-    final source = body['sourceLang'] ?? 'auto';
-    return '$text|$source|$targetLang|${mode.value}|$tone|$roman|$isReply|$suggestions';
+  ) =>
+      BubbleTranslateCache.keyFor(
+        text: text,
+        mode: mode.value,
+        targetLang: targetLang,
+        // Normalize to 'auto' so the key matches the bubble/keyboard path,
+        // which always reads 'tk_source_lang' (defaulting to 'auto').
+        sourceLang: sourceLang.isEmpty ? 'auto' : sourceLang,
+        tone: body['toneOverride'] as String? ?? '',
+        romanization: body['withRomanization'] == true,
+        suggestReplies: body['suggestReplies'] == true,
+        replyToOriginal: body['replyToOriginal'] as String?,
+      );
+
+  // The shared cache stores the bubble/keyboard value shape (parallel
+  // suggestion arrays). Convert in both directions so the in-app home flow
+  // reuses entries written by the other surfaces and vice versa.
+  Map<String, dynamic> _resultToCacheMap(TranslateResult r) => {
+        'translation': r.translation,
+        'romanization': r.romanization,
+        'detectedLang': r.detectedLang,
+        'suggestionSources':
+            r.suggestions.map((s) => s.source).toList(growable: false),
+        'suggestionTargets':
+            r.suggestions.map((s) => s.target).toList(growable: false),
+      };
+
+  TranslateResult _resultFromCacheMap(Map<String, dynamic> m) {
+    final sources = (m['suggestionSources'] as List?)?.cast<String>() ?? const [];
+    final targets = (m['suggestionTargets'] as List?)?.cast<String>() ?? const [];
+    final n = sources.length < targets.length ? sources.length : targets.length;
+    return TranslateResult(
+      translation: m['translation'] as String? ?? '',
+      romanization: m['romanization'] as String?,
+      detectedLang: m['detectedLang'] as String?,
+      suggestions: [
+        for (var i = 0; i < n; i++)
+          SuggestionEntry(source: sources[i], target: targets[i]),
+      ],
+    );
   }
 
   Future<AppSettings> _settings() async {
@@ -214,10 +254,11 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
 
     // Check cache — still save to history so duplicate translations don't
     // silently disappear from the list.
-    final key = _cacheKey(trimmed, targetLang, mode, body);
-    if (_cache.containsKey(key)) {
-      if (reqId != _requestSeq) return;
-      final cached = _cache[key]!;
+    final key = _cacheKey(trimmed, targetLang, sourceLang, mode, body);
+    final cachedMap = await _cache.get(key);
+    if (reqId != _requestSeq) return;
+    if (cachedMap != null) {
+      final cached = _resultFromCacheMap(cachedMap);
       // Guard history write with stale check too — otherwise rapid
       // translate-clear-translate sequences create phantom history entries
       // for results the user never actually saw.
@@ -257,11 +298,9 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         response.data as Map<String, dynamic>,
       );
 
-      // Update cache
-      _cache[key] = result;
-      if (_cache.length > _maxCacheSize) {
-        _cache.remove(_cache.keys.first);
-      }
+      // Write through to the shared persistent cache (best-effort) so the
+      // bubble and keyboard get the same instant + free hit next time.
+      unawaited(_cache.put(key, _resultToCacheMap(result)));
 
       // Re-check before crossing another await — translate-then-clear
       // shouldn't leave a history entry behind.

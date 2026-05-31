@@ -137,8 +137,10 @@ class TransKeyAccessibilityService : AccessibilityService() {
     private fun findFocusedEditable(): AccessibilityNodeInfo? {
         val root = rootInActiveWindow ?: return null
         val direct = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (direct?.isEditable == true) return direct
-        return findFirstEditable(root)
+        if (direct?.isEditable == true) { root.recycle(); return direct }
+        val found = findFirstEditable(root)
+        root.recycle()
+        return found
     }
 
     private fun findFirstEditable(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {

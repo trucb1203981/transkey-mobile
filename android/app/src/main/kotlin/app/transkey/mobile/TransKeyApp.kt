@@ -15,6 +15,36 @@ class TransKeyApp : FlutterApplication() {
         const val ENGINE_ID = "transkey_engine"
         var engine: FlutterEngine? = null
             private set
+
+        // translateText resolves asynchronously via `deliverResult` keyed by
+        // requestId. The bubble path forwards results to BubbleService; the
+        // keyboard (TransKeyIME) instead registers a one-shot listener here so
+        // a result for its requestId lands back on the strip rather than the
+        // overlay. Lookups are by registry membership, so the two surfaces
+        // never cross even if their requestId numbers were to overlap.
+        private val imeResultListeners =
+            java.util.concurrent.ConcurrentHashMap<Long, (translation: String?, error: String?) -> Unit>()
+
+        fun registerImeResult(reqId: Long, cb: (translation: String?, error: String?) -> Unit) {
+            imeResultListeners[reqId] = cb
+        }
+
+        fun cancelImeResult(reqId: Long) {
+            imeResultListeners.remove(reqId)
+        }
+
+        /**
+         * Notify the keyboard listener for [reqId] and return true if this was
+         * an IME-originated request; return false if it belongs to the bubble.
+         * Called from BOTH deliverResult handlers (TransKeyApp's and the one
+         * MainActivity installs over it on the shared engine), so the result
+         * lands on the keyboard whichever handler currently owns the channel.
+         */
+        fun dispatchImeResult(reqId: Long, translation: String?, error: String?): Boolean {
+            val cb = imeResultListeners.remove(reqId) ?: return false
+            cb(translation, error)
+            return true
+        }
     }
 
     override fun onCreate() {
@@ -55,20 +85,24 @@ class TransKeyApp : FlutterApplication() {
                         ?.map { (it as? String).orEmpty() }
                         ?.toTypedArray()
 
-                    val intent = Intent(this, BubbleService::class.java).apply {
-                        action = BubbleService.ACTION_SHOW_RESULT
-                        putExtra(BubbleService.EXTRA_TRANSLATION, translation)
-                        putExtra(BubbleService.EXTRA_ROMANIZATION, romanization)
-                        putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
-                        putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
-                        putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
-                        putExtra(BubbleService.EXTRA_ERROR, error)
-                        putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        startForegroundService(intent)
-                    } else {
-                        startService(intent)
+                    // Keyboard-originated request? Hand the result to its
+                    // listener instead of waking BubbleService/the overlay.
+                    if (!dispatchImeResult(reqId, translation, error)) {
+                        val intent = Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_SHOW_RESULT
+                            putExtra(BubbleService.EXTRA_TRANSLATION, translation)
+                            putExtra(BubbleService.EXTRA_ROMANIZATION, romanization)
+                            putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
+                            putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
+                            putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
+                            putExtra(BubbleService.EXTRA_ERROR, error)
+                            putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
                     }
                     result.success(null)
                 }

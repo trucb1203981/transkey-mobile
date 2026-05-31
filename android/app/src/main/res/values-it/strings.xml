@@ -105,4 +105,31 @@
     <string name="lens_source_from">Da: %1$s</string>
     <string name="lens_regrant_prompt">Tocca per tradurre questa app</string>
     <string name="bubble_hide_for_screenshot">Nascondi bolla per screenshot</string>
+    <string name="ime_action_translate">Traduci</string>
+    <string name="ime_action_refine">Rifinisci</string>
+    <string name="ime_processing">Elaborazione…</string>
+    <string name="ime_no_text">Inserisci prima del testo</string>
+    <string name="ime_lang_from">Da</string>
+    <string name="ime_lang_to">A</string>
+    <string name="ime_lang_swap">Inverti</string>
+    <string name="ime_settings_title">Impostazioni tastiera</string>
+    <string name="ime_set_autocorrect">Correzione auto</string>
+    <string name="ime_set_haptic">Vibrazione tasti</string>
+    <string name="ime_set_autocap">Maiuscolo automatico</string>
+    <string name="ime_set_double_space">Doppio spazio = punto</string>
+    <string name="ime_set_tone">Tono traduzione</string>
+    <string name="ime_set_open_app">Apri tutte le impostazioni nell\'app</string>
+    <string name="ime_on">Attivo</string>
+    <string name="ime_off">Disattivo</string>
+    <string name="ime_set_app_lang">Lingua app</string>
+    <string name="ime_history">Cronologia</string>
+    <string name="ime_explain">Spiega</string>
+    <string name="ime_history_empty">Ancora nessuna traduzione</string>
+    <string name="ime_settings_short">Impostazioni</string>
+    <string name="ime_voice_lang">Lingua vocale</string>
+    <string name="ime_section_features">Funzioni</string>
+    <string name="ime_section_options">Opzioni</string>
+    <string name="ime_open_bubble">Pulsante mobile</string>
+    <string name="ime_back_keyboard">← Tastiera</string>
+    <string name="ime_input_lang">Lingua di inserimento</string>
 </resources>

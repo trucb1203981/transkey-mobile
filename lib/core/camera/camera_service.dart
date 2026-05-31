@@ -2515,6 +2515,10 @@ class CameraService {
 
   void dispose() {
     _isStreaming = false;
+    // Stop image stream before disposing the controller to prevent native crash
+    try {
+      _controller?.stopImageStream();
+    } catch (_) {}
     for (final recognizer in _streamRecognizers.values) {
       try {
         recognizer.close();

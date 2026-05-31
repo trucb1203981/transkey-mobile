@@ -230,6 +230,24 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <!-- TransKey system Input Method (IME). Once enabled in Android
+             Settings → System → Languages → On-screen keyboards, users can
+             pick TransKey as their typing keyboard in any app. The
+             BIND_INPUT_METHOD permission is enforced by the system; the
+             intent filter announces the service to the IME framework. -->
+        <service
+            android:name=".TransKeyIME"
+            android:exported="true"
+            android:label="@string/ime_service_label"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/transkey_ime" />
+        </service>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

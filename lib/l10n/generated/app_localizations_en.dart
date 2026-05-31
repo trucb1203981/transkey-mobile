@@ -213,6 +213,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keyboardSetup => 'Keyboard Setup';
 
   @override
+  String get keyboardSettingsTitle => 'Bubble & Keyboard';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'Bubble & Permissions';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'Bubble Behavior';
+
+  @override
+  String get imeSectionTitle => 'Keyboard';
+
+  @override
+  String get imeKeyboardTitle => 'TransKey Keyboard';
+
+  @override
+  String get imeStatusActive => 'Active — typing through TransKey';
+
+  @override
+  String get imeStatusEnabledNotSelected =>
+      'Enabled. Tap to switch the active keyboard to TransKey.';
+
+  @override
+  String get imeStatusNotEnabled =>
+      'Not enabled. Tap to turn on in system Settings.';
+
+  @override
   String get bubbleSetup => 'Bubble Setup';
 
   @override
@@ -232,6 +258,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get openSourceLicenses => 'Open source licenses';
 
   @override
   String get version => 'Version';

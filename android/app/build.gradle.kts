@@ -126,4 +126,9 @@ dependencies {
     // ML Kit's bounding boxes (which are reported in the EXIF-applied
     // space Flutter renders in). ExifInterface lets us match that space.
     implementation("androidx.exifinterface:exifinterface:1.4.1")
+
+    // JVM unit tests for the pure-Kotlin input-method logic (TelexProcessor
+    // and the other composers have no Android deps, so they run on the plain
+    // JVM - fast, no device). Run: ./gradlew :app:testDebugUnitTest
+    testImplementation("junit:junit:4.13.2")
 }

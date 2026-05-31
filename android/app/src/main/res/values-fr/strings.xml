@@ -99,4 +99,31 @@
     <string name="lens_source_from">De : %1$s</string>
     <string name="lens_regrant_prompt">Appuyez pour traduire cette appli</string>
     <string name="bubble_hide_for_screenshot">Masquer la bulle pour la capture</string>
+    <string name="ime_action_translate">Traduire</string>
+    <string name="ime_action_refine">Affiner</string>
+    <string name="ime_processing">Traitement…</string>
+    <string name="ime_no_text">Saisissez d\'abord du texte</string>
+    <string name="ime_lang_from">De</string>
+    <string name="ime_lang_to">Vers</string>
+    <string name="ime_lang_swap">Inverser</string>
+    <string name="ime_settings_title">Paramètres du clavier</string>
+    <string name="ime_set_autocorrect">Correction auto</string>
+    <string name="ime_set_haptic">Vibration des touches</string>
+    <string name="ime_set_autocap">Majuscule automatique</string>
+    <string name="ime_set_double_space">Double espace = point</string>
+    <string name="ime_set_tone">Ton de traduction</string>
+    <string name="ime_set_open_app">Ouvrir tous les réglages dans l\'app</string>
+    <string name="ime_on">Activé</string>
+    <string name="ime_off">Désactivé</string>
+    <string name="ime_set_app_lang">Langue de l\'app</string>
+    <string name="ime_history">Historique</string>
+    <string name="ime_explain">Expliquer</string>
+    <string name="ime_history_empty">Aucune traduction pour l\'instant</string>
+    <string name="ime_settings_short">Réglages</string>
+    <string name="ime_voice_lang">Langue vocale</string>
+    <string name="ime_section_features">Fonctions</string>
+    <string name="ime_section_options">Options</string>
+    <string name="ime_open_bubble">Bulle flottante</string>
+    <string name="ime_back_keyboard">← Clavier</string>
+    <string name="ime_input_lang">Langue de saisie</string>
 </resources>

@@ -1163,7 +1163,7 @@ class _MarchingAntsPainter extends CustomPainter {
     );
 
     final perimeter = _rrectPerimeter(rrect);
-    final step = _dashLen + _gapLen;
+    const step = _dashLen + _gapLen;
     final offset = (progress * step * 4) % step;
 
     var dist = -offset;

@@ -59,7 +59,8 @@ internal fun BubbleService.handleBubbleTouch(event: MotionEvent, dp: Float): Boo
             }
             params.x = initialX + dx.toInt()
             params.y = initialY + dy.toInt()
-            windowManager?.updateViewLayout(bubbleView!!, params)
+            val bv = bubbleView ?: return true
+            windowManager?.updateViewLayout(bv, params)
             if (isDragging) {
                 val bubbleSize = (BUBBLE_SIZE_DP * dp).toInt()
                 val bubbleCenterX = params.x + bubbleSize / 2

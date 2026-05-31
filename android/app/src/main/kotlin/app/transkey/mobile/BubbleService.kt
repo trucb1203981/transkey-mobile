@@ -1112,8 +1112,8 @@ class BubbleService : Service() {
         // prefs.all and accept any numeric / string representation.
         return when (val v = prefs.all["flutter.tk_tts_rate"]) {
             is Number -> v.toDouble()
-            is String -> v.toDoubleOrNull() ?: 1.0
-            else -> 1.0
+            is String -> v.toDoubleOrNull() ?: 0.75
+            else -> 0.75
         }
     }
 
@@ -1345,6 +1345,9 @@ class BubbleService : Service() {
 
     /** Pulse animation runnable so we can cancel it on hide. */
     internal var voicePulseRunnable: Runnable? = null
+
+    /** Error auto-dismiss runnable so we can cancel it on retry. */
+    internal var voiceErrorRunnable: Runnable? = null
 
     @SuppressLint("ClickableViewAccessibility")
 

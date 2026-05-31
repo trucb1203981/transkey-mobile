@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Gboard dark-theme key background using shape drawable (reliable).
+    - Default: #3C4043 (Gboard dark gray)
+    - Pressed: #5F6368 (lighter gray)
+    - Corner radius: 6dp (pixel-measured against Gboard ~6dp; was 8dp)
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#5F6368" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#3C4043" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+</selector>

@@ -524,6 +524,54 @@ abstract class AppLocalizations {
   /// **'Keyboard Setup'**
   String get keyboardSetup;
 
+  /// No description provided for @keyboardSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bubble & Keyboard'**
+  String get keyboardSettingsTitle;
+
+  /// No description provided for @keyboardSettingsSectionStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Bubble & Permissions'**
+  String get keyboardSettingsSectionStatus;
+
+  /// No description provided for @keyboardSettingsSectionBehavior.
+  ///
+  /// In en, this message translates to:
+  /// **'Bubble Behavior'**
+  String get keyboardSettingsSectionBehavior;
+
+  /// No description provided for @imeSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard'**
+  String get imeSectionTitle;
+
+  /// No description provided for @imeKeyboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TransKey Keyboard'**
+  String get imeKeyboardTitle;
+
+  /// No description provided for @imeStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active — typing through TransKey'**
+  String get imeStatusActive;
+
+  /// No description provided for @imeStatusEnabledNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled. Tap to switch the active keyboard to TransKey.'**
+  String get imeStatusEnabledNotSelected;
+
+  /// No description provided for @imeStatusNotEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enabled. Tap to turn on in system Settings.'**
+  String get imeStatusNotEnabled;
+
   /// No description provided for @bubbleSetup.
   ///
   /// In en, this message translates to:
@@ -565,6 +613,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Privacy Policy'**
   String get privacyPolicy;
+
+  /// No description provided for @openSourceLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source licenses'**
+  String get openSourceLicenses;
 
   /// No description provided for @version.
   ///

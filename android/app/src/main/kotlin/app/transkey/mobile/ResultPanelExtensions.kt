@@ -210,6 +210,11 @@ internal fun BubbleService.showResult(
         lastOriginalText = currentSourceText
         lastDetectedLang = detectedLang
     }
+    // Refine mode: the output IS the improved source text — replace the
+    // source so the user can translate or refine again on the improved text.
+    if (currentMode == MODE_REFINE) {
+        currentSourceText = output
+    }
     showResultPanel(loading = false, error = null, output = output)
 }
 
@@ -983,15 +988,9 @@ internal fun BubbleService.showResultPanel(
 }
 
 internal fun BubbleService.updateLangChip() {
-    if (currentMode == MODE_REFINE) {
-        panel.sourceLangChip?.visibility = View.GONE
-        panel.langChip?.visibility = View.GONE
-        // Keep the settings icon visible even in Refine mode — users may
-        // still want to adjust TTS rate, romanization or reply suggestions
-        // without leaving the popup.
-        panel.toneChip?.visibility = View.VISIBLE
-        return
-    }
+    // Refine mode: source/target langs are still shown so the user can
+    // verify or change them before translating the refined text.
+    // Tone chip stays visible too (users adjust TTS / tone here).
 
     // Note: do NOT re-read prefs here. The chips must reflect the lang
     // and tone that were used for the *currently displayed result* —

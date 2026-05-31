@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,6 +53,22 @@ class AuthState {
 }
 
 class AuthNotifier extends AsyncNotifier<AuthState> {
+  bool _loginInProgress = false;
+  // Serialize refreshUser + refreshIfNeeded so they don't race on session state.
+  Future<void>? _refreshChain;
+
+  Future<T> _serializedRefresh<T>(Future<T> Function() work) async {
+    final prev = _refreshChain ?? Future.value();
+    final completer = Completer<void>();
+    _refreshChain = completer.future;
+    try {
+      await prev;
+      return await work();
+    } finally {
+      completer.complete();
+    }
+  }
+
   @override
   Future<AuthState> build() async {
     final sessionStore = ref.read(sessionStoreProvider);
@@ -96,6 +114,9 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     required String email,
     required String password,
   }) async {
+    if (_loginInProgress) return;
+    _loginInProgress = true;
+    try {
     final tracking = ref.read(trackingServiceProvider);
     tracking.event('login_attempt', properties: {'method': 'password'});
     state = const AsyncLoading();
@@ -135,6 +156,9 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         'method': 'password',
         'error':  state.error.runtimeType.toString(),
       });
+    }
+    } finally {
+      _loginInProgress = false;
     }
   }
 
@@ -247,7 +271,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
   /// Pull fresh user info from /auth/me — picks up plan changes that
   /// happened outside this device (e.g. checkout completed on web).
-  Future<void> refreshUser() async {
+  Future<void> refreshUser() => _serializedRefresh(() async {
     final current = state.valueOrNull?.session;
     if (current == null) return;
     try {
@@ -271,10 +295,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     } catch (e) {
       AppLog.w('Auth', 'refreshUser failed', e);
     }
-  }
+  });
 
   /// Proactively refresh token if it's about to expire.
-  Future<void> refreshIfNeeded() async {
+  Future<void> refreshIfNeeded() => _serializedRefresh(() async {
     final sessionStore = ref.read(sessionStoreProvider);
     final session = await sessionStore.load();
     if (session == null) return;
@@ -304,7 +328,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     } catch (e) {
       AppLog.w('Auth', 'Proactive refresh failed', e);
     }
-  }
+  });
 
   /// Called by the API client when refresh also fails — force logout.
   Future<void> forceLogout() async {

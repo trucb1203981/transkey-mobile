@@ -405,13 +405,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  /// Reply just finished — copy to clipboard and surface a "Use as input"
-  /// shortcut so the user can swap the reply back into the source field
-  /// (mirrors desktop Cmd+Shift+R, where the reply replaces the input).
-  void _onReplyReady(String reply, AppLocalizations l) {
-    if (reply.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: reply));
+  /// Reply or refine just finished — directly replace the input text with
+  /// the result and offer undo. Mirrors the keyboard's Trau chuốt chip
+  /// and desktop Cmd+Shift+R flow where the result replaces the input.
+  void _onAutoReplace(String result, AppLocalizations l) {
+    if (result.isEmpty) return;
     final originalSource = _textController.text;
+    _textController.text = result;
+    // Clear the ResultCard so only the replaced input is visible.
+    ref.read(translateProvider.notifier).clearResult();
+    Clipboard.setData(ClipboardData(text: result));
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -419,20 +422,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         content: Text(l.copied),
         duration: const Duration(seconds: 4),
         action: SnackBarAction(
-          label: l.tabReply,
+          label: 'Undo',
           onPressed: () {
-            _textController.text = reply;
+            _textController.text = originalSource;
             messenger.hideCurrentSnackBar();
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(l.copied),
-                duration: const Duration(seconds: 3),
-                action: SnackBarAction(
-                  label: 'Undo',
-                  onPressed: () => _textController.text = originalSource,
-                ),
-              ),
-            );
           },
         ),
       ),
@@ -548,15 +541,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final isLoading = state?.isLoading ?? false;
     final result = state?.result;
 
-    // When a reply finishes, auto-copy and offer to replace the input —
-    // mirrors the desktop Cmd+Shift+R flow inside the app.
+    // When a reply or refine finishes, auto-replace the input text and
+    // offer undo — mirrors the desktop Cmd+Shift+R flow.
     ref.listen<AsyncValue<TranslateState>>(translateProvider, (prev, next) {
       final prevResult = prev?.valueOrNull?.result;
       final nextState = next.valueOrNull;
       final nextResult = nextState?.result;
       if (nextResult != null && nextResult != prevResult &&
-          nextState?.mode == TranslateMode.reply) {
-        _onReplyReady(nextResult.translation, l);
+          (nextState?.mode == TranslateMode.reply ||
+              nextState?.mode == TranslateMode.refine)) {
+        _onAutoReplace(nextResult.translation, l);
       }
 
       // Daily-quota wall: free user just hit the 20-req/2000-char cap.
@@ -734,15 +728,106 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
 }
 
-class _HomeHeader extends StatelessWidget {
+class _HomeHeader extends ConsumerStatefulWidget {
   const _HomeHeader({required this.tagline, required this.isDark});
 
   final String tagline;
   final bool isDark;
 
   @override
+  ConsumerState<_HomeHeader> createState() => _HomeHeaderState();
+}
+
+class _HomeHeaderState extends ConsumerState<_HomeHeader>
+    with WidgetsBindingObserver {
+  // Same channel + handlers the Settings screen uses for the IME shortcut.
+  static const _imeChannel = MethodChannel('transkey/ime');
+  bool _imeEnabled = false;
+  bool _imeSelected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshIme();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The user may have switched the active keyboard in the system picker /
+    // settings while we were backgrounded; re-poll so the toggle is accurate.
+    if (state == AppLifecycleState.resumed) _refreshIme();
+  }
+
+  Future<void> _refreshIme() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final enabled = await _imeChannel.invokeMethod<bool>('isEnabled');
+      final selected = await _imeChannel.invokeMethod<bool>('isSelected');
+      if (!mounted) return;
+      setState(() {
+        _imeEnabled = enabled ?? false;
+        _imeSelected = selected ?? false;
+      });
+    } catch (_) {
+      // Older Android / channel not ready - button still opens settings.
+    }
+  }
+
+  /// Android forbids an app from programmatically setting/clearing the default
+  /// keyboard, so the best we can do is route the user to the right system UI:
+  /// not-enabled -> IME settings to switch it on; enabled -> the system picker
+  /// (pick TransKey to turn on, pick another keyboard to turn off).
+  Future<void> _onKeyboardTap() async {
+    if (!Platform.isAndroid) return;
+    try {
+      if (!_imeEnabled) {
+        await _imeChannel.invokeMethod('openImeSettings');
+      } else {
+        await _imeChannel.invokeMethod('showImePicker');
+      }
+    } catch (_) {
+      // ignore - nothing actionable
+    }
+    // The picker resolves after this returns; re-poll a moment later so the
+    // toggle reflects the user's choice without waiting for a full resume.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (mounted) _refreshIme();
+  }
+
+  Future<void> _onBubbleTap(bool running) async {
+    final mgr = ref.read(bubbleManagerProvider.notifier);
+    if (running) {
+      await mgr.stopBubble();
+      return;
+    }
+    final has = await mgr.checkPermission();
+    if (!has) {
+      // Opens the system "Display over other apps" settings; the user grants
+      // it then taps the toggle again.
+      await mgr.requestPermission();
+      if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.permissionsNeedSetup)),
+        );
+      }
+      return;
+    }
+    await mgr.startBubble(source: 'home_header');
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context)!;
+    final bubbleRunning = ref.watch(bubbleManagerProvider);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
@@ -766,33 +851,116 @@ class _HomeHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                ).createShader(bounds),
-                child: Text(
-                  'TransKey',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                    color: Colors.white,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                  ).createShader(bounds),
+                  child: Text(
+                    'TransKey',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
-              Text(
-                tagline,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
+                Text(
+                  widget.tagline,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          // Quick toggles (Android only): set TransKey as the active keyboard,
+          // and turn the floating bubble on/off - both gradient when active.
+          if (Platform.isAndroid) ...[
+            _GradientIconButton(
+              icon: Icons.keyboard_rounded,
+              active: _imeSelected,
+              tooltip: l.imeKeyboardTitle,
+              onTap: _onKeyboardTap,
+            ),
+            const SizedBox(width: 8),
+            _GradientIconButton(
+              icon: Icons.bubble_chart_rounded,
+              active: bubbleRunning,
+              tooltip: bubbleRunning ? l.bubbleActive : l.bubbleInactive,
+              onTap: () => _onBubbleTap(bubbleRunning),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Square icon button that fills with the brand gradient when [active] and
+/// sits as a muted translucent chip when off. Used for the home-header quick
+/// toggles (keyboard / bubble).
+class _GradientIconButton extends StatelessWidget {
+  const _GradientIconButton({
+    required this.icon,
+    required this.active,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  static const _g1 = Color(0xFF6366F1);
+  static const _g2 = Color(0xFFA855F7);
+
+  @override
+  Widget build(BuildContext context) {
+    const muted = AppColors.textSecondary;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: active
+                  ? const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [_g1, _g2],
+                    )
+                  : null,
+              color: active ? null : muted.withValues(alpha: 0.12),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: _g1.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: active ? Colors.white : muted,
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -4,10 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/history_entry.dart';
 
-const _kHistoryKey = 'tk_history';
+const _kHistoryKeyLegacy = 'tk_history';
 const _maxEntries = 500;
 
 class HistoryStore {
+  final String userId;
+
+  HistoryStore({required this.userId});
+
+  String get _historyKey => 'tk_history_$userId';
+
   // Single in-process write lock. The Bubble service + in-app translate flow
   // can both call addFromTranslate concurrently; without serialization the
   // load-modify-save cycle silently drops entries.
@@ -23,7 +29,19 @@ class HistoryStore {
 
   Future<List<HistoryEntry>> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kHistoryKey);
+
+    // One-time migration: if user-scoped key has no data but legacy key
+    // does, copy the data over and remove the legacy key.
+    if (!prefs.containsKey(_historyKey) &&
+        prefs.containsKey(_kHistoryKeyLegacy)) {
+      final legacy = prefs.getString(_kHistoryKeyLegacy);
+      if (legacy != null) {
+        await prefs.setString(_historyKey, legacy);
+        await prefs.remove(_kHistoryKeyLegacy);
+      }
+    }
+
+    final raw = prefs.getString(_historyKey);
     if (raw == null) return [];
 
     try {
@@ -40,7 +58,7 @@ class HistoryStore {
     final prefs = await SharedPreferences.getInstance();
     final trimmed = _trimKeepLocked(entries);
     final encoded = jsonEncode(trimmed.map((e) => e.toMap()).toList());
-    await prefs.setString(_kHistoryKey, encoded);
+    await prefs.setString(_historyKey, encoded);
   }
 
   Future<void> add(HistoryEntry entry) => _serialize(() async {

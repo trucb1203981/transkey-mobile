@@ -213,6 +213,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String get keyboardSetup => 'キーボード設定';
 
   @override
+  String get keyboardSettingsTitle => 'バブル＆キーボード';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'バブルと権限';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'バブルの動作';
+
+  @override
+  String get imeSectionTitle => 'キーボード';
+
+  @override
+  String get imeKeyboardTitle => 'TransKey キーボード';
+
+  @override
+  String get imeStatusActive => 'アクティブ — TransKeyで入力中';
+
+  @override
+  String get imeStatusEnabledNotSelected => '有効。タップして TransKey に切り替え。';
+
+  @override
+  String get imeStatusNotEnabled => '無効。タップしてシステム設定で有効化。';
+
+  @override
   String get bubbleSetup => 'バブル設定';
 
   @override
@@ -232,6 +256,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'プライバシーポリシー';
+
+  @override
+  String get openSourceLicenses => 'オープンソースライセンス';
 
   @override
   String get version => 'バージョン';

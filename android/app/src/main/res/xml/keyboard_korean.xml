@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Korean Dubeolsik (2-set). Keys emit compatibility jamo; HangulComposer builds
+    them into syllable blocks. Consonants on the left, vowels on the right, like
+    the standard layout. Shift gives the tense/extra jamo (ㅂ->ㅃ, ㄱ->ㄲ, ㅅ->ㅆ,
+    ㄷ->ㄸ, ㅈ->ㅉ, ㅐ->ㅒ, ㅔ->ㅖ), handled in TransKeyIME.tenseJamo. 10/9/7 like
+    the Latin qwerty.
+-->
+<Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
+    android:keyWidth="8.8%p"
+    android:keyHeight="40dp"
+    android:horizontalGap="1.0%p"
+    android:verticalGap="10dp">
+
+    <Row>
+        <Key android:codes="12610" android:keyLabel="ㅂ"/>
+        <Key android:codes="12616" android:keyLabel="ㅈ"/>
+        <Key android:codes="12599" android:keyLabel="ㄷ"/>
+        <Key android:codes="12593" android:keyLabel="ㄱ"/>
+        <Key android:codes="12613" android:keyLabel="ㅅ"/>
+        <Key android:codes="12635" android:keyLabel="ㅛ"/>
+        <Key android:codes="12629" android:keyLabel="ㅕ"/>
+        <Key android:codes="12625" android:keyLabel="ㅑ"/>
+        <Key android:codes="12624" android:keyLabel="ㅐ"/>
+        <Key android:codes="12628" android:keyLabel="ㅔ"/>
+    </Row>
+
+    <Row>
+        <Key android:codes="12609" android:keyLabel="ㅁ" android:horizontalGap="5%p"/>
+        <Key android:codes="12596" android:keyLabel="ㄴ"/>
+        <Key android:codes="12615" android:keyLabel="ㅇ"/>
+        <Key android:codes="12601" android:keyLabel="ㄹ"/>
+        <Key android:codes="12622" android:keyLabel="ㅎ"/>
+        <Key android:codes="12631" android:keyLabel="ㅗ"/>
+        <Key android:codes="12627" android:keyLabel="ㅓ"/>
+        <Key android:codes="12623" android:keyLabel="ㅏ"/>
+        <Key android:codes="12643" android:keyLabel="ㅣ"/>
+    </Row>
+
+    <Row>
+        <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="14%p" android:isModifier="true"/>
+        <Key android:codes="12619" android:keyLabel="ㅋ"/>
+        <Key android:codes="12620" android:keyLabel="ㅌ"/>
+        <Key android:codes="12618" android:keyLabel="ㅊ"/>
+        <Key android:codes="12621" android:keyLabel="ㅍ"/>
+        <Key android:codes="12640" android:keyLabel="ㅠ"/>
+        <Key android:codes="12636" android:keyLabel="ㅜ"/>
+        <Key android:codes="12641" android:keyLabel="ㅡ"/>
+        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="14%p" android:isRepeatable="true"/>
+    </Row>
+
+    <Row android:rowEdgeFlags="bottom">
+        <Key android:codes="-201" android:keyLabel="\?123" android:keyWidth="13%p"/>
+        <Key android:codes="44" android:keyLabel="," android:keyWidth="9%p"/>
+        <Key android:codes="-301" android:keyWidth="9%p"/>
+        <Key android:codes="32" android:keyLabel="space" android:keyWidth="37%p"/>
+        <Key android:codes="46" android:keyLabel="." android:keyWidth="9%p"/>
+        <Key android:codes="-4" android:keyWidth="13%p"/>
+    </Row>
+</Keyboard>

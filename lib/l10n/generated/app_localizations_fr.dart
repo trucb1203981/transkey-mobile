@@ -213,6 +213,32 @@ class AppLocalizationsFr extends AppLocalizations {
   String get keyboardSetup => 'Configurer le clavier';
 
   @override
+  String get keyboardSettingsTitle => 'Bulle et clavier';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'Bubble et autorisations';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'Comportement du bubble';
+
+  @override
+  String get imeSectionTitle => 'Clavier';
+
+  @override
+  String get imeKeyboardTitle => 'Clavier TransKey';
+
+  @override
+  String get imeStatusActive => 'Actif — saisie via TransKey';
+
+  @override
+  String get imeStatusEnabledNotSelected =>
+      'Activé. Appuyez pour passer à TransKey.';
+
+  @override
+  String get imeStatusNotEnabled =>
+      'Non activé. Appuyez pour activer dans Paramètres.';
+
+  @override
   String get bubbleSetup => 'Configurer la bulle';
 
   @override
@@ -232,6 +258,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Politique de confidentialité';
+
+  @override
+  String get openSourceLicenses => 'Licences open source';
 
   @override
   String get version => 'Version';

@@ -105,4 +105,31 @@
     <string name="lens_source_from">Из: %1$s</string>
     <string name="lens_regrant_prompt">Нажмите, чтобы перевести это приложение</string>
     <string name="bubble_hide_for_screenshot">Скрыть пузырь для скриншота</string>
+    <string name="ime_action_translate">Перевести</string>
+    <string name="ime_action_refine">Улучшить</string>
+    <string name="ime_processing">Обработка…</string>
+    <string name="ime_no_text">Сначала введите текст</string>
+    <string name="ime_lang_from">С</string>
+    <string name="ime_lang_to">На</string>
+    <string name="ime_lang_swap">Поменять</string>
+    <string name="ime_settings_title">Настройки клавиатуры</string>
+    <string name="ime_set_autocorrect">Автозамена</string>
+    <string name="ime_set_haptic">Вибрация клавиш</string>
+    <string name="ime_set_autocap">Автозаглавные</string>
+    <string name="ime_set_double_space">Двойной пробел = точка</string>
+    <string name="ime_set_tone">Тон перевода</string>
+    <string name="ime_set_open_app">Открыть все настройки в приложении</string>
+    <string name="ime_on">Вкл</string>
+    <string name="ime_off">Выкл</string>
+    <string name="ime_set_app_lang">Язык приложения</string>
+    <string name="ime_history">История</string>
+    <string name="ime_explain">Объяснить</string>
+    <string name="ime_history_empty">Переводов пока нет</string>
+    <string name="ime_settings_short">Настройки</string>
+    <string name="ime_voice_lang">Язык голосового ввода</string>
+    <string name="ime_section_features">Функции</string>
+    <string name="ime_section_options">Параметры</string>
+    <string name="ime_open_bubble">Плавающая кнопка</string>
+    <string name="ime_back_keyboard">← Клавиатура</string>
+    <string name="ime_input_lang">Язык ввода</string>
 </resources>

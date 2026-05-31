@@ -212,6 +212,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get keyboardSetup => '键盘设置';
 
   @override
+  String get keyboardSettingsTitle => '浮窗与键盘';
+
+  @override
+  String get keyboardSettingsSectionStatus => '气泡和权限';
+
+  @override
+  String get keyboardSettingsSectionBehavior => '气泡行为';
+
+  @override
+  String get imeSectionTitle => '键盘';
+
+  @override
+  String get imeKeyboardTitle => 'TransKey 键盘';
+
+  @override
+  String get imeStatusActive => '使用中 — 正通过 TransKey 输入';
+
+  @override
+  String get imeStatusEnabledNotSelected => '已启用。点按切换到 TransKey。';
+
+  @override
+  String get imeStatusNotEnabled => '未启用。点按在系统设置中启用。';
+
+  @override
   String get bubbleSetup => '气泡设置';
 
   @override
@@ -231,6 +255,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get privacyPolicy => '隐私政策';
+
+  @override
+  String get openSourceLicenses => '开源许可证';
 
   @override
   String get version => '版本';

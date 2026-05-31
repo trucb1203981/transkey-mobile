@@ -213,6 +213,30 @@ class AppLocalizationsKo extends AppLocalizations {
   String get keyboardSetup => '키보드 설정';
 
   @override
+  String get keyboardSettingsTitle => '버블 및 키보드';
+
+  @override
+  String get keyboardSettingsSectionStatus => '버블 및 권한';
+
+  @override
+  String get keyboardSettingsSectionBehavior => '버블 동작';
+
+  @override
+  String get imeSectionTitle => '키보드';
+
+  @override
+  String get imeKeyboardTitle => 'TransKey 키보드';
+
+  @override
+  String get imeStatusActive => '사용 중 — TransKey로 입력';
+
+  @override
+  String get imeStatusEnabledNotSelected => '활성화됨. 탭하여 TransKey로 전환.';
+
+  @override
+  String get imeStatusNotEnabled => '비활성화됨. 시스템 설정에서 활성화하려면 탭.';
+
+  @override
   String get bubbleSetup => '버블 설정';
 
   @override
@@ -232,6 +256,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get privacyPolicy => '개인정보 처리방침';
+
+  @override
+  String get openSourceLicenses => '오픈소스 라이선스';
 
   @override
   String get version => '버전';

@@ -21,7 +21,7 @@ class TtsState {
   const TtsState({
     this.isPlaying = false,
     this.currentText,
-    this.rate = 1.0,
+    this.rate = 0.75,
     this.voiceByLang = const {},
   });
 
@@ -126,7 +126,7 @@ class TtsNotifier extends Notifier<TtsState> {
 
   Future<void> _loadPersistedPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final rate = prefs.getDouble(_kRateKey) ?? 1.0;
+    final rate = prefs.getDouble(_kRateKey) ?? 0.75;
     final keys = prefs.getKeys().where((k) => k.startsWith(_kVoicePrefix));
     final voices = <String, String>{
       for (final k in keys)
@@ -241,7 +241,7 @@ class TtsNotifier extends Notifier<TtsState> {
   Future<void> reload() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final rate = prefs.getDouble(_kRateKey) ?? 1.0;
+    final rate = prefs.getDouble(_kRateKey) ?? 0.75;
     if (rate != state.rate) {
       state = state.copyWith(rate: rate);
     }

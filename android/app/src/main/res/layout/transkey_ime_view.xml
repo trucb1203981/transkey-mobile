@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gboard-matched IME view: suggestion strip + keyboard.
+     paddingBottom=10dp reproduces Gboard's bottom gap (measured 27px @440dpi)
+     below the last row; the panel background fills it so the dark keyboard
+     panel extends to the screen edge, like Gboard. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/transkey_kb_panel"
+    android:paddingLeft="0dp"
+    android:paddingRight="0dp"
+    android:paddingTop="0dp"
+    android:paddingBottom="10dp">
+
+    <app.transkey.mobile.SuggestionStripView
+        android:id="@+id/suggestion_strip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <app.transkey.mobile.GboardKeyboardView
+        android:id="@+id/keyboard_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:keyBackground="@drawable/transkey_key_bg"
+        android:keyTextColor="#FFFFFF"
+        android:keyTextSize="17sp"
+        android:labelTextSize="11sp"
+        android:shadowColor="#00000000"
+        android:shadowRadius="0" />
+</LinearLayout>

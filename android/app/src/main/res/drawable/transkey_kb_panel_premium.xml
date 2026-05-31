@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Premium keyboard panel fill: dark panel with lightly rounded TOP corners,
+     shown only for paid accounts (see TransKeyIME.applyPremiumChrome). The thin
+     brand-gradient accent bar on the top edge is drawn by SuggestionStripView
+     (clipped to these same rounded corners) so it follows the corner radius
+     instead of overflowing - a flat 3dp layer here can't round to <its height. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#1C1D21" />
+    <corners
+        android:topLeftRadius="12dp"
+        android:topRightRadius="12dp"
+        android:bottomLeftRadius="0dp"
+        android:bottomRightRadius="0dp" />
+</shape>

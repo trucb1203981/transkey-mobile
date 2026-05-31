@@ -29,7 +29,7 @@ import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
  * notifyFlutterLangChanged() → MethodChannel "langChanged" →
  * languageSettingsProvider.reload() round-trip.
  */
-internal fun BubbleService.showLangPicker() {
+internal fun BubbleService.showLangPicker(onPicked: ((String) -> Unit)? = null) {
     if (langPickerView != null) { hideLangPicker(); return }
     ensureWindowManager()
     // Sync from prefs so the picker reflects any change made in Flutter
@@ -39,9 +39,10 @@ internal fun BubbleService.showLangPicker() {
     // reply lang the user just chose, even though translation used it.
     currentTargetLang = if (currentMode == MODE_REPLY) {
         val replyLang = readReplyLang()
+        val detected = lastDetectedLang
         when {
             replyLang.isNotEmpty() -> replyLang
-            lastDetectedLang != null -> lastDetectedLang!!
+            detected != null -> detected
             else -> readTargetLang()
         }
     } else {
@@ -106,9 +107,6 @@ internal fun BubbleService.showLangPicker() {
             }
             setOnClickListener {
                 currentTargetLang = lang
-                // In reply mode, the picker overrides the user's "Reply Language"
-                // preference — write to KEY_REPLY_LANG so the next reply (and the
-                // current one we're about to fire) actually uses it.
                 if (currentMode == MODE_REPLY) {
                     writeReplyLang(lang)
                 } else {
@@ -116,6 +114,10 @@ internal fun BubbleService.showLangPicker() {
                 }
                 hideLangPicker()
                 updateLangChip()
+                onPicked?.invoke(lang)
+                // When called from the input picker (onPicked != null), don't
+                // auto-translate — let the user press Translate manually.
+                if (onPicked != null) return@setOnClickListener
                 val src = currentSourceText ?: return@setOnClickListener
                 handleTranslateRequest(src, currentMode)
             }

@@ -213,6 +213,32 @@ class AppLocalizationsAr extends AppLocalizations {
   String get keyboardSetup => 'إعداد لوحة المفاتيح';
 
   @override
+  String get keyboardSettingsTitle => 'الفقاعة ولوحة المفاتيح';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'الفقاعة والأذونات';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'سلوك الفقاعة';
+
+  @override
+  String get imeSectionTitle => 'لوحة المفاتيح';
+
+  @override
+  String get imeKeyboardTitle => 'لوحة مفاتيح TransKey';
+
+  @override
+  String get imeStatusActive => 'نشطة — الكتابة عبر TransKey';
+
+  @override
+  String get imeStatusEnabledNotSelected =>
+      'مفعّلة. اضغط للتبديل إلى TransKey.';
+
+  @override
+  String get imeStatusNotEnabled =>
+      'غير مفعّلة. اضغط للتفعيل في إعدادات النظام.';
+
+  @override
   String get bubbleSetup => 'إعداد الزر العائم';
 
   @override
@@ -232,6 +258,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get openSourceLicenses => 'تراخيص المصادر المفتوحة';
 
   @override
   String get version => 'الإصدار';

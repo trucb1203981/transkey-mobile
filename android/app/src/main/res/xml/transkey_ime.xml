@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    TransKey IME metadata. Single default subtype that internally
+    toggles between English and Vietnamese Telex via the language key
+    on the keyboard. The subtype list could grow later (e.g. dedicated
+    VI / EN subtypes that the system language switcher cycles through),
+    but a single subtype keeps the MVP shipping flow simple.
+-->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="app.transkey.mobile.MainActivity"
+    android:supportsSwitchingToNextInputMethod="true">
+    <subtype
+        android:label="@string/ime_subtype_default"
+        android:imeSubtypeLocale="en_US"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+</input-method>

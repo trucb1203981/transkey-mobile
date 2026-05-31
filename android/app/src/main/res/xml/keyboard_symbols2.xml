@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Second symbols layer (#+=) - reached from the symbols layer's #+= key.
+     The bottom-left key (123, code -203) toggles back to the symbols layer. -->
+<Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
+    android:keyWidth="8.8%p"
+    android:keyHeight="40dp"
+    android:horizontalGap="1.0%p"
+    android:verticalGap="10dp">
+
+    <Row>
+        <Key android:codes="126" android:keyLabel="~"/>
+        <Key android:codes="96"  android:keyLabel="`"/>
+        <Key android:codes="124" android:keyLabel="|"/>
+        <Key android:codes="8226" android:keyLabel="•"/>
+        <Key android:codes="8730" android:keyLabel="√"/>
+        <Key android:codes="960" android:keyLabel="π"/>
+        <Key android:codes="247" android:keyLabel="÷"/>
+        <Key android:codes="215" android:keyLabel="×"/>
+        <Key android:codes="167" android:keyLabel="§"/>
+        <Key android:codes="916" android:keyLabel="Δ"/>
+    </Row>
+
+    <Row>
+        <Key android:codes="163" android:keyLabel="£"/>
+        <Key android:codes="8364" android:keyLabel="€"/>
+        <Key android:codes="36"  android:keyLabel="$"/>
+        <Key android:codes="162" android:keyLabel="¢"/>
+        <Key android:codes="94"  android:keyLabel="^"/>
+        <Key android:codes="176" android:keyLabel="°"/>
+        <Key android:codes="61"  android:keyLabel="="/>
+        <Key android:codes="123" android:keyLabel="{"/>
+        <Key android:codes="125" android:keyLabel="}"/>
+        <Key android:codes="92"  android:keyLabel="\\"/>
+    </Row>
+
+    <Row>
+        <Key android:codes="-203" android:keyLabel="123"
+            android:keyWidth="14%p"/>
+        <Key android:codes="37"   android:keyLabel="%"/>
+        <Key android:codes="169"  android:keyLabel="©"/>
+        <Key android:codes="174"  android:keyLabel="®"/>
+        <Key android:codes="8482" android:keyLabel="™"/>
+        <Key android:codes="10003" android:keyLabel="✓"/>
+        <Key android:codes="91"   android:keyLabel="["/>
+        <Key android:codes="93"   android:keyLabel="]"/>
+        <Key android:codes="-5"   android:keyLabel="⌫"
+            android:keyWidth="14%p" android:isRepeatable="true"/>
+    </Row>
+
+    <Row android:rowEdgeFlags="bottom">
+        <Key android:codes="-201" android:keyLabel="ABC"
+            android:keyWidth="14%p"/>
+        <Key android:codes="-301" android:keyWidth="9%p"/>
+        <Key android:codes="32"   android:keyLabel="dấu cách"
+            android:keyWidth="36%p"/>
+        <Key android:codes="46"   android:keyLabel="." android:keyWidth="9%p"/>
+        <Key android:codes="-4"   android:keyLabel="↩" android:keyWidth="14%p"/>
+    </Row>
+</Keyboard>

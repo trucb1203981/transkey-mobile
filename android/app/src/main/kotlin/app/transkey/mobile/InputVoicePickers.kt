@@ -220,6 +220,71 @@ internal fun BubbleService.showInputPicker(initialMode: String, prefillText: Str
     }
     card.addView(input)
 
+    // ── Language pills (source → target) ──
+    // After voice input (or manual typing), the user needs to verify which
+    // language pair is active before pressing Translate — otherwise a wrong
+    // source/target gives a useless translation.
+    val langLabels = getEffectiveLangLabels()
+    val langRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = (8 * dp).toInt() }
+    }
+    fun langChipBg() = GradientDrawable().apply {
+        setStroke(1, accent)
+        cornerRadius = 12 * dp
+    }
+    val sourceLabel = readSourceLang().let { code ->
+        if (code == "auto") "Auto" else (langLabels[code] ?: code.uppercase())
+    }
+    val targetLabel = readTargetLang().let { code ->
+        langLabels[code] ?: code.uppercase()
+    }
+    val sourceChip = TextView(this).apply {
+        text = sourceLabel
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(accent)
+        setPadding((8 * dp).toInt(), (4 * dp).toInt(), (8 * dp).toInt(), (4 * dp).toInt())
+        background = langChipBg()
+        isClickable = true
+        isFocusable = true
+        setOnClickListener {
+            showSourceLangPicker(onPicked = { newCode ->
+                val lbl = if (newCode == "auto") "Auto"
+                    else (getEffectiveLangLabels()[newCode] ?: newCode.uppercase())
+                text = lbl
+            })
+        }
+    }
+    val arrowTv = TextView(this).apply {
+        text = " → "
+        setTextColor(mutedCol)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+    }
+    val targetChip = TextView(this).apply {
+        text = targetLabel
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(accent)
+        setPadding((8 * dp).toInt(), (4 * dp).toInt(), (8 * dp).toInt(), (4 * dp).toInt())
+        background = langChipBg()
+        isClickable = true
+        isFocusable = true
+        setOnClickListener {
+            showLangPicker(onPicked = { newCode ->
+                text = getEffectiveLangLabels()[newCode] ?: newCode.uppercase()
+            })
+        }
+    }
+    langRow.addView(sourceChip)
+    langRow.addView(arrowTv)
+    langRow.addView(targetChip)
+    card.addView(langRow)
+
     // Name palette: tap a chip to one-shot replace the current selection
     // (or insert at cursor) with that foreign-name spelling. Reads from
     // the user's glossary so they pre-add the people they're talking to
@@ -405,6 +470,9 @@ internal fun BubbleService.hideInputPicker() {
 
 internal fun BubbleService.showVoicePicker(initialMode: String) {
     if (voicePickerView != null) { hideVoicePicker(); return }
+    // Cancel any pending error auto-dismiss from a previous session.
+    voiceErrorRunnable?.let { handler.removeCallbacks(it) }
+    voiceErrorRunnable = null
     ensureWindowManager()
     refreshLocale()
 
@@ -646,7 +714,9 @@ internal fun BubbleService.startVoiceRecognizer(initialMode: String) {
                     // READ the error before it disappears (especially the
                     // "language pack not installed" hint which suggests a
                     // system download action).
-                    handler.postDelayed({ hideVoicePicker() }, 4000)
+                    val dismiss = Runnable { hideVoicePicker() }
+                    voiceErrorRunnable = dismiss
+                    handler.postDelayed(dismiss, 4000)
                 }
             }
         },

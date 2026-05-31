@@ -213,6 +213,32 @@ class AppLocalizationsId extends AppLocalizations {
   String get keyboardSetup => 'Pengaturan keyboard';
 
   @override
+  String get keyboardSettingsTitle => 'Gelembung & Keyboard';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'Bubble & Izin';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'Perilaku bubble';
+
+  @override
+  String get imeSectionTitle => 'Keyboard';
+
+  @override
+  String get imeKeyboardTitle => 'Keyboard TransKey';
+
+  @override
+  String get imeStatusActive => 'Aktif — mengetik melalui TransKey';
+
+  @override
+  String get imeStatusEnabledNotSelected =>
+      'Aktif. Ketuk untuk beralih ke TransKey.';
+
+  @override
+  String get imeStatusNotEnabled =>
+      'Belum aktif. Ketuk untuk mengaktifkan di Pengaturan.';
+
+  @override
   String get bubbleSetup => 'Pengaturan tombol melayang';
 
   @override
@@ -232,6 +258,9 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Kebijakan Privasi';
+
+  @override
+  String get openSourceLicenses => 'Lisensi sumber terbuka';
 
   @override
   String get version => 'Versi';

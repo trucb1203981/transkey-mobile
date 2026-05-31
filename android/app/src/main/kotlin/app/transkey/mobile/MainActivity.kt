@@ -17,6 +17,7 @@ class MainActivity : FlutterActivity() {
     private val shareChannel = "transkey/share"
     private val bubbleChannel = "transkey/bubble"
     private val bgSamplerChannel = "transkey/bg_sampler"
+    private val imeChannel = "transkey/ime"
 
     /** Lazy worker for off-main-thread bitmap sampling. One thread is
      *  enough - sampler calls fire one per capture, never concurrently. */
@@ -24,6 +25,11 @@ class MainActivity : FlutterActivity() {
         android.os.HandlerThread("bg-sampler").also { it.start() }
     }
     private val samplerHandler by lazy { android.os.Handler(samplerThread.looper) }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        samplerThread.quitSafely()
+    }
 
     /**
      * Reuse the engine that [TransKeyApp] pre-warms in `onCreate`. Default
@@ -228,20 +234,24 @@ class MainActivity : FlutterActivity() {
                         val targets = (args?.get("suggestionTargets") as? List<*>)
                             ?.map { (it as? String).orEmpty() }
                             ?.toTypedArray()
-                        val i = Intent(this, BubbleService::class.java).apply {
-                            action = BubbleService.ACTION_SHOW_RESULT
-                            putExtra(BubbleService.EXTRA_TRANSLATION, translation)
-                            putExtra(BubbleService.EXTRA_ROMANIZATION, romanization)
-                            putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
-                            putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
-                            putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
-                            putExtra(BubbleService.EXTRA_ERROR, error)
-                            putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
-                        }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            startForegroundService(i)
-                        } else {
-                            startService(i)
+                        // Keyboard-originated request routes back to the IME;
+                        // otherwise forward to BubbleService/the overlay.
+                        if (!TransKeyApp.dispatchImeResult(reqId, translation, error)) {
+                            val i = Intent(this, BubbleService::class.java).apply {
+                                action = BubbleService.ACTION_SHOW_RESULT
+                                putExtra(BubbleService.EXTRA_TRANSLATION, translation)
+                                putExtra(BubbleService.EXTRA_ROMANIZATION, romanization)
+                                putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
+                                putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
+                                putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
+                                putExtra(BubbleService.EXTRA_ERROR, error)
+                                putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                startForegroundService(i)
+                            } else {
+                                startService(i)
+                            }
                         }
                         result.success(null)
                     }
@@ -320,8 +330,70 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        // TransKey IME channel - check enabled / selected state, open
+        // system Settings to install the keyboard, and show the IME
+        // picker so the user can switch the active keyboard mid-session.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, imeChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isEnabled" -> result.success(isImeEnabled())
+                    "isSelected" -> result.success(isImeSelected())
+                    "openImeSettings" -> {
+                        startActivity(
+                            Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
+                                .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+                        )
+                        result.success(null)
+                    }
+                    "showImePicker" -> {
+                        val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                        imm?.showInputMethodPicker()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         // Check if launched from share intent
         handleIncomingIntent(intent)
+    }
+
+    private fun isImeEnabled(): Boolean {
+        // MUST use InputMethodManager, NOT Settings.Secure
+        // .ENABLED_INPUT_METHODS — that key throws SecurityException for
+        // apps targeting SDK > 33 ("only readable to apps with
+        // targetSdkVersion <= 33"). enabledInputMethodList is the public
+        // API equivalent and needs no permission. InputMethodInfo.id is
+        // the flattened ComponentName, so unflatten + compare normalises
+        // the `pkg/.Class` shorthand vs `pkg/full.Class` forms.
+        return try {
+            val imm = getSystemService(
+                android.view.inputmethod.InputMethodManager::class.java,
+            ) ?: return false
+            val target = android.content.ComponentName(this, TransKeyIME::class.java)
+            imm.enabledInputMethodList.any {
+                android.content.ComponentName.unflattenFromString(it.id) == target
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun isImeSelected(): Boolean {
+        // DEFAULT_INPUT_METHOD is still readable on current SDKs, but
+        // wrap defensively in case a future restriction lands — falling
+        // back to "not selected" just means the tile invites the user to
+        // pick TransKey, which is harmless.
+        return try {
+            val selected = Settings.Secure.getString(
+                contentResolver,
+                Settings.Secure.DEFAULT_INPUT_METHOD,
+            ) ?: return false
+            val target = android.content.ComponentName(this, TransKeyIME::class.java)
+            android.content.ComponentName.unflattenFromString(selected) == target
+        } catch (e: Exception) {
+            false
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -213,6 +213,32 @@ class AppLocalizationsVi extends AppLocalizations {
   String get keyboardSetup => 'Cài đặt bàn phím';
 
   @override
+  String get keyboardSettingsTitle => 'Nút & Bàn phím';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'Bubble & Quyền';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'Hành vi bubble';
+
+  @override
+  String get imeSectionTitle => 'Bàn phím hệ thống';
+
+  @override
+  String get imeKeyboardTitle => 'Bàn phím TransKey';
+
+  @override
+  String get imeStatusActive => 'Đang dùng - gõ qua TransKey';
+
+  @override
+  String get imeStatusEnabledNotSelected =>
+      'Đã bật. Nhấn để chuyển sang TransKey.';
+
+  @override
+  String get imeStatusNotEnabled =>
+      'Chưa bật. Nhấn để bật trong Cài đặt hệ thống.';
+
+  @override
   String get bubbleSetup => 'Cài đặt Nút TransKey';
 
   @override
@@ -232,6 +258,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Chính sách bảo mật';
+
+  @override
+  String get openSourceLicenses => 'Giấy phép nguồn mở';
 
   @override
   String get version => 'Phiên bản';

@@ -175,7 +175,8 @@ internal fun BubbleService.showSettingsSheet() {
     val maxHeight = (resources.displayMetrics.heightPixels * 0.75).toInt()
     backdrop.addView(card, FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
         scroll.layoutParams = (scroll.layoutParams as LinearLayout.LayoutParams).apply {
-            @Suppress("UNUSED_VARIABLE") val _h = maxHeight  // referenced via constraint below
+            // Cap scroll height so the sheet never exceeds 75% of the screen.
+            height = maxHeight
         }
     })
     tonePickerView = backdrop

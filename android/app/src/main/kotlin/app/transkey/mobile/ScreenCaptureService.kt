@@ -442,8 +442,10 @@ class ScreenCaptureService : Service() {
             Bitmap.Config.ARGB_8888,
         )
         padded.copyPixelsFromBuffer(buffer)
-        return if (rowPadding == 0) padded
-        else Bitmap.createBitmap(padded, 0, 0, width, height)
+        if (rowPadding == 0) return padded
+        val cropped = Bitmap.createBitmap(padded, 0, 0, width, height)
+        padded.recycle()
+        return cropped
     }
 
     /**

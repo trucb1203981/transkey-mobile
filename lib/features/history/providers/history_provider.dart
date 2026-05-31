@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../translate/models/translate_models.dart';
 import '../models/history_entry.dart';
@@ -52,14 +53,23 @@ class HistoryState {
 }
 
 class HistoryNotifier extends Notifier<HistoryState> {
+  String? _userId;
+
   @override
   HistoryState build() {
-    _loadFromStorage();
+    // Watch auth state so provider auto-rebuilds on login/logout.
+    final authState = ref.watch(authStateProvider).valueOrNull;
+    _userId = authState?.session?.userId;
+    if (_userId != null) {
+      _loadFromStorage();
+    }
     return const HistoryState();
   }
 
+  HistoryStore _store() => HistoryStore(userId: _userId!);
+
   Future<void> _loadFromStorage() async {
-    final store = HistoryStore();
+    final store = _store();
     final loaded = await store.load();
     // Merge instead of replace: during the cold-start window between build()
     // (state = empty) and this load completing, the bubble service can call
@@ -80,6 +90,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
     String? romanization,
     TranslateMode mode = TranslateMode.translate,
   }) async {
+    if (_userId == null) return '';
     final entry = HistoryEntry(
       sourceText: sourceText,
       translation: translation,
@@ -89,14 +100,15 @@ class HistoryNotifier extends Notifier<HistoryState> {
       mode: mode,
     );
 
-    final store = HistoryStore();
+    final store = _store();
     await store.add(entry);
     state = state.copyWith(entries: [entry, ...state.entries]);
     return entry.id;
   }
 
   Future<void> delete(String id) async {
-    final store = HistoryStore();
+    if (_userId == null) return;
+    final store = _store();
     await store.delete(id);
     state = state.copyWith(
       entries: state.entries.where((e) => e.id != id).toList(),
@@ -105,7 +117,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
   }
 
   Future<void> toggleFavorite(String id) async {
-    final store = HistoryStore();
+    if (_userId == null) return;
+    final store = _store();
     await store.toggleFavorite(id);
     final entries = state.entries.map((e) {
       if (e.id == id) return e.copyWith(isFavorite: !e.isFavorite);
@@ -115,7 +128,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
   }
 
   Future<void> toggleLock(String id) async {
-    final store = HistoryStore();
+    if (_userId == null) return;
+    final store = _store();
     await store.toggleLock(id);
     final entries = state.entries.map((e) {
       if (e.id == id) return e.copyWith(isLocked: !e.isLocked);
@@ -125,7 +139,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
   }
 
   Future<void> clearAll() async {
-    final store = HistoryStore();
+    if (_userId == null) return;
+    final store = _store();
     await store.clear();
     state = state.copyWith(
       entries: state.entries.where((e) => e.isLocked).toList(),
@@ -135,7 +150,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
   }
 
   Future<void> clearNonFavorites() async {
-    final store = HistoryStore();
+    if (_userId == null) return;
+    final store = _store();
     await store.clearNonFavorites();
     state = state.copyWith(
       entries: state.entries.where((e) => e.isFavorite || e.isLocked).toList(),

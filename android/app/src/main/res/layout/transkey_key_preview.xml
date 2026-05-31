@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Key preview popup (magnified glyph shown above finger on press).
+     Gboard style: dark key background, white text. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/transkey_key_preview_bg"
+    android:textColor="#FFFFFF"
+    android:textSize="26sp"
+    android:gravity="center"
+    android:minWidth="36dp"
+    android:minHeight="44dp" />

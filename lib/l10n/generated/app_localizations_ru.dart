@@ -213,6 +213,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keyboardSetup => 'Настройка клавиатуры';
 
   @override
+  String get keyboardSettingsTitle => 'Пузырь и клавиатура';
+
+  @override
+  String get keyboardSettingsSectionStatus => 'Bubble и разрешения';
+
+  @override
+  String get keyboardSettingsSectionBehavior => 'Поведение Bubble';
+
+  @override
+  String get imeSectionTitle => 'Клавиатура';
+
+  @override
+  String get imeKeyboardTitle => 'Клавиатура TransKey';
+
+  @override
+  String get imeStatusActive => 'Активна — ввод через TransKey';
+
+  @override
+  String get imeStatusEnabledNotSelected =>
+      'Включена. Нажмите, чтобы переключиться на TransKey.';
+
+  @override
+  String get imeStatusNotEnabled =>
+      'Не включена. Нажмите, чтобы включить в системных настройках.';
+
+  @override
   String get bubbleSetup => 'Настройка плавающей кнопки';
 
   @override
@@ -232,6 +258,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Политика конфиденциальности';
+
+  @override
+  String get openSourceLicenses => 'Лицензии с открытым исходным кодом';
 
   @override
   String get version => 'Версия';

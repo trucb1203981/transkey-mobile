@@ -17,6 +17,7 @@ import '../../features/onboarding/screens/accessibility_setup_screen.dart';
 import '../../features/settings/screens/change_password_screen.dart';
 import '../../features/settings/screens/devices_screen.dart';
 import '../../features/settings/screens/guide_screen.dart';
+import '../../features/settings/screens/keyboard_settings_screen.dart';
 import '../../features/settings/screens/subscription_screen.dart';
 import '../../features/translate/screens/camera_screen.dart';
 import '../../features/phrasebook/screens/phrasebook_screen.dart';
@@ -120,6 +121,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const GuideScreen(),
       ),
       GoRoute(
+        path: '/settings/keyboard',
+        builder: (context, state) => const KeyboardSettingsScreen(),
+      ),
+      GoRoute(
         path: '/camera',
         builder: (context, state) => const CameraScreen(),
       ),
@@ -142,6 +147,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 
   _initDeepLinkListener(ref, router);
+  ref.onDispose(() {
+    _deepLinkSub?.cancel();
+    _deepLinkSub = null;
+  });
   return router;
 });
 

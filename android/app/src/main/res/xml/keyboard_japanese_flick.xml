@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Japanese 12-key flick (keitai style). The 10 kana keys + the punctuation key
+    are FLICK keys: tap = center kana, flick left/up/right/down = the other four
+    in that consonant row (e.g. か -> き flick-left, く up, け right, こ down).
+    GboardKeyboardView detects the flick direction; TransKeyIME.flickTable maps
+    (centerCode, direction) -> kana and feeds KanaComposer. The 小゛゜ key
+    (-210) cycles the last kana through dakuten/handakuten/small. Key code of a
+    kana key = its center kana's code point. 4 columns x 5 rows.
+-->
+<Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
+    android:keyWidth="23%p"
+    android:keyHeight="40dp"
+    android:horizontalGap="2.0%p"
+    android:verticalGap="6dp">
+
+    <Row>
+        <Key android:codes="12354" android:keyLabel="あ"/>
+        <Key android:codes="12363" android:keyLabel="か"/>
+        <Key android:codes="12373" android:keyLabel="さ"/>
+        <Key android:codes="-5" android:keyLabel="⌫" android:isRepeatable="true"/>
+    </Row>
+
+    <Row>
+        <Key android:codes="12383" android:keyLabel="た"/>
+        <Key android:codes="12394" android:keyLabel="な"/>
+        <Key android:codes="12399" android:keyLabel="は"/>
+        <Key android:codes="12289" android:keyLabel="、。?!"/>
+    </Row>
+
+    <Row>
+        <Key android:codes="12414" android:keyLabel="ま"/>
+        <Key android:codes="12420" android:keyLabel="や"/>
+        <Key android:codes="12425" android:keyLabel="ら"/>
+        <Key android:codes="-210" android:keyLabel="小゛゜"/>
+    </Row>
+
+    <Row>
+        <Key android:codes="-201" android:keyLabel="\?123"/>
+        <Key android:codes="12431" android:keyLabel="わ"/>
+        <Key android:codes="-211" android:keyLabel="カナ"/>
+        <Key android:codes="-4" android:keyLabel="↵"/>
+    </Row>
+
+    <Row android:rowEdgeFlags="bottom">
+        <Key android:codes="32" android:keyLabel="space" android:keyWidth="98%p"/>
+    </Row>
+</Keyboard>

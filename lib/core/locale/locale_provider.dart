@@ -7,6 +7,12 @@ import '../tracking/tracking_provider.dart';
 
 const _kLocaleKey = 'tk_ui_locale';
 
+// UI locales we ship (must match l10n/*.arb + the keyboard's APP_UI_LANGS).
+const _supportedUiLangs = {
+  'en', 'vi', 'ar', 'de', 'es', 'fr', 'id', 'it', 'ja', 'ko', 'pt', 'ru', 'th',
+  'zh',
+};
+
 final localeProvider =
     AsyncNotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
 
@@ -14,8 +20,18 @@ class LocaleNotifier extends AsyncNotifier<Locale> {
   @override
   Future<Locale> build() async {
     final prefs = await SharedPreferences.getInstance();
-    final code = prefs.getString(_kLocaleKey) ?? 'en';
-    return Locale(code);
+    final stored = prefs.getString(_kLocaleKey);
+    if (stored != null && stored.isNotEmpty) return Locale(stored);
+    // No explicit choice yet: prefer the device language if we ship it,
+    // otherwise fall back to English. Not persisted, so it keeps following the
+    // device until the user picks a language. Mirrors the keyboard default.
+    return Locale(_resolveDeviceLang());
+  }
+
+  String _resolveDeviceLang() {
+    var lang = PlatformDispatcher.instance.locale.languageCode;
+    if (lang == 'in') lang = 'id'; // legacy code for Indonesian
+    return _supportedUiLangs.contains(lang) ? lang : 'en';
   }
 
   Future<void> setLocale(String languageCode) async {

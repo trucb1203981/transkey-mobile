@@ -177,6 +177,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// through the batch and only flip to result once the FIRST image's
   /// snapshot is restored.
   bool _isBatchProcessing = false;
+  bool _isPickingGallery = false;
   int _batchTotal = 0;
   int _batchDone = 0;
 
@@ -1430,16 +1431,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       top: 0,
       left: 0,
       right: 0,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+      // Dark top-down scrim behind the white chrome. The top bar icons
+      // (close / language pills / settings) are pure white with no
+      // per-icon background, so on a white-background capture (document,
+      // white manga page) they vanish. A subtle gradient that fades to
+      // transparent restores contrast on any image without boxing each
+      // icon. Outside the RepaintBoundary so it never bakes into a
+      // shared screenshot.
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.55),
+              Colors.black.withValues(alpha: 0),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
               Row(
                 children: [
                   // Source → Target language selector. Letting the user set
@@ -1498,6 +1517,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 ],
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -1803,6 +1823,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// menus (2-4 pages); the batch flow surfaces arrow nav at the top of
   /// the result so the user can flip between pages without re-picking.
   Future<void> _pickFromGallery() async {
+    if (_isPickingGallery) return;
+    _isPickingGallery = true;
+    try {
     // Stop the live camera feed BEFORE handing off to the OS picker —
     // the preview keeps the sensor + GPU pipeline hot otherwise, draining
     // battery + heating the device while the user is in another activity
@@ -1855,11 +1878,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         : rawPicked;
     if (rawPicked.length > _kMaxBatchImages) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
             'Max $_kMaxBatchImages images per batch - using the first $_kMaxBatchImages',
           ),
-          duration: const Duration(seconds: 3),
+          duration: Duration(seconds: 3),
         ),
       );
     }
@@ -1932,6 +1955,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         _step = _resultStepRespectingBatch();
       });
     }
+    } finally {
+      _isPickingGallery = false;
+    }
   }
 
   /// Sequential batch fallback for scenes that depend on shared-state
@@ -1987,10 +2013,24 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     _batchDebugLog.clear();
     _dbg('start ${picked.length} imgs scene=${scene.id}');
 
+    // Limit concurrency to 2 to avoid OOM from decoding many images at once.
+    const maxConcurrent = 2;
     final jobs = <Future<_BatchSnapshot?>>[];
+    final slot = <int, Completer<void>>{};
+    var running = 0;
+
     for (var i = 0; i < picked.length; i++) {
       final imgIdx = i;
       final imgSw = Stopwatch()..start();
+
+      // Wait for a slot if at capacity
+      if (running >= maxConcurrent) {
+        final c = Completer<void>();
+        slot[i] = c;
+        await c.future;
+      }
+      running++;
+
       final fut = _runOcrAndTranslatePure(
         picked[i],
         scene: scene,
@@ -2000,6 +2040,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             '(self ${imgSw.elapsedMilliseconds}ms, '
             '${snap == null ? "null" : "${snap.blocks.length}b"})');
         return snap;
+      }).whenComplete(() {
+        running--;
+        // Release the earliest waiting slot
+        final key = slot.keys.firstOrNull;
+        if (key != null) {
+          slot.remove(key)?.complete();
+        }
       });
       jobs.add(fut);
     }
@@ -2403,14 +2450,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }) async {
     try {
       final bytes = await File(path).readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      final size = Size(
-        frame.image.width.toDouble(),
-        frame.image.height.toDouble(),
-      );
-      frame.image.dispose();
-      codec.dispose();
 
       final langSettings = ref.read(languageSettingsProvider).valueOrNull;
       final targetLang = langSettings?.targetLang ?? 'en';
@@ -2420,10 +2459,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           await _cameraService.compressForVision(bytes, scene: scene);
       final imageBase64 = base64Encode(compressed);
 
-      // Use the compressed (EXIF-baked) image dimensions so bounding
+      // Decode the compressed (EXIF-baked) image for dimensions so bounding
       // boxes from the vision model align with the displayed image.
-      // Raw codec dimensions may differ from the EXIF-corrected
-      // orientation, causing a coordinate-space mismatch.
       final compCodec = await ui.instantiateImageCodec(compressed);
       final compFrame = await compCodec.getNextFrame();
       final compSize = Size(

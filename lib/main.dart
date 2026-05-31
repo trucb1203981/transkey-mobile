@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,7 +13,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api/dio_client.dart';
 import 'core/auth/auth_provider.dart';
-import 'core/auth/session_store.dart';
 import 'core/bubble/bubble_manager.dart';
 import 'core/cache/lens_translation_cache.dart';
 import 'core/locale/locale_provider.dart';
@@ -21,6 +21,8 @@ import 'core/tracking/crash_reporter.dart';
 import 'core/tracking/tracking_provider.dart';
 import 'features/translate/providers/features_provider.dart';
 import 'features/history/providers/history_provider.dart';
+import 'features/history/storage/history_store.dart';
+import 'features/translate/services/bubble_translate_cache.dart';
 import 'features/translate/providers/language_settings_provider.dart';
 import 'features/translate/models/translate_models.dart';
 import 'features/upgrade/services/purchases_service.dart';
@@ -32,6 +34,10 @@ import 'l10n/generated/app_localizations.dart';
 const _bubbleChannel = MethodChannel('transkey/bubble');
 late final ProviderContainer _rootContainer;
 
+/// Persistent exact-match cache for bubble/keyboard text translations, so an
+/// identical request returns instantly without paying for another API call.
+final _bubbleTranslateCache = BubbleTranslateCache();
+
 /// App-level ScaffoldMessenger. Without an explicit key, MaterialApp's default
 /// messenger is per-Scaffold and snackbars shown right after a route pop can
 /// land on a disposing Scaffold's messenger — the snackbar mounts but its
@@ -40,6 +46,26 @@ late final ProviderContainer _rootContainer;
 /// so the lifecycle is consistent regardless of which screen called.
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
+/// Credit the bundled offline keyboard dictionaries in the app's license page
+/// (shown via showLicensePage). EDRDG requires the acknowledgement statement
+/// below; CC-CEDICT is CC-BY-SA 4.0; jieba is MIT.
+void _registerDictionaryLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    yield const LicenseEntryWithLineBreaks(
+      ['TransKey keyboard dictionaries'],
+      'Japanese kana->kanji conversion uses the JMdict/EDICT dictionary files. '
+      'These files are the property of the Electronic Dictionary Research and '
+      'Development Group (EDRDG), and are used in conformance with the Group\'s '
+      'licence. See https://www.edrdg.org/edrdg/licence.html\n\n'
+      'Chinese pinyin->hanzi conversion uses CC-CEDICT, licensed under '
+      'Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0). '
+      'See https://www.mdbg.net/chinese/dictionary?page=cc-cedict\n\n'
+      'Chinese word frequencies are derived from "jieba" (MIT License), '
+      'Copyright (c) Sun Junyi. See https://github.com/fxsjy/jieba',
+    );
+  });
+}
+
 void main() async {
   // Wrap the entire boot in a zone so async errors that escape the widget
   // tree (unawaited futures, plugin handlers) still reach the crash reporter
@@ -47,6 +73,7 @@ void main() async {
   runZonedGuarded<void>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      _registerDictionaryLicenses();
       // dotenv.load is the only true cold-start dependency before we can build the
       // ApiClient — fire it first; the bubble auto-start and ProviderContainer
       // creation don't block the first frame.
@@ -148,7 +175,7 @@ void main() async {
       // Pre-warm the session cache so the very first Lens trigger doesn't pay
       // a FlutterSecureStorage.read() disk round-trip. The result is stored in
       // SessionStore._cache and returned instantly on subsequent load() calls.
-      unawaited(SessionStore().load());
+      unawaited(_rootContainer.read(sessionStoreProvider).load());
 
       // Open the Lens translation cache DB so the first cache lookup on a
       // Lens scan doesn't pay the openDatabase() cost (~20-80ms). The connection
@@ -229,6 +256,52 @@ void _wireBubbleChannel() {
         router.push('/camera');
       } catch (error) {
         debugPrint('[bubbleChannel] openCamera push failed: $error');
+      }
+      return null;
+    }
+    if (call.method == 'openKeyboardSettings') {
+      // The keyboard's settings panel "open full settings" button — surface
+      // the in-app keyboard-settings screen (native brings MainActivity to
+      // the front; this just navigates the shared engine's router).
+      try {
+        final router = _rootContainer.read(routerProvider);
+        router.push('/settings/keyboard');
+      } catch (error) {
+        debugPrint('[bubbleChannel] openKeyboardSettings push failed: $error');
+      }
+      return null;
+    }
+    if (call.method == 'getRecentHistory') {
+      // Keyboard's inline history panel: return the recent translations as
+      // {translation, source} maps (newest first) so the native list can
+      // re-insert a past result without opening the app.
+      try {
+        final userId = _rootContainer
+            .read(authStateProvider)
+            .valueOrNull
+            ?.session
+            ?.userId;
+        if (userId == null) return const <Map<String, String>>[];
+        final entries = await HistoryStore(userId: userId).load();
+        return entries
+            .take(25)
+            .map((e) => {'translation': e.translation, 'source': e.sourceText})
+            .toList(growable: false);
+      } catch (error) {
+        debugPrint('[bubbleChannel] getRecentHistory failed: $error');
+        return const <Map<String, String>>[];
+      }
+    }
+    if (call.method == 'setUiLocale') {
+      // Keyboard's app-language picker: update the live app locale (also
+      // persists flutter.tk_ui_locale, which the keyboard reads for labels).
+      try {
+        final code = (call.arguments as Map?)?['code'] as String?;
+        if (code != null && code.isNotEmpty) {
+          await _rootContainer.read(localeProvider.notifier).setLocale(code);
+        }
+      } catch (error) {
+        debugPrint('[bubbleChannel] setUiLocale failed: $error');
       }
       return null;
     }
@@ -378,7 +451,7 @@ Future<Map<String, dynamic>> _lensVisionTranslate(
   // the vision-fallback path can fire its own banner independently.
   _lensMismatchEmitted = false;
   try {
-    final session = await SessionStore().load();
+    final session = await _rootContainer.read(sessionStoreProvider).load();
     if (session == null || session.accessToken.isEmpty) {
       return <String, dynamic>{
         'blocks': const <Map<String, dynamic>>[],
@@ -574,7 +647,7 @@ Future<List<String>> _translateBatchForLens(
 ) async {
   _lensMismatchEmitted = false;
   try {
-    final session = await SessionStore().load();
+    final session = await _rootContainer.read(sessionStoreProvider).load();
     if (session == null || session.accessToken.isEmpty) {
       // Logged out — return originals so the overlay still shows SOMETHING
       // rather than blowing up the native side.
@@ -795,7 +868,7 @@ Future<void> _translateForBubble(
   String? replyToOriginal,
 }) async {
   try {
-    final session = await SessionStore().load();
+    final session = await _rootContainer.read(sessionStoreProvider).load();
     if (session == null || session.accessToken.isEmpty) {
       await _sendResultToBubble(
           error: 'Please log in to TransKey', requestId: requestId);
@@ -869,8 +942,41 @@ Future<void> _translateForBubble(
         },
     };
 
+    // Smart cache: an identical request (same text + langs + mode + tone +
+    // flags) reuses the stored result with NO paid API round-trip.
+    final cacheKey = BubbleTranslateCache.keyFor(
+      text: text,
+      mode: mode,
+      targetLang: effectiveTargetLang,
+      sourceLang: sourceLang,
+      tone: effectiveTone,
+      romanization: romanizationEnabled,
+      suggestReplies: replySuggestions,
+      replyToOriginal: isReply ? replyToOriginal : null,
+    );
+    final cached = await _bubbleTranslateCache.get(cacheKey);
+    if (cached != null) {
+      debugPrint('[BubbleTranslate] cache HIT mode=$mode '
+          'tgt=$effectiveTargetLang len=${text.trim().length} (no server call)');
+      await _sendResultToBubble(
+        translation: cached['translation'] as String? ?? '',
+        romanization: cached['romanization'] as String?,
+        detectedLang: cached['detectedLang'] as String?,
+        suggestionSources:
+            (cached['suggestionSources'] as List?)?.cast<String>() ?? const [],
+        suggestionTargets:
+            (cached['suggestionTargets'] as List?)?.cast<String>() ?? const [],
+        requestId: requestId,
+      );
+      return;
+    }
+
+    debugPrint('[BubbleTranslate] cache MISS mode=$mode '
+        'tgt=$effectiveTargetLang len=${text.trim().length} -> server');
     final api = _rootContainer.read(apiClientProvider);
-    final response = await api.dio.post(endpoint, data: body);
+    final response = await api.dio
+        .post(endpoint, data: body)
+        .timeout(const Duration(seconds: 15));
     final data = response.data as Map?;
 
     final output = (data?['translation'] ??
@@ -908,6 +1014,15 @@ Future<void> _translateForBubble(
       suggestionTargets: pairs.map((p) => p.target).toList(growable: false),
       requestId: requestId,
     );
+
+    // Cache the fresh result so an identical future request is instant + free.
+    unawaited(_bubbleTranslateCache.put(cacheKey, {
+      'translation': output,
+      'romanization': romanization,
+      'detectedLang': detectedLang,
+      'suggestionSources': pairs.map((p) => p.source).toList(growable: false),
+      'suggestionTargets': pairs.map((p) => p.target).toList(growable: false),
+    }));
 
     // Save to history for translate/reply modes if user has historySave on
     // (default true). Mirrors the in-app flow in translate_provider.dart.
