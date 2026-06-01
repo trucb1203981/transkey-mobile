@@ -429,6 +429,21 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
         final scaleX = fit.fitW / widget.imageSize.width;
         final scaleY = fit.fitH / widget.imageSize.height;
 
+        // Map every block's bbox to view coords once. A card may grow RIGHT
+        // into genuinely empty space (so a longer translation doesn't wrap
+        // inside the narrow source box when there's room beside it) - these
+        // rects are the neighbours each card must stop short of so the
+        // expansion never overruns the next block on the same row.
+        final viewRects = <Rect>[
+          for (final b in widget.blocks)
+            Rect.fromLTWH(
+              b.boundingBox.left * scaleX + fit.offsetX,
+              b.boundingBox.top * scaleY + fit.offsetY,
+              b.boundingBox.width * scaleX,
+              b.boundingBox.height * scaleY,
+            ),
+        ];
+
         final cards = <_CardLayout>[];
         for (var i = 0; i < widget.blocks.length; i++) {
           if (_dismissed.contains(i)) continue;
@@ -523,20 +538,54 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               fontSize: mangaFont,
             ));
           } else {
+            // Grow the card RIGHT into empty space so a longer translation
+            // uses the room beside it instead of wrapping inside the narrow
+            // source box. Stop a small gutter short of the nearest block on
+            // the SAME row (vertical overlap) so the expansion never paints
+            // over a neighbour (dish price, second column, next line).
+            final rightEdge = left + boxW;
+            final bottomEdge = top + boxH;
+            var maxRight = viewSize.width - 4;
+            for (var j = 0; j < viewRects.length; j++) {
+              if (j == i) continue;
+              final r = viewRects[j];
+              // Only a SIGNIFICANT vertical overlap counts as the same row.
+              // A box on the row above/below whose edge merely grazes this
+              // one (common on dense menus like the Korean one) must NOT cap
+              // the expansion, or the card never grows and the translation
+              // keeps wrapping even though the space beside it is free.
+              final overlap =
+                  math.min(bottomEdge, r.bottom) - math.max(top, r.top);
+              if (overlap < math.min(boxH, r.height) * 0.5) continue;
+              if (r.left >= rightEdge && r.left < maxRight) {
+                maxRight = r.left - 6;
+              }
+            }
+            final layoutWidth = math.max(cardWidth, maxRight - left);
+
             // Normal mode: auto-fit font to source box height.
             final lines = _sourceLineCount(block.text);
             final startFont = _estimateSourceFont(boxH, lines);
 
             final fit1 = _fitFont(
               text: displayText,
-              maxWidth: cardWidth,
+              maxWidth: layoutWidth,
               maxHeight: boxH,
               startFont: startFont,
               fontWeight:
                   isTranslated ? FontWeight.w500 : FontWeight.normal,
             );
 
-            final fontSize = fit1.fontSize;
+            // Readable floor for TRANSLATIONS. This menu's source boxes are
+            // only 8-21 px tall (small Japanese print), which otherwise
+            // crushes the longer Vietnamese to the 9 px minimum. We give the
+            // translation a readable size and let the card grow DOWN to fit
+            // (tightH below is no longer hard-capped to the tiny source
+            // height); the width already expanded into free space, so the
+            // text stays on as few lines as the room allows.
+            final fontSize = isTranslated
+                ? math.max(fit1.fontSize, 13.0)
+                : fit1.fontSize;
             // Hard-lock the card to the source OCR box height. Earlier
             // versions let it grow when content exceeded the box, but
             // that caused cards to bleed into the row below on dense
@@ -574,7 +623,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             // OverflowBox approach: text never paints outside the bg).
             // Falls back to full bbox in "show original" mode where the
             // source-text strip needs the full width.
-            var tightW = cardWidth;
+            var tightW = layoutWidth;
             var tightH = cardHeight;
             if (!(widget.showOriginalAlways && isTranslated)) {
               final renderedFont = fontSize * widget.fontScale;
@@ -589,11 +638,13 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                   ),
                 ),
                 textDirection: TextDirection.ltr,
-              )..layout(maxWidth: math.max(20, cardWidth - _kCardHPad * 2));
-              tightW = math.min(cardWidth, tp.size.width + _kCardHPad * 2);
-              tightH = widget.fontScale > 1.0
-                  ? tp.size.height + _kCardVPad * 2
-                  : math.min(cardHeight, tp.size.height + _kCardVPad * 2);
+              )..layout(maxWidth: math.max(20, layoutWidth - _kCardHPad * 2));
+              tightW = math.min(layoutWidth, tp.size.width + _kCardHPad * 2);
+              // Grow DOWN to fit the rendered text. The readable-floor font
+              // above can exceed the tiny source box, and clipping to boxH
+              // would cut the translation off. The width already expanded, so
+              // height growth stays minimal (mostly one readable line).
+              tightH = tp.size.height + _kCardVPad * 2;
             }
 
             cards.add(_CardLayout(

@@ -804,24 +804,36 @@ class CameraService {
       final deduped = _dedupeAndFilter(result);
       return _mergeForScene(deduped, scene);
     }
-    // 4-pass OCR (original + contrast + binarize + fillOutline).
+    // 4-pass OCR (original + contrast + binarize + binarizeBright).
     // Upscale dropped: it recovered marginal extra text at 2x cost.
     // DBNet fill-in below covers the missed-region case cheaper.
-    // Binarize (adaptive threshold) recovers bold stylized fonts.
-    // fillOutline (heavy blur + threshold) recovers hollow/outlined text.
+    // Binarize (dark adaptive threshold) recovers bold stylized DARK fonts;
+    // binarizeBright (the mirror, bright threshold) recovers WHITE / light
+    // text on dark OR light backgrounds. It REPLACES the old fillOutline
+    // pass (heavy blur + dilation, slower, niche outlined-text only) at the
+    // same pass count and ~the same per-pass cost (one integral pass).
+    // Preprocess passes run a SINGLE recognizer instead of the 5-way auto
+    // fan-out. That fan-out (3 preprocess × 5 scripts = 15 ML Kit calls) was
+    // the bulk of the ~12s OCR. Use the pinned source script when known,
+    // else Latin (the common menu case). The ORIGINAL pass above stays
+    // auto-detect, so a CJK capture on source=auto is still read; only the
+    // preprocess recall for an UNPINNED CJK capture is traded away — for
+    // roughly half the latency, which is the stated priority.
+    final ppScript =
+        _scriptForLang(liveSourceHint) ?? TextRecognitionScript.latin;
     final contrastFuture = _preprocessAndRecognize(
         ocrReadyPath, _PreprocessMode.contrast,
-        perLine: perLine, autoDetect: autoDetect);
+        perLine: perLine, script: ppScript);
     final binarizeFuture = _preprocessAndRecognize(
         ocrReadyPath, _PreprocessMode.binarize,
-        perLine: perLine, autoDetect: autoDetect);
-    final fillOutlineFuture = _preprocessAndRecognize(
-        ocrReadyPath, _PreprocessMode.fillOutline,
-        perLine: perLine, autoDetect: autoDetect);
+        perLine: perLine, script: ppScript);
+    final binarizeBrightFuture = _preprocessAndRecognize(
+        ocrReadyPath, _PreprocessMode.binarizeBright,
+        perLine: perLine, script: ppScript);
 
     final sw = Stopwatch()..start();
     final results = await Future.wait(
-        [originalFuture, contrastFuture, binarizeFuture, fillOutlineFuture]);
+        [originalFuture, contrastFuture, binarizeFuture, binarizeBrightFuture]);
     debugPrint('[OCR] 4-pass ML Kit: ${sw.elapsedMilliseconds}ms');
     final merged = <OcrBlock>[
       ...results[0],
@@ -1453,39 +1465,35 @@ class CameraService {
         //   2. _stripTrailingPrice — removes a price that's MERGED into
         //      a dish row ("Phở bò 65k" → "Phở bò"), since the user
         //      already sees the price on the source photo.
-        final filtered = _filterMenuMetadata(blocks)
-            .where((b) => !_isMenuNoise(b.text))
+        // Smart row pairing: cluster blocks into visual rows, then within
+        // each row group every dish with the price (+ reading) that follow it
+        // into ONE wide block (dish → price span). This is what the user
+        // asked for - "1 món + 1 giá = 1 block" - and it FIXES the wrap: a
+        // dish's box now spans the whole row width, so the (longer) Vietnamese
+        // translation fits on one line instead of wrapping inside the narrow
+        // dish column. Multi-column menus stay split because a dish that
+        // follows a completed dish+price pair (or a column-gutter gap) starts
+        // a new group. Replaces the old detect-columns + same-line approach,
+        // which over-split the dish↔price gap into separate columns.
+        final kept = blocks
+            .where((b) => b.text.trim().isNotEmpty && !_isMenuNoise(b.text))
             .toList();
-        // Detect columns first so _mergeSameLine and _separateVertically
-        // run within each column independently — prevents cross-column
-        // merging and avoids wrongly shifting right-column blocks down.
-        final columns = _detectColumns(filtered);
         final allRows = <OcrBlock>[];
-        for (final col in columns) {
-          final merged = _mergeSameLine(col, hGapMultiplier: 1.2);
-          final priceStripped = merged
-              .map((block) {
-                final stripped = _stripTrailingPrice(block.text);
-                if (stripped == block.text) return block;
-                return OcrBlock(
-                  text: stripped,
-                  boundingBox: block.boundingBox,
-                  confidence: block.confidence,
-                );
-              })
-              .where((block) =>
-                  block.text.trim().isNotEmpty && !_isMenuNoise(block.text))
-              .toList();
-          allRows.addAll(_separateVertically(priceStripped));
+        for (final row in _clusterByRow(kept)) {
+          allRows.addAll(_pairRowSegments(row));
         }
-        // Re-sort the combined columns into reading order
-        // (top-to-bottom, left-to-right within each row).
-        allRows.sort((a, b) {
+        // Drop anything still pure metadata (a standalone phone / hours block
+        // that shared a row with no dish).
+        final cleaned = allRows
+            .where((b) => !_isMenuMetadata(b.text) && !_isMenuNoise(b.text))
+            .toList();
+        // Reading order: top-to-bottom, left-to-right within a row.
+        cleaned.sort((a, b) {
           final dy = a.boundingBox.top - b.boundingBox.top;
           if (dy.abs() > 12) return dy < 0 ? -1 : 1;
           return a.boundingBox.left.compareTo(b.boundingBox.left);
         });
-        return allRows;
+        return cleaned;
 
       case 'sign':
         // A sign reads as ONE message. Same-line + paragraph merge,
@@ -1564,25 +1572,30 @@ class CameraService {
     _PreprocessMode mode, {
     bool perLine = false,
     bool autoDetect = false,
+    TextRecognitionScript? script,
   }) async {
     try {
       final processed = await _writePreprocessedImage(imagePath, mode);
       if (processed == null) return const [];
       final (processedPath, scale) = processed;
       try {
-        // CJK menus: the preprocess passes used to run Latin-only, so on a
-        // Japanese / Chinese / Korean capture they produced garbage that
-        // the content filter dropped - leaving recall at effectively one
-        // (the original auto pass). Running the multi-script auto detector
-        // here lets contrast / binarize / upscale each contribute real
-        // CJK reads, which is the dominant recall win on dense menus.
-        final blocks = autoDetect
-            ? await _recognizeAuto(processedPath, perLine: perLine)
-            : await _recognizeWithScript(
-                processedPath,
-                TextRecognitionScript.latin,
-                perLine: perLine,
-              );
+        // Recognizer selection, in priority order:
+        //   1. [script] given  → ONE recognizer (the latency win: the
+        //      caller picks Latin / the pinned CJK script so a preprocess
+        //      pass costs 1 ML Kit call, not the 5-way auto fan-out).
+        //   2. [autoDetect]    → all 5 scripts (legacy callers that need
+        //      CJK recall without knowing the script up front).
+        //   3. otherwise       → Latin only.
+        final blocks = script != null
+            ? await _recognizeWithScript(processedPath, script,
+                perLine: perLine)
+            : autoDetect
+                ? await _recognizeAuto(processedPath, perLine: perLine)
+                : await _recognizeWithScript(
+                    processedPath,
+                    TextRecognitionScript.latin,
+                    perLine: perLine,
+                  );
         if (scale == 1.0) return blocks;
         final inv = 1.0 / scale;
         return blocks
@@ -1607,9 +1620,6 @@ class CameraService {
     }
   }
 
-  /// Heavy CPU work — runs in an isolate via [compute] so the UI thread
-  /// stays responsive while the JPEG is decoded, filtered, and re-encoded.
-  /// Returns the output path AND the resize scale (processed ÷ original
   /// Downscales [imagePath] so its longest edge is at most [maxEdge] pixels,
   /// writes the result to a temp file, and returns that path. Uses area-
   /// averaging interpolation which preserves text sharpness better than
@@ -1958,21 +1968,6 @@ class CameraService {
     return match / shorter.length;
   }
 
-  /// Drop OCR blocks that are pure menu metadata — prices, phone
-  /// numbers, opening hours, "delivery + phone" service lines. These
-  /// are already visible on the original photo so translating them is
-  /// noise (clutters overlay + wastes LLM tokens). The user only cares
-  /// about dish NAMES and dish DESCRIPTIONS — those pass through.
-  ///
-  /// Patterns are deliberately conservative — they must match the
-  /// ENTIRE trimmed text. A block containing a price PLUS a dish name
-  /// (e.g. "Phở bò 65k") doesn't match the pure-price pattern and is
-  /// kept; the server prompt then strips the price from the translation
-  /// output. Standalone metadata is dropped here.
-  List<OcrBlock> _filterMenuMetadata(List<OcrBlock> blocks) {
-    return blocks.where((block) => !_isMenuMetadata(block.text)).toList();
-  }
-
   /// Currency / unit tokens that may appear in pure-price blocks. Match
   /// is case-insensitive and word-boundary-aware (regex below). New
   /// currencies: add to this list — the strip-and-check algorithm
@@ -1983,7 +1978,7 @@ class CameraService {
     // Vietnamese
     'vnd', 'đ', '₫',
     // East Asia
-    'jpy', 'krw', 'twd', 'hkd', 'cny', 'rmb', '¥', '₩', '元',
+    'jpy', 'krw', 'twd', 'hkd', 'cny', 'rmb', '¥', '₩', '元', '円', '圓',
     // Western
     'usd', 'eur', 'gbp', 'aud', 'cad', '\$', '€', '£', 'us\\\$',
     // South / SE Asia
@@ -2116,11 +2111,12 @@ class CameraService {
   static final RegExp _trailingPrice = RegExp(
     r'''[\s\-–—:]+'''                                  // separator before price
     r'''(?:'''
-    r'''(?:rp\.?|rm|hk\$|s\$|nt\$|us\$|[\$€¥£₫đ₩₹฿])\s*[\d.,]+'''  // currency-prefixed: "Rp. 15.000", "$12"
+    r'''(?:rp\.?|rm|hk\$|s\$|nt\$|us\$|[\$€¥£₫đ₩₹฿円圓元])\s*[\d.,]+'''  // currency-prefixed: "Rp. 15.000", "$12", "¥800"
     r'''|[\d]+[.,][\d]{3}(?:[.,][\d]{3})*\s*(?:[kK]|đ|₫|vnd|usd|idr|rp|rm)?'''  // thousands: "15.000", "15,000"
     r'''|[\d.,]+\s*[kK]\b'''                            // k-suffix: "65k", "1.5k"
     r'''|[\d]{4,}\s*(?:đ|₫|vnd|usd|idr|rp|rm)?'''       // 4+ bare digits: "15000"
     r'''|[\d.,]+\s*(?:đ|₫|vnd|usd|eur|jpy|krw|thb|idr|myr|php|inr|sgd)\b'''  // suffix code: "25 VND"
+    r'''|[\d.,]+\s*[円圓元¥₩₫đ฿₹₱]'''                    // currency-SYMBOL suffix: "800円", "5000₩", "20000₫" (the JP-yen leak)
     r''')\s*$''',
     caseSensitive: false,
   );
@@ -2179,6 +2175,120 @@ class CameraService {
     }
     if (pending != null) result.add(pending);
     return result;
+  }
+
+  /// True when [text] is a PURE price / number token (only digits, currency
+  /// and separators remain after stripping). Such a block belongs WITH the
+  /// dish on its row, not as its own card.
+  static final RegExp _hasDigit = RegExp(r'\d');
+  bool _isPriceBlock(String text) {
+    final t = text.trim();
+    if (t.isEmpty || !_hasDigit.hasMatch(t)) return false;
+    final stripped = t
+        .replaceAll(_currencyStripPattern, '')
+        .replaceAll(_ampmStrip, '')
+        .replaceAll(_stripChars, '')
+        .trim();
+    return stripped.isEmpty;
+  }
+
+  static final RegExp _letterRe = RegExp(r'\p{L}', unicode: true);
+  bool _hasLetters(String text) => _letterRe.hasMatch(text);
+
+  /// Cluster blocks into visual ROWS by vertical midpoint. Two blocks share a
+  /// row when their centres are within 0.6 × the taller box — tight enough to
+  /// keep stacked dish rows apart, loose enough to group a dish with the price
+  /// (and any phonetic reading) sitting on the same line.
+  List<List<OcrBlock>> _clusterByRow(List<OcrBlock> blocks) {
+    final sorted = [...blocks]
+      ..sort((a, b) =>
+          a.boundingBox.center.dy.compareTo(b.boundingBox.center.dy));
+    final rows = <List<OcrBlock>>[];
+    for (final b in sorted) {
+      final my = b.boundingBox.center.dy;
+      final h = b.boundingBox.height;
+      List<OcrBlock>? target;
+      for (final r in rows) {
+        final ry =
+            r.map((c) => c.boundingBox.center.dy).reduce((a, c) => a + c) /
+                r.length;
+        final rh = r.map((c) => c.boundingBox.height).reduce(math.max);
+        if ((my - ry).abs() < math.max(h, rh) * 0.6) {
+          target = r;
+          break;
+        }
+      }
+      if (target != null) {
+        target.add(b);
+      } else {
+        rows.add([b]);
+      }
+    }
+    return rows;
+  }
+
+  /// MENU smart row pairing. Within one visual row, group each dish with the
+  /// price (and reading) that follow it, emitting ONE wide block per dish that
+  /// spans dish → price. A new group starts at a dish that follows an
+  /// already-completed dish+price pair (the next column's entry) OR across a
+  /// column-gutter-sized gap — so a 2-/3-column menu keeps each "món + giá" as
+  /// its own block instead of merging across columns. Price text is stripped
+  /// (the user reads it off the photo); the wide box is what stops the
+  /// translation wrapping inside a narrow dish column.
+  List<OcrBlock> _pairRowSegments(List<OcrBlock> row) {
+    if (row.length < 2) return row;
+    final sorted = [...row]
+      ..sort((a, b) => a.boundingBox.left.compareTo(b.boundingBox.left));
+    final groups = <List<OcrBlock>>[];
+    var current = <OcrBlock>[];
+    var hasPrice = false;
+    for (final b in sorted) {
+      final isPrice = _isPriceBlock(b.text);
+      final isDish = !isPrice && _hasLetters(b.text);
+      if (current.isEmpty) {
+        current = [b];
+        hasPrice = isPrice;
+        continue;
+      }
+      final prevRight = current.last.boundingBox.right;
+      final lineH = current.map((c) => c.boundingBox.height).reduce(math.max);
+      final bigGap = (b.boundingBox.left - prevRight) > lineH * 4;
+      if (isDish && (hasPrice || bigGap)) {
+        groups.add(current);
+        current = [b];
+        hasPrice = false;
+      } else {
+        current.add(b);
+        if (isPrice) hasPrice = true;
+      }
+    }
+    if (current.isNotEmpty) groups.add(current);
+
+    final out = <OcrBlock>[];
+    for (final g in groups) {
+      var box = g.first.boundingBox;
+      final parts = <String>[];
+      var confSum = 0.0;
+      var confN = 0;
+      for (final b in g) {
+        box = box.expandToInclude(b.boundingBox);
+        final stripped = _stripTrailingPrice(b.text).trim();
+        if (stripped.isNotEmpty && _hasLetters(stripped)) parts.add(stripped);
+        final c = b.confidence;
+        if (c != null) {
+          confSum += c;
+          confN++;
+        }
+      }
+      final text = parts.join(' ').trim();
+      if (text.isEmpty) continue; // pure-price / metadata group → drop
+      out.add(OcrBlock(
+        text: text,
+        boundingBox: box,
+        confidence: confN > 0 ? confSum / confN : null,
+      ));
+    }
+    return out;
   }
 
   bool _sameLine(OcrBlock a, OcrBlock b, {required double hGapMultiplier}) {
@@ -2357,85 +2467,6 @@ class CameraService {
       boundingBox: Rect.fromLTRB(minLeft, minTop, maxRight, maxBottom),
       confidence: confidence,
     );
-  }
-
-  /// Split [blocks] into logical columns by finding horizontal "empty bands"
-  /// — contiguous ranges of X where no block's bounding box has coverage.
-  ///
-  /// Returns a list of column groups in left-to-right order. Single-column
-  /// layouts (or any layout with no clear gap) return one group containing
-  /// all blocks.
-  ///
-  /// Why this matters for menu: a two-section menu places two independent
-  /// dish lists side-by-side. Without column detection:
-  ///   • [_mergeSameLine] could merge a left-column dish with a right-column
-  ///     dish if they're on the same Y and the gap is narrow.
-  ///   • [_separateVertically] would compare rows across columns and
-  ///     incorrectly shift right-column blocks downward.
-  ///
-  /// The minimum gap threshold (1.5 × average line height) is conservative
-  /// enough to ignore the intra-column dish-name ↔ price gap (~0–0.5 ×
-  /// lineH) while reliably catching real column separators (≥ 2–3 × lineH).
-  List<List<OcrBlock>> _detectColumns(List<OcrBlock> blocks) {
-    if (blocks.length < 2) return [blocks];
-
-    final allLeft = blocks.map((b) => b.boundingBox.left).reduce(math.min);
-    final allRight = blocks.map((b) => b.boundingBox.right).reduce(math.max);
-    final totalW = allRight - allLeft;
-    if (totalW <= 0) return [blocks];
-
-    final avgH = blocks.map((b) => b.boundingBox.height).reduce((a, b) => a + b) /
-        blocks.length;
-    final minGapW = avgH * 1.5;
-
-    // Build a 1-D coverage mask across the horizontal extent.
-    final maskW = totalW.ceil().clamp(1, 4096);
-    final covered = List<bool>.filled(maskW, false);
-    for (final block in blocks) {
-      final l = (block.boundingBox.left - allLeft).floor().clamp(0, maskW - 1);
-      final r = (block.boundingBox.right - allLeft).ceil().clamp(0, maskW);
-      for (var x = l; x < r; x++) {
-        covered[x] = true;
-      }
-    }
-
-    // Collect midpoints of empty bands wide enough to be column separators.
-    final separators = <double>[];
-    var gapStart = -1;
-    for (var x = 0; x <= maskW; x++) {
-      final empty = x == maskW || !covered[x];
-      if (empty) {
-        if (gapStart < 0) gapStart = x;
-      } else {
-        if (gapStart >= 0) {
-          final gapW = x - gapStart;
-          if (gapW >= minGapW) {
-            separators.add(allLeft + gapStart + gapW / 2);
-          }
-          gapStart = -1;
-        }
-      }
-    }
-
-    if (separators.isEmpty) return [blocks];
-
-    // Partition blocks at each separator boundary.
-    final boundaries = [
-      double.negativeInfinity,
-      ...separators,
-      double.infinity,
-    ];
-    final groups = <List<OcrBlock>>[];
-    for (var i = 0; i < boundaries.length - 1; i++) {
-      final lo = boundaries[i];
-      final hi = boundaries[i + 1];
-      final group = blocks.where((b) {
-        final cx = (b.boundingBox.left + b.boundingBox.right) / 2;
-        return cx > lo && cx <= hi;
-      }).toList();
-      if (group.isNotEmpty) groups.add(group);
-    }
-    return groups.isEmpty ? [blocks] : groups;
   }
 
   /// Remove vertical overlap between adjacent blocks IN THE SAME COLUMN.
@@ -3000,6 +3031,15 @@ enum _PreprocessMode {
   /// hollow/outlined text (colored border, white interior) making it
   /// appear solid before thresholding to pure B&W that ML Kit can read.
   fillOutline,
+
+  /// Grayscale → contrast → BRIGHT adaptive threshold. The mirror of
+  /// [binarize]: marks a pixel as text when it is BRIGHTER than its local
+  /// neighbourhood (not darker) and outputs it black. This is the fix for
+  /// WHITE / light text — on a dark background (high contrast, already ~OK)
+  /// and on a light background (low contrast) — which the dark-only Bradley
+  /// threshold structurally cannot catch. One integral pass, so it is as
+  /// cheap as [binarize] (no extra blur / dilation).
+  binarizeBright,
 }
 
 class _PreprocessArgs {
@@ -3113,6 +3153,16 @@ double _runPreprocessIsolate(_PreprocessArgs args) {
         }
         // Step 2: dilate black border pixels inward to fill letter body.
         _dilateDark(working, 6);
+      case _PreprocessMode.binarizeBright:
+        // White / light text. normalize + contrast, then the BRIGHT
+        // adaptive threshold fills glyphs that are brighter than their
+        // local surround (black-on-white for ML Kit). A lower t (0.08)
+        // than the dark binarize makes it catch lower-contrast white-on-
+        // light copy too. Single integral pass, so it is as fast as
+        // binarize - it REPLACES the slower fillOutline pass.
+        img.normalize(working, min: 0, max: 255);
+        img.adjustColor(working, contrast: 1.4, saturation: 0);
+        _bradleyThreshold(working, bright: true, t: 0.08);
     }
 
     final out = img.encodeJpg(working, quality: 92);
@@ -3190,6 +3240,7 @@ void _bradleyThreshold(
   img.Image image, {
   double windowFraction = 0.125,
   double t = 0.15,
+  bool bright = false,
 }) {
   final w = image.width;
   final h = image.height;
@@ -3224,7 +3275,12 @@ void _bradleyThreshold(
           integral[(y1) * (w + 1) + (x1)];
       final pixel = image.getPixel(x, y);
       final lum = pixel.r.toInt();
-      final isText = lum * count < sum * factor;
+      // Dark text: pixel darker than local mean by t. Bright text (white
+      // on a light/dark bg): the mirror - pixel BRIGHTER than local mean.
+      // Same single integral pass, just the comparison flips.
+      final isText = bright
+          ? lum * count > sum * (1.0 + t)
+          : lum * count < sum * factor;
       final v = isText ? 0 : 255;
       image.setPixelRgb(x, y, v, v, v);
     }

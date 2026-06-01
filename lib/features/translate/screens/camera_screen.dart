@@ -2100,14 +2100,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     _dbg('  $shortName OCR ${ocrMs}ms '
         '(${ocr == null ? "null" : "${ocr.blocks.length}b"})');
     if (ocr == null) return null;
-    if (ocr.blocks.isEmpty) {
-      return _BatchSnapshot(
-        path: ocr.path,
-        imageSize: ocr.size,
-        blocks: const [],
-        translations: const [],
-        error: 'No text found',
-      );
+    // Weak / unsupported-script OCR (Thai, Arabic, Cyrillic, … on source=auto):
+    // ML Kit returns empty or a few garbage Latin scraps. Escalate to the
+    // vision LLM — the same safety net the single-capture path (_processImage)
+    // has, which this parallel gallery path was MISSING, so Thai gallery
+    // images came back "No text found". _runVisionPure is shared-state-free,
+    // so the batch keeps running concurrently.
+    final ocrChars = ocr.blocks
+        .fold<int>(0, (s, b) => s + b.text.replaceAll(RegExp(r'\s'), '').length);
+    final hasHighConf =
+        ocr.blocks.any((b) => b.confidence != null && b.confidence! >= 0.7);
+    final weakOcr = ocr.blocks.isEmpty ||
+        (ocrChars < _shortTextThresholdForScene(scene.id) && !hasHighConf);
+    if (weakOcr) {
+      try {
+        final vision = await _runVisionPure(file.path, scene: scene.id);
+        if (vision.blocks.isNotEmpty) return vision;
+      } catch (e) {
+        debugPrint('[Camera] gallery vision fallback failed: $e');
+      }
+      if (ocr.blocks.isEmpty) {
+        return _BatchSnapshot(
+          path: ocr.path,
+          imageSize: ocr.size,
+          blocks: const [],
+          translations: const [],
+          error: 'No text found',
+        );
+      }
     }
 
     final texts = ocr.blocks.map((b) => b.text).toList();
@@ -2985,12 +3005,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         'scene':       scene.id,
         'source_lang': sourceLang,
       });
-      await _captureWithVision(path, bytes, size, scene: scene.id);
-      // Google Vision has strong multilingual OCR (supports 100+ scripts including
-      // Thai, Arabic, Cyrillic, Hebrew, etc.) — if LLM Vision returns empty for
-      // these scripts, Vision often succeeds where the LLM couldn't.
-      if (mounted && _blocks.isEmpty) {
-        await _captureWithGoogleVision(path, bytes, size, scene: scene.id);
+      // Unsupported script (Thai, Arabic, Cyrillic, Hebrew, …): try the FREE
+      // Google Cloud Vision tier FIRST. It reads 100+ scripts and the first
+      // 1,000 units/month are free — gated SERVER-SIDE by monthly budget +
+      // even pacing + a per-user daily cap (returns budgetExceeded/empty when
+      // the free tier is exhausted). Only then do we pay for the vision-LLM.
+      // Reordered from LLM-first so the free quota is actually spent on the
+      // scripts that need it most.
+      final usedGoogle =
+          await _captureWithGoogleVision(path, bytes, size, scene: scene.id);
+      if (mounted && !usedGoogle) {
+        await _captureWithVision(path, bytes, size, scene: scene.id);
       }
       return;
     }
@@ -3306,9 +3331,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       });
       if (!mounted) return false;
       final data = response.data as Map?;
+      if (data?['budgetExceeded'] == true) {
+        // Free 1,000/month tier exhausted (monthly/pacing/per-user cap) —
+        // server told us to use the LLM. Fall through.
+        debugPrint('[Camera] Google Vision budget exceeded → vision-LLM');
+      }
       final rawBlocks = data?['blocks'];
       if (rawBlocks is! List || rawBlocks.isEmpty) {
-        // Vision unconfigured or found nothing → let the LLM tier try.
+        // Vision unconfigured / over budget / found nothing → let the LLM try.
         return false;
       }
 
