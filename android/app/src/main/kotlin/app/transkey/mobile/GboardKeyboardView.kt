@@ -564,9 +564,11 @@ class GboardKeyboardView : KeyboardView {
                     numberHints[code.toChar().lowercaseChar()]?.let { hint ->
                         canvas.drawText(hint, rectF.right - hintDx, rectF.top + hintDy, hintPaint)
                     }
-                    // Comma long-presses to emoji - draw a small smiley hint up
-                    // top so the gesture is discoverable.
-                    if (code == ','.code) {
+                    // Only the bottom-row comma doubles as the emoji key (long-
+                    // press to emoji), so draw the discoverability smiley there.
+                    // A comma inside a letter row (e.g. the Thai shift layer) is a
+                    // plain comma and must not show the smiley.
+                    if (code == ','.code && (key.edgeFlags and Keyboard.EDGE_BOTTOM) != 0) {
                         drawEmoji(canvas, cx, rectF.top + dp(12f), dp(5f))
                     }
                 }

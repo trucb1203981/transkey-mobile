@@ -33,6 +33,7 @@
         <Key android:codes="3631" android:keyLabel="ฯ"/>
         <Key android:codes="3597" android:keyLabel="ญ"/>
         <Key android:codes="3600" android:keyLabel="ฐ"/>
+        <Key android:codes="44" android:keyLabel=","/>
     </Row>
 
     <Row>
@@ -46,6 +47,8 @@
         <Key android:codes="3625" android:keyLabel="ษ"/>
         <Key android:codes="3624" android:keyLabel="ศ"/>
         <Key android:codes="3595" android:keyLabel="ซ"/>
+        <Key android:codes="46" android:keyLabel="."/>
+        <Key android:codes="3589" android:keyLabel="ฅ"/>
     </Row>
 
     <Row>
