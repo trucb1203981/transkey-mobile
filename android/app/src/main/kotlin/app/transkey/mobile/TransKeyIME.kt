@@ -63,11 +63,15 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // set, long-press opens the picker). Each maps to a letters layout and an
     // input behavior (Latin direct, VI Telex, Cyrillic direct; CJK/RTL added in
     // later phases). The explicit choice persists in prefs ("typing_mode").
-    private enum class Mode { EN, VI, RU, RU_PHON, AR, KO, KO_CHUN, JA, JA_FLICK, ZH }
+    private enum class Mode { EN, VI, RU, RU_PHON, AR, TH, KO, KO_CHUN, JA, JA_FLICK, ZH }
     private var mode: Mode = Mode.EN
     // Letters keyboard per language, built lazily + centered like qwerty. EN/VI
     // share the Latin qwerty; the others have their own layouts.
     private val letterKeyboards = HashMap<Mode, Keyboard>()
+    // Thai Kedmanee has two layers (base + shift) instead of upper/lowercase;
+    // the Shift key swaps between them. Cached by the shift flag.
+    private val thaiKeyboards = HashMap<Boolean, Keyboard>()
+    private var thaiShift = false
 
     // Voice input. Reuses the bubble's VoiceRecognitionHelper so dictation
     // behaves identically (live partials, generous silence thresholds, glossary
@@ -282,6 +286,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         Mode.KO, Mode.KO_CHUN -> "한국어"
         Mode.JA, Mode.JA_FLICK -> "日本語"
         Mode.ZH -> "中文"
+        Mode.TH -> "ไทย"
         else -> "English"
     }
 
@@ -304,6 +309,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         }
         Mode.JA_FLICK -> letterKeyboards.getOrPut(m) {
             Keyboard(this, R.xml.keyboard_japanese_flick).also { centerRows(it) }
+        }
+        Mode.TH -> thaiKeyboards.getOrPut(thaiShift) {
+            Keyboard(this, if (thaiShift) R.xml.keyboard_thai_shift else R.xml.keyboard_thai)
+                .also { centerRows(it) }
         }
         else -> qwertyKeyboard // EN, VI (Latin), JA (romaji)
     }
@@ -337,6 +346,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         // Reset katakana toggle when leaving JA_FLICK so it doesn't leak into
         // the next JA_FLICK session with stale labels.
         if (m != Mode.JA_FLICK) flickKatakana = false
+        thaiShift = false // always re-enter Thai on the base Kedmanee layer
         mode = m
         if (persist) prefs.edit().putString("typing_mode", modeId(m)).apply()
         if (layer == Layer.LETTERS) applyLayer()
@@ -355,7 +365,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
      */
     private fun updateSpaceBarLabel() {
         val label = modeLabel(mode)
-        val kbs = listOf(qwertyKeyboard, symbolsKeyboard, symbols2Keyboard) + letterKeyboards.values
+        val kbs = listOf(qwertyKeyboard, symbolsKeyboard, symbols2Keyboard) +
+            letterKeyboards.values + thaiKeyboards.values
         for (kb in kbs) {
             kb?.keys?.firstOrNull { it.codes.firstOrNull() == KEYCODE_SPACE }?.label = label
         }
@@ -468,18 +479,23 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         keyboardView?.visibility = View.VISIBLE
     }
 
-    /** Catalog of selectable input languages (id, display label). */
+    /**
+     * Catalog of selectable input languages (id, display label). EN + VI lead
+     * (the app's core markets), then the rest alphabetically by English name
+     * (Gboard-style), with each language's variants grouped together.
+     */
     private fun inputLangOptions(): List<Pair<String, String>> = listOf(
         modeId(Mode.EN) to "English",
         modeId(Mode.VI) to "Tiếng Việt",
-        modeId(Mode.RU) to "Русский · ЙЦУКЕН",
-        modeId(Mode.RU_PHON) to "Русский · фонетический",
         modeId(Mode.AR) to "العربية",
-        modeId(Mode.KO) to "한국어 · 두벌식",
-        modeId(Mode.KO_CHUN) to "한국어 · 천지인",
+        modeId(Mode.ZH) to "中文 · 拼音",
         modeId(Mode.JA) to "日本語 (Romaji)",
         modeId(Mode.JA_FLICK) to "日本語 · フリック",
-        modeId(Mode.ZH) to "中文 · 拼音",
+        modeId(Mode.KO) to "한국어 · 두벌식",
+        modeId(Mode.KO_CHUN) to "한국어 · 천지인",
+        modeId(Mode.RU) to "Русский · ЙЦУКЕН",
+        modeId(Mode.RU_PHON) to "Русский · фонетический",
+        modeId(Mode.TH) to "ไทย",
     )
 
     /**
@@ -666,6 +682,15 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         val ic = currentInputConnection ?: return
         when (primaryCode) {
             KEYCODE_SHIFT -> {
+                if (mode == Mode.TH) {
+                    // Thai has no upper/lowercase: Shift swaps between the two
+                    // Kedmanee layers (base <-> rare consonants / digits / tones).
+                    thaiShift = !thaiShift
+                    keyboardView?.keyboard = letterKeyboardFor(Mode.TH)
+                    updateSpaceBarLabel()
+                    keyboardView?.invalidateAllKeys()
+                    return
+                }
                 shift = when (shift) {
                     Shift.NONE -> Shift.ONESHOT
                     Shift.ONESHOT -> Shift.LOCK
