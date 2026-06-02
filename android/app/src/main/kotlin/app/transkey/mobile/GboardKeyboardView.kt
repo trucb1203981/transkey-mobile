@@ -540,7 +540,10 @@ class GboardKeyboardView : KeyboardView {
                     if (!raw.isNullOrEmpty()) {
                         val letter = raw.length == 1 && raw[0].isLetter()
                         val text = if (shifted && letter) raw.uppercase() else raw
-                        val p = if (letter) labelPaint else symbolPaint
+                        // Single glyphs (letters, digits, single symbols) use the
+                        // full label size for Gboard-level readability; only the
+                        // multi-char toggles (=\<, ?123, ABC) shrink to fit.
+                        val p = if (text.length == 1) labelPaint else symbolPaint
                         canvas.drawText(text, cx, baseline(cy, p), p)
                     }
                     numberHints[code.toChar().lowercaseChar()]?.let { hint ->

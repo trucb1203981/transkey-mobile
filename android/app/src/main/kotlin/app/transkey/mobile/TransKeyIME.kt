@@ -156,9 +156,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         centerRows(symbols2Keyboard)
 
         // Apply language mode to keyboard
+        val letterH = letterKeyboardFor(mode)?.height ?: 0
         kv.keyboard = when (layer) {
-            Layer.SYMBOLS -> symbolsKeyboard
-            Layer.SYMBOLS2 -> symbols2Keyboard
+            Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH) }
+            Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH) }
             else -> letterKeyboardFor(mode) ?: qwertyKeyboard
         }
         kv.setOnKeyboardActionListener(this)
@@ -262,6 +263,39 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
                 val shift = (screenW - (right - left)) / 2 - left
                 if (shift != 0) rowKeys.forEach { it.x += shift }
             }
+    }
+
+    /**
+     * Rescale [keyboard] vertically so its total height equals [targetH] px,
+     * sharing the height evenly across its rows.
+     *
+     * Gboard keeps the keyboard the SAME height for every layer: a 4-row
+     * symbols layer gets taller keys to fill a 5-row Thai letter layer's
+     * height instead of shrinking. The deprecated AOSP [Keyboard] sizes itself
+     * as rows*keyHeight, so without this the symbols layer would tower under
+     * (be shorter than) the Thai letters and look cramped/pushed down. We
+     * reposition every key's y/height and patch mTotalHeight so KeyboardView
+     * measures to [targetH].
+     */
+    private fun matchHeight(keyboard: Keyboard?, targetH: Int) {
+        keyboard ?: return
+        if (targetH <= 0) return
+        val rowsByY = keyboard.keys.groupBy { it.y }.toSortedMap()
+        val n = rowsByY.size
+        if (n == 0) return
+        val vGap = (10 * resources.displayMetrics.density).toInt() // verticalGap 10dp
+        val keyH = (targetH - vGap * (n - 1)) / n
+        if (keyH <= 0) return
+        var y = 0
+        for ((_, rowKeys) in rowsByY) {
+            for (k in rowKeys) { k.y = y; k.height = keyH }
+            y += keyH + vGap
+        }
+        runCatching {
+            val f = Keyboard::class.java.getDeclaredField("mTotalHeight")
+            f.isAccessible = true
+            f.setInt(keyboard, y - vGap)
+        }
     }
 
     /**
@@ -864,9 +898,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
     /** Swap the visible keyboard to match the current [layer]. */
     private fun applyLayer() {
+        val letterH = letterKeyboardFor(mode)?.height ?: 0
         val kb = when (layer) {
-            Layer.SYMBOLS -> symbolsKeyboard
-            Layer.SYMBOLS2 -> symbols2Keyboard
+            Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH) }
+            Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH) }
             else -> letterKeyboardFor(mode)
         }
         keyboardView?.keyboard = kb
