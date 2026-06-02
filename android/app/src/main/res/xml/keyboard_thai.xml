@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Thai Kedmanee layout (base layer). Codes are Unicode code points; chars are committed directly (no composition). Shift key (-1) swaps to the second Kedmanee layer in TransKeyIME. -->
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyWidth="7.6%p"
+    android:keyWidth="7.13%p"
     android:keyHeight="40dp"
-    android:horizontalGap="0.8%p"
+    android:horizontalGap="1.11%p"
     android:verticalGap="10dp">
 
     <Row>
         <Key android:codes="3653" android:keyLabel="ๅ"/>
         <Key android:codes="47" android:keyLabel="/"/>
-        <Key android:codes="45" android:keyLabel="-"/>
+        <Key android:codes="95" android:keyLabel="_"/>
         <Key android:codes="3616" android:keyLabel="ภ"/>
         <Key android:codes="3606" android:keyLabel="ถ"/>
         <Key android:codes="3640" android:keyLabel="ุ"/>
@@ -48,6 +48,7 @@
         <Key android:codes="3626" android:keyLabel="ส"/>
         <Key android:codes="3623" android:keyLabel="ว"/>
         <Key android:codes="3591" android:keyLabel="ง"/>
+        <Key android:codes="3587" android:keyLabel="ฃ"/>
     </Row>
 
     <Row>

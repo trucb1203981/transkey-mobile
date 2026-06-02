@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Thai Kedmanee layout (shift layer): Thai digits, rare consonants, extra tone marks. Shift key (-1) swaps back to the base layer. -->
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyWidth="7.6%p"
+    android:keyWidth="7.13%p"
     android:keyHeight="40dp"
-    android:horizontalGap="0.8%p"
+    android:horizontalGap="1.11%p"
     android:verticalGap="10dp">
 
     <Row>
