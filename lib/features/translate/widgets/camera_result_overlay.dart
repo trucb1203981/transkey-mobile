@@ -512,12 +512,14 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             // Padding matches the Container padding inside the manga
             // card so glyphs sit clear of the pill border on every side.
             final mangaTightW = math.min(cardWidth, tpManga.size.width + 10);
-            // Height grows with measured text at any scale; at 1.0 the
-            // common case stays clamped to boxH (no visual change for
-            // existing pages); at > 1.0 the card extends below the bbox.
-            final mangaTightH = widget.fontScale > 1.0
-                ? tpManga.size.height + 8
-                : math.min(boxH, tpManga.size.height + 8);
+            // Always size the card to the FULL measured (wrapped) text
+            // height - never clamp to boxH. Clamping cut off wrapped lines on
+            // small bubbles whose VI translation wraps to more lines than fit
+            // in the tiny source box, so the user saw text "wrap then lose
+            // characters". Growing past the bbox is fine: the card is centred
+            // on the source text (mangaTop below), so it expands symmetrically
+            // around the glyphs rather than clipping.
+            final mangaTightH = tpManga.size.height + 8;
             // Anchor the card at the CENTER of the bbox in manga mode.
             // Manga bubbles are usually wider than the source text and
             // the text is centered inside the bubble - center anchoring
@@ -657,6 +659,32 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             ));
           }
         }
+
+        // Z-order: a TRANSLATED card must never be hidden under an
+        // overlapping textless one (a not-yet-translated block, or an
+        // empty-bubble-fill region that OCR'd a bare sound-effect). The
+        // Stack draws later children on top, so sort untranslated cards
+        // first (bottom) and translated last (top); ties keep page order.
+        bool isTranslatedCard(int idx) {
+          final t =
+              idx < widget.translations.length ? widget.translations[idx] : '';
+          return !widget.showOriginal &&
+              t.isNotEmpty &&
+              t != widget.blocks[idx].text;
+        }
+
+        cards.sort((a, b) {
+          final at = isTranslatedCard(a.index) ? 1 : 0;
+          final bt = isTranslatedCard(b.index) ? 1 : 0;
+          if (at != bt) return at - bt; // untranslated first, translated on top
+          // Within a group, draw LARGER cards first (bottom) so a tiny card
+          // (e.g. a 2-char bubble like "おい") lands on TOP and isn't covered
+          // by an overlapping larger neighbour clipping one of its glyphs.
+          final aArea = a.width * a.height;
+          final bArea = b.width * b.height;
+          if (aArea != bArea) return bArea.compareTo(aArea);
+          return a.index.compareTo(b.index); // stable tiebreak
+        });
 
         return Stack(
           children: [
@@ -991,7 +1019,12 @@ class _BlockCard extends StatelessWidget {
       left: left,
       top: top,
       width: width,
-      height: height,
+      // No fixed height: let the card grow to fit its (wrapped) text. A
+      // manually-computed height could be off by a rounding pixel - or, when
+      // the rendered width ends up narrower than the width the height was
+      // measured at, the text wraps to one more line - and the surplus line
+      // gets clipped ("xuống hàng rồi mất chữ"). Constraining only the width
+      // lets the column size itself, so nothing is ever cut.
       child: Opacity(
         opacity: fadedForDelete ? 0.5 : 1.0,
         child: Material(

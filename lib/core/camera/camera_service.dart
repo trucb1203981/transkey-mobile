@@ -951,14 +951,55 @@ class CameraService {
       debugPrint('[CameraService] recognizePerRegion: DBNet model not loaded');
     }
 
-    final boxes = <Rect>[...dbnetBoxes];
-    final bubbleBoxes = <Rect>[];
+    // Group DBNet per-line boxes into one region per speech bubble.
+    // BubbleDetector returns accurate bubble SHAPES; we use those shapes
+    // only to DECIDE which lines share a card, but each emitted region is
+    // the TIGHT UNION of the DBNet text lines inside the bubble - NOT the
+    // whole-bubble crop. Feeding whole-bubble crops to the per-region OCR
+    // previously mis-placed vertical-JP cards (the tighten step collapsed
+    // to the crop top-left) and tripped the 10%-area filter; the tight
+    // DBNet text-union avoids both and IS the card position (no tighten on
+    // this path). Lines outside every bubble fall back to area-capped
+    // single-link clustering so a tall multi-panel page can't chain into
+    // one giant box.
+    var clusteredDbnet = dbnetBoxes;
+    final bubbleShapes = <Rect>[];
+    if (dbnetBoxes.isNotEmpty) {
+      var maxR = 1.0, maxB = 1.0;
+      for (final b in dbnetBoxes) {
+        if (b.right > maxR) maxR = b.right;
+        if (b.bottom > maxB) maxB = b.bottom;
+      }
+      // Two passes union (same dedup as the no-DBNet fallback below).
+      final passResults = await Future.wait([
+        BubbleDetector.detect(imagePath),
+        BubbleDetector.detect(imagePath, whiteThreshold: 200),
+      ]);
+      final pass1 = passResults[0];
+      final pass2 = passResults[1];
+      bubbleShapes.addAll(pass1);
+      for (final b2 in pass2) {
+        if (pass1.any((b1) => _iouRect(b1, b2) > 0.5)) continue;
+        if (pass1.where((b1) => _rectContains(b2, b1)).length >= 2) continue;
+        bubbleShapes.add(b2);
+      }
+      clusteredDbnet = _groupDbnetByBubbles(
+        dbnetBoxes,
+        bubbleShapes,
+        orphanThresh: math.min(maxR, maxB) * 0.03,
+        pageArea: maxR * maxB,
+        maxAreaRatio: 0.20,
+      );
+      debugPrint('[CameraService] recognizePerRegion: grouped '
+          '${dbnetBoxes.length} DBNet lines via ${bubbleShapes.length} '
+          'bubbles -> ${clusteredDbnet.length} regions');
+    }
+    final boxes = <Rect>[...clusteredDbnet];
+    final bubbleBoxes = <Rect>[...bubbleShapes];
     if (boxes.isEmpty) {
-      // Multi-pass union: pass 1 at the default 220 luminance threshold
-      // catches solid-white-interior bubbles; pass 2 at 200 catches
-      // flashback / memory bubbles drawn with a light screentone fill
-      // inside. Run in parallel — both go to compute() isolates so the
-      // cost is mostly latency-overlapped, not 2× wall time.
+      // Multi-pass union: pass 1 @220 catches solid-white-interior bubbles;
+      // pass 2 @200 catches light-screentone flashback bubbles. Parallel
+      // compute() isolates so cost is latency-overlapped.
       final passResults = await Future.wait([
         BubbleDetector.detect(imagePath),
         BubbleDetector.detect(imagePath, whiteThreshold: 200),
@@ -966,19 +1007,9 @@ class CameraService {
       final pass1 = passResults[0];
       final pass2 = passResults[1];
       bubbleBoxes.addAll(pass1);
-      // Dedupe pass-2 against pass-1: drop a pass-2 box if it
-      // overlaps a pass-1 box (IoU > 0.5) OR if it geometrically
-      // CONTAINS two-or-more pass-1 boxes (lower threshold tends to
-      // merge adjacent bubbles whose borders share a near-black
-      // gradient at 200 — the merged giant would otherwise mask the
-      // smaller pass-1 detections in OCR).
       for (final b2 in pass2) {
-        final overlaps =
-            pass1.any((b1) => _iouRect(b1, b2) > 0.5);
-        if (overlaps) continue;
-        final containedCount =
-            pass1.where((b1) => _rectContains(b2, b1)).length;
-        if (containedCount >= 2) continue;
+        if (pass1.any((b1) => _iouRect(b1, b2) > 0.5)) continue;
+        if (pass1.where((b1) => _rectContains(b2, b1)).length >= 2) continue;
         bubbleBoxes.add(b2);
       }
       debugPrint('[CameraService] recognizePerRegion: '
@@ -1002,7 +1033,11 @@ class CameraService {
     try {
       final pageBytes = await File(imagePath).readAsBytes();
       final pageImg = img.decodeImage(pageBytes);
-      if (pageImg != null) {
+      // Skip TABD's 3 full-page ML Kit passes (~2 s) when DBNet already
+      // produced regions — it covers the page (TABD adds ~0 orphans then).
+      // TABD stays as the content-signal fallback only when shape
+      // detection (DBNet/Bubble) came back empty.
+      if (pageImg != null && dbnetBoxes.isEmpty) {
         final pageW = pageImg.width.toDouble();
         final pageH = pageImg.height.toDouble();
         final pageArea = pageW * pageH;
@@ -1143,13 +1178,19 @@ class CameraService {
       // above 10 % of page area is empirically a mis-detection - the
       // largest legitimate manga speech bubble is well under that
       // (sound-effect bubbles are flagged by the TABD area cap earlier).
+      // Only the BubbleDetector / TABD fallback (no DBNet) can emit a
+      // panel-sized flood-fill box. DBNet-derived regions are tight text
+      // unions already capped at 20 % in _groupDbnetByBubbles, so skip this
+      // 10 % cull on that path - it was dropping legitimately large bubbles.
       final pageAreaPx = decoded.width.toDouble() * decoded.height.toDouble();
-      const kMaxBoxAreaRatio = 0.10;
-      boxes.removeWhere((b) {
-        return pageAreaPx > 0 &&
-            (b.width * b.height) / pageAreaPx > kMaxBoxAreaRatio;
-      });
-      if (boxes.isEmpty) return const [];
+      if (dbnetBoxes.isEmpty) {
+        const kMaxBoxAreaRatio = 0.10;
+        boxes.removeWhere((b) {
+          return pageAreaPx > 0 &&
+              (b.width * b.height) / pageAreaPx > kMaxBoxAreaRatio;
+        });
+        if (boxes.isEmpty) return const [];
+      }
 
       // Always run Latin recognizer; add scriptHint recognizer when
       // it's a different script (Japanese / Chinese / Korean). Manga
@@ -1211,12 +1252,21 @@ class CameraService {
             var bestScript = '';
             int bestIdx = -1;
             for (var i = 0; i < ocrResults.length; i++) {
-              final t = ocrResults[i].text.trim();
-              final score = _meaningfulCharCount(t);
+              final name = scriptList[i].key.name;
+              final isCjk = name == 'japanese' ||
+                  name == 'chinese' ||
+                  name == 'korean';
+              // CJK: rebuild vertical reading order from line boxes; Latin
+              // keeps ML Kit's order.
+              final cand = (isCjk
+                      ? _cjkVerticalReadingOrder(ocrResults[i])
+                      : ocrResults[i].text)
+                  .trim();
+              final score = _meaningfulCharCount(cand);
               if (score > bestScore) {
                 bestScore = score;
-                bestText = t;
-                bestScript = scriptList[i].key.name;
+                bestText = cand;
+                bestScript = name;
                 bestIdx = i;
               }
             }
@@ -1235,8 +1285,13 @@ class CameraService {
             // left of the panel rather than where the source text
             // actually sits. Line bboxes are in CROP-LOCAL coords so we
             // add the crop origin (l, t) to map back.
+            // On the DBNet path the input box is ALREADY the tight text-line
+            // union (the real ink position) - re-tightening to ML Kit's
+            // in-crop line rects mis-places vertical-JP cards, so keep the
+            // DBNet box as-is. Tighten only the BubbleDetector / TABD
+            // fallback, where the box can be a whole-bubble crop.
             Rect tightBox = box;
-            if (bestIdx >= 0) {
+            if (dbnetBoxes.isEmpty && bestIdx >= 0) {
               double? minX, minY, maxX, maxY;
               for (final blk in ocrResults[bestIdx].blocks) {
                 for (final line in blk.lines) {
@@ -1316,6 +1371,86 @@ class CameraService {
     } catch (e) {
       debugPrint('[CameraService] recognizePerRegion failed: $e');
       return const [];
+    }
+  }
+
+  /// Snap LLM-estimated vision boxes onto on-device BubbleDetector shapes.
+  ///
+  /// A vision model returns boxes in the image pixel space (verified: no
+  /// coordinate bug), but the coordinates are an LLM GUESS - usually close,
+  /// occasionally off, and small adjacent bubbles render as overlapping
+  /// cards. BubbleDetector finds accurate bubble contours, so we replace
+  /// each vision box with the best-matching bubble box: snap when the
+  /// vision box overlaps a bubble (IoU) or its centre sits inside one. A
+  /// grossly-misplaced box that overlaps NO bubble is left untouched (the
+  /// LLM put it in the wrong place and there's nothing to snap to).
+  ///
+  /// [imageBytes] MUST be the SAME image sent to the vision endpoint (the
+  /// compressed capture) so the bubble boxes land in the same coordinate
+  /// space as [boxes]. Returns a list the same length/order as [boxes].
+  Future<List<Rect>> snapVisionBoxesToBubbles(
+    Uint8List imageBytes,
+    List<Rect> boxes,
+  ) async {
+    if (boxes.isEmpty) return boxes;
+    String? tmpPath;
+    try {
+      final dir = await getTemporaryDirectory();
+      tmpPath = '${dir.path}/snap_${DateTime.now().microsecondsSinceEpoch}.jpg';
+      await File(tmpPath).writeAsBytes(imageBytes);
+      // Two-pass union, same dedup as recognizePerRegion's bubble path.
+      final passes = await Future.wait([
+        BubbleDetector.detect(tmpPath),
+        BubbleDetector.detect(tmpPath, whiteThreshold: 200),
+      ]);
+      final bubbles = <Rect>[...passes[0]];
+      for (final b2 in passes[1]) {
+        if (passes[0].any((b1) => _iouRect(b1, b2) > 0.5)) continue;
+        bubbles.add(b2);
+      }
+      if (bubbles.isEmpty) return boxes;
+      final out = <Rect>[];
+      final used = <int>{};
+      var snapped = 0;
+      for (final v in boxes) {
+        final cx = (v.left + v.right) / 2;
+        final cy = (v.top + v.bottom) / 2;
+        var best = -1;
+        var bestScore = 0.0;
+        for (var j = 0; j < bubbles.length; j++) {
+          if (used.contains(j)) continue;
+          final bb = bubbles[j];
+          final inside =
+              cx >= bb.left && cx <= bb.right && cy >= bb.top && cy <= bb.bottom;
+          // Centre-inside is the strong signal (the LLM box sits within the
+          // bubble); IoU handles partial overlap. Combine so a clean
+          // centre-hit always wins over a marginal edge overlap.
+          final score = _iouRect(v, bb) + (inside ? 0.5 : 0.0);
+          if (score > bestScore) {
+            bestScore = score;
+            best = j;
+          }
+        }
+        if (best >= 0 && bestScore >= 0.25) {
+          out.add(bubbles[best]);
+          used.add(best);
+          snapped++;
+        } else {
+          out.add(v); // no bubble to snap to - keep the LLM box
+        }
+      }
+      debugPrint('[CameraService] snapVisionBoxesToBubbles: boxes=${boxes.length} '
+          'bubbles=${bubbles.length} snapped=$snapped');
+      return out;
+    } catch (e) {
+      debugPrint('[CameraService] snapVisionBoxesToBubbles failed: $e');
+      return boxes;
+    } finally {
+      if (tmpPath != null) {
+        try {
+          await File(tmpPath).delete();
+        } catch (_) {}
+      }
     }
   }
 
@@ -2617,6 +2752,146 @@ class CameraService {
     return groups.values.map(_unionBbox).toList();
   }
 
+  /// Like [_clusterRectsSingleLink] but REJECTS any cluster whose union
+  /// bbox exceeds [maxAreaRatio] of [pageArea]. Single-link chains text
+  /// boxes across a tall multi-panel manga page into one giant box (the
+  /// unclip-expanded DBNet lines touch down the whole page), which would
+  /// paint ONE translation card over the entire page. An over-cap cluster
+  /// falls back to its individual member boxes — more cards, but each
+  /// correctly placed — instead of one catastrophic mega-box.
+  static List<Rect> _clusterRectsCapped(
+      List<Rect> rects, double thresh, double pageArea, double maxAreaRatio) {
+    final n = rects.length;
+    if (n <= 1) return List<Rect>.of(rects);
+    final parent = List<int>.generate(n, (i) => i);
+    int find(int i) {
+      var root = i;
+      while (parent[root] != root) {
+        root = parent[root];
+      }
+      var cur = i;
+      while (parent[cur] != root) {
+        final next = parent[cur];
+        parent[cur] = root;
+        cur = next;
+      }
+      return root;
+    }
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        if (_rectGapDistance(rects[i], rects[j]) < thresh) {
+          final ri = find(i);
+          final rj = find(j);
+          if (ri != rj) parent[ri] = rj;
+        }
+      }
+    }
+    final groups = <int, List<Rect>>{};
+    for (var i = 0; i < n; i++) {
+      groups.putIfAbsent(find(i), () => <Rect>[]).add(rects[i]);
+    }
+    final out = <Rect>[];
+    for (final members in groups.values) {
+      final bb = _unionBbox(members);
+      if (pageArea > 0 && bb.width * bb.height > maxAreaRatio * pageArea) {
+        out.addAll(members); // over-merge → keep members individually
+      } else {
+        out.add(bb);
+      }
+    }
+    return out;
+  }
+
+  /// Group DBNet per-line boxes into one region PER SPEECH BUBBLE using the
+  /// accurate bubble SHAPES from [BubbleDetector]. Each line is assigned to
+  /// the SMALLEST bubble whose box contains the line's centre, and the
+  /// emitted region is the tight UNION of that bubble's assigned lines (the
+  /// real ink position - used directly as the card box, no tighten step).
+  /// Two safety valves keep a mis-detected panel-sized "bubble" from
+  /// painting one card over the page:
+  ///   - a bubble whose line-union exceeds [maxAreaRatio] of [pageArea] is
+  ///     treated as a flood-fill panel; its members go back to the orphan
+  ///     pool instead of merging.
+  ///   - lines inside no bubble fall back to area-capped single-link
+  ///     clustering ([_clusterRectsCapped]) on [orphanThresh].
+  static List<Rect> _groupDbnetByBubbles(
+    List<Rect> lines,
+    List<Rect> bubbles, {
+    required double orphanThresh,
+    required double pageArea,
+    required double maxAreaRatio,
+  }) {
+    if (lines.isEmpty) return const [];
+    final assigned = List<bool>.filled(lines.length, false);
+    final perBubble = <int, List<Rect>>{};
+    for (var i = 0; i < lines.length; i++) {
+      final cx = (lines[i].left + lines[i].right) / 2;
+      final cy = (lines[i].top + lines[i].bottom) / 2;
+      var best = -1;
+      var bestArea = double.infinity;
+      for (var j = 0; j < bubbles.length; j++) {
+        final b = bubbles[j];
+        if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom) {
+          final a = b.width * b.height;
+          if (a < bestArea) {
+            bestArea = a;
+            best = j;
+          }
+        }
+      }
+      if (best >= 0) {
+        (perBubble[best] ??= <Rect>[]).add(lines[i]);
+        assigned[i] = true;
+      }
+    }
+    final orphans = <Rect>[];
+    for (var i = 0; i < lines.length; i++) {
+      if (!assigned[i]) orphans.add(lines[i]);
+    }
+    final result = <Rect>[];
+    for (final group in perBubble.values) {
+      final u = _unionBbox(group);
+      if (pageArea > 0 && u.width * u.height > maxAreaRatio * pageArea) {
+        orphans.addAll(group); // flood-fill panel mis-detect → recluster
+      } else {
+        result.add(u);
+      }
+    }
+    final withText = result.length;
+    // RECALL FILL: bubbles BubbleDetector found but DBNet had NO text in.
+    // At 640px on a tall page (720x1600 → 0.4x) DBNet loses small / faint
+    // text - whole top-row and sound-effect bubbles come back untranslated.
+    // BubbleDetector's contour recall is higher, so OCR those bubble crops
+    // directly; the per-region OCR's >= 2 meaningful-char floor drops the
+    // genuinely empty ones. Band-limit to skip panel-sized boxes and
+    // sub-noise specks.
+    var emptyFill = 0;
+    for (var j = 0; j < bubbles.length; j++) {
+      if (perBubble.containsKey(j) || pageArea <= 0) continue;
+      final b = bubbles[j];
+      final ratio = (b.width * b.height) / pageArea;
+      // A real speech bubble DBNet missed is SMALL and roughly round; a
+      // panel-sized box (e.g. 403x342 ~ 12% of page) or a tall art / hair
+      // strip (e.g. 128x342) is a BubbleDetector false positive that OCRs
+      // to nothing - just wasted ML Kit queue time. Keep only boxes in the
+      // speech-bubble size band AND with a sane aspect ratio.
+      if (ratio < 0.005 || ratio > 0.06) continue;
+      final aspect = b.width >= b.height
+          ? b.width / math.max(b.height, 1.0)
+          : b.height / math.max(b.width, 1.0);
+      if (aspect > 2.5) continue;
+      result.add(b);
+      emptyFill++;
+    }
+    if (orphans.isNotEmpty) {
+      result.addAll(
+          _clusterRectsCapped(orphans, orphanThresh, pageArea, maxAreaRatio));
+    }
+    debugPrint('[CameraService] _groupDbnetByBubbles: withText=$withText '
+        'emptyBubbleFill=$emptyFill orphans=${orphans.length}');
+    return result;
+  }
+
   /// Euclidean distance between two axis-aligned rectangles' nearest
   /// edges. Zero when they overlap or touch. Used as the cluster
   /// linkage metric for [_clusterRectsSingleLink].
@@ -2775,6 +3050,47 @@ class CameraService {
       }
     }
     return count;
+  }
+
+  /// Re-join ML Kit lines in vertical-CJK reading order.
+  ///
+  /// ML Kit concatenates recognized lines in a Latin layout order
+  /// (top-to-bottom, left-to-right). Vertical Japanese / Chinese reads
+  /// top-to-bottom WITHIN a column and columns RIGHT-to-LEFT, so the
+  /// default `.text` scrambles the sentence: a bubble that reads
+  /// "何度も質問をして" comes back as "して / 質問を / 何度も" (columns in
+  /// left-to-right order). Measured on real manga pages.
+  ///
+  /// When the lines look columnar (most are taller than wide) we re-sort
+  /// by column center-x DESCENDING (rightmost first), ties by center-y
+  /// ASCENDING (top first), and join with no separator (CJK has no
+  /// inter-word spaces). Horizontal text (few tall lines) keeps ML Kit's
+  /// own order untouched.
+  static String _cjkVerticalReadingOrder(RecognizedText r) {
+    final lines = <TextLine>[];
+    for (final b in r.blocks) {
+      lines.addAll(b.lines);
+    }
+    if (lines.length <= 1) return r.text.trim();
+    var tall = 0;
+    for (final l in lines) {
+      if (l.boundingBox.height > l.boundingBox.width) tall++;
+    }
+    // Majority of lines must be vertical columns; else trust ML Kit.
+    if (tall * 2 < lines.length) return r.text.trim();
+    final avgW =
+        lines.fold<double>(0, (s, l) => s + l.boundingBox.width) /
+            lines.length;
+    final colTol = math.max(avgW * 0.6, 8.0);
+    final sorted = [...lines]..sort((a, b) {
+        final ax = a.boundingBox.center.dx;
+        final bx = b.boundingBox.center.dx;
+        if ((ax - bx).abs() > colTol) {
+          return bx.compareTo(ax); // rightmost column first (RTL)
+        }
+        return a.boundingBox.center.dy.compareTo(b.boundingBox.center.dy);
+      });
+    return sorted.map((l) => l.text).join();
   }
 
   /// Persist the per-region OCR log to a text file next to the JPEG

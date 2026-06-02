@@ -87,16 +87,25 @@ class BlockActionSheet extends ConsumerWidget {
         translation.trim() != block.text.trim();
 
     return Container(
+      // Cap the sheet at 85% of the screen and scroll inside it. Without
+      // this a long block (long translation + original + per-line rows)
+      // makes the min-size Column taller than the screen, pushing the
+      // action items (Copy / Dịch lại / Save) off the bottom with no way
+      // to scroll to them.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Drag handle — universal mobile cue that the sheet is
             // dismissible by swipe-down. Matches the iOS / Material 3
             // bottom-sheet convention.
@@ -168,7 +177,13 @@ class BlockActionSheet extends ConsumerWidget {
             // that line. Auto-detects phone-shaped runs and tags them
             // with a phone icon so users can spot the row to tap from
             // across the screen without reading every line.
-            ..._buildPerLineCopyRows(context, ref),
+            // Per-line "split" rows only for menu / sign - the scenes where
+            // breaking a block into lines (a dish per row, a sign's phone /
+            // address per row) is the point. On other scenes (manga,
+            // document, auto) a long multi-line block would emit a row per
+            // line, bloating the sheet, so we skip them there.
+            if (scene == 'menu' || scene == 'sign')
+              ..._buildPerLineCopyRows(context, ref),
             const Divider(height: 1),
             // Action list — Material ListTile so the touch targets get
             // proper Material ink, padding, and a11y semantics for free.
@@ -222,7 +237,8 @@ class BlockActionSheet extends ConsumerWidget {
                   : null,
             ),
             const SizedBox(height: 8),
-          ],
+            ],
+          ),
         ),
       ),
     );

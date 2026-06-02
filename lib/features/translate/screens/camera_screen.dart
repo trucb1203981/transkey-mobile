@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -885,33 +886,35 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   ///        the cheap structural split.
   ///     3. Direct explain on the whole block.
   Future<void> _explainBlock(OcrBlock block) async {
-    var items = block.items;
-
     final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
         CameraScene.auto;
+    // Block "splitting" (break into per-item rows + show the item picker) is
+    // limited to menu / sign - the scenes where it's meaningful (one dish or
+    // one sign line per item). On every other scene (manga, document, auto)
+    // we explain the WHOLE block: no split, no picker. Also avoids the
+    // picker on long prose blocks.
     final isLensSplitScene =
         scene == CameraScene.menu || scene == CameraScene.sign;
 
-    // (2) menu/sign: try /split-block FIRST so the LLM semantic split
-    // wins over the structural line-pairing heuristic. Cached, gated by
-    // a multi-item heuristic inside _maybeLazySplit so short/single-
-    // unit blocks don't fire a needless API call.
-    if ((items == null || items.length < 2) && isLensSplitScene) {
-      final lazyItems = await _maybeLazySplit(block);
-      if (lazyItems != null && lazyItems.length >= 2) {
-        items = lazyItems;
-      }
-    }
+    var items = isLensSplitScene ? block.items : null;
 
-    // (3) Per-line pairing: works for any scene where source and
-    // translation share the same line structure (translate-batch's
-    // `preserve_structure` prompt enforces this). Primary for non-
-    // menu/sign scenes; fallback for menu/sign when /split-block
-    // didn't produce items.
-    if (items == null || items.length < 2) {
-      final pairedItems = _pairLineItems(block);
-      if (pairedItems != null && pairedItems.length >= 2) {
-        items = pairedItems;
+    if (isLensSplitScene) {
+      // (2) menu/sign: try /split-block FIRST so the LLM semantic split wins
+      // over the structural line-pairing heuristic. Cached, gated by a
+      // multi-item heuristic inside _maybeLazySplit so short/single-unit
+      // blocks don't fire a needless API call.
+      if (items == null || items.length < 2) {
+        final lazyItems = await _maybeLazySplit(block);
+        if (lazyItems != null && lazyItems.length >= 2) {
+          items = lazyItems;
+        }
+      }
+      // (3) Per-line pairing fallback when /split-block produced nothing.
+      if (items == null || items.length < 2) {
+        final pairedItems = _pairLineItems(block);
+        if (pairedItems != null && pairedItems.length >= 2) {
+          items = pairedItems;
+        }
       }
     }
 
@@ -1859,13 +1862,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     } catch (e) {
       debugPrint('[Camera] Gallery pick failed: $e');
       // Restore camera so the user lands on a working preview, not a black
-      // screen, if the picker itself crashed.
-      if (mounted && _step == _CameraStep.preview) _startStream();
+      // screen, if the picker itself crashed. We fully dispose()d the camera
+      // before opening the picker, so the controller is gone - a bare
+      // _startStream() would run on a dead controller (black preview). Must
+      // re-init to recreate it.
+      if (mounted && _step == _CameraStep.preview) _initCamera();
       return;
     }
     if (rawPicked.isEmpty) {
-      // User cancelled — restart camera so the preview is live again.
-      if (mounted && _step == _CameraStep.preview) _startStream();
+      // User cancelled / backed out — recreate the camera (it was disposed
+      // before the picker opened; _startStream alone leaves a black preview).
+      if (mounted && _step == _CameraStep.preview) _initCamera();
       return;
     }
     if (!mounted) return;
@@ -2278,9 +2285,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       jobs.add(fut);
     }
 
+    // Reveal in PAGE order (manga is read in sequence): page i is shown the
+    // moment it's ready, but never before page i-1. All pages still PROCESS
+    // in parallel (jobs already fired) - awaiting in order only controls the
+    // reveal, so a later page that finished early simply appears the instant
+    // the earlier one lands. The first page flips the UI out of the spinner.
     for (var i = 0; i < jobs.length; i++) {
       if (!mounted) return;
-      final drainSw = Stopwatch()..start();
       final snap = await jobs[i];
       if (!mounted) return;
       _batchQueue.add(snap);
@@ -2294,8 +2305,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           _step = _resultStepRespectingBatch();
         }
       });
-      _dbg('img$i SHOWN +${batchSw.elapsedMilliseconds}ms '
-          '(wait ${drainSw.elapsedMilliseconds}ms, first=$isFirst)');
+      _dbg('img$i SHOWN +${batchSw.elapsedMilliseconds}ms first=$isFirst');
     }
     _dbg('OCR phase END +${batchSw.elapsedMilliseconds}ms');
 
@@ -2490,16 +2500,29 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       compFrame.image.dispose();
       compCodec.dispose();
 
-      final response = await api.dio.post('/translate-image', data: {
-        'imageBase64': imageBase64,
-        'targetLang': targetLang,
-        'scene': scene,
-        if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
-          'sourceLang': sourceLang,
-        'withBoxes': true,
-        'imageWidth': compSize.width.round(),
-        'imageHeight': compSize.height.round(),
-      });
+      final response = await api.dio.post('/translate-image',
+          data: {
+            'imageBase64': imageBase64,
+            'targetLang': targetLang,
+            'scene': scene,
+            if (sourceLang != null &&
+                sourceLang.isNotEmpty &&
+                sourceLang != 'auto')
+              'sourceLang': sourceLang,
+            'withBoxes': true,
+            'imageWidth': compSize.width.round(),
+            'imageHeight': compSize.height.round(),
+          },
+          // Manga vision (OCR + translate + boxes in one call) runs on the
+          // server's groq llama-4-scout and legitimately takes ~30-35s,
+          // worse when an LLM key is mid rate-limit. Dio's global 30s
+          // receiveTimeout aborts it first (nginx logs a 499) and the user
+          // sees a DioException card instead of any translation. Bump per
+          // request to 90s like the Lens batch path in main.dart.
+          options: Options(
+            receiveTimeout: const Duration(seconds: 90),
+            sendTimeout: const Duration(seconds: 60),
+          ));
 
       final data = response.data as Map?;
       final visionConfidence = (data?['confidence'] as String?)?.toLowerCase();
@@ -2538,10 +2561,27 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           vt.add(trVi);
         }
         if (vb.isNotEmpty) {
+          // Vision boxes are an LLM GUESS (correct coordinate space, but
+          // imprecise per-block). Snap each onto the accurate on-device
+          // BubbleDetector shape. Pass the SAME compressed bytes sent to the
+          // server so the bubbles land in the same coordinate space (compSize).
+          final snapped = await _cameraService.snapVisionBoxesToBubbles(
+            compressed,
+            vb.map((b) => b.boundingBox).toList(),
+          );
+          final blocks = <OcrBlock>[
+            for (var i = 0; i < vb.length; i++)
+              OcrBlock(
+                text: vb[i].text,
+                boundingBox:
+                    i < snapped.length ? snapped[i] : vb[i].boundingBox,
+                confidence: vb[i].confidence,
+              ),
+          ];
           return _BatchSnapshot(
             path: path,
             imageSize: compSize,
-            blocks: vb,
+            blocks: blocks,
             translations: vt,
             visionConfidence: confChip,
             sourceLang: captureSourceLang,
@@ -2639,6 +2679,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
       frame.image.dispose();
       codec.dispose();
+      debugPrint('[Camera] perLine imageSize(uiCodec)='
+          '${size.width.toInt()}x${size.height.toInt()} for ${file.path}');
 
       // Try DBNet (PaddleOCR) region detector FIRST — it gives one bbox
       // per speech bubble / text cluster (matching what the vision LLM
@@ -2739,12 +2781,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           dynamic resp;
           for (var attempt = 0; attempt < 2; attempt++) {
             try {
-              resp = await api.dio.post('/translate-batch', data: {
-                'texts': probe.missTexts.sublist(s, end),
-                'targetLang': targetLang,
-                'appHint': 'camera',
-                'scene': scene.id,
-              }).timeout(const Duration(seconds: 60));
+              resp = await api.dio.post('/translate-batch',
+                  data: {
+                    'texts': probe.missTexts.sublist(s, end),
+                    'targetLang': targetLang,
+                    'appHint': 'camera',
+                    'scene': scene.id,
+                  },
+                  // The outer .timeout(60s) intends a 60s ceiling, but Dio's
+                  // global 30s receiveTimeout aborts first on a slow LLM
+                  // fallback chunk. Lift the Dio timeout so the 60s intent
+                  // actually holds.
+                  options: Options(
+                    receiveTimeout: const Duration(seconds: 90),
+                    sendTimeout: const Duration(seconds: 60),
+                  )).timeout(const Duration(seconds: 60));
               break; // success
             } catch (e) {
               debugPrint('[Camera] translate-batch chunk failed '
@@ -2853,14 +2904,23 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       try {
         final cropBytes = await _cameraService.cropRegionJpeg(path, region);
         if (cropBytes == null) continue;
-        final resp = await api.dio.post('/translate-image', data: {
-          'imageBase64': base64Encode(cropBytes),
-          'targetLang': targetLang,
-          'scene': 'manga',
-          'withBoxes': true,
-          'imageWidth': region.width.round(),
-          'imageHeight': region.height.round(),
-        }).timeout(const Duration(seconds: 30));
+        final resp = await api.dio.post('/translate-image',
+            data: {
+              'imageBase64': base64Encode(cropBytes),
+              'targetLang': targetLang,
+              'scene': 'manga',
+              'withBoxes': true,
+              'imageWidth': region.width.round(),
+              'imageHeight': region.height.round(),
+            },
+            // Same slow groq-scout vision as _runVisionPure; the global 30s
+            // Dio receiveTimeout would abort it. This is fire-and-forget
+            // catch-up so a miss only leaves the bubble as OCR text, but
+            // give it the same 90s headroom so the fill actually lands.
+            options: Options(
+              receiveTimeout: const Duration(seconds: 90),
+              sendTimeout: const Duration(seconds: 60),
+            )).timeout(const Duration(seconds: 95));
         final data = resp.data as Map?;
         final rawBlocks = data?['blocks'];
         if (rawBlocks is List && rawBlocks.isNotEmpty) {
@@ -3320,15 +3380,24 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           await _cameraService.compressForVision(bytes, scene: scene);
       final imageBase64 = base64Encode(compressed);
 
-      final response = await api.dio.post('/translate-image-ocr', data: {
-        'imageBase64': imageBase64,
-        'targetLang': targetLang,
-        'scene': scene,
-        if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
-          'sourceLang': sourceLang,
-        'imageWidth': size.width.round(),
-        'imageHeight': size.height.round(),
-      });
+      final response = await api.dio.post('/translate-image-ocr',
+          data: {
+            'imageBase64': imageBase64,
+            'targetLang': targetLang,
+            'scene': scene,
+            if (sourceLang != null &&
+                sourceLang.isNotEmpty &&
+                sourceLang != 'auto')
+              'sourceLang': sourceLang,
+            'imageWidth': size.width.round(),
+            'imageHeight': size.height.round(),
+          },
+          // Server-side vision/OCR can exceed the global 30s Dio
+          // receiveTimeout on the LLM fallback chain; give it 90s.
+          options: Options(
+            receiveTimeout: const Duration(seconds: 90),
+            sendTimeout: const Duration(seconds: 60),
+          ));
       if (!mounted) return false;
       final data = response.data as Map?;
       if (data?['budgetExceeded'] == true) {
@@ -3443,18 +3512,27 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       compFrame.image.dispose();
       compCodec.dispose();
 
-      final response = await api.dio.post('/translate-image', data: {
-        'imageBase64': imageBase64,
-        'targetLang': targetLang,
-        'scene': scene,
-        if (sourceLang != null && sourceLang.isNotEmpty && sourceLang != 'auto')
-          'sourceLang': sourceLang,
-        // Pass the EXIF-baked dimensions so server scales boxes to
-        // the same coordinate space the overlay renders in.
-        'withBoxes': true,
-        'imageWidth': compSize.width.round(),
-        'imageHeight': compSize.height.round(),
-      });
+      final response = await api.dio.post('/translate-image',
+          data: {
+            'imageBase64': imageBase64,
+            'targetLang': targetLang,
+            'scene': scene,
+            if (sourceLang != null &&
+                sourceLang.isNotEmpty &&
+                sourceLang != 'auto')
+              'sourceLang': sourceLang,
+            // Pass the EXIF-baked dimensions so server scales boxes to
+            // the same coordinate space the overlay renders in.
+            'withBoxes': true,
+            'imageWidth': compSize.width.round(),
+            'imageHeight': compSize.height.round(),
+          },
+          // Server-side vision can exceed the global 30s Dio receiveTimeout
+          // on the LLM fallback chain; give it 90s.
+          options: Options(
+            receiveTimeout: const Duration(seconds: 90),
+            sendTimeout: const Duration(seconds: 60),
+          ));
       if (!mounted) return;
       final data = response.data as Map?;
       final transcription = (data?['transcription'] as String?) ?? '';

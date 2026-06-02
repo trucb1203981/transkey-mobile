@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -25,12 +26,14 @@ class DetectedRegion {
 ///
 /// ## Pipeline
 ///
-///   1. Decode capture → resize so the longer side ≈ [_kTargetMaxSide]
-///      and both sides are multiples of 32 (DBNet's stride constraint).
+///   1. Decode capture → LETTERBOX into a fixed [_kTargetMaxSide] square:
+///      scale the long edge to the model side preserving aspect, centre,
+///      pad the remainder black. The bundled model has a FIXED input, so
+///      we cannot feed an arbitrary aspect-preserving frame.
 ///   2. Normalise to ImageNet stats (mean / std) and emit a NHWC
 ///      Float32 tensor — TFLite preference after ONNX conversion.
-///   3. Run inference. Output is a single-channel probability map
-///      sized identically to the resized input.
+///   3. Run inference. Output is a single-channel probability map the same
+///      size as the letterboxed square.
 ///   4. Threshold at [_kBinThreshold] → binary mask.
 ///   5. 4-connected component labelling → pixel sets per region.
 ///   6. Per region: axis-aligned bbox + average probability score,
@@ -62,15 +65,27 @@ class DbnetTextDetector {
 
   static const String _kDefaultAsset = 'assets/models/dbnet_paddleocr.tflite';
 
-  /// Resize so the longer image edge lands near this many pixels — the
-  /// sweet spot between detection recall (more pixels = better) and
-  /// inference latency (square-time in pixel count). 960 mirrors the
-  /// recommended PaddleOCR mobile preset.
-  static const int _kTargetMaxSide = 960;
+  /// The bundled model's FIXED input side. The capture is letterboxed into
+  /// a [_kTargetMaxSide]×[_kTargetMaxSide] square before inference. This
+  /// MUST match the converted model's static input (see
+  /// docs/dbnet-conversion.md). Dropped from 960 to 640 because on a
+  /// mid-range phone 960² inference was ~4.5 s (CPU); 640² is ~2× cheaper
+  /// and still detects manga / menu text well (text is large enough).
+  // 640 (not 960): 960^2 inference is ~2.25x heavier and, in the parallel
+  // batch path (_runBatchParallelVision fires all pages concurrently), the
+  // concurrent 960 interpreters exhaust device memory/CPU and HANG the app
+  // mid-batch (verified: app froze on the 3rd of 4 pages). 640 keeps each
+  // inference ~2s and the batch stable; recall gaps are filled by the
+  // empty-bubble OCR pass + vision fallback instead.
+  static const int _kTargetMaxSide = 640;
 
-  /// Probability above which a pixel is considered TEXT. 0.3 is the
-  /// PaddleOCR-recommended default; raising trades recall for precision.
-  static const double _kBinThreshold = 0.3;
+  /// Probability above which a pixel is considered TEXT. PaddleOCR's
+  /// default is 0.3, but at our 640-px input small / faint manga text
+  /// (top-row bubbles, sound-effect kana) produces a weak probability
+  /// map and gets dropped, so the manga page comes back with whole
+  /// bubbles untranslated. 0.2 recovers them; the downstream OCR >= 2
+  /// meaningful-char floor + area-cap grouping discard the extra noise.
+  static const double _kBinThreshold = 0.2;
 
   /// DBNet shrinks the training masks by an "unclip ratio" so the
   /// model learns a tight text region; at inference we expand the
@@ -80,12 +95,22 @@ class DbnetTextDetector {
 
   /// Minimum connected-component pixel count to keep. Filters out
   /// salt-and-pepper noise from the binarisation step without dropping
-  /// real glyphs (even a small CJK kana covers ≥ ~30 pixels at the
-  /// 960-px resize).
-  static const int _kMinRegionPixels = 24;
+  /// real glyphs. Scales with the square of the input side; 10 is tuned
+  /// for the 640-px input (the original 24 was a 960-px value that
+  /// silently dropped small text once we moved to 640).
+  static const int _kMinRegionPixels = 10;
 
   Interpreter? _interpreter;
   bool _loadAttempted = false;
+
+  /// tflite's `Interpreter.run()` is NOT thread-safe. The manga batch path
+  /// (`_runBatchParallelVision`) fires several `detect()` calls concurrently
+  /// - one per page - and every call runs `_runIsolate` against the SAME
+  /// native interpreter (shared via `Interpreter.fromAddress`). Concurrent
+  /// `run()` on one interpreter HANGS / corrupts the app (verified: a 5-page
+  /// batch froze on the 3rd-4th page). This tail future serialises detect()
+  /// so only one inference is ever in flight.
+  Future<void> _inferTail = Future<void>.value();
 
   bool get isAvailable => _interpreter != null;
 
@@ -96,7 +121,13 @@ class DbnetTextDetector {
     if (_loadAttempted) return;
     _loadAttempted = true;
     try {
-      _interpreter = await Interpreter.fromAsset(modelAsset);
+      // Multi-threaded CPU (XNNPACK) inference. The conv-heavy DBNet ran
+      // ~4.5 s single-threaded at 960² on a mid-range phone; threads + the
+      // smaller 640² input cut that by several×.
+      _interpreter = await Interpreter.fromAsset(
+        modelAsset,
+        options: InterpreterOptions()..threads = 4,
+      );
       debugPrint('[DbnetTextDetector] model loaded: $modelAsset');
     } catch (e) {
       _interpreter = null;
@@ -113,6 +144,16 @@ class DbnetTextDetector {
     await load();
     final interpreter = _interpreter;
     if (interpreter == null) return const [];
+    // Serialise: chain onto the previous inference so concurrent batch
+    // pages never call run() on the shared interpreter at the same time.
+    final prev = _inferTail;
+    final gate = Completer<void>();
+    _inferTail = gate.future;
+    try {
+      await prev;
+    } catch (_) {
+      // A prior inference's failure must not wedge the queue.
+    }
     try {
       return await compute(_runIsolate, _DbnetArgs(
         imagePath: imagePath,
@@ -125,6 +166,8 @@ class DbnetTextDetector {
     } catch (e) {
       debugPrint('[DbnetTextDetector] detect failed: $e');
       return const [];
+    } finally {
+      gate.complete();
     }
   }
 
@@ -159,57 +202,100 @@ List<DetectedRegion> _runIsolate(_DbnetArgs args) {
   final bytes = File(args.imagePath).readAsBytesSync();
   final decoded = img.decodeImage(bytes);
   if (decoded == null) return const [];
+  final sw = Stopwatch()..start();
 
-  // 1. Resize so the longer side ≈ targetMaxSide and both sides are
-  //    multiples of 32 (DBNet stride). Track the scale to map boxes
-  //    back to original image space at the end.
-  final origMax = math.max(decoded.width, decoded.height);
-  final ratio = args.targetMaxSide / origMax;
-  final newW = ((decoded.width * ratio) / 32).round() * 32;
-  final newH = ((decoded.height * ratio) / 32).round() * 32;
+  // 1. LETTERBOX into a fixed target×target canvas. The bundled DBNet
+  //    model has a FIXED 1×960×960×3 input: dynamic-shape conversions bake
+  //    the internal FPN resize ops to wrong sizes (verified — non-960 input
+  //    produces a broadcast-shape crash), so we cannot feed an
+  //    aspect-preserving multiple-of-32 frame like a dynamic model. Instead
+  //    scale the long edge to `target` preserving aspect, centre it, and
+  //    pad the rest black. Box coords are mapped back through the same
+  //    scale + pad offset at the end. `target` MUST equal the model's fixed
+  //    input side (see [_kTargetMaxSide]).
+  final target = args.targetMaxSide;
+  final scale = target / math.max(decoded.width, decoded.height);
+  final nw = (decoded.width * scale).round().clamp(1, target);
+  final nh = (decoded.height * scale).round().clamp(1, target);
   final resized = img.copyResize(
     decoded,
-    width: math.max(32, newW),
-    height: math.max(32, newH),
+    width: nw,
+    height: nh,
     interpolation: img.Interpolation.linear,
   );
-  final scaleBackX = decoded.width / resized.width;
-  final scaleBackY = decoded.height / resized.height;
+  final padLeft = (target - nw) ~/ 2;
+  final padTop = (target - nh) ~/ 2;
 
-  // 2. Preprocess into NHWC Float32 with ImageNet mean/std normalisation
-  //    — what the PaddleOCR detector expects.
-  final input = Float32List(resized.width * resized.height * 3);
+  // 2. Preprocess into the fixed NHWC target×target×3 Float32 tensor with
+  //    ImageNet mean/std normalisation (what PaddleOCR det expects). Pixels
+  //    outside the letterboxed content stay black (0).
+  // Read the resized image as ONE flat RGB byte buffer. getPixel() per
+  // pixel goes through the image package's iterator and is ~100× slower —
+  // over 921 600 px (960²) that was a big chunk of the on-device latency.
+  final rgb = resized.getBytes(order: img.ChannelOrder.rgb);
+  final input = Float32List(target * target * 3);
   const meanR = 0.485, meanG = 0.456, meanB = 0.406;
   const stdR = 0.229, stdG = 0.224, stdB = 0.225;
   var idx = 0;
-  for (var y = 0; y < resized.height; y++) {
-    for (var x = 0; x < resized.width; x++) {
-      final p = resized.getPixel(x, y);
-      input[idx++] = (p.r / 255.0 - meanR) / stdR;
-      input[idx++] = (p.g / 255.0 - meanG) / stdG;
-      input[idx++] = (p.b / 255.0 - meanB) / stdB;
+  for (var y = 0; y < target; y++) {
+    final sy = y - padTop;
+    final inRow = sy >= 0 && sy < nh;
+    for (var x = 0; x < target; x++) {
+      final sx = x - padLeft;
+      double r = 0, g = 0, b = 0;
+      if (inRow && sx >= 0 && sx < nw) {
+        final o = (sy * nw + sx) * 3;
+        r = rgb[o].toDouble();
+        g = rgb[o + 1].toDouble();
+        b = rgb[o + 2].toDouble();
+      }
+      input[idx++] = (r / 255.0 - meanR) / stdR;
+      input[idx++] = (g / 255.0 - meanG) / stdG;
+      input[idx++] = (b / 255.0 - meanB) / stdB;
     }
   }
 
-  // 3. Run inference. Output is the probability map sized like input.
-  //    Some conversions emit [1, H, W, 1] (NHWC) and some [1, 1, H, W]
-  //    (NCHW) — we allocate by total element count and read in row-major
-  //    order, which works for either layout after a flat reshape.
+  final tPre = sw.elapsedMilliseconds;
+
+  // 3. Run inference. Output is the target×target single-channel
+  //    probability map, read row-major (works for [1,H,W,1] NHWC after a
+  //    flat reshape).
   final interpreter = Interpreter.fromAddress(args.interpreterAddress);
+  // A fromAddress wrapper in this worker isolate does NOT inherit the
+  // "allocated" flag the main isolate set, so invoke() / tensor .data throw
+  // "Interpreter not allocated". allocateTensors() here sets it up; the model
+  // is fixed-shape so this is idempotent on the shared native interpreter,
+  // and detect() is serialised so no other isolate touches it concurrently.
+  interpreter.allocateTensors();
   final inputTensor = interpreter.getInputTensor(0);
   final outputTensor = interpreter.getOutputTensor(0);
   final outputShape = outputTensor.shape;
   final outputSize = outputShape.fold<int>(1, (a, b) => a * b);
-  final output = Float32List(outputSize);
-  interpreter.run(
-    input.buffer.asFloat32List().reshape(inputTensor.shape),
-    output.buffer.asFloat32List().reshape(outputShape),
-  );
+  // Low-level inference path (weak-device optimisation). The high-level
+  // run() needs Dart objects shaped to the tensors, and List.reshape() builds
+  // a DEEP nested list of boxed doubles for BOTH the input ([1,640,640,3] ~
+  // 1.2M) and output ([1,640,640,1] ~ 410k) on EVERY call, plus a 410k-element
+  // copy loop to flatten the output. That per-call allocation made inference
+  // time creep up across a batch and is exactly what GC-thrashes a low-end
+  // phone. Instead: write the input bytes straight into the native input
+  // tensor, invoke(), and read the native output buffer as a flat Float32List
+  // - zero nested lists, zero copy loop.
+  //
+  // (The old comment warned a "flat-buffer read returned zeros"; that was a
+  // different mistake - passing a flat list to run(), which writes into the
+  // passed Dart object, not the native buffer. Reading outputTensor.data
+  // AFTER invoke() reads the native buffer the model actually wrote.)
+  inputTensor.data = input.buffer.asUint8List();
+  interpreter.invoke();
+  final outBytes = outputTensor.data;
+  final output =
+      outBytes.buffer.asFloat32List(outBytes.offsetInBytes, outputSize);
 
-  // 4. Binarise + 5. connected components in a single pass. We pack the
-  //    binary mask into a flat List<bool> for cache friendliness.
-  final mapW = resized.width;
-  final mapH = resized.height;
+  final tInf = sw.elapsedMilliseconds;
+
+  // 4. Binarise + 5. connected components on the target×target map.
+  final mapW = target;
+  final mapH = target;
   final binary = List<bool>.filled(mapW * mapH, false);
   for (var i = 0; i < binary.length; i++) {
     binary[i] = output[i] > args.binThreshold;
@@ -237,8 +323,13 @@ List<DetectedRegion> _runIsolate(_DbnetArgs args) {
     if (region.length >= args.minRegionPixels) regions.add(region);
   }
 
-  // 6 + 7. Per-region axis-aligned bbox + score, unclip-expanded,
-  //        scaled back to original image space.
+  // 6 + 7. Per-region bbox + score, unclip-expanded in letterbox space,
+  //        then mapped back to ORIGINAL image coords by undoing the
+  //        letterbox (subtract pad offset, divide by scale).
+  final origW = decoded.width.toDouble();
+  final origH = decoded.height.toDouble();
+  double toOrigX(num v) => ((v - padLeft) / scale).clamp(0.0, origW);
+  double toOrigY(num v) => ((v - padTop) / scale).clamp(0.0, origH);
   final detections = <DetectedRegion>[];
   for (final region in regions) {
     var minX = mapW, minY = mapH, maxX = 0, maxY = 0;
@@ -258,11 +349,14 @@ List<DetectedRegion> _runIsolate(_DbnetArgs args) {
     final boxH = (maxY - minY + 1);
     final padX = (boxW * (args.unclipRatio - 1) / 2).round();
     final padY = (boxH * (args.unclipRatio - 1) / 2).round();
-    final l = (minX - padX).clamp(0, mapW - 1) * scaleBackX;
-    final t = (minY - padY).clamp(0, mapH - 1) * scaleBackY;
-    final r = (maxX + padX + 1).clamp(1, mapW) * scaleBackX;
-    final b = (maxY + padY + 1).clamp(1, mapH) * scaleBackY;
+    final l = toOrigX((minX - padX).clamp(0, mapW - 1));
+    final t = toOrigY((minY - padY).clamp(0, mapH - 1));
+    final r = toOrigX((maxX + padX + 1).clamp(1, mapW));
+    final b = toOrigY((maxY + padY + 1).clamp(1, mapH));
     detections.add(DetectedRegion(Rect.fromLTRB(l, t, r, b), score));
   }
+  debugPrint('[DBNet] img=${decoded.width}x${decoded.height} '
+      'pre=${tPre}ms inf=${tInf - tPre}ms cc+map=${sw.elapsedMilliseconds - tInf}ms '
+      'total=${sw.elapsedMilliseconds}ms regions=${detections.length}');
   return detections;
 }
