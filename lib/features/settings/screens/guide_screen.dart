@@ -118,7 +118,6 @@ class GuideScreen extends ConsumerWidget {
             t.guideInputMenuDesc(t.guideFeatureReply),
           ),
         ],
-        footer: _replyFooter(theme, t),
       ),
     ];
 
@@ -148,7 +147,6 @@ class GuideScreen extends ConsumerWidget {
               isPaid: false,
               badgeLabel: t.guideFreeBadge,
               inputs: f.inputs,
-              footer: f.footer,
             ),
 
           if (lockedFeatures.isNotEmpty) ...[
@@ -165,7 +163,6 @@ class GuideScreen extends ConsumerWidget {
                 isPaid: true,
                 badgeLabel: t.guidePaidBadge,
                 inputs: f.inputs,
-                footer: f.footer,
               ),
           ],
 
@@ -349,30 +346,6 @@ class GuideScreen extends ConsumerWidget {
     );
   }
 
-  Widget _replyFooter(ThemeData theme, AppLocalizations t) {
-    return Container(
-      margin: const EdgeInsets.only(top: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.accessibility_new,
-                size: 18, color: AppColors.primary),
-            const SizedBox(width: 6),
-            Text(t.guideReplyA11yTitle,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 4),
-          Text(t.guideReplyA11yBody, style: theme.textTheme.bodySmall),
-        ],
-      ),
-    );
-  }
 
   Widget _featureCard({
     required ThemeData theme,
@@ -383,7 +356,6 @@ class GuideScreen extends ConsumerWidget {
     required bool isPaid,
     required String badgeLabel,
     required List<_Input> inputs,
-    Widget? footer,
   }) {
     final badgeColor = isPaid ? AppColors.primary : Colors.green;
     return Card(
@@ -455,7 +427,6 @@ class GuideScreen extends ConsumerWidget {
               _inputRow(inp, theme, isPaid),
               const SizedBox(height: AppSpacing.sm),
             ],
-            if (footer != null) footer,
           ],
         ),
       ),
@@ -545,7 +516,6 @@ class _FeatureDef {
   final String subtitle;
   final bool available;
   final List<_Input> inputs;
-  final Widget? footer;
 
   const _FeatureDef({
     required this.icon,
@@ -553,7 +523,6 @@ class _FeatureDef {
     required this.subtitle,
     required this.available,
     required this.inputs,
-    this.footer,
   });
 }
 

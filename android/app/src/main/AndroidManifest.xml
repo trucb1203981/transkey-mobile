@@ -217,19 +217,6 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
-        <!-- Accessibility Service: pastes reply into focused EditText of other apps -->
-        <service
-            android:name=".TransKeyAccessibilityService"
-            android:exported="true"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
         <!-- TransKey system Input Method (IME). Once enabled in Android
              Settings → System → Languages → On-screen keyboards, users can
              pick TransKey as their typing keyboard in any app. The

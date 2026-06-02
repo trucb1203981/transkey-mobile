@@ -1,12 +1,10 @@
 package app.transkey.mobile
 
-import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.text.TextUtils
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -163,23 +161,6 @@ class MainActivity : FlutterActivity() {
                         // recover and the toggle won't lie.
                         result.success(BubbleService.isAlive && flagOn && hasOverlay)
                     }
-                    "checkAccessibility" -> {
-                        result.success(isAccessibilityEnabled())
-                    }
-                    "requestAccessibility" -> {
-                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        })
-                        result.success(null)
-                    }
-                    "androidSdkInt" -> {
-                        // Used by the Flutter AccessibilitySetupScreen to
-                        // decide whether to show the Android 13+ restricted-
-                        // settings step. Returning Build.VERSION.SDK_INT
-                        // avoids the screen having to pull device_info_plus
-                        // just for one integer.
-                        result.success(android.os.Build.VERSION.SDK_INT)
-                    }
                     "androidId" -> {
                         // SSAID — stable across app reinstalls (resets only on
                         // factory reset / a different signing key), no permission
@@ -192,26 +173,6 @@ class MainActivity : FlutterActivity() {
                             Settings.Secure.ANDROID_ID,
                         )
                         result.success(ssaid)
-                    }
-                    "openAppDetails" -> {
-                        // Android 13+ "restricted settings" gate lives on
-                        // the per-app details page. Onboarding routes here
-                        // first so the user can unlock the Accessibility
-                        // toggle before navigating to the Accessibility
-                        // list. Bare Intent + package URI works on every
-                        // OEM skin we've tested.
-                        startActivity(
-                            Intent(
-                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                android.net.Uri.parse("package:$packageName"),
-                            ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
-                        )
-                        result.success(null)
-                    }
-                    "replaceFocusedText" -> {
-                        val text = call.argument<String>("text") ?: ""
-                        val svc = TransKeyAccessibilityService.instance
-                        result.success(svc?.replaceFocusedText(text) ?: false)
                     }
                     // Forward to BubbleService via Intent — same body as the
                     // handler TransKeyApp.onCreate originally installed. We
@@ -405,24 +366,6 @@ class MainActivity : FlutterActivity() {
     private var pendingSharedText: String? = null
 
     private fun handleIncomingIntent(intent: Intent?) {
-        // Deep-link from BubbleService banner: "go to the in-app
-        // permissions checklist so the user can see all 3 statuses
-        // (overlay / restricted settings / accessibility) and grant
-        // whichever is missing." Routing them straight to the system
-        // Accessibility settings (the old behavior) skipped the bigger
-        // picture and dropped them somewhere they couldn't see what
-        // else was off.
-        if (intent?.action == ACTION_OPEN_PERMISSIONS) {
-            val messenger = flutterEngine?.dartExecutor?.binaryMessenger
-            if (messenger != null) {
-                MethodChannel(messenger, bubbleChannel)
-                    .invokeMethod("openPermissions", null)
-            } else {
-                pendingOpenPermissions = true
-            }
-            return
-        }
-
         val sharedText = when (intent?.action) {
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain") {
@@ -447,48 +390,11 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private var pendingOpenPermissions = false
-
-    companion object {
-        // Intent action BubbleService fires when its accessibility banner is
-        // tapped — keeps the contract one-way (BubbleService → MainActivity
-        // → Flutter) and grep-friendly.
-        const val ACTION_OPEN_PERMISSIONS = "transkey.app.OPEN_PERMISSIONS"
-    }
-
     // Flush any pending text once the engine is ready
     fun flushPendingText() {
         val text = pendingSharedText ?: return
         val messenger = flutterEngine?.dartExecutor?.binaryMessenger ?: return
         MethodChannel(messenger, shareChannel).invokeMethod("onSharedText", text)
         pendingSharedText = null
-    }
-
-    fun flushPendingOpenPermissions() {
-        if (!pendingOpenPermissions) return
-        val messenger = flutterEngine?.dartExecutor?.binaryMessenger ?: return
-        MethodChannel(messenger, bubbleChannel).invokeMethod("openPermissions", null)
-        pendingOpenPermissions = false
-    }
-
-    /**
-     * True when our AccessibilityService is enabled in system settings AND
-     * the service instance is connected. Both checks are needed: the system
-     * setting can lag the actual binding state on cold start.
-     */
-    private fun isAccessibilityEnabled(): Boolean {
-        val expected = ComponentName(this, TransKeyAccessibilityService::class.java)
-            .flattenToString()
-        val enabledServices = Settings.Secure.getString(
-            contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        ) ?: return false
-        val splitter = TextUtils.SimpleStringSplitter(':')
-        splitter.setString(enabledServices)
-        while (splitter.hasNext()) {
-            val component = ComponentName.unflattenFromString(splitter.next())
-            if (component == ComponentName.unflattenFromString(expected)) return true
-        }
-        return false
     }
 }

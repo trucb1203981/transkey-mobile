@@ -63,8 +63,28 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // set, long-press opens the picker). Each maps to a letters layout and an
     // input behavior (Latin direct, VI Telex, Cyrillic direct; CJK/RTL added in
     // later phases). The explicit choice persists in prefs ("typing_mode").
-    private enum class Mode { EN, VI, RU, RU_PHON, AR, TH, KO, KO_CHUN, JA, JA_FLICK, ZH }
+    // EN/VI + the 6 European Latin languages (DE/ES/FR/ID/IT/PT) all share the
+    // QWERTY layout and type direct; the European ones add accent input via a
+    // long-press popup (see accentLabelsFor / GboardKeyboardView.accentProvider).
+    private enum class Mode {
+        EN, VI, DE, ES, FR, ID, IT, PT, RU, RU_PHON, AR, TH, KO, KO_CHUN, JA, JA_FLICK, ZH
+    }
     private var mode: Mode = Mode.EN
+
+    // Modes that expose the long-press accent popup. ID (Indonesian) is a valid
+    // input language but uses plain ASCII Latin -> no accents, so it is excluded.
+    private val ACCENT_MODES = setOf(Mode.DE, Mode.ES, Mode.FR, Mode.IT, Mode.PT)
+    // Base letter -> its accented variants (lowercase), union across de/es/fr/it/pt.
+    private val ACCENT_MAP = mapOf(
+        'a' to "àáâäãå", 'c' to "ç", 'e' to "èéêë", 'i' to "ìíîï",
+        'n' to "ñ", 'o' to "òóôöõ", 's' to "ß", 'u' to "ùúûü", 'y' to "ÿ",
+    )
+    // Top-row corner numbers, kept reachable inside the accent popup so the
+    // European modes don't lose the Gboard number long-press on e/i/o.
+    private val NUMBER_HINTS = mapOf(
+        'q' to "1", 'w' to "2", 'e' to "3", 'r' to "4", 't' to "5",
+        'y' to "6", 'u' to "7", 'i' to "8", 'o' to "9", 'p' to "0",
+    )
     // Letters keyboard per language, built lazily + centered like qwerty. EN/VI
     // share the Latin qwerty; the others have their own layouts.
     private val letterKeyboards = HashMap<Mode, Keyboard>()
@@ -211,6 +231,23 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         (kv as? GboardKeyboardView)?.flickProvider = { code -> flickLabelsFor(code) }
         (kv as? GboardKeyboardView)?.onFlick = { code, dir -> handleFlick(code, dir) }
 
+        // European Latin accents: long-press a letter to slide-pick à/é/ñ/ç/ß…
+        // (gated to DE/ES/FR/IT/PT by accentLabelsFor; null elsewhere).
+        (kv as? GboardKeyboardView)?.accentProvider = { code, shifted ->
+            accentLabelsFor(code, shifted)
+        }
+        (kv as? GboardKeyboardView)?.onAccent = { s ->
+            currentInputConnection?.let { ic ->
+                clearUndo()            // a manual edit invalidates the undo snapshot
+                commitComposed(ic)
+                ic.commitText(s, 1)
+                // Mirror onKey's letter path: a one-shot shift drops back to
+                // lowercase after the accented letter (else the next char would
+                // wrongly stay uppercase).
+                if (shift == Shift.ONESHOT) { shift = Shift.NONE; applyShiftState() }
+            }
+        }
+
         // Suggestion strip: mic reuses voice input; tapping a suggestion
         // replaces the in-progress Vietnamese word with the chosen syllable.
         suggestionStrip = root.findViewById<SuggestionStripView>(R.id.suggestion_strip)?.apply {
@@ -316,6 +353,12 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     /** Native space-bar / toast label for each input language. */
     private fun modeLabel(m: Mode): String = when (m) {
         Mode.VI -> "Tiếng Việt"
+        Mode.DE -> "Deutsch"
+        Mode.ES -> "Español"
+        Mode.FR -> "Français"
+        Mode.ID -> "Bahasa Indonesia"
+        Mode.IT -> "Italiano"
+        Mode.PT -> "Português"
         Mode.RU, Mode.RU_PHON -> "Русский"
         Mode.AR -> "العربية"
         Mode.KO, Mode.KO_CHUN -> "한국어"
@@ -323,6 +366,24 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         Mode.ZH -> "中文"
         Mode.TH -> "ไทย"
         else -> "English"
+    }
+
+    /**
+     * Long-press accent popup for the European Latin modes. Returns the popup
+     * labels [base, accent…, number?] when the current mode supports accents and
+     * the pressed key has variants, else null (so EN/VI/CJK keep their normal
+     * long-press: number on the top row, nothing elsewhere). Index 0 = the base
+     * letter, so a long-press + immediate release types the base; the user slides
+     * right to reach the accents. Uppercase when [shifted].
+     */
+    private fun accentLabelsFor(code: Int, shifted: Boolean): Array<String>? {
+        if (mode !in ACCENT_MODES) return null
+        val base = code.toChar().lowercaseChar()
+        val variants = ACCENT_MAP[base] ?: return null
+        val baseOut = if (shifted) base.uppercaseChar() else base
+        val accents = (if (shifted) variants.uppercase() else variants).map { it.toString() }
+        val number = NUMBER_HINTS[base]
+        return (listOf(baseOut.toString()) + accents + listOfNotNull(number)).toTypedArray()
     }
 
     /** The letters keyboard for [m] (Latin qwerty for EN/VI, own layout else). */
@@ -519,17 +580,26 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
      * (the app's core markets), then the rest alphabetically by English name
      * (Gboard-style), with each language's variants grouped together.
      */
+    // Picker order: EN + VI pinned first (app convention), then by global speaker
+    // count. Labels follow the Gboard convention: native autonym + the layout/
+    // input variant in parentheses (kept consistent across JA/KO/RU).
     private fun inputLangOptions(): List<Pair<String, String>> = listOf(
         modeId(Mode.EN) to "English",
         modeId(Mode.VI) to "Tiếng Việt",
+        modeId(Mode.ZH) to "中文 (拼音)",
+        modeId(Mode.ES) to "Español",
+        modeId(Mode.FR) to "Français",
         modeId(Mode.AR) to "العربية",
-        modeId(Mode.ZH) to "中文 · 拼音",
+        modeId(Mode.PT) to "Português",
+        modeId(Mode.RU) to "Русский (ЙЦУКЕН)",
+        modeId(Mode.RU_PHON) to "Русский (фонетический)",
+        modeId(Mode.ID) to "Bahasa Indonesia",
+        modeId(Mode.DE) to "Deutsch",
         modeId(Mode.JA) to "日本語 (Romaji)",
-        modeId(Mode.JA_FLICK) to "日本語 · フリック",
-        modeId(Mode.KO) to "한국어 · 두벌식",
-        modeId(Mode.KO_CHUN) to "한국어 · 천지인",
-        modeId(Mode.RU) to "Русский · ЙЦУКЕН",
-        modeId(Mode.RU_PHON) to "Русский · фонетический",
+        modeId(Mode.JA_FLICK) to "日本語 (フリック)",
+        modeId(Mode.KO) to "한국어 (두벌식)",
+        modeId(Mode.KO_CHUN) to "한국어 (천지인)",
+        modeId(Mode.IT) to "Italiano",
         modeId(Mode.TH) to "ไทย",
     )
 

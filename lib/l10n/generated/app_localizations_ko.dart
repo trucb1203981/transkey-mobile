@@ -249,6 +249,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get bubbleInactive => '비활성화됨';
 
   @override
+  String get permissionsNeedSetup => '필요한 권한을 부여하려면 탭하세요';
+
+  @override
   String get sendFeedback => '피드백 보내기';
 
   @override
@@ -376,19 +379,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get speedNormal => '보통';
 
   @override
-  String get accessibilityPasteBack => '다른 앱에 답장 붙여넣기';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      '접근성 설정에서 TransKey를 활성화하면 \"붙여넣기\"가 포커스된 입력란에 답장을 직접 입력합니다.';
-
-  @override
-  String get accessibilityEnabled => '활성화됨';
-
-  @override
-  String get accessibilityDisabled => '비활성화됨 — 탭하여 설정 열기';
-
-  @override
   String get feedbackTitle => '피드백 보내기';
 
   @override
@@ -513,6 +503,12 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get errorEmailNotVerified => '이메일을 인증하세요 — 받은편지함 확인';
+
+  @override
+  String get errorEmailAlreadyExists => '이미 가입된 이메일입니다';
+
+  @override
+  String get errorWrongPassword => '현재 비밀번호가 올바르지 않습니다';
 
   @override
   String get errorFeatureRequiresPaid => '이 기능은 유료 플랜이 필요합니다';
@@ -1021,7 +1017,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      '모든 기능은 사용자가 의도적으로 동작했을 때만 텍스트를 읽습니다 — 복사, 화면 스캔, 영역 선택, 시스템 공유 사용, 또는 텍스트 선택 메뉴에서 TransKey 탭. 접근성은 답장 결과를 입력 중인 채팅창에 바로 붙여넣기 위해서만 사용됩니다.';
+      '모든 기능은 사용자가 의도적으로 동작했을 때만 텍스트를 읽습니다 — 복사, 화면 스캔, 영역 선택, 시스템 공유 사용, 또는 텍스트 선택 메뉴에서 TransKey 탭.';
 
   @override
   String get guideFeatureTranslate => '번역';
@@ -1087,72 +1083,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return '앱에서 텍스트를 선택하면 복사/공유 팝업이 나타납니다. ⋮ 탭으로 더 보기 → TransKey: $feature 선택.';
   }
-
-  @override
-  String get guideReplyA11yTitle => '접근성 — 선택, 자동 붙여넣기 전용';
-
-  @override
-  String get guideReplyA11yBody =>
-      'TransKey 접근성을 켜두면, 답장이 입력 중인 채팅창에 바로 붙여집니다. 추가 동작 불필요.\n\n켜고 싶지 않으면 답장이 자동 복사됩니다 — 채팅창을 길게 눌러 붙여넣기 탭.';
-
-  @override
-  String get appPermissions => '앱 권한';
-
-  @override
-  String get permissionsAllSet => '모두 설정 완료 — 탭하여 확인';
-
-  @override
-  String get permissionsNeedSetup => '필요한 권한을 부여하려면 탭';
-
-  @override
-  String get setupTransKey => 'TransKey 설정';
-
-  @override
-  String get setupTransKeyBody =>
-      '다른 앱을 사용하는 동안 TransKey를 화면에 표시합니다. 접근성은 선택 사항으로 자동 붙여넣기가 필요할 때만 사용합니다.';
-
-  @override
-  String get permFloatingBubble => '플로팅 버블';
-
-  @override
-  String get permFloatingBubbleBody =>
-      '다른 앱을 사용하면서 TransKey를 화면에 표시합니다. TransKey를 사용하려면 필수입니다.';
-
-  @override
-  String get permRestrictedSettings => '제한된 설정 허용';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      '일부 Android 기기는 새로 설치한 앱이 접근성을 사용하기 위해 추가 단계가 필요합니다. 오른쪽 상단 ⋮ → \"제한된 설정 허용\".';
-
-  @override
-  String get permAccessibility => '접근성 (선택)';
-
-  @override
-  String get permAccessibilityBody =>
-      'TransKey가 답장 제안을 현재 입력 중인 곳에 자동으로 붙여넣습니다. 직접 붙여넣는 게 괜찮으면 건너뛰세요.';
-
-  @override
-  String get permEnabled => '활성화됨';
-
-  @override
-  String get permEnable => '활성화';
-
-  @override
-  String get permDone => '완료';
-
-  @override
-  String get permOpenAppDetails => '앱 정보 열기';
-
-  @override
-  String get permSkipHint =>
-      '접근성은 선택 사항입니다. 없어도 답장 제안을 사용할 수 있지만 직접 붙여넣어야 합니다.';
-
-  @override
-  String get permSkipForNow => '지금은 건너뛰기';
-
-  @override
-  String get permFinishedCheck => '완료 — 확인';
 
   @override
   String get voiceTooltip => '음성 입력';

@@ -41,8 +41,6 @@ class ResultPanel {
     var fullscreenBtn: ImageView? = null
     var contentScroll: ScrollView? = null
 
-    var a11yWarning: View? = null
-
     var sourceExpanded: Boolean = false
     var sourceToggle: TextView? = null
     var source: TextView? = null
@@ -52,7 +50,6 @@ class ResultPanel {
     var suggestionsContainer: LinearLayout? = null
     var status: TextView? = null
     var copyBtn: View? = null
-    var pasteBtn: TextView? = null
     var ttsBtn: TextView? = null
 
     // Header chips + spinner

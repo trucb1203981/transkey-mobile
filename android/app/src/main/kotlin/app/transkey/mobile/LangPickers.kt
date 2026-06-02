@@ -11,7 +11,6 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 // (LANG_LABELS removed — read via getEffectiveLangLabels() per call.)
-import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 // SOURCE_LANGS / TARGET_LANGS / LANG_LABELS are NO LONGER imported as
 // static fallbacks — the pickers below read via instance helpers
 // (getEffectiveTargetLangs / getEffectiveSourceLangs /
@@ -32,22 +31,8 @@ import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 internal fun BubbleService.showLangPicker(onPicked: ((String) -> Unit)? = null) {
     if (langPickerView != null) { hideLangPicker(); return }
     ensureWindowManager()
-    // Sync from prefs so the picker reflects any change made in Flutter
-    // UI. In reply mode the picker pre-selects KEY_REPLY_LANG (which the
-    // tap-to-pick path writes to) — otherwise picking a lang then
-    // re-opening shows the *general* target as selected instead of the
-    // reply lang the user just chose, even though translation used it.
-    currentTargetLang = if (currentMode == MODE_REPLY) {
-        val replyLang = readReplyLang()
-        val detected = lastDetectedLang
-        when {
-            replyLang.isNotEmpty() -> replyLang
-            detected != null -> detected
-            else -> readTargetLang()
-        }
-    } else {
-        readTargetLang()
-    }
+    // Sync from prefs so the picker reflects any change made in Flutter UI.
+    currentTargetLang = readTargetLang()
 
     val style = BubbleStyle.of(this)
     val dp = style.dp
@@ -107,11 +92,7 @@ internal fun BubbleService.showLangPicker(onPicked: ((String) -> Unit)? = null) 
             }
             setOnClickListener {
                 currentTargetLang = lang
-                if (currentMode == MODE_REPLY) {
-                    writeReplyLang(lang)
-                } else {
-                    writeTargetLang(lang)
-                }
+                writeTargetLang(lang)
                 hideLangPicker()
                 updateLangChip()
                 onPicked?.invoke(lang)

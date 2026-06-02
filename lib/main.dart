@@ -233,20 +233,6 @@ void _wireBubbleChannel() {
       }
       return null;
     }
-    if (call.method == 'openPermissions') {
-      // BubbleService's accessibility banner tapped — surface the in-app
-      // permissions walkthrough rather than dumping the user into system
-      // settings cold. The setup screen shows all three statuses in one
-      // place (overlay / restricted / accessibility) with one-tap grant
-      // buttons per row.
-      try {
-        final router = _rootContainer.read(routerProvider);
-        router.push('/accessibility-setup');
-      } catch (e) {
-        debugPrint('[bubbleChannel] openPermissions push failed: $e');
-      }
-      return null;
-    }
     if (call.method == 'openCamera') {
       try {
         _rootContainer.read(trackingServiceProvider).event(

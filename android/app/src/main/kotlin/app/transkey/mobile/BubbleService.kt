@@ -120,24 +120,25 @@ class BubbleService : Service() {
         const val STATE_ERROR = "error"
 
         const val MODE_TRANSLATE = "translate"
-        const val MODE_REPLY = "reply"
         const val MODE_SUMMARIZE = "summarize"
         const val MODE_EXPLAIN = "explain"
         const val MODE_REFINE = "refine"
-        internal val ALL_MODES = listOf(MODE_TRANSLATE, MODE_SUMMARIZE, MODE_EXPLAIN, MODE_REFINE, MODE_REPLY)
+        // Reply lives on the TransKey keyboard (types straight into the
+        // focused field) + the in-app feature row. It was removed from the
+        // bubble overlay because the bubble's auto-paste relied on the
+        // Accessibility service, which we no longer ship.
+        internal val ALL_MODES = listOf(MODE_TRANSLATE, MODE_SUMMARIZE, MODE_EXPLAIN, MODE_REFINE)
         // Mode → (string-resource id, drawable-resource id) for the picker and
         // result panel. Keeping resources here (instead of inline `when`) makes
         // it cheap to add a new mode in one place.
         private val MODE_STRING_IDS = mapOf(
             MODE_TRANSLATE to R.string.bubble_mode_translate,
-            MODE_REPLY to R.string.bubble_mode_reply,
             MODE_SUMMARIZE to R.string.bubble_mode_summarize,
             MODE_EXPLAIN to R.string.bubble_mode_explain,
             MODE_REFINE to R.string.bubble_mode_refine,
         )
         private val MODE_ICON_IDS = mapOf(
             MODE_TRANSLATE to R.drawable.ic_bubble_translate,
-            MODE_REPLY to R.drawable.ic_bubble_reply,
             MODE_SUMMARIZE to R.drawable.ic_bubble_summarize,
             MODE_EXPLAIN to R.drawable.ic_bubble_explain,
             MODE_REFINE to R.drawable.ic_bubble_refine,
@@ -189,11 +190,8 @@ class BubbleService : Service() {
         private const val KEY_TARGET_LANG = "flutter.tk_target_lang"
         private const val KEY_SOURCE_LANG = "flutter.tk_source_lang"
         private const val KEY_TONE_OVERRIDE = "flutter.tk_tone_override"
-        private const val KEY_REPLY_TONE_OVERRIDE = "flutter.tk_reply_tone_override"
-        private const val KEY_REPLY_LANG = "flutter.tk_reply_lang"
         private const val KEY_BUBBLE_ACTIVE = "flutter.tk_bubble_active"
         private const val KEY_ROMANIZATION = "flutter.tk_romanization"
-        private const val KEY_REPLY_SUGGESTIONS = "flutter.tk_reply_suggestions"
         private const val KEY_TTS_RATE = "flutter.tk_tts_rate"
         // Local-only flag (not under flutter.* prefix) so we don't pollute
         // the Flutter SharedPreferences mirror with native-only state.
@@ -312,11 +310,8 @@ class BubbleService : Service() {
     // `panel.fullscreen` is true, layout params switch to
     // MATCH_PARENT × MATCH_PARENT. Otherwise height defaults to
     // WRAP_CONTENT until the user drags the bottom handle; then
-    // `panel.heightPx > 0` pins a custom height. `panel.a11yWarning`
-    // is the Reply-only banner shown above the action row when
-    // Accessibility is off — Paste relies on the a11y service to
-    // inject text into the currently-focused EditText. Without it the
-    // button is greyed out. `panel.sourceExpanded` toggles between
+    // `panel.heightPx > 0` pins a custom height. `panel.sourceExpanded`
+    // toggles between
     // collapsed (3 lines + ellipsis) and full text so the user can
     // line up source ↔ translation side by side.
     internal val panel = ResultPanel()
@@ -346,10 +341,6 @@ class BubbleService : Service() {
 
     // Translation in-progress guard (prevents spam clicks)
     internal var isTranslating = false
-
-    // Last translation context (used by Reply mode to determine target language + original message)
-    internal var lastOriginalText: String? = null
-    internal var lastDetectedLang: String? = null
 
     // panel.sourceLangChip + panel.toneChip + panel.loadingSpinner: see ResultPanel.
     // The header chip used to be a tone-label TextView; it's now an
@@ -964,24 +955,7 @@ class BubbleService : Service() {
         currentSuggestions = emptyList()
         currentMode = mode
 
-        // Reply mode target language priority:
-        //   1. Reply Language setting (if user picked a specific one) — always wins
-        //   2. Sender's detected language (if a prior translation gave us context)
-        //   3. General target language
-        val replyToOriginal: String?
-        if (mode == MODE_REPLY) {
-            val replyLang = readReplyLang()
-            currentTargetLang = when {
-                replyLang.isNotEmpty() -> replyLang
-                lastDetectedLang != null -> lastDetectedLang!!
-                else -> readTargetLang()
-            }
-            replyToOriginal = lastOriginalText
-        } else {
-            currentTargetLang = readTargetLang()
-            replyToOriginal = null
-        }
-
+        currentTargetLang = readTargetLang()
         currentSourceLang = readSourceLang()
         currentTone = readTone()
         val reqId = ++nextRequestId
@@ -989,7 +963,7 @@ class BubbleService : Service() {
         showResultPanel(loading = true, error = null)
         val eng = TransKeyApp.engine
         if (eng != null) {
-            invokeFlutterTranslate(eng, text, mode, currentTargetLang, reqId, replyToOriginal, attempt = 0)
+            invokeFlutterTranslate(eng, text, mode, currentTargetLang, reqId, replyToOriginal = null, attempt = 0)
         } else {
             showError(localized(R.string.bubble_panel_app_not_ready))
         }
@@ -1228,16 +1202,6 @@ class BubbleService : Service() {
         return prefs.getString(KEY_TONE_OVERRIDE, "") ?: ""
     }
 
-    internal fun readReplyLang(): String {
-        return prefs.getString(KEY_REPLY_LANG, "") ?: ""
-    }
-
-    internal fun writeReplyLang(lang: String) {
-        prefs.edit()
-            .putString(KEY_REPLY_LANG, lang).apply()
-        notifyFlutterLangChanged()
-    }
-
     /**
      * Read the persisted speaker language for voice input. Falls back to a
      * sensible default in this order:
@@ -1269,20 +1233,11 @@ class BubbleService : Service() {
             .putString(KEY_TONE_OVERRIDE, tone).apply()
     }
 
-    // ── Reply tone / Romanization / Reply suggestions / TTS rate ─────────
+    // ── Romanization / TTS rate ─────────
     // All persisted under `flutter.tk_*` prefix so Flutter's SharedPreferences
     // package reads them as the same `tk_*` keys the in-app Settings screen
     // writes to. Reading happens at app resume via appSettingsProvider.reload()
     // and ttsProvider._loadPersistedPrefs().
-
-    internal fun readReplyTone(): String {
-        return prefs.getString(KEY_REPLY_TONE_OVERRIDE, "") ?: ""
-    }
-
-    internal fun writeReplyTone(tone: String) {
-        prefs.edit()
-            .putString(KEY_REPLY_TONE_OVERRIDE, tone).apply()
-    }
 
     internal fun readRomanization(): Boolean {
         return prefs.getBoolean(KEY_ROMANIZATION, false)
@@ -1291,15 +1246,6 @@ class BubbleService : Service() {
     internal fun writeRomanization(value: Boolean) {
         prefs.edit()
             .putBoolean(KEY_ROMANIZATION, value).apply()
-    }
-
-    internal fun readReplySuggestions(): Boolean {
-        return prefs.getBoolean(KEY_REPLY_SUGGESTIONS, false)
-    }
-
-    internal fun writeReplySuggestions(value: Boolean) {
-        prefs.edit()
-            .putBoolean(KEY_REPLY_SUGGESTIONS, value).apply()
     }
 
     // readTtsRate() is defined above (with broader plugin-version handling) —

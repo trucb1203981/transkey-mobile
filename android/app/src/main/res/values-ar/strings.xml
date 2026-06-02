@@ -1,30 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">يستطيع TransKey لصق الرد مباشرة في حقل النص النشط في أي تطبيق عند الضغط على "لصق الرد" في زر TransKey. تتم قراءة النص أو كتابته فقط عند تنفيذك لإجراء — بدون أي تتبع في الخلفية.</string>
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">اختر إجراءً</string>
     <string name="bubble_need_text">طريقتان سريعتان:\n• انسخ النص ← انقر إجراءً بالأسفل\n• أو حدّد النص ← مشاركة ← TransKey</string>
     <string name="bubble_need_copy">انسخ النص أولاً، ثم اضغط زر TransKey.</string>
-    <string name="bubble_accessibility_hint">التحديد + الضغط على زر TransKey لا يعمل بعد. فعّل إمكانية الوصول لتخطي خطوة النسخ.</string>
-    <string name="bubble_accessibility_enable">إعداد</string>
-    <string name="bubble_accessibility_guide_legacy">ابحث عن TransKey في القائمة → فعّل \"استخدام TransKey\" → اضغط سماح.</string>
-    <string name="bubble_accessibility_guide_a13">يحظر Android 13+ إمكانية الوصول للتطبيقات المثبّتة يدويًا افتراضيًا:\n1. اضغط ⋮ (أعلى اليمين) → \"السماح بالإعدادات المقيدة\"\n2. ارجع → إمكانية الوصول → TransKey → فعّل</string>
     <string name="bubble_show_last_result">عرض آخر نتيجة</string>
     <string name="bubble_show_more">عرض المزيد</string>
     <string name="bubble_show_less">عرض أقل</string>
     <string name="bubble_type_text">اكتب نصك</string>
-    <string name="bubble_paste_a11y_required">فعّل إمكانية الوصول للصق الردود مباشرة في الحقل النشط.</string>
 
     <!-- Result panel: action button labels, toasts, status lines -->
     <string name="bubble_panel_source_lang">لغة المصدر</string>
     <string name="bubble_panel_target_lang">لغة الهدف</string>
     <string name="bubble_panel_copy">نسخ</string>
-    <string name="bubble_panel_paste">لصق</string>
     <string name="bubble_panel_copied">تم النسخ</string>
-    <string name="bubble_panel_pasted">تم اللصق</string>
-    <string name="bubble_panel_paste_manual_fallback">تم النسخ — اضغط على الحقل والصق يدويًا</string>
-    <string name="bubble_panel_paste_a11y_off">فعّل TransKey في إمكانية الوصول للصق</string>
     <string name="bubble_panel_clipboard_empty">الحافظة فارغة</string>
     <string name="bubble_panel_tts_not_ready">قراءة النص الصوتية ليست جاهزة</string>
     <string name="bubble_panel_translation_failed">فشلت الترجمة</string>

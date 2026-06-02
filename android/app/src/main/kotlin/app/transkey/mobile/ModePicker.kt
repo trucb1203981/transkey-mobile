@@ -25,7 +25,6 @@ import app.transkey.mobile.BubbleService.Companion.EXTRA_MODE
 // a language that isn't in the hardcoded set.
 import app.transkey.mobile.BubbleService.Companion.MODE_EXPLAIN
 import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
-import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 import app.transkey.mobile.BubbleService.Companion.MODE_SUMMARIZE
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
 
@@ -43,7 +42,6 @@ internal fun modeGateFor(mode: String): ModeGate? = when (mode) {
     MODE_SUMMARIZE -> ModeGate("tk_feature_summarize", "Summarize")
     MODE_EXPLAIN   -> ModeGate("tk_feature_explain",   "Explain")
     MODE_REFINE    -> ModeGate("tk_feature_refine",    "Refine")
-    MODE_REPLY     -> ModeGate("tk_feature_reply",     "Reply")
     else           -> null  // MODE_TRANSLATE is always available
 }
 

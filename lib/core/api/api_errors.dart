@@ -6,6 +6,8 @@ enum ApiErrorCode {
   unauthorized,        // valid session expired or rejected mid-app
   invalidCredentials,  // login/register/google-mobile rejected at the door
   emailNotVerified,
+  emailAlreadyExists,  // register: email already has an account
+  wrongPassword,       // change-password: current password is incorrect
   featureDisabled,
   deviceLimit,         // free plan: too many free accounts from this device
   proDeviceLimit,      // pro plan: already registered on 2 devices
@@ -28,6 +30,17 @@ class ApiException implements Exception {
   final ApiErrorCode code;
   final String message;
   final int? statusCode;
+
+  /// Pull a plain string out of an error body's `message`. NestJS hand-thrown
+  /// errors use a String; class-validator DTO failures use a List of strings.
+  /// Returns null when there's nothing usable (so callers apply their fallback).
+  static String? _flattenMessage(dynamic body) {
+    if (body is! Map) return null;
+    final m = body['message'];
+    if (m is String && m.isNotEmpty) return m;
+    if (m is List && m.isNotEmpty) return m.map((e) => e.toString()).join('\n');
+    return null;
+  }
 
   factory ApiException.fromDio(DioException err) {
     final status = err.response?.statusCode;
@@ -55,9 +68,8 @@ class ApiException implements Exception {
 
     // 401 on the auth-entry endpoints means "we don't believe these
     // credentials" — NOT "your session expired" (the user doesn't have
-    // one yet). Surface the server's specific message ("Email hoặc mật
-    // khẩu không đúng") so the user knows to retry their password rather
-    // than thinking they need to re-login.
+    // one yet). Map it to invalidCredentials so the UI shows the localized
+    // "wrong email or password" copy instead of a re-login prompt.
     final path = err.requestOptions.path;
     final isCredentialAttempt = status == 401 && (
       path == '/auth/login' ||
@@ -66,12 +78,27 @@ class ApiException implements Exception {
     );
 
     switch (status) {
+      case 400:
+        if (serverCode == 'wrong_password') {
+          return const ApiException(
+            code: ApiErrorCode.wrongPassword,
+            message: 'Current password is incorrect',
+          );
+        }
+        // class-validator DTO failures return `message` as a List of
+        // strings; flatten it (or take the plain string) so we never
+        // cast-crash on the body.
+        return ApiException(
+          code: ApiErrorCode.unknown,
+          message: _flattenMessage(body) ?? 'Invalid request',
+          statusCode: status,
+        );
       case 401:
         if (isCredentialAttempt) {
           return ApiException(
             code: ApiErrorCode.invalidCredentials,
             message: (body is Map ? body['message'] as String? : null)
-                ?? 'Email hoặc mật khẩu không đúng',
+                ?? 'Wrong email or password',
             statusCode: status,
           );
         }
@@ -84,7 +111,7 @@ class ApiException implements Exception {
           case 'email_not_verified':
             return ApiException(
               code: ApiErrorCode.emailNotVerified,
-              message: body?['message'] as String? ?? 'Email chưa xác nhận',
+              message: body?['message'] as String? ?? 'Please verify your email',
             );
           case 'feature_disabled':
             return const ApiException(
@@ -113,6 +140,18 @@ class ApiException implements Exception {
               statusCode: status,
             );
         }
+      case 409:
+        if (serverCode == 'email_already_exists') {
+          return const ApiException(
+            code: ApiErrorCode.emailAlreadyExists,
+            message: 'This email is already registered',
+          );
+        }
+        return ApiException(
+          code: ApiErrorCode.unknown,
+          message: _flattenMessage(body) ?? 'Conflict',
+          statusCode: status,
+        );
       case 413:
         return const ApiException(
           code: ApiErrorCode.textTooLong,
@@ -167,6 +206,8 @@ extension ApiErrorCodeL on ApiErrorCode {
     ApiErrorCode.unauthorized              => l.errorSessionExpired,
     ApiErrorCode.invalidCredentials        => l.errorInvalidCredentials,
     ApiErrorCode.emailNotVerified          => l.errorEmailNotVerified,
+    ApiErrorCode.emailAlreadyExists        => l.errorEmailAlreadyExists,
+    ApiErrorCode.wrongPassword             => l.errorWrongPassword,
     ApiErrorCode.featureDisabled           => l.errorFeatureRequiresPaid,
     ApiErrorCode.deviceLimit               => l.errorDeviceLimit,
     ApiErrorCode.proDeviceLimit            => l.proDeviceLimitError,

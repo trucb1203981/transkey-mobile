@@ -24,7 +24,6 @@ import android.widget.Toast
 import app.transkey.mobile.BubbleService.Companion.ALL_MODES
 // LANG_LABELS replaced by getEffectiveLangLabels() — see BubbleService.
 import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
-import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
 import app.transkey.mobile.BubbleService.Companion.STATE_IDLE
 import app.transkey.mobile.BubbleService.Companion.VOICE_LANGS
@@ -78,9 +77,7 @@ internal fun BubbleService.showInputPicker(initialMode: String, prefillText: Str
     val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
 
     // Selected mode reference — closure-captured by tabs + Translate button.
-    // Reply mode requires a captured conversation; typed-from-scratch
-    // text has no original to reply to, so we hide Reply from this picker.
-    val typeableModes = ALL_MODES.filter { it != MODE_REPLY }
+    val typeableModes = ALL_MODES
     val selectedMode = arrayOf(
         if (typeableModes.contains(initialMode)) initialMode else MODE_TRANSLATE,
     )

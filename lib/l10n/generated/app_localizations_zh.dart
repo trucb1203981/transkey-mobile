@@ -248,6 +248,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bubbleInactive => '未启用';
 
   @override
+  String get permissionsNeedSetup => '点按以授予所需权限';
+
+  @override
   String get sendFeedback => '发送反馈';
 
   @override
@@ -373,19 +376,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get speedNormal => '标准';
 
   @override
-  String get accessibilityPasteBack => '粘贴回复到其他应用';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      '在无障碍设置中启用 TransKey,即可让\"粘贴\"将回复直接写入聚焦中的输入框。';
-
-  @override
-  String get accessibilityEnabled => '已启用';
-
-  @override
-  String get accessibilityDisabled => '未启用 — 点击打开设置';
-
-  @override
   String get feedbackTitle => '发送反馈';
 
   @override
@@ -509,6 +499,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorEmailNotVerified => '请验证邮箱 — 查收收件箱';
+
+  @override
+  String get errorEmailAlreadyExists => '该邮箱已注册';
+
+  @override
+  String get errorWrongPassword => '当前密码不正确';
 
   @override
   String get errorFeatureRequiresPaid => '此功能需要付费套餐';
@@ -1009,7 +1005,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      '所有功能仅在你主动操作后才读取内容 — 复制文本、扫描屏幕、选取区域、使用系统分享按钮,或从文本选择菜单点 TransKey。辅助功能只用于把回复结果直接粘贴到你正在输入的聊天框。';
+      '所有功能仅在你主动操作后才读取内容 — 复制文本、扫描屏幕、选取区域、使用系统分享按钮,或从文本选择菜单点 TransKey。';
 
   @override
   String get guideFeatureTranslate => '翻译';
@@ -1074,71 +1070,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return '在任意应用选中文本,出现 复制/分享 菜单。点 ⋮ 查看更多,然后选 TransKey: $feature。';
   }
-
-  @override
-  String get guideReplyA11yTitle => '辅助功能 — 可选,仅用于自动粘贴';
-
-  @override
-  String get guideReplyA11yBody =>
-      '如果为 TransKey 开启辅助功能,你的回复会直接粘贴到正在输入的聊天框,无需额外步骤。\n\n如果不想开启,回复会自动复制好 — 长按聊天框点 粘贴 即可。';
-
-  @override
-  String get appPermissions => '应用权限';
-
-  @override
-  String get permissionsAllSet => '全部就绪 — 点击查看';
-
-  @override
-  String get permissionsNeedSetup => '点击授予所需权限';
-
-  @override
-  String get setupTransKey => '设置 TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      '允许 TransKey 在您使用其他应用时显示在屏幕上。辅助功能可选 - 仅在需要自动粘贴回复时使用。';
-
-  @override
-  String get permFloatingBubble => '悬浮气泡';
-
-  @override
-  String get permFloatingBubbleBody =>
-      '让 TransKey 在您使用其他应用时出现在屏幕上。开始使用 TransKey 必须开启。';
-
-  @override
-  String get permRestrictedSettings => '允许受限设置';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      '部分 Android 手机需要额外步骤才能让新安装的应用使用辅助功能。点击右上角 ⋮ → \"允许受限设置\"。';
-
-  @override
-  String get permAccessibility => '辅助功能 (可选)';
-
-  @override
-  String get permAccessibilityBody =>
-      '让 TransKey 自动将建议的回复粘贴到您正在输入的位置。如果您不介意自己粘贴，可以跳过。';
-
-  @override
-  String get permEnabled => '已启用';
-
-  @override
-  String get permEnable => '启用';
-
-  @override
-  String get permDone => '完成';
-
-  @override
-  String get permOpenAppDetails => '打开应用详情';
-
-  @override
-  String get permSkipHint => '辅助功能为可选项。没有它，您需要自己复制并粘贴建议的回复。';
-
-  @override
-  String get permSkipForNow => '暂时跳过';
-
-  @override
-  String get permFinishedCheck => '已完成 — 检查';
 
   @override
   String get voiceTooltip => '语音输入';

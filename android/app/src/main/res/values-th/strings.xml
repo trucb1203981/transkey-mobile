@@ -1,30 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">TransKey สามารถวางคำตอบลงในช่องข้อความที่กำลังใช้งานของแอปใดก็ได้ เมื่อคุณแตะ "วางคำตอบ" บนปุ่ม TransKey ข้อความจะถูกอ่านหรือเขียนเฉพาะเมื่อคุณสั่งการเท่านั้น — ไม่มีการติดตามเบื้องหลัง</string>
 
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">เลือกการทำงาน</string>
     <string name="bubble_need_text">2 วิธีใช้แบบเร็ว:\n• คัดลอกข้อความ → แตะการทำงานด้านล่าง\n• หรือเลือกข้อความ → แชร์ → TransKey</string>
     <string name="bubble_need_copy">คัดลอกข้อความก่อน แล้วแตะปุ่ม TransKey</string>
-    <string name="bubble_accessibility_hint">ไฮไลต์ + แตะปุ่ม TransKey ยังไม่ทำงาน เปิดการช่วยเหลือพิเศษเพื่อข้ามขั้นตอนคัดลอก</string>
-    <string name="bubble_accessibility_enable">ตั้งค่า</string>
-    <string name="bubble_accessibility_guide_legacy">หา TransKey ในรายการ → เปิด \"ใช้ TransKey\" → แตะ อนุญาต</string>
-    <string name="bubble_accessibility_guide_a13">Android 13+ บล็อกการช่วยเหลือพิเศษสำหรับแอปติดตั้งภายนอกโดยอัตโนมัติ:\n1. แตะ ⋮ (มุมขวาบน) → \"อนุญาตการตั้งค่าที่ถูกจำกัด\"\n2. กลับ → การช่วยเหลือพิเศษ → TransKey → เปิด</string>
     <string name="bubble_show_last_result">ดูผลลัพธ์ล่าสุด</string>
     <string name="bubble_show_more">ดูเพิ่มเติม</string>
     <string name="bubble_show_less">ย่อ</string>
     <string name="bubble_type_text">พิมพ์ข้อความเอง</string>
-    <string name="bubble_paste_a11y_required">เปิดการช่วยเหลือพิเศษเพื่อวางคำตอบลงในช่องที่กำลังใช้งาน</string>
 
     <!-- Result panel: action button labels, toasts, status lines -->
     <string name="bubble_panel_source_lang">ภาษาต้นทาง</string>
     <string name="bubble_panel_target_lang">ภาษาปลายทาง</string>
     <string name="bubble_panel_copy">คัดลอก</string>
-    <string name="bubble_panel_paste">วาง</string>
     <string name="bubble_panel_copied">คัดลอกแล้ว</string>
-    <string name="bubble_panel_pasted">วางแล้ว</string>
-    <string name="bubble_panel_paste_manual_fallback">คัดลอกแล้ว — แตะที่ช่องแล้ววางเอง</string>
-    <string name="bubble_panel_paste_a11y_off">เปิด TransKey ในการช่วยเหลือพิเศษเพื่อวาง</string>
     <string name="bubble_panel_clipboard_empty">คลิปบอร์ดว่าง</string>
     <string name="bubble_panel_tts_not_ready">TTS ยังไม่พร้อม</string>
     <string name="bubble_panel_translation_failed">แปลไม่สำเร็จ</string>

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">TransKey peut coller une réponse directement dans le champ de texte actif de n\'importe quelle app lorsque vous appuyez sur « Coller la réponse » dans la bulle flottante. Le texte n\'est lu ou écrit que lorsque vous déclenchez une action — aucun suivi en arrière-plan.</string>
 
     <string name="bubble_choose_action">Choisir une action</string>
     <string name="bubble_need_text">Deux façons rapides :\n• Copier le texte → toucher une action ci-dessous\n• Ou sélectionner le texte → Partager → TransKey</string>
@@ -66,20 +65,11 @@
     <string name="process_text_refine">TransKey : Affiner</string>
 
     <string name="bubble_need_copy">Copiez d\'abord le texte, puis touchez la bulle.</string>
-    <string name="bubble_accessibility_hint">Surligner + toucher la bulle ne fonctionne pas encore. Activez l\'Accessibilité pour éviter l\'étape Copier.</string>
-    <string name="bubble_accessibility_enable">Configurer</string>
-    <string name="bubble_accessibility_guide_legacy">Trouvez TransKey dans la liste → activez \"Use TransKey\" → touchez Autoriser.</string>
-    <string name="bubble_accessibility_guide_a13">Android 13+ bloque l\'Accessibilité par défaut pour les apps sideloadées :\n1. Touchez ⋮ (en haut à droite) → \"Autoriser les paramètres restreints\"\n2. Retour → Accessibilité → TransKey → ON</string>
-    <string name="bubble_paste_a11y_required">Activez l\'Accessibilité pour coller les réponses directement dans le champ texte ayant le focus.</string>
 
     <string name="bubble_panel_source_lang">Langue source</string>
     <string name="bubble_panel_target_lang">Langue cible</string>
     <string name="bubble_panel_copy">Copier</string>
-    <string name="bubble_panel_paste">Coller</string>
     <string name="bubble_panel_copied">Copié</string>
-    <string name="bubble_panel_pasted">Collé</string>
-    <string name="bubble_panel_paste_manual_fallback">Copié — touchez le champ et collez manuellement</string>
-    <string name="bubble_panel_paste_a11y_off">Activez TransKey dans les paramètres d\'Accessibilité pour coller</string>
     <string name="bubble_panel_clipboard_empty">Presse-papiers vide</string>
     <string name="bubble_panel_tts_not_ready">TTS pas prêt</string>
     <string name="bubble_panel_translation_failed">Échec de la traduction</string>

@@ -250,6 +250,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get bubbleInactive => 'ไม่ทำงาน';
 
   @override
+  String get permissionsNeedSetup => 'แตะเพื่อให้สิทธิ์ที่จำเป็น';
+
+  @override
   String get sendFeedback => 'ส่งความคิดเห็น';
 
   @override
@@ -376,20 +379,6 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get speedNormal => 'ปกติ';
-
-  @override
-  String get accessibilityPasteBack => 'วางคำตอบในแอปอื่น';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'เปิดใช้งาน TransKey ในการตั้งค่าการเข้าถึง เพื่อให้ \"วาง\" เขียนคำตอบลงในช่องที่กำลังพิมพ์ในแอปใดก็ได้';
-
-  @override
-  String get accessibilityEnabled => 'เปิดใช้งานแล้ว';
-
-  @override
-  String get accessibilityDisabled =>
-      'ยังไม่ได้เปิดใช้งาน — แตะเพื่อเปิดการตั้งค่า';
 
   @override
   String get feedbackTitle => 'ส่งความคิดเห็น';
@@ -519,6 +508,12 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'โปรดยืนยันอีเมลของคุณ — ตรวจสอบกล่องจดหมาย';
+
+  @override
+  String get errorEmailAlreadyExists => 'อีเมลนี้ลงทะเบียนไว้แล้ว';
+
+  @override
+  String get errorWrongPassword => 'รหัสผ่านปัจจุบันไม่ถูกต้อง';
 
   @override
   String get errorFeatureRequiresPaid => 'ฟีเจอร์นี้ต้องใช้แผนแบบเสียเงิน';
@@ -1047,7 +1042,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'ทุกฟีเจอร์จะอ่านข้อความหลังจากที่คุณลงมือทำบางอย่างเท่านั้น — คัดลอกข้อความ สแกนหน้าจอ เลือกพื้นที่ ใช้ปุ่มแชร์ของระบบ หรือแตะ TransKey จากเมนูเลือกข้อความ การตั้งค่าการเข้าถึงใช้เฉพาะเพื่อให้ผลลัพธ์การตอบกลับวางเข้าช่องแชตที่คุณกำลังพิมพ์อยู่ได้เอง';
+      'ทุกฟีเจอร์จะอ่านข้อความหลังจากที่คุณลงมือทำบางอย่างเท่านั้น — คัดลอกข้อความ สแกนหน้าจอ เลือกพื้นที่ ใช้ปุ่มแชร์ของระบบ หรือแตะ TransKey จากเมนูเลือกข้อความ';
 
   @override
   String get guideFeatureTranslate => 'แปล';
@@ -1118,73 +1113,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'เลือกข้อความในแอปใด ๆ — ป๊อปอัป คัดลอก/แชร์ จะปรากฏ แตะ ⋮ เพื่อดูตัวเลือกเพิ่มเติม แล้วเลือก TransKey: $feature';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'การเข้าถึง — ไม่บังคับ ใช้สำหรับวางอัตโนมัติเท่านั้น';
-
-  @override
-  String get guideReplyA11yBody =>
-      'ถ้าเปิดการเข้าถึงให้ TransKey ไว้ คำตอบของคุณจะถูกวางลงในช่องแชตที่คุณกำลังพิมพ์อยู่โดยตรง ไม่ต้องทำอะไรเพิ่ม\n\nถ้าไม่อยากเปิดใช้งาน คำตอบจะถูกคัดลอกให้คุณ — เพียงกดค้างที่ช่องแชตแล้วแตะ วาง';
-
-  @override
-  String get appPermissions => 'สิทธิ์ของแอป';
-
-  @override
-  String get permissionsAllSet => 'ตั้งค่าครบแล้ว — แตะเพื่อตรวจสอบ';
-
-  @override
-  String get permissionsNeedSetup => 'แตะเพื่ออนุญาตสิทธิ์ที่จำเป็น';
-
-  @override
-  String get setupTransKey => 'ตั้งค่า TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'อนุญาตให้ TransKey แสดงบนหน้าจอขณะใช้แอปอื่น การช่วยเหลือพิเศษเป็นทางเลือก - ใช้เฉพาะเมื่อต้องการวางคำตอบอัตโนมัติ';
-
-  @override
-  String get permFloatingBubble => 'ปุ่มลอย';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'TransKey แสดงบนหน้าจอขณะคุณใช้แอปอื่น จำเป็นต้องเปิดเพื่อใช้ TransKey';
-
-  @override
-  String get permRestrictedSettings => 'อนุญาตการตั้งค่าที่จำกัด';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'บางโทรศัพท์ Android ต้องการขั้นตอนเพิ่มเติมเพื่อให้แอปที่เพิ่งติดตั้งสามารถใช้การช่วยเหลือพิเศษได้ แตะ ⋮ ที่มุมขวาบน → \"อนุญาตการตั้งค่าที่จำกัด\"';
-
-  @override
-  String get permAccessibility => 'การเข้าถึง (ไม่บังคับ)';
-
-  @override
-  String get permAccessibilityBody =>
-      'TransKey วางคำตอบที่แนะนำอัตโนมัติในตำแหน่งที่คุณพิมพ์อยู่ ข้ามได้ถ้าคุณไม่ขัดข้องที่จะวางเอง';
-
-  @override
-  String get permEnabled => 'เปิดใช้งานแล้ว';
-
-  @override
-  String get permEnable => 'เปิดใช้งาน';
-
-  @override
-  String get permDone => 'เสร็จสิ้น';
-
-  @override
-  String get permOpenAppDetails => 'เปิดรายละเอียดแอป';
-
-  @override
-  String get permSkipHint =>
-      'การช่วยเหลือพิเศษเป็นทางเลือก ถ้าไม่เปิด คุณจะต้องวางคำตอบที่แนะนำเอง';
-
-  @override
-  String get permSkipForNow => 'ข้ามไปก่อน';
-
-  @override
-  String get permFinishedCheck => 'เสร็จแล้ว — ตรวจสอบ';
 
   @override
   String get voiceTooltip => 'พูดเพื่อพิมพ์';

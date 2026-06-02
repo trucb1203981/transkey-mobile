@@ -33,7 +33,6 @@ class KeyboardSettingsScreen extends ConsumerStatefulWidget {
 class _KeyboardSettingsScreenState
     extends ConsumerState<KeyboardSettingsScreen>
     with WidgetsBindingObserver {
-  bool _accessibilityEnabled = false;
   bool _imeEnabled = false;
   bool _imeSelected = false;
 
@@ -41,7 +40,6 @@ class _KeyboardSettingsScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _refreshAccessibility();
     _refreshImeStatus();
   }
 
@@ -54,15 +52,8 @@ class _KeyboardSettingsScreenState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _refreshAccessibility();
       _refreshImeStatus();
     }
-  }
-
-  Future<void> _refreshAccessibility() async {
-    final notifier = ref.read(bubbleManagerProvider.notifier);
-    final granted = await notifier.checkAccessibility();
-    if (mounted) setState(() => _accessibilityEnabled = granted);
   }
 
   Future<void> _refreshImeStatus() async {
@@ -136,31 +127,6 @@ class _KeyboardSettingsScreenState
               ),
               value: bubbleRunning,
               onChanged: (_) async => _toggleBubble(bubbleRunning),
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.security_outlined,
-                color: _accessibilityEnabled
-                    ? AppColors.primary
-                    : Colors.orange,
-              ),
-              title: Text(t.appPermissions),
-              subtitle: Text(
-                _accessibilityEnabled
-                    ? t.permissionsAllSet
-                    : t.permissionsNeedSetup,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _accessibilityEnabled
-                      ? AppColors.primary
-                      : Colors.orange,
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () async {
-                await context.push('/accessibility-setup');
-                if (mounted) _refreshAccessibility();
-              },
             ),
             ListTile(
               leading: const Icon(Icons.bubble_chart_outlined),

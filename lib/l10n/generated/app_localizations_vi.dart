@@ -251,6 +251,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get bubbleInactive => 'Đang tắt';
 
   @override
+  String get permissionsNeedSetup => 'Nhấn để cấp quyền cần thiết';
+
+  @override
   String get sendFeedback => 'Gửi phản hồi';
 
   @override
@@ -377,19 +380,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get speedNormal => 'Bình thường';
-
-  @override
-  String get accessibilityPasteBack => 'Dán câu trả lời vào ứng dụng khác';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'Bật TransKey trong phần Trợ năng để nút \"Dán\" có thể chèn câu trả lời thẳng vào ô đang gõ ở ứng dụng khác.';
-
-  @override
-  String get accessibilityEnabled => 'Đã bật';
-
-  @override
-  String get accessibilityDisabled => 'Chưa bật — chạm để mở cài đặt';
 
   @override
   String get feedbackTitle => 'Gửi phản hồi';
@@ -520,6 +510,12 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'Vui lòng xác nhận email — kiểm tra hộp thư';
+
+  @override
+  String get errorEmailAlreadyExists => 'Email này đã được đăng ký';
+
+  @override
+  String get errorWrongPassword => 'Mật khẩu hiện tại không đúng';
 
   @override
   String get errorFeatureRequiresPaid => 'Tính năng này yêu cầu gói trả phí';
@@ -1045,7 +1041,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Tính năng nào cũng chỉ đọc nội dung sau khi bạn chủ động làm gì đó — sao chép văn bản, quét màn hình, chọn vùng, dùng nút Chia sẻ của hệ thống, hoặc chạm TransKey trong menu chọn văn bản. Trợ năng chỉ cần để câu trả lời tự dán thẳng vào ô chat bạn đang gõ.';
+      'Tính năng nào cũng chỉ đọc nội dung sau khi bạn chủ động làm gì đó — sao chép văn bản, quét màn hình, chọn vùng, dùng nút Chia sẻ của hệ thống, hoặc chạm TransKey trong menu chọn văn bản.';
 
   @override
   String get guideFeatureTranslate => 'Dịch';
@@ -1118,72 +1114,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'Khi bạn chọn văn bản trong ứng dụng, menu Sao chép/Chia sẻ hiện ra. Chạm ⋮ để xem thêm, rồi chọn TransKey: $feature.';
   }
-
-  @override
-  String get guideReplyA11yTitle => 'Trợ năng — tùy chọn, chỉ để tự động dán';
-
-  @override
-  String get guideReplyA11yBody =>
-      'Nếu bật Trợ năng cho TransKey, câu trả lời được dán thẳng vào ô chat bạn đang gõ. Không cần thao tác thêm.\n\nNếu bạn không muốn bật, câu trả lời tự sao chép sẵn cho bạn — chỉ cần nhấn giữ ô chat rồi chạm Dán.';
-
-  @override
-  String get appPermissions => 'Quyền ứng dụng';
-
-  @override
-  String get permissionsAllSet => 'Đã cấp đủ — chạm để xem lại';
-
-  @override
-  String get permissionsNeedSetup => 'Chạm để cấp các quyền cần thiết';
-
-  @override
-  String get setupTransKey => 'Thiết lập TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'Cho phép Nút TransKey xuất hiện trên màn hình khi dùng app khác. Trợ năng là tùy chọn - chỉ cần để tự động dán câu trả lời.';
-
-  @override
-  String get permFloatingBubble => 'Nút TransKey nổi';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'Cho phép Nút TransKey hiện trên màn hình khi bạn đang dùng app khác. Bắt buộc để sử dụng TransKey.';
-
-  @override
-  String get permRestrictedSettings => 'Cho phép cài đặt giới hạn';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'Một số điện thoại Android cần thêm bước để ứng dụng mới dùng được Trợ năng. Nhấn ⋮ ở góc trên phải → \"Cho phép cài đặt bị giới hạn\".';
-
-  @override
-  String get permAccessibility => 'Trợ năng (tùy chọn)';
-
-  @override
-  String get permAccessibilityBody =>
-      'Cho phép TransKey tự động dán câu trả lời vào ô bạn đang nhập. Bỏ qua nếu bạn tự dán được.';
-
-  @override
-  String get permEnabled => 'Đã bật';
-
-  @override
-  String get permEnable => 'Bật';
-
-  @override
-  String get permDone => 'Xong';
-
-  @override
-  String get permOpenAppDetails => 'Mở chi tiết app';
-
-  @override
-  String get permSkipHint =>
-      'Trợ năng là tùy chọn. Nếu không bật, bạn sẽ tự dán câu trả lời gợi ý.';
-
-  @override
-  String get permSkipForNow => 'Bỏ qua';
-
-  @override
-  String get permFinishedCheck => 'Đã xong — kiểm tra';
 
   @override
   String get voiceTooltip => 'Nói để nhập';

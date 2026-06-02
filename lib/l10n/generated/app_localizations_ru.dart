@@ -251,6 +251,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get bubbleInactive => 'Неактивна';
 
   @override
+  String get permissionsNeedSetup =>
+      'Нажмите, чтобы предоставить нужные разрешения';
+
+  @override
   String get sendFeedback => 'Отправить отзыв';
 
   @override
@@ -379,20 +383,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get speedNormal => 'Обычная';
 
   @override
-  String get accessibilityPasteBack => 'Вставлять ответ в другие приложения';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'Включите TransKey в настройках Специальных возможностей, чтобы «Вставить» записывал ответ в активное поле любого приложения.';
-
-  @override
-  String get accessibilityEnabled => 'Включено';
-
-  @override
-  String get accessibilityDisabled =>
-      'Не включено — нажмите, чтобы открыть настройки';
-
-  @override
   String get feedbackTitle => 'Отправить отзыв';
 
   @override
@@ -519,6 +509,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errorEmailNotVerified => 'Подтвердите email — проверьте почту';
+
+  @override
+  String get errorEmailAlreadyExists => 'Этот email уже зарегистрирован';
+
+  @override
+  String get errorWrongPassword => 'Текущий пароль неверный';
 
   @override
   String get errorFeatureRequiresPaid => 'Эта функция требует платного тарифа';
@@ -1056,7 +1052,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Каждая функция считывает текст только после того, как вы что-то намеренно сделали — скопировали текст, отсканировали экран, выбрали область, использовали системную кнопку «Поделиться» или нажали TransKey в меню выделения текста. Специальные возможности нужны только для того, чтобы результат «Ответ» сам вставлялся в окно чата, где вы печатаете.';
+      'Каждая функция считывает текст только после того, как вы что-то намеренно сделали — скопировали текст, отсканировали экран, выбрали область, использовали системную кнопку «Поделиться» или нажали TransKey в меню выделения текста.';
 
   @override
   String get guideFeatureTranslate => 'Перевод';
@@ -1129,74 +1125,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'Выделите текст в любом приложении — появится всплывающее меню с «Копировать»/«Поделиться». Нажмите ⋮ для дополнительных опций и выберите TransKey: $feature.';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'Специальные возможности — по желанию, только для автовставки';
-
-  @override
-  String get guideReplyA11yBody =>
-      'Если для TransKey включены Специальные возможности, ваш ответ вставляется прямо в окно чата, где вы печатаете. Без дополнительных действий.\n\nЕсли не хотите включать, ответ будет скопирован — просто удерживайте поле чата и нажмите «Вставить».';
-
-  @override
-  String get appPermissions => 'Разрешения приложения';
-
-  @override
-  String get permissionsAllSet => 'Всё настроено — нажмите для просмотра';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Нажмите, чтобы выдать необходимые разрешения';
-
-  @override
-  String get setupTransKey => 'Настройте TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'Разрешите TransKey показываться на экране при использовании других приложений. Специальные возможности по желанию - только для автоматической вставки ответов.';
-
-  @override
-  String get permFloatingBubble => 'Плавающая кнопка';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'TransKey отображается на экране, пока вы используете другие приложения. Обязательно для использования TransKey.';
-
-  @override
-  String get permRestrictedSettings => 'Разрешить ограниченные настройки';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'На некоторых Android-устройствах нужен дополнительный шаг, чтобы новые приложения могли использовать специальные возможности. Нажмите ⋮ в правом верхнем углу → «Разрешить ограниченные настройки».';
-
-  @override
-  String get permAccessibility => 'Специальные возможности (по желанию)';
-
-  @override
-  String get permAccessibilityBody =>
-      'TransKey автоматически вставляет предложенный ответ туда, где вы печатаете. Пропустите, если не против вставлять самостоятельно.';
-
-  @override
-  String get permEnabled => 'Включено';
-
-  @override
-  String get permEnable => 'Включить';
-
-  @override
-  String get permDone => 'Готово';
-
-  @override
-  String get permOpenAppDetails => 'Открыть сведения о приложении';
-
-  @override
-  String get permSkipHint =>
-      'Специальные возможности необязательны. Без них нужно будет вставлять предложенный ответ самостоятельно.';
-
-  @override
-  String get permSkipForNow => 'Пропустить пока';
-
-  @override
-  String get permFinishedCheck => 'Я закончил — проверить';
 
   @override
   String get voiceTooltip => 'Говорите, чтобы ввести';

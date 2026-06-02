@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">フローティングバブルで「返信を貼り付け」をタップすると、TransKey は任意のアプリのフォーカスされたテキスト欄に返信を直接貼り付けることができます。テキストの読み取り/書き込みはアクション実行時のみで、バックグラウンド追跡はありません。</string>
 
     <string name="bubble_choose_action">アクションを選択</string>
     <string name="bubble_need_text">素早く使う2つの方法:\n• テキストをコピー → 下のアクションをタップ\n• またはテキストを選択 → 共有 → TransKey</string>
@@ -66,20 +65,11 @@
     <string name="process_text_refine">TransKey: 推敲</string>
 
     <string name="bubble_need_copy">先にテキストをコピーしてから、バブルをタップしてください。</string>
-    <string name="bubble_accessibility_hint">ハイライト + バブルタップはまだ動作しません。アクセシビリティを有効にするとコピー手順を省けます。</string>
-    <string name="bubble_accessibility_enable">設定</string>
-    <string name="bubble_accessibility_guide_legacy">リストから TransKey を探す → \"Use TransKey\" を ON → 許可 をタップ。</string>
-    <string name="bubble_accessibility_guide_a13">Android 13+ はサイドロードされたアクセシビリティをデフォルトでブロックします:\n1. ⋮ (右上) → \"制限付き設定を許可\" をタップ\n2. 戻る → アクセシビリティ → TransKey → ON に切り替え</string>
-    <string name="bubble_paste_a11y_required">アクセシビリティを有効にすると、生成した返信をフォーカス中の入力欄へ直接ペーストできます。</string>
 
     <string name="bubble_panel_source_lang">元の言語</string>
     <string name="bubble_panel_target_lang">翻訳先の言語</string>
     <string name="bubble_panel_copy">コピー</string>
-    <string name="bubble_panel_paste">ペースト</string>
     <string name="bubble_panel_copied">コピーしました</string>
-    <string name="bubble_panel_pasted">ペーストしました</string>
-    <string name="bubble_panel_paste_manual_fallback">コピーしました — 入力欄をタップして手動でペーストしてください</string>
-    <string name="bubble_panel_paste_a11y_off">ペーストするにはアクセシビリティ設定で TransKey を有効にしてください</string>
     <string name="bubble_panel_clipboard_empty">クリップボードは空です</string>
     <string name="bubble_panel_tts_not_ready">TTS の準備ができていません</string>
     <string name="bubble_panel_translation_failed">翻訳に失敗しました</string>

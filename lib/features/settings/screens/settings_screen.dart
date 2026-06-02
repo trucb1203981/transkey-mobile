@@ -58,7 +58,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with WidgetsBindingObserver {
   String _version = '';
-  bool _accessibilityEnabled = false;
 
   @override
   void initState() {
@@ -75,15 +74,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Re-poll accessibility AND bubble running state on resume. Bubble state
-    // is primarily driven by BubbleService's bubbleStateChanged broadcast,
-    // but aggressive OEM battery managers (Xiaomi MIUI especially) can
-    // force-kill the foreground service before stopBubble() reaches
-    // notifyFlutterBubbleState — the broadcast never fires and the toggle
-    // stays stale at ON. Re-polling isRunning() native side on resume
-    // converges the UI even when the broadcast was lost.
+    // Re-poll bubble running state on resume. Bubble state is primarily
+    // driven by BubbleService's bubbleStateChanged broadcast, but aggressive
+    // OEM battery managers (Xiaomi MIUI especially) can force-kill the
+    // foreground service before stopBubble() reaches notifyFlutterBubbleState
+    // — the broadcast never fires and the toggle stays stale at ON.
+    // Re-polling isRunning() native side on resume converges the UI even when
+    // the broadcast was lost.
     if (state == AppLifecycleState.resumed && Platform.isAndroid) {
-      _refreshAccessibility();
       _refreshBubbleState();
     }
   }
@@ -95,22 +93,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     notifier.syncState(running);
   }
 
-  Future<void> _refreshAccessibility() async {
-    final notifier = ref.read(bubbleManagerProvider.notifier);
-    final accessibility = await notifier.checkAccessibility();
-    if (!mounted) return;
-    setState(() => _accessibilityEnabled = accessibility);
-  }
-
   Future<void> _init() async {
     final info = await PackageInfo.fromPlatform();
     if (Platform.isAndroid) {
-      _accessibilityEnabled =
-          await ref.read(bubbleManagerProvider.notifier).checkAccessibility();
-      // Same defensive re-poll as the resume path: covers the case where the
-      // user enters Settings WITHOUT triggering a lifecycle resume (e.g.,
-      // navigates directly from another in-app screen after an OEM-killed
-      // bubble that never broadcast its state change).
+      // Defensive re-poll: covers the case where the user enters Settings
+      // WITHOUT triggering a lifecycle resume (e.g., navigates directly from
+      // another in-app screen after an OEM-killed bubble that never broadcast
+      // its state change).
       unawaited(_refreshBubbleState());
     }
     if (mounted) {
@@ -252,43 +241,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 _sectionHeader(t.sectionOther),
                 // Single consolidated entry into the dedicated Keyboard
                 // Settings screen, which now groups EVERYTHING keyboard-
-                // related in one place: app permissions, floating bubble,
-                // and the TransKey system keyboard (IME). The standalone
-                // bubble block and the separate IME shortcut that used to
-                // sit out here were folded into that screen so there is one
-                // obvious destination. A keyboard icon (not the old bubble
-                // icon) matches the "Keyboard Settings" label; the dot on
-                // it mirrors the accessibility status.
+                // related in one place: floating bubble + the TransKey system
+                // keyboard (IME). The standalone bubble block and the separate
+                // IME shortcut that used to sit out here were folded into that
+                // screen so there is one obvious destination.
                 ListTile(
-                  leading: Icon(
-                    Icons.keyboard_outlined,
-                    color: (!Platform.isAndroid || _accessibilityEnabled)
-                        ? null
-                        : Colors.orange,
-                  ),
+                  leading: const Icon(Icons.keyboard_outlined),
                   title: Text(t.keyboardSettingsTitle),
                   subtitle: Platform.isAndroid
                       ? Text(
-                          bubbleRunning
-                              ? t.bubbleActive
-                              : (_accessibilityEnabled
-                                  ? t.bubbleInactive
-                                  : t.permissionsNeedSetup),
+                          bubbleRunning ? t.bubbleActive : t.bubbleInactive,
                           style: TextStyle(
                             fontSize: 12,
                             color: bubbleRunning
                                 ? AppColors.primary
-                                : (_accessibilityEnabled
-                                    ? AppColors.textSecondary
-                                    : Colors.orange),
+                                : AppColors.textSecondary,
                           ),
                         )
                       : null,
                   trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () async {
-                    await context.push('/settings/keyboard');
-                    if (mounted) _refreshAccessibility();
-                  },
+                  onTap: () => context.push('/settings/keyboard'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.menu_book_outlined),

@@ -17,7 +17,6 @@ import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../history/screens/history_screen.dart';
 import '../../glossary/screens/glossary_screen.dart';
-import '../../onboarding/screens/accessibility_setup_screen.dart';
 import '../../onboarding/screens/keyboard_setup_screen.dart';
 import '../../../core/bubble/bubble_manager.dart';
 import '../../settings/providers/app_settings_provider.dart';
@@ -110,24 +109,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (!mounted) return;
     if (_textController.text.isEmpty && _currentTab == 0) {
       _inputFocus.requestFocus();
-    }
-    // After the first frame settles, push the Accessibility setup screen
-    // if the user hasn't already finished it AND hasn't tapped Skip
-    // before. This is the single-shot onboarding the bubble depends on
-    // for the "highlight → tap → translate" flow that users expect from
-    // Google-Translate-style overlay apps. Done last so it doesn't fight
-    // the keyboard-setup route on a true first-launch chain.
-    if (Platform.isAndroid) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
-        final seen = await AccessibilitySetupScreen.wasSeen();
-        if (seen) return;
-        final a11y = await ref
-            .read(bubbleManagerProvider.notifier)
-            .checkAccessibility();
-        if (a11y || !mounted) return;
-        context.push('/accessibility-setup');
-      });
     }
   }
 

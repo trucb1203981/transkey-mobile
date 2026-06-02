@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../diagnostics/app_log.dart';
 import '../../features/glossary/providers/glossary_provider.dart';
-import '../../features/history/providers/history_provider.dart';
 import '../../features/settings/providers/devices_provider.dart';
 import '../../features/settings/providers/subscription_provider.dart';
 import '../../features/translate/providers/translate_provider.dart';

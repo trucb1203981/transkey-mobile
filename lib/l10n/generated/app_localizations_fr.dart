@@ -251,6 +251,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get bubbleInactive => 'Inactive';
 
   @override
+  String get permissionsNeedSetup =>
+      'Appuyez pour accorder les autorisations requises';
+
+  @override
   String get sendFeedback => 'Envoyer un retour';
 
   @override
@@ -379,20 +383,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normale';
-
-  @override
-  String get accessibilityPasteBack => 'Coller la réponse dans d’autres apps';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'Activez TransKey dans les paramètres d’Accessibilité pour que « Coller » écrive la réponse dans le champ actif de n’importe quelle app.';
-
-  @override
-  String get accessibilityEnabled => 'Activé';
-
-  @override
-  String get accessibilityDisabled =>
-      'Non activé — appuyez pour ouvrir les paramètres';
 
   @override
   String get feedbackTitle => 'Envoyer un retour';
@@ -524,6 +514,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'Veuillez vérifier votre e-mail — consultez votre boîte de réception';
+
+  @override
+  String get errorEmailAlreadyExists => 'Cet e-mail est déjà enregistré';
+
+  @override
+  String get errorWrongPassword => 'Le mot de passe actuel est incorrect';
 
   @override
   String get errorFeatureRequiresPaid =>
@@ -1060,7 +1056,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Chaque fonctionnalité ne lit le texte qu\'après une action volontaire de votre part — copier du texte, scanner l\'écran, sélectionner une zone, utiliser le bouton Partager du système, ou taper TransKey depuis le menu de sélection. L\'Accessibilité ne sert qu\'à coller la réponse directement dans la boîte de chat en cours.';
+      'Chaque fonctionnalité ne lit le texte qu\'après une action volontaire de votre part — copier du texte, scanner l\'écran, sélectionner une zone, utiliser le bouton Partager du système, ou taper TransKey depuis le menu de sélection.';
 
   @override
   String get guideFeatureTranslate => 'Traduire';
@@ -1133,74 +1129,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'Sélectionnez du texte dans n\'importe quelle app — le menu Copier/Partager apparaît. Tapez ⋮ pour plus d\'options, puis choisissez TransKey: $feature.';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'Accessibilité — optionnel, uniquement pour le collage automatique';
-
-  @override
-  String get guideReplyA11yBody =>
-      'Si l\'Accessibilité est activée pour TransKey, votre réponse est collée directement dans le chat en cours. Sans étape supplémentaire.\n\nSi vous préférez ne pas l\'activer, la réponse est copiée pour vous — appuyez longuement sur le chat puis tapez Coller.';
-
-  @override
-  String get appPermissions => 'Permissions de l\'app';
-
-  @override
-  String get permissionsAllSet => 'Tout est prêt — tapez pour vérifier';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Tapez pour accorder les permissions requises';
-
-  @override
-  String get setupTransKey => 'Configurer TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'Autorisez TransKey à s\'afficher sur votre écran pendant l\'utilisation d\'autres apps. L\'accessibilité est optionnelle - uniquement pour coller les réponses automatiquement.';
-
-  @override
-  String get permFloatingBubble => 'Bulle flottante';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'TransKey s\'affiche sur votre écran pendant que vous utilisez d\'autres apps. Obligatoire pour utiliser TransKey.';
-
-  @override
-  String get permRestrictedSettings => 'Autoriser les paramètres restreints';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'Certains téléphones Android ont besoin d\'une étape supplémentaire pour que les nouvelles apps utilisent l\'accessibilité. Tapez ⋮ en haut à droite → \"Autoriser les paramètres restreints\".';
-
-  @override
-  String get permAccessibility => 'Accessibilité (optionnel)';
-
-  @override
-  String get permAccessibilityBody =>
-      'TransKey colle automatiquement la réponse suggérée là où vous tapez. Ignorez si vous ne voulez pas coller vous-même.';
-
-  @override
-  String get permEnabled => 'Activé';
-
-  @override
-  String get permEnable => 'Activer';
-
-  @override
-  String get permDone => 'Terminé';
-
-  @override
-  String get permOpenAppDetails => 'Ouvrir les détails de l\'app';
-
-  @override
-  String get permSkipHint =>
-      'L\'accessibilité est optionnelle. Sans elle, vous devrez coller vous-même la réponse suggérée.';
-
-  @override
-  String get permSkipForNow => 'Ignorer pour l\'instant';
-
-  @override
-  String get permFinishedCheck => 'J\'ai terminé — vérifier';
 
   @override
   String get voiceTooltip => 'Parler pour saisir';

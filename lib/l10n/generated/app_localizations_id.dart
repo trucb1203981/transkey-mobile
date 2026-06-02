@@ -251,6 +251,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get bubbleInactive => 'Nonaktif';
 
   @override
+  String get permissionsNeedSetup =>
+      'Ketuk untuk memberikan izin yang diperlukan';
+
+  @override
   String get sendFeedback => 'Kirim masukan';
 
   @override
@@ -378,20 +382,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normal';
-
-  @override
-  String get accessibilityPasteBack => 'Tempel balasan ke aplikasi lain';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'Aktifkan TransKey di pengaturan Aksesibilitas agar \"Tempel\" dapat menulis balasan ke kolom yang fokus di aplikasi mana pun.';
-
-  @override
-  String get accessibilityEnabled => 'Aktif';
-
-  @override
-  String get accessibilityDisabled =>
-      'Belum aktif — ketuk untuk membuka pengaturan';
 
   @override
   String get feedbackTitle => 'Kirim masukan';
@@ -522,6 +512,12 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'Verifikasi email Anda — periksa kotak masuk';
+
+  @override
+  String get errorEmailAlreadyExists => 'Email ini sudah terdaftar';
+
+  @override
+  String get errorWrongPassword => 'Kata sandi saat ini salah';
 
   @override
   String get errorFeatureRequiresPaid => 'Fitur ini memerlukan paket berbayar';
@@ -1054,7 +1050,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Setiap fitur membaca teks hanya setelah Anda sengaja melakukan sesuatu — menyalin teks, memindai layar, memilih area, menggunakan tombol Bagikan sistem, atau mengetuk TransKey dari menu pemilihan teks. Pengaturan Aksesibilitas hanya digunakan agar hasil Balas dapat menempelkan dirinya ke kolom obrolan yang sedang Anda ketik.';
+      'Setiap fitur membaca teks hanya setelah Anda sengaja melakukan sesuatu — menyalin teks, memindai layar, memilih area, menggunakan tombol Bagikan sistem, atau mengetuk TransKey dari menu pemilihan teks.';
 
   @override
   String get guideFeatureTranslate => 'Terjemahkan';
@@ -1127,75 +1123,6 @@ class AppLocalizationsId extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'Pilih teks di aplikasi mana pun — pop-up dengan Salin/Bagikan muncul. Ketuk ⋮ untuk opsi lainnya, lalu pilih TransKey: $feature.';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'Aksesibilitas — opsional, hanya untuk tempel otomatis';
-
-  @override
-  String get guideReplyA11yBody =>
-      'Jika Aksesibilitas diaktifkan untuk TransKey, balasan Anda ditempelkan langsung ke kolom obrolan yang sedang Anda ketik. Tanpa langkah tambahan.\n\nJika Anda lebih suka tidak mengaktifkannya, balasan akan disalin untuk Anda — cukup tekan lama kolom obrolan dan ketuk Tempel.';
-
-  @override
-  String get appPermissions => 'Izin aplikasi';
-
-  @override
-  String get permissionsAllSet =>
-      'Semua sudah disiapkan — ketuk untuk meninjau';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Ketuk untuk memberikan izin yang diperlukan';
-
-  @override
-  String get setupTransKey => 'Atur TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'Izinkan TransKey muncul di layar saat menggunakan app lain. Aksesibilitas opsional - hanya untuk menempel balasan secara otomatis.';
-
-  @override
-  String get permFloatingBubble => 'Tombol melayang';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'TransKey muncul di layar saat Anda menggunakan app lain. Wajib untuk mulai menggunakan TransKey.';
-
-  @override
-  String get permRestrictedSettings => 'Izinkan pengaturan terbatas';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'Beberapa ponsel Android butuh langkah tambahan agar app yang baru dipasang bisa menggunakan Aksesibilitas. Ketuk ⋮ di kanan atas → \"Izinkan pengaturan terbatas\".';
-
-  @override
-  String get permAccessibility => 'Aksesibilitas (opsional)';
-
-  @override
-  String get permAccessibilityBody =>
-      'TransKey otomatis menempelkan balasan yang disarankan ke tempat Anda sedang mengetik. Lewati jika Anda tidak keberatan menempelnya sendiri.';
-
-  @override
-  String get permEnabled => 'Aktif';
-
-  @override
-  String get permEnable => 'Aktifkan';
-
-  @override
-  String get permDone => 'Selesai';
-
-  @override
-  String get permOpenAppDetails => 'Buka detail aplikasi';
-
-  @override
-  String get permSkipHint =>
-      'Aksesibilitas opsional. Tanpa itu, Anda perlu menempelkan balasan yang disarankan sendiri.';
-
-  @override
-  String get permSkipForNow => 'Lewati untuk saat ini';
-
-  @override
-  String get permFinishedCheck => 'Saya selesai — periksa';
 
   @override
   String get voiceTooltip => 'Bicara untuk mengetik';

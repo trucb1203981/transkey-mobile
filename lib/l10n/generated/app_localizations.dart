@@ -596,6 +596,12 @@ abstract class AppLocalizations {
   /// **'Inactive'**
   String get bubbleInactive;
 
+  /// No description provided for @permissionsNeedSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to grant required permissions'**
+  String get permissionsNeedSetup;
+
   /// No description provided for @sendFeedback.
   ///
   /// In en, this message translates to:
@@ -842,30 +848,6 @@ abstract class AppLocalizations {
   /// **'Normal'**
   String get speedNormal;
 
-  /// No description provided for @accessibilityPasteBack.
-  ///
-  /// In en, this message translates to:
-  /// **'Paste reply into other apps'**
-  String get accessibilityPasteBack;
-
-  /// No description provided for @accessibilityPasteBackDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'Enable TransKey in Accessibility settings to let \"Paste\" write reply into the focused input of any app.'**
-  String get accessibilityPasteBackDesc;
-
-  /// No description provided for @accessibilityEnabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Enabled'**
-  String get accessibilityEnabled;
-
-  /// No description provided for @accessibilityDisabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Not enabled — tap to open settings'**
-  String get accessibilityDisabled;
-
   /// No description provided for @feedbackTitle.
   ///
   /// In en, this message translates to:
@@ -1111,6 +1093,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please verify your email — check your inbox'**
   String get errorEmailNotVerified;
+
+  /// No description provided for @errorEmailAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already registered'**
+  String get errorEmailAlreadyExists;
+
+  /// No description provided for @errorWrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password is incorrect'**
+  String get errorWrongPassword;
 
   /// No description provided for @errorFeatureRequiresPaid.
   ///
@@ -2051,7 +2045,7 @@ abstract class AppLocalizations {
   /// No description provided for @guideIntroBody.
   ///
   /// In en, this message translates to:
-  /// **'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you are typing in.'**
+  /// **'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu.'**
   String get guideIntroBody;
 
   /// No description provided for @guideFeatureTranslate.
@@ -2173,126 +2167,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select text in any app — the popup with Copy/Share appears. Tap ⋮ for more options, then pick TransKey: {feature}.'**
   String guideInputMenuDesc(String feature);
-
-  /// No description provided for @guideReplyA11yTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Accessibility — optional, only for auto-paste'**
-  String get guideReplyA11yTitle;
-
-  /// No description provided for @guideReplyA11yBody.
-  ///
-  /// In en, this message translates to:
-  /// **'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat box you are typing in. No extra step needed.\n\nIf you would rather not turn it on, the reply is ready to paste — just hold the chat box and tap Paste.'**
-  String get guideReplyA11yBody;
-
-  /// No description provided for @appPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'App permissions'**
-  String get appPermissions;
-
-  /// No description provided for @permissionsAllSet.
-  ///
-  /// In en, this message translates to:
-  /// **'All set up — tap to review'**
-  String get permissionsAllSet;
-
-  /// No description provided for @permissionsNeedSetup.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap to grant required permissions'**
-  String get permissionsNeedSetup;
-
-  /// No description provided for @setupTransKey.
-  ///
-  /// In en, this message translates to:
-  /// **'Set up TransKey'**
-  String get setupTransKey;
-
-  /// No description provided for @setupTransKeyBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow TransKey to show on your screen while using other apps. Accessibility is optional - only needed to auto-paste replies.'**
-  String get setupTransKeyBody;
-
-  /// No description provided for @permFloatingBubble.
-  ///
-  /// In en, this message translates to:
-  /// **'Floating bubble'**
-  String get permFloatingBubble;
-
-  /// No description provided for @permFloatingBubbleBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Lets TransKey appear on your screen while you use other apps. Required to start using TransKey.'**
-  String get permFloatingBubbleBody;
-
-  /// No description provided for @permRestrictedSettings.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow restricted settings'**
-  String get permRestrictedSettings;
-
-  /// No description provided for @permRestrictedSettingsBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Some Android phones need an extra step for newly installed apps to use Accessibility. Tap ⋮ at the top-right → \"Allow restricted settings\".'**
-  String get permRestrictedSettingsBody;
-
-  /// No description provided for @permAccessibility.
-  ///
-  /// In en, this message translates to:
-  /// **'Accessibility (optional)'**
-  String get permAccessibility;
-
-  /// No description provided for @permAccessibilityBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Lets TransKey automatically paste the suggested reply into what you\'re typing. Skip if you\'re happy to paste it yourself.'**
-  String get permAccessibilityBody;
-
-  /// No description provided for @permEnabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Enabled'**
-  String get permEnabled;
-
-  /// No description provided for @permEnable.
-  ///
-  /// In en, this message translates to:
-  /// **'Enable'**
-  String get permEnable;
-
-  /// No description provided for @permDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get permDone;
-
-  /// No description provided for @permOpenAppDetails.
-  ///
-  /// In en, this message translates to:
-  /// **'Open app details'**
-  String get permOpenAppDetails;
-
-  /// No description provided for @permSkipHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Accessibility is optional. Without it, you\'ll copy the suggested reply and paste it yourself.'**
-  String get permSkipHint;
-
-  /// No description provided for @permSkipForNow.
-  ///
-  /// In en, this message translates to:
-  /// **'Skip for now'**
-  String get permSkipForNow;
-
-  /// No description provided for @permFinishedCheck.
-  ///
-  /// In en, this message translates to:
-  /// **'I\'ve finished — check'**
-  String get permFinishedCheck;
 
   /// No description provided for @voiceTooltip.
   ///

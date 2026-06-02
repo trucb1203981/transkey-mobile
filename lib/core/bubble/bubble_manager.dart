@@ -153,62 +153,6 @@ class BubbleManager extends StateNotifier<bool> {
     if (has) return await startBubble();
     return false;
   }
-
-  /// True if our AccessibilityService is enabled in system settings.
-  Future<bool> checkAccessibility() async {
-    if (!Platform.isAndroid) return false;
-    try {
-      return await _channel.invokeMethod<bool>('checkAccessibility') ?? false;
-    } on PlatformException {
-      return false;
-    } on MissingPluginException {
-      return false;
-    }
-  }
-
-  /// Open the system Accessibility settings so the user can enable TransKey.
-  Future<void> requestAccessibility() async {
-    if (!Platform.isAndroid) return;
-    try {
-      await _channel.invokeMethod<void>('requestAccessibility');
-    } on PlatformException catch (e) {
-      debugPrint('[BubbleManager] requestAccessibility failed: $e');
-    } on MissingPluginException {
-      // no-op
-    }
-  }
-
-  /// Open the per-app details page in system Settings. Used by the
-  /// Accessibility onboarding flow on Android 13+ — the "Allow restricted
-  /// settings" toggle that unblocks the Accessibility opt-in lives there.
-  Future<void> openAppDetails() async {
-    if (!Platform.isAndroid) return;
-    try {
-      await _channel.invokeMethod<void>('openAppDetails');
-    } on PlatformException catch (e) {
-      debugPrint('[BubbleManager] openAppDetails failed: $e');
-    } on MissingPluginException {
-      // no-op
-    }
-  }
-
-  /// Replace text in the focused editable field of whichever app currently
-  /// has input focus. Requires the Accessibility service to be enabled.
-  /// Returns true on success.
-  Future<bool> replaceFocusedText(String text) async {
-    if (!Platform.isAndroid) return false;
-    try {
-      return await _channel.invokeMethod<bool>(
-            'replaceFocusedText',
-            {'text': text},
-          ) ??
-          false;
-    } on PlatformException {
-      return false;
-    } on MissingPluginException {
-      return false;
-    }
-  }
 }
 
 final bubbleManagerProvider = StateNotifierProvider<BubbleManager, bool>(

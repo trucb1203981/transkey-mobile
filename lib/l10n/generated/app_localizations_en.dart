@@ -251,6 +251,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bubbleInactive => 'Inactive';
 
   @override
+  String get permissionsNeedSetup => 'Tap to grant required permissions';
+
+  @override
   String get sendFeedback => 'Send feedback';
 
   @override
@@ -378,19 +381,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normal';
-
-  @override
-  String get accessibilityPasteBack => 'Paste reply into other apps';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'Enable TransKey in Accessibility settings to let \"Paste\" write reply into the focused input of any app.';
-
-  @override
-  String get accessibilityEnabled => 'Enabled';
-
-  @override
-  String get accessibilityDisabled => 'Not enabled — tap to open settings';
 
   @override
   String get feedbackTitle => 'Send feedback';
@@ -521,6 +511,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'Please verify your email — check your inbox';
+
+  @override
+  String get errorEmailAlreadyExists => 'This email is already registered';
+
+  @override
+  String get errorWrongPassword => 'Current password is incorrect';
 
   @override
   String get errorFeatureRequiresPaid => 'This feature requires a paid plan';
@@ -1053,7 +1049,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu. The Accessibility setting is only used so the Reply result can paste itself into the chat box you are typing in.';
+      'Every feature reads text only after you do something on purpose — copy text, scan the screen, pick an area, use the system Share button, or tap TransKey from the text-selection menu.';
 
   @override
   String get guideFeatureTranslate => 'Translate';
@@ -1126,73 +1122,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'Select text in any app — the popup with Copy/Share appears. Tap ⋮ for more options, then pick TransKey: $feature.';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'Accessibility — optional, only for auto-paste';
-
-  @override
-  String get guideReplyA11yBody =>
-      'If Accessibility is turned on for TransKey, your reply is pasted straight into the chat box you are typing in. No extra step needed.\n\nIf you would rather not turn it on, the reply is ready to paste — just hold the chat box and tap Paste.';
-
-  @override
-  String get appPermissions => 'App permissions';
-
-  @override
-  String get permissionsAllSet => 'All set up — tap to review';
-
-  @override
-  String get permissionsNeedSetup => 'Tap to grant required permissions';
-
-  @override
-  String get setupTransKey => 'Set up TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'Allow TransKey to show on your screen while using other apps. Accessibility is optional - only needed to auto-paste replies.';
-
-  @override
-  String get permFloatingBubble => 'Floating bubble';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'Lets TransKey appear on your screen while you use other apps. Required to start using TransKey.';
-
-  @override
-  String get permRestrictedSettings => 'Allow restricted settings';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'Some Android phones need an extra step for newly installed apps to use Accessibility. Tap ⋮ at the top-right → \"Allow restricted settings\".';
-
-  @override
-  String get permAccessibility => 'Accessibility (optional)';
-
-  @override
-  String get permAccessibilityBody =>
-      'Lets TransKey automatically paste the suggested reply into what you\'re typing. Skip if you\'re happy to paste it yourself.';
-
-  @override
-  String get permEnabled => 'Enabled';
-
-  @override
-  String get permEnable => 'Enable';
-
-  @override
-  String get permDone => 'Done';
-
-  @override
-  String get permOpenAppDetails => 'Open app details';
-
-  @override
-  String get permSkipHint =>
-      'Accessibility is optional. Without it, you\'ll copy the suggested reply and paste it yourself.';
-
-  @override
-  String get permSkipForNow => 'Skip for now';
-
-  @override
-  String get permFinishedCheck => 'I\'ve finished — check';
 
   @override
   String get voiceTooltip => 'Speak to type';

@@ -249,6 +249,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bubbleInactive => '無効';
 
   @override
+  String get permissionsNeedSetup => '必要な権限を許可するにはタップ';
+
+  @override
   String get sendFeedback => 'フィードバックを送信';
 
   @override
@@ -376,19 +379,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get speedNormal => '標準';
 
   @override
-  String get accessibilityPasteBack => '返信を他のアプリに貼り付け';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'アクセシビリティ設定でTransKeyを有効にすると、「貼り付け」でフォーカス中の入力欄に返信を直接書き込めます。';
-
-  @override
-  String get accessibilityEnabled => '有効';
-
-  @override
-  String get accessibilityDisabled => '未有効 — タップして設定を開く';
-
-  @override
   String get feedbackTitle => 'フィードバックを送信';
 
   @override
@@ -512,6 +502,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get errorEmailNotVerified => 'メールを認証してください — 受信トレイをご確認ください';
+
+  @override
+  String get errorEmailAlreadyExists => 'このメールは既に登録されています';
+
+  @override
+  String get errorWrongPassword => '現在のパスワードが正しくありません';
 
   @override
   String get errorFeatureRequiresPaid => 'この機能は有料プランが必要です';
@@ -1021,7 +1017,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'どの機能も、あなたが意図的に操作したときだけテキストを読み取ります — コピー、画面のスキャン、範囲選択、システムの共有、またはテキスト選択メニューから TransKey をタップ。アクセシビリティは、入力中のチャット欄に返信結果を直接ペーストするためにのみ使われます。';
+      'どの機能も、あなたが意図的に操作したときだけテキストを読み取ります — コピー、画面のスキャン、範囲選択、システムの共有、またはテキスト選択メニューから TransKey をタップ。';
 
   @override
   String get guideFeatureTranslate => '翻訳';
@@ -1087,72 +1083,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'アプリでテキストを選択するとコピー/共有のポップアップが出ます。⋮ をタップしてその他のオプションから TransKey: $feature を選択。';
   }
-
-  @override
-  String get guideReplyA11yTitle => 'アクセシビリティ — 任意、自動ペースト用のみ';
-
-  @override
-  String get guideReplyA11yBody =>
-      'TransKey にアクセシビリティを有効にすれば、返信が入力中のチャット欄に直接ペーストされます。追加操作不要。\n\n有効にしたくなければ、返信は自動でコピーされます — チャット欄を長押しして「貼り付け」をタップしてください。';
-
-  @override
-  String get appPermissions => 'アプリの権限';
-
-  @override
-  String get permissionsAllSet => '設定完了 — タップで確認';
-
-  @override
-  String get permissionsNeedSetup => '必要な権限を付与するためタップ';
-
-  @override
-  String get setupTransKey => 'TransKey をセットアップ';
-
-  @override
-  String get setupTransKeyBody =>
-      '他のアプリ使用中もTransKeyを画面に表示できるようにします。アクセシビリティはオプションで、返信の自動貼り付けが必要な場合のみ使います。';
-
-  @override
-  String get permFloatingBubble => 'フローティングバブル';
-
-  @override
-  String get permFloatingBubbleBody =>
-      '他のアプリを使いながらTransKeyを画面に表示します。TransKeyを使うために必須です。';
-
-  @override
-  String get permRestrictedSettings => '制限付き設定を許可';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      '一部のAndroid端末では、新しくインストールしたアプリがアクセシビリティを使うために追加の手順が必要です。右上の ⋮ → \"制限付き設定を許可\"。';
-
-  @override
-  String get permAccessibility => 'アクセシビリティ(任意)';
-
-  @override
-  String get permAccessibilityBody =>
-      '返信の提案を入力中の場所に自動で貼り付けます。自分で貼り付けるのが問題なければスキップできます。';
-
-  @override
-  String get permEnabled => '有効';
-
-  @override
-  String get permEnable => '有効化';
-
-  @override
-  String get permDone => '完了';
-
-  @override
-  String get permOpenAppDetails => 'アプリ詳細を開く';
-
-  @override
-  String get permSkipHint =>
-      'アクセシビリティはオプションです。なくても返信の提案は利用できますが、自分で貼り付ける必要があります。';
-
-  @override
-  String get permSkipForNow => '後で';
-
-  @override
-  String get permFinishedCheck => '完了 — 確認';
 
   @override
   String get voiceTooltip => '音声入力';

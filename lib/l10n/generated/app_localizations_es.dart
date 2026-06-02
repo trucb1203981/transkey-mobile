@@ -251,6 +251,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get bubbleInactive => 'Inactiva';
 
   @override
+  String get permissionsNeedSetup =>
+      'Toca para conceder los permisos necesarios';
+
+  @override
   String get sendFeedback => 'Enviar comentarios';
 
   @override
@@ -381,19 +385,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get speedNormal => 'Normal';
 
   @override
-  String get accessibilityPasteBack => 'Pegar respuesta en otras apps';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'Active TransKey en los ajustes de Accesibilidad para que «Pegar» escriba la respuesta en el campo activo de cualquier app.';
-
-  @override
-  String get accessibilityEnabled => 'Activado';
-
-  @override
-  String get accessibilityDisabled => 'No activado — toque para abrir ajustes';
-
-  @override
   String get feedbackTitle => 'Enviar comentarios';
 
   @override
@@ -521,6 +512,12 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'Verifica tu correo — revisa tu bandeja de entrada';
+
+  @override
+  String get errorEmailAlreadyExists => 'Este correo ya está registrado';
+
+  @override
+  String get errorWrongPassword => 'La contraseña actual es incorrecta';
 
   @override
   String get errorFeatureRequiresPaid =>
@@ -1057,7 +1054,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Cada función solo lee el texto cuando haces algo a propósito — copiar texto, escanear la pantalla, seleccionar un área, usar el botón Compartir del sistema, o tocar TransKey desde el menú de selección. La Accesibilidad se usa solo para que la respuesta se pegue directamente en el chat en el que estás escribiendo.';
+      'Cada función solo lee el texto cuando haces algo a propósito — copiar texto, escanear la pantalla, seleccionar un área, usar el botón Compartir del sistema, o tocar TransKey desde el menú de selección.';
 
   @override
   String get guideFeatureTranslate => 'Traducir';
@@ -1130,74 +1127,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'Selecciona texto en cualquier app — aparece el menú Copiar/Compartir. Toca ⋮ para más opciones, y elige TransKey: $feature.';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'Accesibilidad — opcional, solo para pegado automático';
-
-  @override
-  String get guideReplyA11yBody =>
-      'Si Accesibilidad está activada para TransKey, tu respuesta se pega directamente en el chat en el que estás escribiendo. Sin pasos extra.\n\nSi prefieres no activarla, la respuesta se copia para ti — solo mantén pulsado el chat y toca Pegar.';
-
-  @override
-  String get appPermissions => 'Permisos de la app';
-
-  @override
-  String get permissionsAllSet => 'Todo listo — toca para revisar';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Toca para conceder los permisos necesarios';
-
-  @override
-  String get setupTransKey => 'Configurar TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'Permite que TransKey aparezca en tu pantalla mientras usas otras apps. Accesibilidad es opcional, solo necesaria para pegar respuestas automáticamente.';
-
-  @override
-  String get permFloatingBubble => 'Burbuja flotante';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'TransKey aparece en tu pantalla mientras usas otras apps. Obligatorio para usar TransKey.';
-
-  @override
-  String get permRestrictedSettings => 'Permitir configuración restringida';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'Algunos teléfonos Android necesitan un paso extra para que las apps recién instaladas usen Accesibilidad. Toca ⋮ arriba a la derecha → \"Permitir configuración restringida\".';
-
-  @override
-  String get permAccessibility => 'Accesibilidad (opcional)';
-
-  @override
-  String get permAccessibilityBody =>
-      'TransKey pega la respuesta sugerida automáticamente donde estás escribiendo. Omite si no te importa pegarla tú mismo.';
-
-  @override
-  String get permEnabled => 'Activado';
-
-  @override
-  String get permEnable => 'Activar';
-
-  @override
-  String get permDone => 'Hecho';
-
-  @override
-  String get permOpenAppDetails => 'Abrir detalles de la app';
-
-  @override
-  String get permSkipHint =>
-      'Accesibilidad es opcional. Sin ella, deberás pegar la respuesta sugerida tú mismo.';
-
-  @override
-  String get permSkipForNow => 'Omitir por ahora';
-
-  @override
-  String get permFinishedCheck => 'He terminado — comprobar';
 
   @override
   String get voiceTooltip => 'Hablar para escribir';

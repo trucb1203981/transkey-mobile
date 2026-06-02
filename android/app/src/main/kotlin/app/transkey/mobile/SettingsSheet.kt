@@ -12,15 +12,14 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 import app.transkey.mobile.BubbleService.Companion.TONE_CODES
 import app.transkey.mobile.BubbleService.Companion.TTS_RATES
 
 /**
  * Bubble's all-in-one settings sheet (gear icon in the result panel
- * header). Surfaces the 5 settings the bubble cares about: translate
- * tone, reply tone, romanization toggle, reply-suggestions toggle,
- * TTS rate. All writes go to the `flutter.tk_*` SharedPreferences
+ * header). Surfaces the settings the bubble cares about: translate
+ * tone, romanization toggle, TTS rate. All writes go to the
+ * `flutter.tk_*` SharedPreferences
  * keys so the in-app Settings screen picks them up via the
  * notifyFlutterLangChanged round-trip + `prefs.reload()` on resume.
  *
@@ -34,9 +33,7 @@ internal fun BubbleService.showSettingsSheet() {
     refreshLocale()
     // Re-read every setting in case they changed via the in-app Settings.
     currentTone = readTone()
-    val replyTone = readReplyTone()
     val romanizationOn = readRomanization()
-    val replySuggestionsOn = readReplySuggestions()
     val ttsRate = readTtsRate()
 
     val style = BubbleStyle.of(this)
@@ -99,39 +96,6 @@ internal fun BubbleService.showSettingsSheet() {
         currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
     })
 
-    // ── Section: Reply tone ─────────────────────────────────────────
-    content.addView(sectionLabel(localized(R.string.bubble_reply_tone), mutedCol, dp).apply {
-        (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (14 * dp).toInt()
-    })
-    // Use empty string code "" to mean "same as translate tone" — the
-    // app's settings UI uses the same convention via toneReplySameAsTranslate.
-    val replyToneLabel = if (replyTone.isEmpty()) {
-        localized(R.string.bubble_reply_tone_same)
-    } else {
-        toneLabel(replyTone)
-    }
-    content.addView(toneRow(
-        replyTone, accent, textCol, borderCol, mutedCol, isDark, dp,
-        includeAuto = true,
-        autoLabel = localized(R.string.bubble_reply_tone_same),
-    ) { code ->
-        writeReplyTone(code)
-        hideTonePicker()
-        showSettingsSheet()
-        // Reply-tone only changes output in Reply mode; re-translate so the
-        // user sees the new tone applied without manually re-triggering.
-        if (currentMode == MODE_REPLY) {
-            currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-        }
-    })
-    // Tone hint label — show the current effective reply tone.
-    content.addView(TextView(this).apply {
-        text = "→ $replyToneLabel"
-        setTextColor(mutedCol)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-        setPadding(0, (4 * dp).toInt(), 0, 0)
-    })
-
     // ── Section: TTS speed ─────────────────────────────────────────
     content.addView(sectionLabel(localized(R.string.bubble_speech_rate), mutedCol, dp).apply {
         (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (16 * dp).toInt()
@@ -142,7 +106,7 @@ internal fun BubbleService.showSettingsSheet() {
         showSettingsSheet()
     })
 
-    // ── Section: Toggles (romanization, reply suggestions) ─────────
+    // ── Section: Toggle (romanization) ─────────────────────────────
     content.addView(toggleRow(
         localized(R.string.bubble_romanization),
         romanizationOn, accent, textCol, borderCol, dp,
@@ -153,19 +117,6 @@ internal fun BubbleService.showSettingsSheet() {
         currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
     }.apply {
         (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (16 * dp).toInt()
-    })
-    content.addView(toggleRow(
-        localized(R.string.bubble_reply_suggestions),
-        replySuggestionsOn, accent, textCol, borderCol, dp,
-    ) { newValue ->
-        writeReplySuggestions(newValue)
-        // Suggestions are only generated in Reply mode — only re-translate
-        // when the new value would actually change the output.
-        if (currentMode == MODE_REPLY) {
-            currentSourceText?.let { src -> handleTranslateRequest(src, currentMode) }
-        }
-    }.apply {
-        (layoutParams as? LinearLayout.LayoutParams)?.topMargin = (8 * dp).toInt()
     })
 
     val screenWidth = resources.displayMetrics.widthPixels

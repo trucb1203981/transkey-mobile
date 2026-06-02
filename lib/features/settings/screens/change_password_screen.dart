@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_errors.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -99,10 +100,13 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       Navigator.of(context).pop();
     } on DioException catch (e) {
       if (!mounted) return;
-      final msg = e.response?.data is Map
-          ? (e.response?.data['message']?.toString() ??
-              l.changePasswordFailed)
-          : l.changePasswordFailed;
+      // Show the localized copy for known codes (e.g. wrong current
+      // password); only fall back to the generic string for true unknowns,
+      // so the user never sees a raw server code like "wrong_password".
+      final ex = ApiException.fromDio(e);
+      final msg = ex.code == ApiErrorCode.unknown
+          ? l.changePasswordFailed
+          : ex.code.localize(l);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: AppColors.red),
       );

@@ -251,6 +251,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get bubbleInactive => 'Inaktiv';
 
   @override
+  String get permissionsNeedSetup =>
+      'Tippen, um erforderliche Berechtigungen zu erteilen';
+
+  @override
   String get sendFeedback => 'Feedback senden';
 
   @override
@@ -377,20 +381,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normal';
-
-  @override
-  String get accessibilityPasteBack => 'Antwort in andere Apps einfügen';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'Aktivieren Sie TransKey in den Bedienungshilfen, damit „Einfügen“ die Antwort in das aktive Eingabefeld jeder App schreibt.';
-
-  @override
-  String get accessibilityEnabled => 'Aktiviert';
-
-  @override
-  String get accessibilityDisabled =>
-      'Nicht aktiviert — tippen, um Einstellungen zu öffnen';
 
   @override
   String get feedbackTitle => 'Feedback senden';
@@ -522,6 +512,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'Bitte E-Mail bestätigen — Posteingang prüfen';
+
+  @override
+  String get errorEmailAlreadyExists => 'Diese E-Mail ist bereits registriert';
+
+  @override
+  String get errorWrongPassword => 'Aktuelles Passwort ist falsch';
 
   @override
   String get errorFeatureRequiresPaid =>
@@ -1060,7 +1056,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'Jede Funktion liest Text erst, nachdem du etwas bewusst tust — Text kopieren, Bildschirm scannen, einen Bereich auswählen, die System-Teilen-Schaltfläche benutzen oder TransKey aus dem Textauswahlmenü antippen. Bedienungshilfen werden nur dazu verwendet, die Antwort direkt in den Chat einzufügen, in dem du gerade tippst.';
+      'Jede Funktion liest Text erst, nachdem du etwas bewusst tust — Text kopieren, Bildschirm scannen, einen Bereich auswählen, die System-Teilen-Schaltfläche benutzen oder TransKey aus dem Textauswahlmenü antippen.';
 
   @override
   String get guideFeatureTranslate => 'Übersetzen';
@@ -1133,74 +1129,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'Text in einer beliebigen App auswählen — das Popup mit Kopieren/Teilen erscheint. ⋮ tippen für mehr Optionen, dann TransKey: $feature wählen.';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'Bedienungshilfen — optional, nur für automatisches Einfügen';
-
-  @override
-  String get guideReplyA11yBody =>
-      'Wenn Bedienungshilfen für TransKey aktiviert ist, wird deine Antwort direkt in den Chat eingefügt, in dem du tippst. Kein zusätzlicher Schritt.\n\nWenn du sie lieber nicht aktivieren möchtest, wird die Antwort für dich kopiert — einfach den Chat lange drücken und Einfügen tippen.';
-
-  @override
-  String get appPermissions => 'App-Berechtigungen';
-
-  @override
-  String get permissionsAllSet => 'Alles eingerichtet — tippen zum Prüfen';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Tippen, um erforderliche Berechtigungen zu erteilen';
-
-  @override
-  String get setupTransKey => 'TransKey einrichten';
-
-  @override
-  String get setupTransKeyBody =>
-      'Erlaube TransKey, während anderer Apps auf dem Bildschirm zu erscheinen. Bedienungshilfen sind optional - nur zum automatischen Einfügen von Antworten nötig.';
-
-  @override
-  String get permFloatingBubble => 'Schwebende Bubble';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'TransKey erscheint auf dem Bildschirm, während du andere Apps nutzt. Pflicht, um TransKey zu verwenden.';
-
-  @override
-  String get permRestrictedSettings => 'Eingeschränkte Einstellungen erlauben';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'Einige Android-Geräte benötigen einen extra Schritt, damit neu installierte Apps die Bedienungshilfen nutzen können. ⋮ oben rechts → \"Eingeschränkte Einstellungen erlauben\".';
-
-  @override
-  String get permAccessibility => 'Bedienungshilfen (optional)';
-
-  @override
-  String get permAccessibilityBody =>
-      'TransKey fügt die Antwortvorschläge automatisch an die Stelle ein, an der du tippst. Überspringen, falls manuelles Einfügen kein Problem ist.';
-
-  @override
-  String get permEnabled => 'Aktiviert';
-
-  @override
-  String get permEnable => 'Aktivieren';
-
-  @override
-  String get permDone => 'Fertig';
-
-  @override
-  String get permOpenAppDetails => 'App-Details öffnen';
-
-  @override
-  String get permSkipHint =>
-      'Bedienungshilfen sind optional. Ohne sie musst du den Antwortvorschlag selbst einfügen.';
-
-  @override
-  String get permSkipForNow => 'Vorerst überspringen';
-
-  @override
-  String get permFinishedCheck => 'Fertig — prüfen';
 
   @override
   String get voiceTooltip => 'Zum Tippen sprechen';

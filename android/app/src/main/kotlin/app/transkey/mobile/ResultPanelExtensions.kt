@@ -27,7 +27,6 @@ import app.transkey.mobile.BubbleService.Companion.ALL_MODES
 // reflects the server-mirrored catalog (admin-enabled language list)
 // instead of the hardcoded fallback set.
 import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
-import app.transkey.mobile.BubbleService.Companion.MODE_REPLY
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
 import app.transkey.mobile.BubbleService.Companion.STATE_ERROR
 import app.transkey.mobile.BubbleService.Companion.STATE_IDLE
@@ -182,7 +181,6 @@ internal fun BubbleService.removeResultPanel() {
     panel.romanization = null
     panel.status = null
     panel.copyBtn = null
-    panel.pasteBtn = null
     panel.ttsBtn = null
     panel.langChip = null
     panel.sourceLangChip = null
@@ -205,11 +203,6 @@ internal fun BubbleService.showResult(
     currentRomanization = romanization
     currentDetectedLang = detectedLang
     currentSuggestions = suggestions ?: emptyList()
-    // Save context for Reply mode (only for non-reply translations)
-    if (currentMode != MODE_REPLY) {
-        lastOriginalText = currentSourceText
-        lastDetectedLang = detectedLang
-    }
     // Refine mode: the output IS the improved source text — replace the
     // source so the user can translate or refine again on the improved text.
     if (currentMode == MODE_REFINE) {
@@ -644,125 +637,8 @@ internal fun BubbleService.showResultPanel(
             layoutParams = actionRowParams(marginStart = (8 * dp).toInt())
         }
 
-        panel.pasteBtn = TextView(this).apply {
-            text = "↓ ${localized(R.string.bubble_panel_paste)}"
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#16a34a"))
-                cornerRadius = 10 * dp
-            }
-            setPadding(0, (10 * dp).toInt(), 0, (10 * dp).toInt())
-            visibility = View.GONE
-            setOnClickListener {
-                val t = currentOutput
-                if (t.isNullOrEmpty()) return@setOnClickListener
-                val svc = TransKeyAccessibilityService.instance
-                if (svc == null) {
-                    Toast.makeText(
-                        service,
-                        localized(R.string.bubble_panel_paste_a11y_off),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                    return@setOnClickListener
-                }
-                // Always copy to clipboard first so the user has a manual
-                // fallback even if accessibility paste fails (e.g. the
-                // host app blocks SET_TEXT and PASTE — banking apps do).
-                try {
-                    val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    cm.setPrimaryClip(ClipData.newPlainText("TransKey", t))
-                } catch (_: Exception) { /* clipboard may be locked on some OEMs */ }
-
-                // Hide panel first so it doesn't sit over the input, then
-                // replace the focused text in the host app. The 300ms delay
-                // gives the underlying app time to recover input focus —
-                // shorter delays caused silent failures on Compose / RN
-                // apps that briefly drop focus when an overlay disappears.
-                hideResultPanel()
-                handler.postDelayed({
-                    val ok = svc.replaceFocusedText(t)
-                    if (ok) {
-                        Toast.makeText(
-                            service,
-                            localized(R.string.bubble_panel_pasted),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    } else {
-                        Toast.makeText(
-                            service,
-                            localized(R.string.bubble_panel_paste_manual_fallback),
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                }, 300)
-            }
-            layoutParams = actionRowParams(marginStart = (8 * dp).toInt())
-        }
-
         actionsRow.addView(panel.ttsBtn)
         actionsRow.addView(panel.copyBtn)
-        actionsRow.addView(panel.pasteBtn)
-
-        // Reply-only a11y warning. Visible only when MODE_REPLY is the
-        // active mode AND TransKey accessibility service is OFF. Lets
-        // the user jump straight into the permission walkthrough so
-        // the disabled Paste button becomes usable.
-        val hintBg = if (isDark) Color.parseColor("#3A2E10") else Color.parseColor("#FFF6D6")
-        val hintFg = if (isDark) Color.parseColor("#FFD86E") else Color.parseColor("#7A5A00")
-        val hintBtnBg = if (isDark) Color.parseColor("#FFD86E") else Color.parseColor("#7A5A00")
-        val hintBtnFg = if (isDark) Color.parseColor("#3A2E10") else Color.WHITE
-        val warningView = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply {
-                setColor(hintBg)
-                cornerRadius = 10 * dp
-            }
-            setPadding((10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt())
-            visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = (8 * dp).toInt() }
-        }
-        warningView.addView(TextView(this).apply {
-            text = localized(R.string.bubble_paste_a11y_required)
-            setTextColor(hintFg)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            layoutParams = LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
-            )
-        })
-        warningView.addView(TextView(this).apply {
-            text = localized(R.string.bubble_accessibility_enable)
-            setTextColor(hintBtnFg)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            typeface = Typeface.DEFAULT_BOLD
-            background = GradientDrawable().apply {
-                setColor(hintBtnBg)
-                cornerRadius = 8 * dp
-            }
-            setPadding((10 * dp).toInt(), (6 * dp).toInt(), (10 * dp).toInt(), (6 * dp).toInt())
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                hideResultPanel()
-                val intent = Intent(service, MainActivity::class.java).apply {
-                    action = MainActivity.ACTION_OPEN_PERMISSIONS
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                }
-                try { startActivity(intent) } catch (_: Exception) {}
-            }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = (8 * dp).toInt() }
-        })
-        panel.a11yWarning = warningView
 
         // Bottom resize handle: drag to make the panel taller. A thin
         // bar centered horizontally; touch radius is the full bottom
@@ -817,7 +693,6 @@ internal fun BubbleService.showResultPanel(
         rootCard.addView(tabsRow)
         rootCard.addView(contentScroll)
         rootCard.addView(actionsRow)
-        warningView.let { rootCard.addView(it) }
         rootCard.addView(resizeHandle)
 
         panel.view = rootCard
@@ -947,8 +822,6 @@ internal fun BubbleService.showResultPanel(
         panel.loadingSpinner?.visibility = View.VISIBLE
         panel.copyBtn?.visibility = View.GONE
         panel.ttsBtn?.visibility = View.GONE
-        panel.pasteBtn?.visibility = View.GONE
-        panel.a11yWarning?.visibility = View.GONE
         // Dim mode tabs to signal busy state
         for ((_, tab) in panel.modeButtons) {
             tab.container.alpha = 0.35f
@@ -961,8 +834,6 @@ internal fun BubbleService.showResultPanel(
         panel.status?.apply { text = error; visibility = View.VISIBLE }
         panel.copyBtn?.visibility = View.GONE
         panel.ttsBtn?.visibility = View.GONE
-        panel.pasteBtn?.visibility = View.GONE
-        panel.a11yWarning?.visibility = View.GONE
         for ((_, tab) in panel.modeButtons) { tab.container.alpha = 1f; tab.container.isEnabled = true }
         setState(STATE_ERROR)
     } else if (output != null) {
@@ -971,17 +842,6 @@ internal fun BubbleService.showResultPanel(
         panel.status?.visibility = View.GONE
         panel.copyBtn?.visibility = View.VISIBLE
         panel.ttsBtn?.visibility = View.VISIBLE
-        // Paste only makes sense for Reply mode. In Reply mode, if
-        // accessibility is OFF the button is greyed out and the
-        // warning banner below the action row prompts the user to
-        // enable it. Other modes don't expose Paste at all.
-        val isReply = currentMode == MODE_REPLY
-        val a11yOn = TransKeyAccessibilityService.isAvailable()
-        panel.pasteBtn?.visibility = if (isReply) View.VISIBLE else View.GONE
-        panel.pasteBtn?.isEnabled = isReply && a11yOn
-        panel.pasteBtn?.alpha = if (isReply && !a11yOn) 0.4f else 1f
-        panel.a11yWarning?.visibility =
-            if (isReply && !a11yOn) View.VISIBLE else View.GONE
         for ((_, tab) in panel.modeButtons) { tab.container.alpha = 1f; tab.container.isEnabled = true }
         setState(STATE_RESULT)
     }

@@ -133,11 +133,35 @@ class GboardKeyboardView : KeyboardView {
     private var flickDownY = 0f
     private var flickDir = 0
     private var flickLabels: Array<String>? = null
+    /**
+     * Long-press accent popup (European Latin modes). [accentProvider] returns the
+     * popup labels [base, accent…, number?] for (keyCode, shifted), or null for a
+     * normal long-press. On lift the selected label is committed via [onAccent].
+     */
+    var accentProvider: ((Int, Boolean) -> Array<String>?)? = null
+    var onAccent: ((String) -> Unit)? = null
+    private var accentPointerId = -1
+    private var accentKey: Keyboard.Key? = null
+    private var accentLabels: Array<String>? = null
+    private var accentIndex = 0
     private var longPressId = -1
     private var longPressFired = false
     private val longPressRunnable = Runnable {
         val k = pointerKeys.get(longPressId) ?: return@Runnable
-        if (onLongPress?.invoke(k.codes.firstOrNull() ?: 0) == true) {
+        val code = k.codes.firstOrNull() ?: 0
+        // Accent popup (European Latin modes) wins over the normal long-press.
+        // The finger stays down: MOVE slides the selection, lift commits it.
+        val labels = accentProvider?.invoke(code, keyboard?.isShifted == true)
+        if (labels != null && labels.size > 1) {
+            accentPointerId = longPressId
+            accentKey = k
+            accentLabels = labels
+            accentIndex = 0
+            longPressFired = true
+            invalidate()
+            return@Runnable
+        }
+        if (onLongPress?.invoke(code) == true) {
             longPressFired = true
             k.pressed = false
             pointerKeys.remove(longPressId) // lift won't re-emit the key
@@ -312,6 +336,12 @@ class GboardKeyboardView : KeyboardView {
                         if (dir != flickDir) { flickDir = dir; invalidate() }
                         continue
                     }
+                    // Accent popup drag: slide horizontally to pick a variant.
+                    if (id == accentPointerId) {
+                        val idx = accentIndexFor(px)
+                        if (idx != accentIndex) { accentIndex = idx; invalidate() }
+                        continue
+                    }
                     // Space-bar swipe: handle BEFORE the in-bounds guard, because
                     // once swiping we detach the pointer from any key.
                     if (id == spacePointerId) {
@@ -348,6 +378,7 @@ class GboardKeyboardView : KeyboardView {
                 spacePointerId = -1
                 spaceSwiping = false
                 clearFlick()
+                clearAccent()
                 for (i in 0 until pointerKeys.size()) pointerKeys.valueAt(i)?.pressed = false
                 pointerKeys.clear()
                 invalidate()
@@ -408,6 +439,19 @@ class GboardKeyboardView : KeyboardView {
     }
 
     private fun pointerUp(id: Int) {
+        // An accent finger lifts: commit the selected variant, type no base key.
+        if (id == accentPointerId) {
+            val sel = accentLabels?.getOrNull(accentIndex)
+            val k = accentKey
+            val code = k?.codes?.firstOrNull() ?: 0
+            k?.pressed = false
+            pointerKeys.remove(id)
+            clearAccent()
+            if (!sel.isNullOrEmpty()) onAccent?.invoke(sel)
+            actionListener?.onRelease(code)
+            invalidate()
+            return
+        }
         // A flick finger lifts: emit the chosen direction's kana, type no key.
         if (id == flickPointerId) {
             val k = flickKey
@@ -452,6 +496,34 @@ class GboardKeyboardView : KeyboardView {
 
     private fun clearFlick() {
         flickPointerId = -1; flickKey = null; flickLabels = null; flickDir = 0
+    }
+
+    private fun clearAccent() {
+        accentPointerId = -1; accentKey = null; accentLabels = null; accentIndex = 0
+    }
+
+    /**
+     * Accent popup geometry: [startX, top, cellW, cellH]. A horizontal row of
+     * `labels.size` cells, key-width each, centred over the key and clamped into
+     * the view; placed above the key, or below it when the key is in the top row.
+     */
+    private fun accentGeom(): FloatArray? {
+        val key = accentKey ?: return null
+        val labels = accentLabels ?: return null
+        val r = visualRects[key] ?: return null
+        val cellW = r.width(); val cellH = r.height()
+        val total = labels.size * cellW
+        val startX = (r.centerX() - total / 2f).coerceIn(0f, (width - total).coerceAtLeast(0f))
+        var top = r.top - cellH - dp(6f)
+        if (top < 0f) top = r.bottom + dp(6f) // top row: drop the popup below
+        return floatArrayOf(startX, top, cellW, cellH)
+    }
+
+    /** Map a horizontal touch position to the accent cell index. */
+    private fun accentIndexFor(px: Float): Int {
+        val n = accentLabels?.size ?: return accentIndex
+        val g = accentGeom() ?: return accentIndex
+        return (((px - g[0]) / g[2]).toInt()).coerceIn(0, n - 1)
     }
 
     /** Flick direction from the drag delta: 0=center,1=left,2=up,3=right,4=down. */
@@ -575,6 +647,25 @@ class GboardKeyboardView : KeyboardView {
             }
         }
         drawFlickPreview(canvas)
+        drawAccentPreview(canvas)
+    }
+
+    /**
+     * While an accent key is held, show its variants in a row above (or below, for
+     * the top key row) the key and highlight the one the current slide would commit.
+     */
+    private fun drawAccentPreview(canvas: Canvas) {
+        val labels = accentLabels ?: return
+        val g = accentGeom() ?: return
+        val startX = g[0]; val top = g[1]; val cellW = g[2]; val cellH = g[3]
+        for (i in labels.indices) {
+            val left = startX + i * cellW
+            rectF.set(left + dp(1f), top + dp(1f), left + cellW - dp(1f), top + cellH - dp(1f))
+            flickBgPaint.color = if (i == accentIndex) colFlickActive else colFlickCell
+            canvas.drawRoundRect(rectF, radius, radius, flickBgPaint)
+            flickTextPaint.color = colText
+            canvas.drawText(labels[i], left + cellW / 2f, baseline(top + cellH / 2f, flickTextPaint), flickTextPaint)
+        }
     }
 
     /**

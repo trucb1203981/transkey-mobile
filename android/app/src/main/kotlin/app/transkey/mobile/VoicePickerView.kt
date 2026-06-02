@@ -72,7 +72,15 @@ class VoicePickerView(context: Context) : LinearLayout(context) {
         TextView(context).apply {
             text = if (selected) "$label  ✓" else label
             textSize = 15f
-            gravity = Gravity.CENTER_VERTICAL
+            // Keep every row left-aligned like Gboard. START/VIEW_START resolve
+            // against the view's layoutDirection, which an RTL name (العربية)
+            // flips to RTL -> the label floats to the right edge. Pin the row to a
+            // full-width, LTR, ABSOLUTE-left box so the Arabic name hugs the left
+            // with all the others (its glyphs still shape RTL internally).
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            textDirection = View.TEXT_DIRECTION_LTR
+            gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
             isClickable = true
             setPadding(dp(16), dp(12), dp(16), dp(12))
             if (selected) {

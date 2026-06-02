@@ -251,6 +251,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get bubbleInactive => 'غير نشط';
 
   @override
+  String get permissionsNeedSetup => 'اضغط لمنح الأذونات المطلوبة';
+
+  @override
   String get sendFeedback => 'إرسال ملاحظات';
 
   @override
@@ -377,19 +380,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get speedNormal => 'عادية';
-
-  @override
-  String get accessibilityPasteBack => 'لصق الرد في تطبيقات أخرى';
-
-  @override
-  String get accessibilityPasteBackDesc =>
-      'فعّل TransKey في إعدادات إمكانية الوصول للسماح لـ \"لصق\" بكتابة الرد في الحقل النشط في أي تطبيق.';
-
-  @override
-  String get accessibilityEnabled => 'مفعّل';
-
-  @override
-  String get accessibilityDisabled => 'غير مفعّل — اضغط لفتح الإعدادات';
 
   @override
   String get feedbackTitle => 'إرسال ملاحظات';
@@ -521,6 +511,12 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get errorEmailNotVerified =>
       'يرجى التحقق من بريدك الإلكتروني — راجع صندوق الوارد';
+
+  @override
+  String get errorEmailAlreadyExists => 'هذا البريد الإلكتروني مسجل بالفعل';
+
+  @override
+  String get errorWrongPassword => 'كلمة المرور الحالية غير صحيحة';
 
   @override
   String get errorFeatureRequiresPaid => 'تتطلب هذه الميزة خطة مدفوعة';
@@ -1054,7 +1050,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get guideIntroBody =>
-      'تقرأ كل ميزة النص فقط بعد قيامك بإجراء متعمّد — نسخ النص أو مسح الشاشة أو اختيار منطقة أو استخدام زر المشاركة في النظام أو الضغط على TransKey من قائمة تحديد النص. يُستخدم إعداد إمكانية الوصول فقط لكي تتمكن نتيجة \"رد\" من اللصق تلقائيًا في حقل الدردشة الذي تكتب فيه.';
+      'تقرأ كل ميزة النص فقط بعد قيامك بإجراء متعمّد — نسخ النص أو مسح الشاشة أو اختيار منطقة أو استخدام زر المشاركة في النظام أو الضغط على TransKey من قائمة تحديد النص.';
 
   @override
   String get guideFeatureTranslate => 'الترجمة';
@@ -1125,73 +1121,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String guideInputMenuDesc(String feature) {
     return 'حدد النص في أي تطبيق — تظهر القائمة المنبثقة بخيارات نسخ/مشاركة. اضغط على ⋮ لمزيد من الخيارات، ثم اختر TransKey: $feature.';
   }
-
-  @override
-  String get guideReplyA11yTitle =>
-      'إمكانية الوصول — اختيارية، للصق التلقائي فقط';
-
-  @override
-  String get guideReplyA11yBody =>
-      'إذا كانت إمكانية الوصول مفعّلة لـ TransKey، فسيُلصق ردك مباشرة في حقل الدردشة الذي تكتب فيه. بدون أي خطوة إضافية.\n\nإذا كنت تفضّل عدم تفعيلها، فسيتم نسخ الرد لك — فقط اضغط مطولًا على حقل الدردشة واضغط لصق.';
-
-  @override
-  String get appPermissions => 'أذونات التطبيق';
-
-  @override
-  String get permissionsAllSet => 'كل شيء جاهز — اضغط للمراجعة';
-
-  @override
-  String get permissionsNeedSetup => 'اضغط لمنح الأذونات المطلوبة';
-
-  @override
-  String get setupTransKey => 'إعداد TransKey';
-
-  @override
-  String get setupTransKeyBody =>
-      'اسمح لـ TransKey بالظهور على شاشتك أثناء استخدام تطبيقات أخرى. إمكانية الوصول اختيارية - فقط إذا أردت لصق الردود تلقائياً.';
-
-  @override
-  String get permFloatingBubble => 'الزر العائم';
-
-  @override
-  String get permFloatingBubbleBody =>
-      'يجعل TransKey يظهر على شاشتك أثناء استخدام تطبيقات أخرى. ضروري لبدء استخدام TransKey.';
-
-  @override
-  String get permRestrictedSettings => 'السماح بالإعدادات المقيدة';
-
-  @override
-  String get permRestrictedSettingsBody =>
-      'بعض هواتف Android تحتاج خطوة إضافية للسماح للتطبيقات المثبتة حديثاً باستخدام إمكانية الوصول. اضغط ⋮ أعلى اليمين → \"السماح بالإعدادات المقيدة\".';
-
-  @override
-  String get permAccessibility => 'إمكانية الوصول (اختيارية)';
-
-  @override
-  String get permAccessibilityBody =>
-      'يتيح لـ TransKey لصق الرد المقترح تلقائياً في مكان الكتابة. تخطَّ إذا كنت لا تمانع اللصق بنفسك.';
-
-  @override
-  String get permEnabled => 'مفعّل';
-
-  @override
-  String get permEnable => 'تفعيل';
-
-  @override
-  String get permDone => 'تم';
-
-  @override
-  String get permOpenAppDetails => 'فتح تفاصيل التطبيق';
-
-  @override
-  String get permSkipHint =>
-      'إمكانية الوصول اختيارية. بدونها ستحتاج للصق الرد المقترح بنفسك.';
-
-  @override
-  String get permSkipForNow => 'تخطٍ في الوقت الحالي';
-
-  @override
-  String get permFinishedCheck => 'لقد انتهيت — تحقق';
 
   @override
   String get voiceTooltip => 'تحدّث للكتابة';

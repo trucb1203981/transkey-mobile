@@ -1,30 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">TransKey can paste a reply directly into the focused text field of any app when you tap "Paste reply" on the floating bubble. Text content is only read or written when you trigger an action — no background tracking.</string>
-
     <!-- Floating bubble action picker -->
     <string name="bubble_choose_action">Choose action</string>
     <string name="bubble_need_text">Two quick ways:\n• Copy text → tap an action below\n• Or select text → Share → TransKey</string>
     <string name="bubble_need_copy">Copy text first, then tap the bubble.</string>
-    <string name="bubble_accessibility_hint">Highlight + tap bubble doesn\'t work yet. Enable Accessibility to skip the Copy step.</string>
-    <string name="bubble_accessibility_enable">Setup</string>
-    <string name="bubble_accessibility_guide_legacy">Find TransKey in the list → toggle \"Use TransKey\" ON → tap Allow.</string>
-    <string name="bubble_accessibility_guide_a13">Android 13+ blocks sideloaded Accessibility by default:\n1. Tap ⋮ (top-right) → \"Allow restricted settings\"\n2. Go back → Accessibility → TransKey → toggle ON</string>
     <string name="bubble_show_last_result">Show last result</string>
     <string name="bubble_show_more">Show more</string>
     <string name="bubble_show_less">Show less</string>
     <string name="bubble_type_text">Type your own text</string>
-    <string name="bubble_paste_a11y_required">Enable Accessibility to paste replies directly into the focused input field.</string>
 
     <!-- Result panel: action button labels, toasts, status lines -->
     <string name="bubble_panel_source_lang">Source language</string>
     <string name="bubble_panel_target_lang">Target language</string>
     <string name="bubble_panel_copy">Copy</string>
-    <string name="bubble_panel_paste">Paste</string>
     <string name="bubble_panel_copied">Copied</string>
-    <string name="bubble_panel_pasted">Pasted</string>
-    <string name="bubble_panel_paste_manual_fallback">Copied — tap the field and paste manually</string>
-    <string name="bubble_panel_paste_a11y_off">Enable TransKey in Accessibility settings to paste</string>
     <string name="bubble_panel_clipboard_empty">Clipboard is empty</string>
     <string name="bubble_panel_tts_not_ready">TTS not ready</string>
     <string name="bubble_panel_translation_failed">Translation failed</string>
