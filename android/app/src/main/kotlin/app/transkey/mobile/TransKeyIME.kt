@@ -157,9 +157,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
         // Apply language mode to keyboard
         val letterH = letterKeyboardFor(mode)?.height ?: 0
+        val gkv = kv as? GboardKeyboardView
         kv.keyboard = when (layer) {
-            Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH) }
-            Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH) }
+            Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
+            Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
             else -> letterKeyboardFor(mode) ?: qwertyKeyboard
         }
         kv.setOnKeyboardActionListener(this)
@@ -899,9 +900,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     /** Swap the visible keyboard to match the current [layer]. */
     private fun applyLayer() {
         val letterH = letterKeyboardFor(mode)?.height ?: 0
+        val gkv = keyboardView as? GboardKeyboardView
         val kb = when (layer) {
-            Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH) }
-            Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH) }
+            Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
+            Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
             else -> letterKeyboardFor(mode)
         }
         keyboardView?.keyboard = kb

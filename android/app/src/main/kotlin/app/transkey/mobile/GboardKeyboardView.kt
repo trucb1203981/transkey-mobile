@@ -223,8 +223,23 @@ class GboardKeyboardView : KeyboardView {
 
     override fun setKeyboard(keyboard: Keyboard?) {
         super.setKeyboard(keyboard)
-        keyboard?.let { tileTouchTargets(it) }
+        keyboard?.let {
+            // Always track the bound keyboard's height: layouts can differ
+            // (Thai = 5 rows, others = 4, symbols rescaled to match), so a
+            // stale layoutHeight from a previous keyboard would size us wrong.
+            layoutHeight = it.height
+            tileTouchTargets(it)
+        }
     }
+
+    /**
+     * Drop [kb]'s cached touch/visual layout so it is rebuilt on the next bind.
+     * Call after externally changing its key geometry (e.g. a height rescale),
+     * otherwise the stale cached rects/height are reused and the keyboard draws
+     * at the wrong size (e.g. a symbols layer rescaled for Thai overflowing in a
+     * 4-row language).
+     */
+    fun refreshLayout(kb: Keyboard?) { kb?.let { tiled.remove(it) } }
 
     override fun setOnKeyboardActionListener(listener: OnKeyboardActionListener?) {
         super.setOnKeyboardActionListener(listener)
