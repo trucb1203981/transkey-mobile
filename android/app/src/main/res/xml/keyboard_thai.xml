@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Thai Kedmanee layout (base layer). Codes are Unicode code points; chars are committed directly (no composition). Shift key (-1) swaps to the second Kedmanee layer in TransKeyIME. -->
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyWidth="7.7%p"
+    android:keyWidth="7.6%p"
     android:keyHeight="40dp"
     android:horizontalGap="0.8%p"
     android:verticalGap="10dp">
 
     <Row>
         <Key android:codes="3653" android:keyLabel="ๅ"/>
+        <Key android:codes="47" android:keyLabel="/"/>
+        <Key android:codes="45" android:keyLabel="-"/>
         <Key android:codes="3616" android:keyLabel="ภ"/>
         <Key android:codes="3606" android:keyLabel="ถ"/>
         <Key android:codes="3640" android:keyLabel="ุ"/>
@@ -49,7 +51,7 @@
     </Row>
 
     <Row>
-        <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="11%p"/>
+        <Key android:codes="-1" android:keyLabel="⇧"/>
         <Key android:codes="3612" android:keyLabel="ผ"/>
         <Key android:codes="3611" android:keyLabel="ป"/>
         <Key android:codes="3649" android:keyLabel="แ"/>
@@ -60,7 +62,7 @@
         <Key android:codes="3617" android:keyLabel="ม"/>
         <Key android:codes="3651" android:keyLabel="ใ"/>
         <Key android:codes="3613" android:keyLabel="ฝ"/>
-        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="11%p" android:isRepeatable="true"/>
+        <Key android:codes="-5" android:keyLabel="⌫" android:isRepeatable="true"/>
     </Row>
 
     <Row android:rowEdgeFlags="bottom">
