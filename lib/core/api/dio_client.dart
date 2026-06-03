@@ -91,9 +91,31 @@ class _HeadersInterceptor extends Interceptor {
   AuthSession? _cachedSession;
   bool _sessionLoaded = false;
 
+  // Bare OS version (Android release e.g. '14', iOS systemVersion e.g. '17.5').
+  // Immutable for the process lifetime, so resolve once and cache; sent as
+  // X-OS-Version so the admin "OS" column can show the granular version.
+  String? _osVersion;
+  bool _osVersionLoaded = false;
+
   void invalidateSessionCache() {
     _cachedSession = null;
     _sessionLoaded = false;
+  }
+
+  Future<String?> _getOsVersion() async {
+    if (_osVersionLoaded) return _osVersion;
+    _osVersionLoaded = true;
+    try {
+      final info = DeviceInfoPlugin();
+      if (Platform.isAndroid) {
+        _osVersion = (await info.androidInfo).version.release;
+      } else if (Platform.isIOS) {
+        _osVersion = (await info.iosInfo).systemVersion;
+      }
+    } catch (_) {
+      _osVersion = null;
+    }
+    return _osVersion;
   }
 
   @override
@@ -132,6 +154,10 @@ class _HeadersInterceptor extends Interceptor {
     // = ios+android) from /plans for this client. Always send the actual
     // OS so per-platform plan filtering works.
     options.headers['X-Platform'] = Platform.isIOS ? 'ios' : 'android';
+    final osVersion = await _getOsVersion();
+    if (osVersion != null && osVersion.isNotEmpty) {
+      options.headers['X-OS-Version'] = osVersion;
+    }
 
     handler.next(options);
   }
