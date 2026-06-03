@@ -3,9 +3,9 @@ package app.transkey.mobile
 /**
  * Romaji -> Hiragana converter for Japanese input on the Latin qwerty layout.
  * Pure table + small automaton: handles the gojuon, yoon (きゃ), sokuon (double
- * consonant -> っ), and syllabic ん. Output is kana only (no kana->kanji
- * conversion, which needs a dictionary). The pending romaji is shown as latin
- * until it forms a kana, so the user sees the in-progress reading.
+ * consonant -> っ), and syllabic ん. Output is kana only; kana->kanji conversion
+ * (henkan) is a separate step done by KanaKanjiConverter. The pending romaji is
+ * shown as latin until it forms a kana, so the user sees the in-progress reading.
  */
 class RomajiKanaConverter {
 
@@ -109,6 +109,21 @@ class RomajiKanaConverter {
             put("pya", "ぴゃ"); put("pyu", "ぴゅ"); put("pyo", "ぴょ")
             put("mya", "みゃ"); put("myu", "みゅ"); put("myo", "みょ")
             put("rya", "りゃ"); put("ryu", "りゅ"); put("ryo", "りょ")
+            // Extended / loanword kana (katakana toggle renders these for foreign
+            // words, e.g. fashion -> ファッション). Hiragana forms; toKatakana maps
+            // ゔ -> ヴ and the small kana correctly.
+            put("fa", "ふぁ"); put("fi", "ふぃ"); put("fe", "ふぇ"); put("fo", "ふぉ"); put("fyu", "ふゅ")
+            put("va", "ゔぁ"); put("vi", "ゔぃ"); put("vu", "ゔ"); put("ve", "ゔぇ"); put("vo", "ゔぉ")
+            put("wi", "うぃ"); put("we", "うぇ"); put("who", "うぉ")
+            put("she", "しぇ"); put("je", "じぇ"); put("che", "ちぇ")
+            put("tsa", "つぁ"); put("tsi", "つぃ"); put("tse", "つぇ"); put("tso", "つぉ")
+            put("thi", "てぃ"); put("dhi", "でぃ"); put("thu", "てゅ"); put("dhu", "でゅ")
+            put("twu", "とぅ"); put("dwu", "どぅ")
+            // Small (sutegana) kana, typed with an x/l prefix; xtu/ltu = っ.
+            put("xa", "ぁ"); put("xi", "ぃ"); put("xu", "ぅ"); put("xe", "ぇ"); put("xo", "ぉ")
+            put("la", "ぁ"); put("li", "ぃ"); put("lu", "ぅ"); put("le", "ぇ"); put("lo", "ぉ")
+            put("xya", "ゃ"); put("xyu", "ゅ"); put("xyo", "ょ")
+            put("xtu", "っ"); put("ltu", "っ"); put("xtsu", "っ")
             put("-", "ー")
         }
 

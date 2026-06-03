@@ -73,12 +73,18 @@ class _KeyboardSettingsScreenState
   }
 
   Future<void> _onImeTileTap() async {
-    if (!_imeEnabled) {
-      await _imeChannel.invokeMethod('openImeSettings');
-    } else {
-      // Enabled but not the default - showing the picker lets the user
-      // pick TransKey for the current session without leaving the app.
-      await _imeChannel.invokeMethod('showImePicker');
+    try {
+      if (!_imeEnabled) {
+        await _imeChannel.invokeMethod('openImeSettings');
+      } else {
+        // Enabled but not the default - showing the picker lets the user
+        // pick TransKey for the current session without leaving the app.
+        await _imeChannel.invokeMethod('showImePicker');
+      }
+    } catch (e) {
+      // Channel missing (older build) or platform error - the tile just
+      // can't open settings; don't let it crash the screen.
+      debugPrint('[KeyboardSettings] IME tile tap failed: $e');
     }
     if (mounted) _refreshImeStatus();
   }

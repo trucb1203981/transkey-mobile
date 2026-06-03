@@ -39,6 +39,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private var qwertyKeyboard: Keyboard? = null
     private var symbolsKeyboard: Keyboard? = null
     private var symbols2Keyboard: Keyboard? = null
+    private var numberKeyboard: Keyboard? = null
     private val telex = TelexProcessor()
     private val hangul = HangulComposer()
     private val romaji = RomajiKanaConverter()
@@ -56,7 +57,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // space/tap commits a candidate, enter commits the raw pinyin.
     private val pinyin = StringBuilder()
     private var zhCandidates: List<String> = emptyList()
-    private enum class Layer { LETTERS, SYMBOLS, SYMBOLS2 }
+    // The pinyin string that produced the current zhCandidates. Set together with
+    // zhCandidates (so the two never disagree); lets a commit detect when the
+    // async lookup hasn't caught up with the latest keystroke yet.
+    private var zhCandidatesQuery: String = ""
+    // NUMBER is forced (not user-toggled) for numeric/phone/datetime fields;
+    // its own numpad layout has no ABC key, so the user stays in it.
+    private enum class Layer { LETTERS, SYMBOLS, SYMBOLS2, NUMBER }
     private var layer: Layer = Layer.LETTERS
 
     // Input languages; switch via the globe key (short tap cycles the enabled
@@ -78,6 +85,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private val ACCENT_MAP = mapOf(
         'a' to "àáâäãå", 'c' to "ç", 'e' to "èéêë", 'i' to "ìíîï",
         'n' to "ñ", 'o' to "òóôöõ", 's' to "ß", 'u' to "ùúûü", 'y' to "ÿ",
+    )
+    // Arabic long-press variants: hamza/madda forms that have no dedicated key
+    // on the Arabic layout. Alef is the important one - أ إ آ are extremely
+    // common (e.g. أنا "I") and otherwise untypeable. Arabic has no letter case,
+    // so `shifted` is irrelevant here. Keyed by the Arabic code point.
+    private val ARABIC_ACCENT_MAP = mapOf(
+        'ا' to "أإآٱ", // alef -> hamza-above / hamza-below / madda / wasla
     )
     // Top-row corner numbers, kept reachable inside the accent popup so the
     // European modes don't lose the Gboard number long-press on e/i/o.
@@ -171,9 +185,11 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         qwertyKeyboard = Keyboard(this, R.xml.keyboard_qwerty)
         symbolsKeyboard = Keyboard(this, R.xml.keyboard_symbols)
         symbols2Keyboard = Keyboard(this, R.xml.keyboard_symbols2)
+        numberKeyboard = Keyboard(this, R.xml.keyboard_number)
         centerRows(qwertyKeyboard)
         centerRows(symbolsKeyboard)
         centerRows(symbols2Keyboard)
+        centerRows(numberKeyboard)
 
         // Apply language mode to keyboard
         val letterH = letterKeyboardFor(mode)?.height ?: 0
@@ -181,6 +197,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         kv.keyboard = when (layer) {
             Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
             Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
+            Layer.NUMBER -> numberKeyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
             else -> letterKeyboardFor(mode) ?: qwertyKeyboard
         }
         kv.setOnKeyboardActionListener(this)
@@ -377,6 +394,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
      * right to reach the accents. Uppercase when [shifted].
      */
     private fun accentLabelsFor(code: Int, shifted: Boolean): Array<String>? {
+        if (mode == Mode.AR) {
+            val variants = ARABIC_ACCENT_MAP[code.toChar()] ?: return null
+            // Base first (long-press + release types the base alef), then slide
+            // right to the hamza/madda forms. No case, so `shifted` is ignored.
+            return (listOf(code.toChar().toString()) + variants.map { it.toString() })
+                .toTypedArray()
+        }
         if (mode !in ACCENT_MODES) return null
         val base = code.toChar().lowercaseChar()
         val variants = ACCENT_MAP[base] ?: return null
@@ -713,8 +737,17 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         // irrelevant); everything else uses the user's preferred mode, which
         // defaults to the DEVICE language (Vietnamese device -> VI Telex) until
         // the user toggles it via the globe key.
-        mode = if (attribute != null && isNumericClass(attribute)) Mode.EN else preferredMode()
-        if (layer == Layer.LETTERS) applyLayer() // swap to this language's layout
+        val numeric = attribute != null && isNumericClass(attribute)
+        mode = if (numeric) Mode.EN else preferredMode()
+        // Numeric fields show the dedicated numpad; leaving one drops back to
+        // letters. A non-numeric field keeps whatever layer the user had (so a
+        // SYMBOLS page survives a field switch, matching the old behaviour).
+        layer = when {
+            numeric -> Layer.NUMBER
+            layer == Layer.NUMBER -> Layer.LETTERS
+            else -> layer
+        }
+        applyLayer() // swap to the right layout (language change or numpad)
         updateSpaceBarLabel()
         updateLanguageKeyStyle()
         prewarmJa() // load the kana->kanji dict in the background for JA fields
@@ -859,7 +892,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
                 }
                 // Chinese: space commits the top hanzi candidate (no space typed).
                 if (isZh() && pinyin.isNotEmpty()) {
-                    commitZh(ic, zhCandidates.firstOrNull() ?: pinyin.toString())
+                    commitZh(ic, zhTopCandidate())
                     return
                 }
                 // Commit (auto-correcting) the current word, then a space.
@@ -974,6 +1007,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         val kb = when (layer) {
             Layer.SYMBOLS -> symbolsKeyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
             Layer.SYMBOLS2 -> symbols2Keyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
+            Layer.NUMBER -> numberKeyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
             else -> letterKeyboardFor(mode)
         }
         keyboardView?.keyboard = kb
@@ -1143,11 +1177,44 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     }
 
     private fun refreshZhCandidates() {
-        zhCandidates = if (pinyin.isEmpty()) emptyList()
-        else pinyinConv.convert(pinyin.toString())
-        suggestionStrip?.setCandidates(
-            zhCandidates, if (zhCandidates.isEmpty()) -1 else 0, withNumbers = true,
-        )
+        if (pinyin.isEmpty()) {
+            zhCandidates = emptyList()
+            suggestionStrip?.setCandidates(emptyList(), -1, withNumbers = true)
+            return
+        }
+        // The SQLite lookups (exact + prefix + segment, and the db open/copy on
+        // the very first keystroke) must NOT run on the key-press thread or
+        // typing janks / ANRs on weak devices. Snapshot the buffer + bump a
+        // sequence; run off-thread on the shared executor and drop the result
+        // if a newer keystroke superseded it or the user left ZH meanwhile.
+        val query = pinyin.toString()
+        val seq = suggestSeq.incrementAndGet()
+        suggestExecutor.execute {
+            val cands = pinyinConv.convert(query)
+            mainHandler.post {
+                if (seq != suggestSeq.get() || !isZh() || pinyin.toString() != query) return@post
+                zhCandidates = cands
+                zhCandidatesQuery = query
+                suggestionStrip?.setCandidates(
+                    cands, if (cands.isEmpty()) -1 else 0, withNumbers = true,
+                )
+            }
+        }
+    }
+
+    /**
+     * Best hanzi for the current pinyin at commit time (space / field switch).
+     * Prefers the async-loaded candidates; if they haven't caught up with the
+     * latest keystroke (a letter then an immediate space), falls back to a
+     * one-off synchronous lookup so the commit never uses a stale candidate.
+     * Safe on the UI thread: it's one query per explicit commit, not per key,
+     * and the db is already loaded by the time a word is committed.
+     */
+    private fun zhTopCandidate(): String {
+        val q = pinyin.toString()
+        if (q.isEmpty()) return q
+        val cached = if (zhCandidatesQuery == q) zhCandidates.firstOrNull() else null
+        return cached ?: pinyinConv.convert(q).firstOrNull() ?: q
     }
 
     /** Commit [text] (a chosen hanzi candidate, or the raw pinyin) and reset. */
@@ -1156,6 +1223,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         ic.finishComposingText()
         pinyin.setLength(0)
         zhCandidates = emptyList()
+        zhCandidatesQuery = ""
         clearSuggestions()
     }
 
@@ -1197,8 +1265,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         }
         if (mode == Mode.JA) {
             // Japanese: romaji letters compose into hiragana; anything else
-            // finalizes the kana then types literally. (Kana->kanji needs a
-            // dictionary - out of scope for the algorithmic build.)
+            // finalizes the kana then types literally. Space then runs kana->kanji
+            // conversion (henkan) via KanaKanjiConverter - see startConversion.
             if (ch in 'a'..'z' || ch in 'A'..'Z' || ch == '-') {
                 romaji.input(ch)
                 ic.setComposingText(romaji.composingText, 1)
@@ -1316,7 +1384,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         if (mode == Mode.ZH) {
             // Finalize the top hanzi candidate (or the raw pinyin if none).
             if (pinyin.isNotEmpty()) {
-                commitZh(ic, zhCandidates.firstOrNull() ?: pinyin.toString())
+                commitZh(ic, zhTopCandidate())
             }
             return
         }
