@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show DeviceOrientation;
+import 'package:flutter/services.dart' show DeviceOrientation, MethodChannel;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
 import 'package:native_device_orientation/native_device_orientation.dart';
@@ -206,6 +207,10 @@ class CameraService {
   Future<void> init() async {
     if (_isInitialized) return;
     _cameras = await availableCameras();
+    debugPrint('[CameraSvc] availableCameras -> ${_cameras.length}');
+    if (_cameras.isEmpty) {
+      throw CameraException('no_cameras', 'availableCameras() returned empty');
+    }
     final back = _cameras.firstWhere(
       (camera) => camera.lensDirection == CameraLensDirection.back,
       orElse: () => _cameras.first,
@@ -215,7 +220,15 @@ class CameraService {
       ResolutionPreset.high,
       enableAudio: false,
     );
-    await _controller!.initialize();
+    debugPrint('[CameraSvc] controller.initialize() ...');
+    // Timeout so a stuck AVFoundation session surfaces an error instead of
+    // an infinite loading spinner (the caller pops + logs on throw).
+    await _controller!.initialize().timeout(
+      const Duration(seconds: 12),
+      onTimeout: () => throw TimeoutException(
+          'CameraController.initialize() timed out after 12s'),
+    );
+    debugPrint('[CameraSvc] initialized=${_controller!.value.isInitialized}');
     try {
       _minZoom = await _controller!.getMinZoomLevel();
       _maxZoom = await _controller!.getMaxZoomLevel();
@@ -777,6 +790,14 @@ class CameraService {
     // even though the scene is "manga".
     final perLine =
         perLineOverride ?? (scene == 'menu' || scene == 'screenshot');
+
+    // iOS: one Apple Vision pass replaces the ML Kit 4-pass + DBNet pipeline.
+    // Vision reads stylized / low-contrast text natively on the Neural Engine,
+    // so the preprocessing crutches below (which exist to compensate for ML
+    // Kit) are unnecessary and just add latency.
+    if (Platform.isIOS) {
+      return _recognizeTextVision(imagePath, scene: scene);
+    }
     // Up to three OCR passes run in parallel — union of all gives the best
     // recall for stylized / low-contrast signage and handwriting:
     //   1. ORIGINAL (auto-detect all scripts) — base quality, catches
@@ -857,6 +878,149 @@ class CameraService {
 
     final deduped = _dedupeAndFilter(merged);
     return _mergeForScene(deduped, scene);
+  }
+
+  static const MethodChannel _visionChannel =
+      MethodChannel('transkey/vision_ocr');
+
+  /// iOS-only OCR via Apple Vision (single pass, Neural Engine). Mirrors the
+  /// ML Kit path's output: [OcrBlock]s in downscaled-image pixel coords with
+  /// Vision's top-candidate confidence (0..1), which the camera screen's
+  /// weakness / short-text fallback heuristics consume the same as ML Kit's
+  /// (so a clear short sign isn't needlessly escalated to the server, but an
+  /// uncertain read still is). Returns an empty list on failure or for scripts
+  /// Vision can't read (Arabic / Thai / Indic) — the camera screen's server
+  /// vision-LLM fallback then takes over, same as a sparse ML Kit read.
+  Future<List<OcrBlock>> _recognizeTextVision(
+    String imagePath, {
+    required String scene,
+  }) async {
+    final ocrReadyPath = await _writeDownscaled(imagePath, maxEdge: 1600);
+    final langs = _visionLangsForHint(liveSourceHint);
+    List<dynamic>? raw;
+    try {
+      final sw = Stopwatch()..start();
+      raw = await _visionChannel.invokeMethod<List<dynamic>>('recognize', {
+        'path': ocrReadyPath,
+        'languages': langs,
+        'level': 'accurate',
+      });
+      debugPrint('[OCR] Vision 1-pass: ${sw.elapsedMilliseconds}ms '
+          '(${raw?.length ?? 0} lines)');
+    } catch (e) {
+      debugPrint('[OCR] Vision failed: $e');
+      return const <OcrBlock>[];
+    }
+    if (raw == null || raw.isEmpty) return const <OcrBlock>[];
+
+    // Vision returns NORMALIZED [0..1] boxes. Map them into the same space the
+    // overlay uses: the EXIF-applied dimensions of the ORIGINAL capture (which
+    // camera_screen computes via instantiateImageCodec for its `size`). Without
+    // this, boxes stay in the downscaled OCR pixel space and shrink into the
+    // top-left corner whenever the capture is larger than the 1600px OCR image.
+    double imgW = 0, imgH = 0;
+    try {
+      final origBytes = await File(imagePath).readAsBytes();
+      final codec = await ui.instantiateImageCodec(origBytes);
+      final frame = await codec.getNextFrame();
+      imgW = frame.image.width.toDouble();
+      imgH = frame.image.height.toDouble();
+      frame.image.dispose();
+      codec.dispose();
+    } catch (e) {
+      debugPrint('[OCR] Vision size decode failed: $e');
+      return const <OcrBlock>[];
+    }
+
+    final blocks = <OcrBlock>[];
+    for (final item in raw) {
+      final m = (item as Map).cast<String, dynamic>();
+      final text = (m['text'] as String?)?.trim() ?? '';
+      if (text.isEmpty) continue;
+      blocks.add(OcrBlock(
+        text: text,
+        boundingBox: Rect.fromLTWH(
+          (m['left'] as num).toDouble() * imgW,
+          (m['top'] as num).toDouble() * imgH,
+          (m['width'] as num).toDouble() * imgW,
+          (m['height'] as num).toDouble() * imgH,
+        ),
+        confidence: (m['confidence'] as num?)?.toDouble(),
+      ));
+    }
+    final deduped = _dedupeAndFilter(blocks);
+    // Vision returns per-LINE boxes; ML Kit returns per-block. The menu merge's
+    // row clustering is tuned for ML Kit's coarser blocks and over-merges Vision's
+    // lines across grid columns (17 dish lines collapsed to 3 wide bands). For the
+    // menu scene, Vision's clean per-line boxes ARE the per-dish granularity we
+    // want — just drop price / phone / hours noise so each dish keeps its own
+    // positioned card. Aggregate scenes (document / sign / auto) still merge fine.
+    if (scene == 'menu') {
+      // Vision often grabs the row's list bullet / leading dash as part of the
+      // line ("－焼き餃子", "ーソトックソトック"). Strip leading bullet chars so the
+      // dish name is clean for display AND for the /explain + translate lookup.
+      final bullet = RegExp(r'^[\s\-‐-―ー－・•·*]+');
+      final items = deduped
+          .where((b) =>
+              b.text.trim().isNotEmpty &&
+              !_isMenuNoise(b.text) &&
+              !_isMenuMetadata(b.text))
+          .map((b) {
+            final cleaned = b.text.replaceFirst(bullet, '').trim();
+            return cleaned == b.text
+                ? b
+                : OcrBlock(
+                    text: cleaned,
+                    boundingBox: b.boundingBox,
+                    confidence: b.confidence,
+                  );
+          })
+          .where((b) => b.text.isNotEmpty)
+          .toList();
+      debugPrint('[OCR] menu (vision per-line): ${deduped.length} -> ${items.length} items');
+      return items;
+    }
+    return _mergeForScene(deduped, scene);
+  }
+
+  /// Map an app source-language hint to Vision recognition-language codes.
+  /// Returns null when unknown so Vision auto-detects (iOS 16+). Listing the
+  /// pinned language first improves accuracy for that script; the native side
+  /// drops any code this OS version doesn't support.
+  List<String>? _visionLangsForHint(String? hint) {
+    switch (hint) {
+      case 'zh':
+        return const ['zh-Hans', 'zh-Hant', 'en-US'];
+      case 'ja':
+        return const ['ja-JP', 'en-US'];
+      case 'ko':
+        return const ['ko-KR', 'en-US'];
+      case 'ru':
+        return const ['ru-RU', 'en-US'];
+      case 'uk':
+        return const ['uk-UA', 'en-US'];
+      case 'fr':
+        return const ['fr-FR', 'en-US'];
+      case 'de':
+        return const ['de-DE', 'en-US'];
+      case 'es':
+        return const ['es-ES', 'en-US'];
+      case 'it':
+        return const ['it-IT', 'en-US'];
+      case 'pt':
+        return const ['pt-BR', 'en-US'];
+      case 'en':
+        return const ['en-US'];
+      case 'vi':
+        return const ['vi-VT', 'en-US'];
+      default:
+        // Auto / unknown source. Vision's automaticallyDetectsLanguage often
+        // MISSES CJK (it biases to Latin), so pass an explicit broad set that
+        // turns the CJK recognizers on. The native side drops any code this
+        // OS version doesn't support, and CJK scripts are visually distinct so
+        // mixing them with Latin doesn't hurt Latin recall. Order = priority.
+        return const ['ja-JP', 'zh-Hans', 'zh-Hant', 'ko-KR', 'en-US'];
+    }
   }
 
   /// Detect text regions via DBNet then ML-Kit-OCR each region

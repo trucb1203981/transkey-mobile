@@ -172,6 +172,7 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
       final cacheKey = ExplainCache.instance.key(clipped, targetLang, scene.id);
       final cached = await ExplainCache.instance.get(cacheKey);
       if (cached != null) {
+        debugPrint('[Explain] CACHE HIT (no API) for "$clipped"');
         if (!mounted) return;
         final recognized = _parseRecognized(cached.explanation);
         setState(() {
@@ -185,6 +186,8 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
         return;
       }
 
+      debugPrint('[Explain] CACHE MISS -> POST /explain "$clipped" '
+          'target=$targetLang scene=${scene.id}');
       final api = ref.read(apiClientProvider);
       final response = await api.dio.post('/explain', data: {
         'text': clipped,

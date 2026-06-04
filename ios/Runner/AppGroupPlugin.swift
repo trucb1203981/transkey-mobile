@@ -41,6 +41,18 @@ class AppGroupPlugin: NSObject, FlutterPlugin {
             store.clearAll()
             result(true)
 
+        case "openKeyboardSettings":
+            // Open the app's own page in Settings. Apple rejects private
+            // App-prefs deep links, so openSettingsURLString is the only
+            // App-Store-safe entry; from there the user reaches Keyboards.
+            if let url = URL(string: UIApplication.openSettingsURLString),
+               UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url)
+                result(true)
+            } else {
+                result(false)
+            }
+
         default:
             result(FlutterMethodNotImplemented)
         }

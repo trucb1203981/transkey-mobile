@@ -1,5 +1,6 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+# google_mlkit_commons (camera OCR) requires iOS 15.5+. This must match the
+# pbxproj IPHONEOS_DEPLOYMENT_TARGET (15.5) or `pod install` fails.
+platform :ios, '15.5'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -39,5 +40,18 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    # permission_handler gates each iOS permission behind a compile-time macro.
+    # Without these, the handler is compiled OUT and request() returns
+    # `permanentlyDenied` WITHOUT ever prompting iOS (no dialog, no Settings
+    # entry). Enable the ones this app uses.
+    target.build_configurations.each do |config|
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] += [
+        'PERMISSION_CAMERA=1',
+        'PERMISSION_MICROPHONE=1',
+        'PERMISSION_SPEECH_RECOGNIZER=1',
+        'PERMISSION_PHOTOS=1',
+      ]
+    end
   end
 end

@@ -293,6 +293,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
 
     final status = await Permission.camera.request();
+    debugPrint('[Camera] permission status after request: $status');
     if (!status.isGranted) {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
@@ -304,7 +305,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       return;
     }
     try {
+      debugPrint('[Camera] _cameraService.init() start');
       await _cameraService.init();
+      debugPrint('[Camera] _cameraService.init() done');
       _cameraDisposed = false;
       if (mounted) {
         setState(() {});

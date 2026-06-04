@@ -1064,6 +1064,10 @@ Future<void> _sendResultToBubble({
   List<String>? suggestionSources,
   List<String>? suggestionTargets,
   String? error,
+  // Machine-readable error code (e.g. 'quota_exceeded') so the keyboard can
+  // pick a specific affordance (quota banner + tap-to-upgrade) instead of just
+  // toasting the human-readable `error` string. Null for non-error results.
+  String? errorCode,
   required int requestId,
 }) async {
   try {
@@ -1074,6 +1078,7 @@ Future<void> _sendResultToBubble({
       'suggestionSources': suggestionSources,
       'suggestionTargets': suggestionTargets,
       'error': error,
+      'errorCode': errorCode,
       'requestId': requestId,
     });
   } catch (e) {
@@ -1095,6 +1100,14 @@ class TransKeyApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'TransKey',
       debugShowCheckedModeBanner: false,
+      // iOS has no built-in tap-to-dismiss for the keyboard. Wrap the whole
+      // app once so tapping any empty area unfocuses the active text field.
+      // translucent => taps still reach buttons/widgets underneath.
+      builder: (context, child) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: child,
+      ),
       scaffoldMessengerKey: scaffoldMessengerKey,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
