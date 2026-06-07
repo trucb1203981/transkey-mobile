@@ -41,6 +41,9 @@
     <string name="bubble_mode_summarize">总结</string>
     <string name="bubble_mode_explain">解释</string>
     <string name="bubble_mode_refine">润色</string>
+    <string name="bubble_mode_subtitle">实时字幕</string>
+    <string name="subtitle_model_unavailable">此语言对暂无翻译模型</string>
+    <string name="subtitle_starting">正在开启实时字幕…</string>
 
     <string name="bubble_settings">设置</string>
     <string name="bubble_translate_tone">翻译语气</string>

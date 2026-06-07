@@ -60,6 +60,9 @@
     <string name="bubble_mode_summarize">Кратко</string>
     <string name="bubble_mode_explain">Объяснить</string>
     <string name="bubble_mode_refine">Улучшить</string>
+    <string name="bubble_mode_subtitle">Живые субтитры</string>
+    <string name="subtitle_model_unavailable">Модель перевода недоступна для этой языковой пары</string>
+    <string name="subtitle_starting">Запуск живых субтитров…</string>
 
     <!-- Settings sheet -->
     <string name="bubble_settings">Настройки</string>

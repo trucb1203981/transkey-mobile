@@ -41,6 +41,9 @@
     <string name="bubble_mode_summarize">Résumer</string>
     <string name="bubble_mode_explain">Expliquer</string>
     <string name="bubble_mode_refine">Affiner</string>
+    <string name="bubble_mode_subtitle">Sous-titres en direct</string>
+    <string name="subtitle_model_unavailable">Modèle de traduction indisponible pour cette paire de langues</string>
+    <string name="subtitle_starting">Démarrage des sous-titres en direct…</string>
 
     <string name="bubble_settings">Paramètres</string>
     <string name="bubble_translate_tone">Ton de traduction</string>

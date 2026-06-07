@@ -57,6 +57,9 @@
     <string name="bubble_mode_summarize">Tóm tắt</string>
     <string name="bubble_mode_explain">Giải thích</string>
     <string name="bubble_mode_refine">Cải thiện</string>
+    <string name="bubble_mode_subtitle">Phụ đề trực tiếp</string>
+    <string name="subtitle_model_unavailable">Chưa hỗ trợ dịch cặp ngôn ngữ này</string>
+    <string name="subtitle_starting">Đang bật phụ đề trực tiếp…</string>
 
     <string name="bubble_settings">Cài đặt</string>
     <string name="bubble_translate_tone">Tone dịch</string>

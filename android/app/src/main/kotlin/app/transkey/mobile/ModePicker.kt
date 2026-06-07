@@ -25,6 +25,7 @@ import app.transkey.mobile.BubbleService.Companion.EXTRA_MODE
 // a language that isn't in the hardcoded set.
 import app.transkey.mobile.BubbleService.Companion.MODE_EXPLAIN
 import app.transkey.mobile.BubbleService.Companion.MODE_REFINE
+import app.transkey.mobile.BubbleService.Companion.MODE_SUBTITLE
 import app.transkey.mobile.BubbleService.Companion.MODE_SUMMARIZE
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
 
@@ -504,6 +505,12 @@ internal fun BubbleService.hideModePicker() {
 }
 
 internal fun BubbleService.onTranslateModePicked(mode: String) {
+    // Live subtitles is a continuous screen-capture mode, not a clipboard
+    // translate — route it to its own toggle instead of ShareActivity.
+    if (mode == MODE_SUBTITLE) {
+        toggleSubtitleMode()
+        return
+    }
     android.util.Log.w("TKBubble", "onTranslateModePicked: mode=$mode → ShareActivity")
     // Always route via ShareActivity — that's the only component that
     // can read primaryClip on Android 10+ (background services are

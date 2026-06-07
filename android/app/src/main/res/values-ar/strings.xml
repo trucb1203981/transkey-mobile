@@ -60,6 +60,9 @@
     <string name="bubble_mode_summarize">تلخيص</string>
     <string name="bubble_mode_explain">شرح</string>
     <string name="bubble_mode_refine">تحسين</string>
+    <string name="bubble_mode_subtitle">ترجمة فورية للفيديو</string>
+    <string name="subtitle_model_unavailable">نموذج الترجمة غير متوفر لهذا الزوج اللغوي</string>
+    <string name="subtitle_starting">جارٍ بدء الترجمة الفورية…</string>
 
     <!-- Settings sheet -->
     <string name="bubble_settings">الإعدادات</string>

@@ -60,6 +60,9 @@
     <string name="bubble_mode_summarize">สรุป</string>
     <string name="bubble_mode_explain">อธิบาย</string>
     <string name="bubble_mode_refine">ปรับปรุง</string>
+    <string name="bubble_mode_subtitle">คำบรรยายสด</string>
+    <string name="subtitle_model_unavailable">ไม่มีโมเดลการแปลสำหรับคู่ภาษานี้</string>
+    <string name="subtitle_starting">กำลังเริ่มคำบรรยายสด…</string>
 
     <!-- Settings sheet -->
     <string name="bubble_settings">การตั้งค่า</string>

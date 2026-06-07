@@ -41,6 +41,9 @@
     <string name="bubble_mode_summarize">요약</string>
     <string name="bubble_mode_explain">설명</string>
     <string name="bubble_mode_refine">다듬기</string>
+    <string name="bubble_mode_subtitle">실시간 자막</string>
+    <string name="subtitle_model_unavailable">이 언어 쌍에 대한 번역 모델을 사용할 수 없습니다</string>
+    <string name="subtitle_starting">실시간 자막을 시작하는 중…</string>
 
     <string name="bubble_settings">설정</string>
     <string name="bubble_translate_tone">번역 톤</string>

@@ -59,6 +59,9 @@
     <string name="bubble_mode_summarize">Summarize</string>
     <string name="bubble_mode_explain">Explain</string>
     <string name="bubble_mode_refine">Refine</string>
+    <string name="bubble_mode_subtitle">Live subtitles</string>
+    <string name="subtitle_model_unavailable">Translation model unavailable for this language pair</string>
+    <string name="subtitle_starting">Starting live subtitles…</string>
 
     <!-- Settings sheet -->
     <string name="bubble_settings">Settings</string>

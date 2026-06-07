@@ -39,8 +39,15 @@ class ScreenCapturePermissionActivity : Activity() {
         if (resultCode == RESULT_OK && data != null) {
             ScreenCaptureManager.resultCode = resultCode
             ScreenCaptureManager.resultIntent = data
+            // Live subtitle mode runs a continuous loop; everything else is a
+            // one-shot capture.
+            val captureAction = if (ScreenCaptureManager.flow == ScreenCaptureManager.Flow.SUBTITLE) {
+                ScreenCaptureService.ACTION_START_SUBTITLE
+            } else {
+                ScreenCaptureService.ACTION_CAPTURE
+            }
             val intent = Intent(this, ScreenCaptureService::class.java).apply {
-                action = ScreenCaptureService.ACTION_CAPTURE
+                action = captureAction
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)

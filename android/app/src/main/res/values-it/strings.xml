@@ -60,6 +60,9 @@
     <string name="bubble_mode_summarize">Riassumi</string>
     <string name="bubble_mode_explain">Spiega</string>
     <string name="bubble_mode_refine">Migliora</string>
+    <string name="bubble_mode_subtitle">Sottotitoli dal vivo</string>
+    <string name="subtitle_model_unavailable">Modello di traduzione non disponibile per questa coppia di lingue</string>
+    <string name="subtitle_starting">Avvio sottotitoli dal vivo…</string>
 
     <!-- Settings sheet -->
     <string name="bubble_settings">Impostazioni</string>

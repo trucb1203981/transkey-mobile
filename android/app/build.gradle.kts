@@ -119,6 +119,22 @@ dependencies {
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
 
+    // ML Kit on-device translation for the live video-subtitle mode. The
+    // hot path (capture -> OCR -> translate -> overlay) must stay off the
+    // network: a server round-trip costs 0.5-2s per line, far too slow for
+    // subtitles that change every couple of seconds. On-device translate
+    // runs in tens of ms. Each language pair pivots through English and
+    // downloads a ~30 MB model on first use (TranslateHelper handles the
+    // download). Quality is below the server LLM, but for live subtitles
+    // "readable now" beats "polished late".
+    implementation("com.google.mlkit:translate:17.0.3")
+
+    // On-device language identification for the live subtitle mode: when the
+    // user leaves the source language on "auto", we detect the caption's
+    // language from the first OCR'd line and pick the right translate model.
+    // Bundled model (~few hundred KB), no download.
+    implementation("com.google.mlkit:language-id:17.0.6")
+
     // EXIF-aware decoding for BgColorSampler. BitmapFactory ignores the
     // JPEG orientation tag, so a capture that carries an unbaked EXIF
     // rotation would be read in the WRONG orientation - the sampler

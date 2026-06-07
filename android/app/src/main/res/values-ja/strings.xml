@@ -41,6 +41,9 @@
     <string name="bubble_mode_summarize">要約</string>
     <string name="bubble_mode_explain">説明</string>
     <string name="bubble_mode_refine">推敲</string>
+    <string name="bubble_mode_subtitle">リアルタイム字幕</string>
+    <string name="subtitle_model_unavailable">この言語ペアの翻訳モデルは利用できません</string>
+    <string name="subtitle_starting">リアルタイム字幕を開始しています…</string>
 
     <string name="bubble_settings">設定</string>
     <string name="bubble_translate_tone">翻訳トーン</string>

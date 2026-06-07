@@ -123,6 +123,46 @@ class ScreenCaptureService : Service() {
         }
     }
 
+    // ──────────────────────────────────────────────────────────────────
+    // Live video-subtitle mode (continuous capture).
+    //
+    // Deliberately kept on its OWN VirtualDisplay + ImageReader, separate
+    // from the single-shot Lens pipeline above, so none of the delicate
+    // one-shot gate / timeout / MIUI-reuse logic is touched. The two modes
+    // never run at once (both need the single-session MediaProjection),
+    // so sharing [mediaProjection] is safe.
+    // ──────────────────────────────────────────────────────────────────
+    @Volatile private var subtitleMode = false
+    private var subVirtualDisplay: VirtualDisplay? = null
+    private var subImageReader: ImageReader? = null
+    private var subWidth = 0
+    private var subHeight = 0
+    private var subtitleOverlay: SubtitleOverlay? = null
+
+    /** aHash of the last OCR band, so unchanged frames skip OCR entirely. */
+    private var lastBandHash: Long = 0L
+
+    /** Last OCR'd caption text, so a still-showing line isn't re-translated. */
+    private var lastOcrText: String? = null
+
+    /** True when the user left source = "auto"; we detect it from the captions. */
+    private var autoSource = false
+
+    /** Resolved source language (fixed pick, or auto-detected). Empty until known. */
+    private var resolvedSource = ""
+
+    /** Lazily-created on-device language identifier (auto-source mode only). */
+    private var langIdentifier: com.google.mlkit.nl.languageid.LanguageIdentifier? = null
+
+    /** LRU cache OCR text → translation; a caption shown for 2-4 s spans many
+     *  frames, and repeats across a video, so caching avoids re-translating. */
+    private val translationCache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
+            size > TRANSLATION_CACHE_MAX
+    }
+
+    private val subtitleTick = Runnable { grabSubtitleFrame() }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -134,8 +174,12 @@ class ScreenCaptureService : Service() {
         startForegroundCompat()
         when (intent?.action) {
             ACTION_CAPTURE -> startCapture()
-            ACTION_STOP_PROJECTION -> stopProjectionAndSelf()
-            else -> stopProjectionAndSelf()
+            ACTION_START_SUBTITLE -> startSubtitle()
+            ACTION_STOP_SUBTITLE -> stopSubtitle()
+            // The notification's Stop action is shared: route it to whichever
+            // mode is live so one button always tears the right thing down.
+            ACTION_STOP_PROJECTION -> if (subtitleMode) stopSubtitle() else stopProjectionAndSelf()
+            else -> if (subtitleMode) stopSubtitle() else stopProjectionAndSelf()
         }
         return START_NOT_STICKY
     }
@@ -592,6 +636,11 @@ class ScreenCaptureService : Service() {
                     }
                 }
             }
+            ScreenCaptureManager.Flow.SUBTITLE -> {
+                // Live subtitle runs its own continuous loop (grabSubtitleFrame),
+                // never the single-shot runOcr path. Recycle defensively.
+                if (!bitmap.isRecycled) bitmap.recycle()
+            }
         }
     }
 
@@ -745,10 +794,319 @@ class ScreenCaptureService : Service() {
             .build()
     }
 
+    // ──────────────────────────────────────────────────────────────────
+    // Live subtitle pipeline
+    // ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Enter continuous subtitle mode: acquire the projection (reusing the
+     * token the permission activity just stashed), warm the on-device
+     * translator, show the overlay bar, and start the capture tick loop.
+     */
+    private fun startSubtitle() {
+        if (subtitleMode) return
+        subtitleMode = true
+        isSubtitleActive = true
+        Log.d(TAG, "startSubtitle src=${ScreenCaptureManager.subtitleSource} tgt=${ScreenCaptureManager.subtitleTarget}")
+
+        // Drop any stale single-shot Lens pipeline / projection so we don't
+        // leak a VirtualDisplay or double-hold the grant.
+        handler.removeCallbacks(idleReleaseRunnable)
+        handler.removeCallbacks(captureTimeoutRunnable)
+        teardownCapturePipeline()
+        try { mediaProjection?.stop() } catch (_: Exception) {}
+        mediaProjection = null
+
+        subtitleOverlay = SubtitleOverlay(this).also { it.show() }
+
+        // Resolve the source language. With a fixed pick we warm the model
+        // now (first pair downloads ~30 MB; until ready, onSubtitleText shows
+        // the original caption). With "auto" we defer until the first caption
+        // lets us detect the language on-device.
+        autoSource = ScreenCaptureManager.subtitleSource == "auto"
+        resolvedSource = if (autoSource) "" else ScreenCaptureManager.subtitleSource
+        if (!autoSource) {
+            TranslateHelper.prepare(resolvedSource, ScreenCaptureManager.subtitleTarget) { ready ->
+                if (!ready) handler.post {
+                    subtitleOverlay?.setText(getString(R.string.subtitle_model_unavailable))
+                }
+            }
+        }
+
+        val resultIntent = ScreenCaptureManager.resultIntent
+        if (resultIntent == null) {
+            Log.w(TAG, "startSubtitle: no projection token")
+            stopSubtitle()
+            return
+        }
+        val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val projection = try {
+            mpm.getMediaProjection(ScreenCaptureManager.resultCode, resultIntent)
+        } catch (error: Exception) {
+            Log.w(TAG, "startSubtitle getMediaProjection failed: ${error.message}")
+            null
+        }
+        if (projection == null) {
+            stopSubtitle()
+            return
+        }
+        mediaProjection = projection
+        isProjectionActive = true
+        projection.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                Log.d(TAG, "subtitle: MediaProjection revoked")
+                handler.post { stopSubtitle() }
+            }
+        }, handler)
+
+        // Let the consent dialog dismiss before the first frame.
+        handler.postDelayed({ setupSubtitlePipeline(projection) }, 300)
+    }
+
+    private fun setupSubtitlePipeline(projection: MediaProjection) {
+        if (!subtitleMode) return
+        val (width, height, density) = readDisplaySize()
+        subWidth = width
+        subHeight = height
+        val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        subImageReader = reader
+        try {
+            subVirtualDisplay = projection.createVirtualDisplay(
+                "TransKeySubtitle",
+                width, height, density,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                reader.surface, null, handler,
+            )
+        } catch (error: Exception) {
+            Log.w(TAG, "subtitle createVirtualDisplay failed: ${error.message}")
+            stopSubtitle()
+            return
+        }
+        Log.d(TAG, "subtitle pipeline up ${width}x${height}, band=${bandFraction(KEY_BAND_TOP, OCR_BAND_TOP_DEFAULT)}..${bandFraction(KEY_BAND_BOTTOM, OCR_BAND_BOTTOM_DEFAULT)}")
+        handler.postDelayed(subtitleTick, SUBTITLE_FIRST_DELAY_MS)
+    }
+
+    /**
+     * One tick of the capture loop: grab the latest mirrored frame, hand it
+     * to [processSubtitleBitmap], then re-arm. Runs at [SUBTITLE_INTERVAL_MS]
+     * (~3 fps) — fast enough to feel live, slow enough to spare the battery.
+     */
+    private fun grabSubtitleFrame() {
+        if (!subtitleMode) return
+        try {
+            val image = subImageReader?.acquireLatestImage()
+            if (image != null) {
+                val bitmap = try {
+                    imageToBitmap(image, subWidth, subHeight)
+                } catch (error: Exception) {
+                    Log.w(TAG, "subtitle imageToBitmap failed: ${error.message}")
+                    null
+                } finally {
+                    try { image.close() } catch (_: Exception) {}
+                }
+                if (bitmap != null) processSubtitleBitmap(bitmap)
+            }
+        } catch (error: Throwable) {
+            Log.w(TAG, "subtitle grab failed: ${error.message}")
+        }
+        if (subtitleMode) handler.postDelayed(subtitleTick, SUBTITLE_INTERVAL_MS)
+    }
+
+    /**
+     * Crop the caption band, skip it if unchanged since last frame, else OCR
+     * it. The band sits ABOVE the overlay bar so we never read our own output.
+     */
+    private fun processSubtitleBitmap(full: Bitmap) {
+        val top = (subHeight * bandFraction(KEY_BAND_TOP, OCR_BAND_TOP_DEFAULT)).toInt()
+            .coerceIn(0, subHeight - 1)
+        val bottom = (subHeight * bandFraction(KEY_BAND_BOTTOM, OCR_BAND_BOTTOM_DEFAULT)).toInt()
+            .coerceIn(top + 1, subHeight)
+        val band = try {
+            Bitmap.createBitmap(full, 0, top, subWidth, bottom - top)
+        } catch (error: Exception) {
+            if (!full.isRecycled) full.recycle()
+            return
+        }
+        if (!full.isRecycled) full.recycle()
+
+        // Change detection: identical band (same caption still showing, or a
+        // static scene) → skip the OCR + translate work entirely.
+        val hash = aHash(band)
+        if (lastBandHash != 0L && hammingDistance(hash, lastBandHash) <= HASH_HAMMING_THRESHOLD) {
+            band.recycle()
+            return
+        }
+        lastBandHash = hash
+
+        OcrHelper.recognize(
+            this,
+            band,
+            hintLang = ScreenCaptureManager.subtitleSource.takeIf { it != "auto" },
+        ) { text ->
+            handler.post {
+                if (!band.isRecycled) band.recycle()
+                if (subtitleMode) onSubtitleText(text)
+            }
+        }
+    }
+
+    private fun onSubtitleText(text: String?) {
+        val clean = text?.replace('\n', ' ')?.trim()
+        if (clean.isNullOrEmpty()) {
+            subtitleOverlay?.clearText()
+            lastOcrText = null
+            return
+        }
+        // Same caption as last frame is still showing — nothing to do.
+        if (clean == lastOcrText) return
+        lastOcrText = clean
+
+        // Auto-source: detect the caption language once, warm its model, and
+        // show the original line in the meantime.
+        if (autoSource && resolvedSource.isEmpty()) {
+            detectSourceAndPrepare(clean)
+            subtitleOverlay?.setText(clean)
+            return
+        }
+
+        translationCache[clean]?.let {
+            subtitleOverlay?.setText(it)
+            return
+        }
+
+        TranslateHelper.translate(clean) { translated ->
+            handler.post {
+                // While translating, the caption may have changed; only show
+                // this result if it still matches the current line.
+                if (!subtitleMode || lastOcrText != clean) return@post
+                if (translated != null) {
+                    translationCache[clean] = translated
+                    subtitleOverlay?.setText(translated)
+                } else {
+                    // Model not ready / unsupported pair: show the original so
+                    // the user isn't left with a blank bar.
+                    subtitleOverlay?.setText(clean)
+                }
+            }
+        }
+    }
+
+    /**
+     * Identify the caption language on-device and warm the translate model
+     * for detected → target. Latches [resolvedSource] on the first confident
+     * hit; a "und" / unsupported / same-as-target result is ignored so the
+     * next caption retries.
+     */
+    private fun detectSourceAndPrepare(sample: String) {
+        val identifier = langIdentifier
+            ?: com.google.mlkit.nl.languageid.LanguageIdentification.getClient()
+                .also { langIdentifier = it }
+        identifier.identifyLanguage(sample)
+            .addOnSuccessListener { code ->
+                if (!subtitleMode || !autoSource || resolvedSource.isNotEmpty()) return@addOnSuccessListener
+                val target = ScreenCaptureManager.subtitleTarget
+                if (code == "und" || code == target || !TranslateHelper.isSupported(code)) {
+                    return@addOnSuccessListener
+                }
+                resolvedSource = code
+                Log.d(TAG, "subtitle auto-detected source=$code")
+                TranslateHelper.prepare(code, target) { ready ->
+                    if (!ready) handler.post {
+                        subtitleOverlay?.setText(getString(R.string.subtitle_model_unavailable))
+                    }
+                }
+            }
+    }
+
+    /** Exit subtitle mode, release everything, stop the service. */
+    private fun stopSubtitle() {
+        subtitleMode = false
+        isSubtitleActive = false
+        handler.removeCallbacks(subtitleTick)
+        try { subVirtualDisplay?.release() } catch (_: Exception) {}
+        subVirtualDisplay = null
+        try { subImageReader?.close() } catch (_: Exception) {}
+        subImageReader = null
+        subtitleOverlay?.hide()
+        subtitleOverlay = null
+        TranslateHelper.close()
+        try { langIdentifier?.close() } catch (_: Exception) {}
+        langIdentifier = null
+        autoSource = false
+        resolvedSource = ""
+        translationCache.clear()
+        lastOcrText = null
+        lastBandHash = 0L
+        try { mediaProjection?.stop() } catch (_: Exception) {}
+        mediaProjection = null
+        isProjectionActive = false
+        ScreenCaptureManager.clearToken()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    /** Read a band fraction from Flutter prefs, clamped to a sane range. */
+    private fun bandFraction(key: String, default: Float): Float {
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val v = try {
+            prefs.getFloat(key, default).let { if (it.isNaN()) default else it }
+        } catch (_: ClassCastException) {
+            default
+        }
+        return v.coerceIn(0.1f, 0.98f)
+    }
+
+    /**
+     * 64-bit average hash of [bitmap]: downscale to 8x8 grayscale, set each
+     * bit where the cell's luma exceeds the frame mean. Cheap and robust to
+     * tiny noise — two frames of the same caption hash within a few bits.
+     */
+    private fun aHash(bitmap: Bitmap): Long {
+        val small = Bitmap.createScaledBitmap(bitmap, 8, 8, true)
+        val px = IntArray(64)
+        small.getPixels(px, 0, 8, 0, 0, 8, 8)
+        small.recycle()
+        val luma = IntArray(64)
+        var sum = 0L
+        for (i in px.indices) {
+            val p = px[i]
+            val l = ((p shr 16 and 0xff) * 299 + (p shr 8 and 0xff) * 587 + (p and 0xff) * 114) / 1000
+            luma[i] = l
+            sum += l
+        }
+        val mean = sum / 64
+        var bits = 0L
+        for (i in 0 until 64) {
+            if (luma[i] >= mean) bits = bits or (1L shl i)
+        }
+        return bits
+    }
+
+    private fun hammingDistance(a: Long, b: Long): Int = java.lang.Long.bitCount(a xor b)
+
     companion object {
         private const val TAG = "TransKeyOCR"
         const val ACTION_CAPTURE = "transkey.screen.CAPTURE"
         const val ACTION_STOP_PROJECTION = "transkey.screen.STOP_PROJECTION"
+        const val ACTION_START_SUBTITLE = "transkey.screen.START_SUBTITLE"
+        const val ACTION_STOP_SUBTITLE = "transkey.screen.STOP_SUBTITLE"
+
+        // ── Live subtitle tuning ──
+        /** Wait for the first mirrored frame after the consent dialog. */
+        private const val SUBTITLE_FIRST_DELAY_MS = 700L
+        /** Capture cadence (~3 fps): live enough, easy on the battery. */
+        private const val SUBTITLE_INTERVAL_MS = 320L
+        /** OCR band as a fraction of screen height. Defaults sit in the lower
+         *  third where captions usually are, and STRICTLY ABOVE the overlay
+         *  bar so we never OCR our own translation. Tunable via Flutter prefs
+         *  [KEY_BAND_TOP]/[KEY_BAND_BOTTOM] without a rebuild. */
+        private const val OCR_BAND_TOP_DEFAULT = 0.50f
+        private const val OCR_BAND_BOTTOM_DEFAULT = 0.84f
+        private const val KEY_BAND_TOP = "flutter.tk_subtitle_band_top"
+        private const val KEY_BAND_BOTTOM = "flutter.tk_subtitle_band_bottom"
+        /** Max aHash bit-difference still treated as "same band". */
+        private const val HASH_HAMMING_THRESHOLD = 6
+        private const val TRANSLATION_CACHE_MAX = 200
         private const val CHANNEL_ID = "transkey_screen_capture"
         private const val NOTIFICATION_ID = 1002
 
@@ -820,6 +1178,13 @@ class ScreenCaptureService : Service() {
          * visible to the bubble's main-thread reads.
          */
         @Volatile var isProjectionActive: Boolean = false
+            private set
+
+        /**
+         * True while live subtitle mode is running. BubbleService reads this
+         * so tapping the subtitle entry while it's active toggles it OFF.
+         */
+        @Volatile var isSubtitleActive: Boolean = false
             private set
     }
 }

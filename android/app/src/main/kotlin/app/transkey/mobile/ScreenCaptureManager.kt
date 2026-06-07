@@ -15,8 +15,22 @@ import android.graphics.Bitmap
  */
 object ScreenCaptureManager {
 
-    /** Two output modes: legacy "Scan → Input picker" vs Lens overlay. */
-    enum class Flow { LENS, TEXT_INTO_INPUT }
+    /**
+     * Output modes:
+     *  - [LENS]            full-screen one-shot translate overlay
+     *  - [TEXT_INTO_INPUT] one-shot OCR → input picker (summarize/refine/...)
+     *  - [SUBTITLE]        continuous live video-subtitle translate. Drives
+     *                      [ScreenCapturePermissionActivity] to start the
+     *                      service in subtitle mode instead of one-shot capture.
+     */
+    enum class Flow { LENS, TEXT_INTO_INPUT, SUBTITLE }
+
+    // ── Live subtitle params (set by BubbleService before the activity launch) ──
+    /** Source language of the video's captions (ML Kit needs an explicit one). */
+    @Volatile var subtitleSource: String = "en"
+
+    /** Target language to translate the captions into. */
+    @Volatile var subtitleTarget: String = "vi"
 
     // ── Projection token (set by permission activity, consumed by service) ──
     @Volatile var resultCode: Int = 0

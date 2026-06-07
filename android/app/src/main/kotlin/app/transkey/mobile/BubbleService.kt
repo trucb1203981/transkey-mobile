@@ -123,11 +123,15 @@ class BubbleService : Service() {
         const val MODE_SUMMARIZE = "summarize"
         const val MODE_EXPLAIN = "explain"
         const val MODE_REFINE = "refine"
+        // Live video-subtitle translate: continuous capture, on-device OCR +
+        // translate, floating bar. Not a one-shot OCR mode like the others,
+        // so onTranslateModePicked routes it to toggleSubtitleMode.
+        const val MODE_SUBTITLE = "subtitle"
         // Reply lives on the TransKey keyboard (types straight into the
         // focused field) + the in-app feature row. It was removed from the
         // bubble overlay because the bubble's auto-paste relied on the
         // Accessibility service, which we no longer ship.
-        internal val ALL_MODES = listOf(MODE_TRANSLATE, MODE_SUMMARIZE, MODE_EXPLAIN, MODE_REFINE)
+        internal val ALL_MODES = listOf(MODE_TRANSLATE, MODE_SUMMARIZE, MODE_EXPLAIN, MODE_REFINE, MODE_SUBTITLE)
         // Mode → (string-resource id, drawable-resource id) for the picker and
         // result panel. Keeping resources here (instead of inline `when`) makes
         // it cheap to add a new mode in one place.
@@ -136,12 +140,15 @@ class BubbleService : Service() {
             MODE_SUMMARIZE to R.string.bubble_mode_summarize,
             MODE_EXPLAIN to R.string.bubble_mode_explain,
             MODE_REFINE to R.string.bubble_mode_refine,
+            MODE_SUBTITLE to R.string.bubble_mode_subtitle,
         )
         private val MODE_ICON_IDS = mapOf(
             MODE_TRANSLATE to R.drawable.ic_bubble_translate,
             MODE_SUMMARIZE to R.drawable.ic_bubble_summarize,
             MODE_EXPLAIN to R.drawable.ic_bubble_explain,
             MODE_REFINE to R.drawable.ic_bubble_refine,
+            // TODO: dedicated subtitle icon; reuse translate glyph for now.
+            MODE_SUBTITLE to R.drawable.ic_bubble_translate,
         )
 
         // Target languages user can cycle through in the overlay.
@@ -1595,6 +1602,37 @@ class BubbleService : Service() {
             return
         }
 
+        val intent = Intent(this, ScreenCapturePermissionActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_NO_HISTORY or
+                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+        }
+        try { startActivity(intent) } catch (_: Exception) {}
+    }
+
+    /**
+     * Live subtitle entry from the mode picker. Toggles the continuous
+     * capture mode: start it (request a fresh projection token) or, if it is
+     * already running, stop it. The bubble stays visible so the user can tap
+     * the picker again to stop.
+     */
+    internal fun toggleSubtitleMode() {
+        if (ScreenCaptureService.isSubtitleActive) {
+            val stop = Intent(this, ScreenCaptureService::class.java).apply {
+                action = ScreenCaptureService.ACTION_STOP_SUBTITLE
+            }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(stop)
+                else startService(stop)
+            } catch (_: Exception) {}
+            return
+        }
+        ScreenCaptureManager.flow = ScreenCaptureManager.Flow.SUBTITLE
+        // "auto" is allowed: the service auto-detects the caption language
+        // on-device (ML Kit language-id) when the source is left unset.
+        ScreenCaptureManager.subtitleSource = readSourceLang()
+        ScreenCaptureManager.subtitleTarget = readTargetLang()
+        // Always request a fresh projection token for the continuous session.
         val intent = Intent(this, ScreenCapturePermissionActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_NO_HISTORY or

@@ -60,6 +60,9 @@
     <string name="bubble_mode_summarize">Ringkas</string>
     <string name="bubble_mode_explain">Jelaskan</string>
     <string name="bubble_mode_refine">Perbaiki</string>
+    <string name="bubble_mode_subtitle">Subtitle langsung</string>
+    <string name="subtitle_model_unavailable">Model terjemahan tidak tersedia untuk pasangan bahasa ini</string>
+    <string name="subtitle_starting">Memulai subtitle langsung…</string>
 
     <!-- Settings sheet -->
     <string name="bubble_settings">Setelan</string>

@@ -60,6 +60,9 @@
     <string name="bubble_mode_summarize">Resumir</string>
     <string name="bubble_mode_explain">Explicar</string>
     <string name="bubble_mode_refine">Melhorar</string>
+    <string name="bubble_mode_subtitle">Legendas ao vivo</string>
+    <string name="subtitle_model_unavailable">Modelo de tradução indisponível para este par de idiomas</string>
+    <string name="subtitle_starting">Iniciando legendas ao vivo…</string>
 
     <!-- Settings sheet -->
     <string name="bubble_settings">Configurações</string>

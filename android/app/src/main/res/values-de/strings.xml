@@ -41,6 +41,9 @@
     <string name="bubble_mode_summarize">Zusammenfassen</string>
     <string name="bubble_mode_explain">Erklären</string>
     <string name="bubble_mode_refine">Verfeinern</string>
+    <string name="bubble_mode_subtitle">Live-Untertitel</string>
+    <string name="subtitle_model_unavailable">Übersetzungsmodell für dieses Sprachpaar nicht verfügbar</string>
+    <string name="subtitle_starting">Live-Untertitel werden gestartet…</string>
 
     <string name="bubble_settings">Einstellungen</string>
     <string name="bubble_translate_tone">Übersetzungston</string>
