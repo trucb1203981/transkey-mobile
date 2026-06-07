@@ -96,6 +96,7 @@
     <string name="lens_regrant_prompt">Ketuk untuk menerjemahkan aplikasi ini</string>
     <string name="bubble_hide_for_screenshot">Sembunyikan bubble untuk tangkapan layar</string>
     <string name="ime_action_translate">Terjemahkan</string>
+    <string name="ime_quota_reached">Batas harian tercapai. Ketuk untuk tingkatkan</string>
     <string name="ime_action_refine">Perhalus</string>
     <string name="ime_processing">Memproses…</string>
     <string name="ime_no_text">Masukkan teks dulu</string>

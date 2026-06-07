@@ -169,22 +169,27 @@ class BubbleService : Service() {
         // Built lazily off TARGET_LANGS so we only maintain ONE source of
         // truth — adding a language above automatically shows up in both.
         internal val SOURCE_LANGS: List<String> = listOf("auto") + TARGET_LANGS
+        // English name only — keeps the single-line keyboard/bubble pickers
+        // identifiable AND uncluttered (native + English side by side read as
+        // noise, esp. with nested parens like "Chinese (Traditional)"). Pre-login
+        // fallback only; once /features syncs, the server catalog labels (also
+        // English-only, see FeaturesNotifier.fetch) override these.
         internal val LANG_LABELS = mapOf(
             "auto" to "Auto",
             // Latin
-            "en" to "English", "vi" to "Tiếng Việt", "fr" to "Français",
-            "de" to "Deutsch", "es" to "Español", "pt" to "Português",
-            "it" to "Italiano", "nl" to "Nederlands", "sv" to "Svenska",
-            "da" to "Dansk", "no" to "Norsk", "fi" to "Suomi",
-            "pl" to "Polski", "cs" to "Čeština", "ro" to "Română",
-            "hu" to "Magyar", "tr" to "Türkçe",
+            "en" to "English", "vi" to "Vietnamese", "fr" to "French",
+            "de" to "German", "es" to "Spanish", "pt" to "Portuguese",
+            "it" to "Italian", "nl" to "Dutch", "sv" to "Swedish",
+            "da" to "Danish", "no" to "Norwegian", "fi" to "Finnish",
+            "pl" to "Polish", "cs" to "Czech", "ro" to "Romanian",
+            "hu" to "Hungarian", "tr" to "Turkish",
             // CJK / SEA
-            "ja" to "日本語", "zh" to "中文", "ko" to "한국어",
-            "th" to "ไทย", "id" to "Indonesia", "ms" to "Melayu",
+            "ja" to "Japanese", "zh" to "Chinese", "ko" to "Korean",
+            "th" to "Thai", "id" to "Indonesian", "ms" to "Malay",
             "fil" to "Filipino",
             // Cyrillic / Hebrew / Greek / Arabic / Indic
-            "ru" to "Русский", "uk" to "Українська", "el" to "Ελληνικά",
-            "he" to "עברית", "ar" to "العربية", "hi" to "हिन्दी",
+            "ru" to "Russian", "uk" to "Ukrainian", "el" to "Greek",
+            "he" to "Hebrew", "ar" to "Arabic", "hi" to "Hindi",
         )
         private const val PREFS_NAME = "FlutterSharedPreferences"
         private const val KEY_TARGET_LANG = "flutter.tk_target_lang"
@@ -248,6 +253,49 @@ class BubbleService : Service() {
         // screenshot (key combo / 3-finger swipe) without the bubble being
         // gone long enough to feel lost.
         internal const val SCREENSHOT_HIDE_MS = 5000L
+
+        /**
+         * Static reader for the /features language catalog Dart mirrors to
+         * `flutter.tk_lang_catalog` (JSON `[{code,label}, …]`). Static so BOTH
+         * the bubble (instance, with its own cache via [readCatalogFromPrefs])
+         * AND the keyboard (TransKeyIME, a separate service that can't call
+         * instance methods) resolve the SAME server catalog — otherwise the
+         * keyboard picker falls back to the short hardcoded list. Returns null
+         * when the pref is absent (pre-login first-run, /features failed).
+         */
+        fun parseLangCatalog(
+            prefs: android.content.SharedPreferences,
+        ): Pair<List<String>, Map<String, String>>? {
+            val raw = prefs.getString("flutter.tk_lang_catalog", null)
+                ?.takeIf { it.isNotBlank() } ?: return null
+            return try {
+                val arr = org.json.JSONArray(raw)
+                val codes = mutableListOf<String>()
+                val labels = mutableMapOf<String, String>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    val code = obj.optString("code").takeIf { it.isNotBlank() } ?: continue
+                    labels[code] = obj.optString("label").takeIf { it.isNotBlank() } ?: code
+                    codes.add(code)
+                }
+                if (codes.isEmpty()) null else Pair(codes, labels)
+            } catch (e: Throwable) {
+                android.util.Log.w("TKBubble", "lang catalog parse failed: ${e.message}")
+                null
+            }
+        }
+
+        /** Full target-language list: server catalog, else hardcoded fallback. */
+        fun effectiveTargetLangs(prefs: android.content.SharedPreferences): List<String> =
+            parseLangCatalog(prefs)?.first ?: TARGET_LANGS
+
+        /** Full source list (auto + catalog), else hardcoded fallback. */
+        fun effectiveSourceLangs(prefs: android.content.SharedPreferences): List<String> =
+            parseLangCatalog(prefs)?.first?.let { listOf("auto") + it } ?: SOURCE_LANGS
+
+        /** Labels: built-in (for the Auto sentinel) overlaid with catalog labels. */
+        fun effectiveLangLabels(prefs: android.content.SharedPreferences): Map<String, String> =
+            parseLangCatalog(prefs)?.second?.let { LANG_LABELS + it } ?: LANG_LABELS
 
         @Volatile private var nextRequestId: Long = 0
     }
@@ -1157,27 +1205,8 @@ class BubbleService : Service() {
     private var cachedCatalog: Pair<List<String>, Map<String, String>>? = null
 
     private fun readCatalogFromPrefs(): Pair<List<String>, Map<String, String>>? {
-        val cached = cachedCatalog
-        if (cached != null) return cached
-        val raw = prefs.getString("flutter.tk_lang_catalog", null)
-            ?.takeIf { it.isNotBlank() } ?: return null
-        return try {
-            val arr = org.json.JSONArray(raw)
-            val codes = mutableListOf<String>()
-            val labels = mutableMapOf<String, String>()
-            for (i in 0 until arr.length()) {
-                val obj = arr.getJSONObject(i)
-                val code = obj.optString("code").takeIf { it.isNotBlank() } ?: continue
-                val label = obj.optString("label").takeIf { it.isNotBlank() } ?: code
-                codes.add(code)
-                labels[code] = label
-            }
-            if (codes.isEmpty()) null
-            else Pair(codes, labels).also { cachedCatalog = it }
-        } catch (e: Throwable) {
-            android.util.Log.w("TKBubble", "lang catalog parse failed: ${e.message}")
-            null
-        }
+        cachedCatalog?.let { return it }
+        return parseLangCatalog(prefs)?.also { cachedCatalog = it }
     }
 
     internal fun getEffectiveTargetLangs(): List<String> =

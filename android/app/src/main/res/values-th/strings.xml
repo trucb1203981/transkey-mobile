@@ -96,6 +96,7 @@
     <string name="lens_regrant_prompt">แตะเพื่อแปลแอปนี้</string>
     <string name="bubble_hide_for_screenshot">ซ่อนบับเบิลเพื่อจับภาพหน้าจอ</string>
     <string name="ime_action_translate">แปล</string>
+    <string name="ime_quota_reached">ใช้ครบโควตาวันนี้แล้ว แตะเพื่ออัปเกรด</string>
     <string name="ime_action_refine">ขัดเกลา</string>
     <string name="ime_processing">กำลังประมวลผล…</string>
     <string name="ime_no_text">กรุณาพิมพ์ข้อความก่อน</string>

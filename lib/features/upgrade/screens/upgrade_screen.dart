@@ -35,6 +35,13 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
       'source':       'screen',
       'current_plan': _currentPlan,
     });
+    // The plans catalog (prices, feature flags, highlights) is cached for the
+    // whole app session by the non-autoDispose plansProvider, so a price
+    // change made on the server AFTER the first fetch wouldn't appear until a
+    // full app restart. Re-fetch on every screen open so the cards + CTAs
+    // always reflect the current /plans (mirrors desktop swapping
+    // features:get -> features:refresh for the same stale-cache reason).
+    ref.read(plansProvider.notifier).refresh();
   }
 
   @override
@@ -479,7 +486,13 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
             )
           : ElevatedButton(
               onPressed: isLoadingThis ? null : onPressed,
-              style: ElevatedButton.styleFrom(backgroundColor: color),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                // Tighten the default horizontal padding so the
+                // name + price label has more room before FittedBox
+                // has to scale it down on the narrow half-width CTAs.
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              ),
               child: _buttonChild(label, Colors.white, isLoadingThis),
             ),
     );
@@ -492,7 +505,19 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
       );
     }
-    return Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600));
+    // Keep the name + price on a SINGLE line: the half-width "Mobile · $x"
+    // / "Pro · $x" CTAs are too narrow for the full label, and a plain Text
+    // wraps it into an ugly 2-line break. FittedBox scales the text down to
+    // fit instead, never up, so full-width buttons keep their normal size.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
   }
 
   // ── Actions ──

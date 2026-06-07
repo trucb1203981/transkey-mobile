@@ -90,6 +90,7 @@
     <string name="lens_regrant_prompt">이 앱을 번역하려면 탭하세요</string>
     <string name="bubble_hide_for_screenshot">스크린샷을 위해 버블 숨기기</string>
     <string name="ime_action_translate">번역</string>
+    <string name="ime_quota_reached">오늘 사용 한도 도달. 탭하여 업그레이드</string>
     <string name="ime_action_refine">다듬기</string>
     <string name="ime_processing">처리 중…</string>
     <string name="ime_no_text">먼저 텍스트를 입력하세요</string>

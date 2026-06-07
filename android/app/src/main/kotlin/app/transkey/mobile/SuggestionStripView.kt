@@ -140,6 +140,20 @@ class SuggestionStripView : View {
         invalidate()
     }
 
+    // Tappable alert banner shown in the idle middle zone (e.g. "out of daily
+    // uses - tap to upgrade" when a free user hits the quota). Yields to word
+    // suggestions + the in-flight processing label; replaces the action chips.
+    var onNoticeTap: (() -> Unit)? = null
+    private var notice: String = ""
+
+    /** Show/replace the alert banner; empty string hides it. */
+    fun setNotice(text: String) {
+        if (text != notice) {
+            notice = text
+            invalidate()
+        }
+    }
+
     private val d = resources.displayMetrics.density
     private fun dp(v: Float) = v * d
     private fun sp(v: Float) = v * resources.displayMetrics.scaledDensity
@@ -199,6 +213,16 @@ class SuggestionStripView : View {
         color = 0xFFCFE0FF.toInt(); textAlign = Paint.Align.CENTER; textSize = sp(13f)
         isFakeBoldText = true
     }
+    // Alert banner (quota reached): a translucent amber pill + amber bold text,
+    // reading as "attention" (not the brand gradient = a normal action, nor the
+    // red undo = destructive). Text auto-shrinks to fit since translations vary.
+    private val noticePillFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x33F59E0B; style = Paint.Style.FILL
+    }
+    private val textNotice = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFBBF24.toInt(); textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+    }
     // Small 1-based index drawn at each candidate's top-left (Chinese mode).
     private val textNum = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFF7E828C.toInt(); textAlign = Paint.Align.LEFT; textSize = sp(10f)
@@ -230,10 +254,16 @@ class SuggestionStripView : View {
         val l = sideZone
         val r = width - sideZone
 
-        // Priority: in-flight status > word suggestions > feature chips > idle.
+        // Priority: in-flight status > word suggestions > alert banner > chips.
         if (processing) {
             val base = cy - (textAlt.descent() + textAlt.ascent()) / 2f
             c.drawText(processingLabel, (l + r) / 2f, base, textAlt)
+            return
+        }
+        // Alert banner only when there are no word suggestions to show (the user
+        // hit Translate from the idle strip; typing again hides it).
+        if (notice.isNotEmpty() && suggestions.isEmpty()) {
+            drawNotice(c, l, r, cy)
             return
         }
         val n = suggestions.size
@@ -351,6 +381,27 @@ class SuggestionStripView : View {
             c.drawRoundRect(rectF, pillH / 2, pillH / 2, chipGradient)
             c.drawText(actions[i], (left + right) / 2f, base, textAction)
         }
+    }
+
+    /** Amber alert pill spanning the middle zone; label auto-shrinks to fit. */
+    private fun drawNotice(c: Canvas, l: Float, r: Float, cy: Float) {
+        val padH = dp(6f)
+        val pillH = dp(34f)
+        val left = l + padH
+        val right = r - padH
+        rectF.set(left, cy - pillH / 2, right, cy + pillH / 2)
+        c.drawRoundRect(rectF, pillH / 2, pillH / 2, noticePillFill)
+        // Shrink the label until it fits the pill (down to a floor) so long
+        // translations (DE/RU) don't spill under the side icons.
+        val maxW = right - left - dp(20f)
+        var size = sp(14f)
+        textNotice.textSize = size
+        while (textNotice.measureText(notice) > maxW && size > sp(10f)) {
+            size -= sp(0.5f)
+            textNotice.textSize = size
+        }
+        val base = cy - (textNotice.descent() + textNotice.ascent()) / 2f
+        c.drawText(notice, (left + right) / 2f, base, textNotice)
     }
 
     /** Counter-clockwise circular arrow = "undo". */
@@ -475,6 +526,9 @@ class SuggestionStripView : View {
             x < sideZone -> onGridTap?.invoke()
             x > width - sideZone -> onMicTap?.invoke()
             processing -> { /* locked while a request is in flight */ }
+            // Alert banner owns the middle zone only when no suggestions show
+            // (matches onDraw's priority), so this can't swallow candidate taps.
+            notice.isNotEmpty() && suggestions.isEmpty() -> onNoticeTap?.invoke()
             suggestions.isNotEmpty() -> {
                 if (hasExpandZone && x >= expandLeft) { onExpandTap?.invoke(); return }
                 val l = sideZone

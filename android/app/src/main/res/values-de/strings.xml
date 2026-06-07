@@ -90,6 +90,7 @@
     <string name="lens_regrant_prompt">Tippen, um diese App zu übersetzen</string>
     <string name="bubble_hide_for_screenshot">Bubble zum Screenshot ausblenden</string>
     <string name="ime_action_translate">Übersetzen</string>
+    <string name="ime_quota_reached">Tageslimit erreicht. Zum Upgrade tippen</string>
     <string name="ime_action_refine">Verfeinern</string>
     <string name="ime_processing">Wird verarbeitet…</string>
     <string name="ime_no_text">Zuerst Text eingeben</string>

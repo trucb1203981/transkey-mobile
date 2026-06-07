@@ -217,8 +217,13 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
         // Kotlin parses it on picker open. Falls back to the bubble's
         // built-in 30-language list if the pref is missing/empty.
         if (languages.isNotEmpty) {
+          // English name only. The single-line Kotlin keyboard/bubble pickers
+          // got cluttered with "native (English)" — doubly so when the English
+          // name itself has parens ("繁體中文 (Chinese (Traditional))",
+          // "Kurdish (Sorani)"). English alone is identifiable and clean.
+          // Native fallback for the rare entry with no english_name.
           final encoded = jsonEncode(languages
-              .map((l) => {'code': l.code, 'label': l.nativeName})
+              .map((l) => {'code': l.code, 'label': l.name ?? l.nativeName})
               .toList());
           await prefs.setString(_kSharedLangsCatalogKey, encoded);
         }

@@ -90,6 +90,7 @@
     <string name="lens_regrant_prompt">点按以翻译此应用</string>
     <string name="bubble_hide_for_screenshot">隐藏悬浮球以便截屏</string>
     <string name="ime_action_translate">翻译</string>
+    <string name="ime_quota_reached">今日次数已用完，点击升级</string>
     <string name="ime_action_refine">润色</string>
     <string name="ime_processing">处理中…</string>
     <string name="ime_no_text">请先输入文本</string>

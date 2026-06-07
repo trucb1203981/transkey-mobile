@@ -316,6 +316,21 @@ void _wireBubbleChannel() {
       }
       return null;
     }
+    if (call.method == 'showKeyboardUpsell') {
+      // Free user hit the daily quota while using the keyboard's Translate
+      // chip and tapped the "out of uses" banner on the suggestion strip.
+      // Route to the same /upgrade SCREEN the bubble upsell uses (a screen,
+      // not a sheet, so the freshly-foregrounded app lands on a clear page),
+      // with a keyboard-specific tracking event.
+      try {
+        _rootContainer.read(trackingServiceProvider).event('keyboard_quota_upsell');
+        final router = _rootContainer.read(routerProvider);
+        router.push('/upgrade');
+      } catch (error) {
+        debugPrint('[bubbleChannel] showKeyboardUpsell failed: $error');
+      }
+      return null;
+    }
     if (call.method == 'openExplain') {
       // Bubble Lens overlay long-press hands us the source-language text of
       // the tapped region. Route to a thin /explain screen that opens the
@@ -1028,8 +1043,9 @@ Future<void> _translateForBubble(
     }
   } on DioException catch (e) {
     debugPrint('[BubbleTranslate] Dio error: ${e.response?.statusCode} ${e.message}');
+    final friendly = _friendlyDioError(e);
     await _sendResultToBubble(
-        error: _friendlyDioError(e), requestId: requestId);
+        error: friendly.message, errorCode: friendly.code, requestId: requestId);
   } catch (e) {
     debugPrint('[BubbleTranslate] Error: $e');
     await _sendResultToBubble(
@@ -1037,15 +1053,18 @@ Future<void> _translateForBubble(
   }
 }
 
-String _friendlyDioError(DioException e) {
+/// Maps a DioException to a human-readable message plus a machine-readable
+/// `code` (only set for cases a caller needs to branch on, e.g. the keyboard's
+/// quota banner). Message wording is aligned with ApiException.fromDio so the
+/// bubble overlay and the in-app error UI stay consistent for the same codes.
+({String message, String? code}) _friendlyDioError(DioException e) {
   final status = e.response?.statusCode;
   final body = e.response?.data;
   final serverCode =
       body is Map ? (body['code'] ?? body['error']) as String? : null;
 
-  // Aligned with ApiException.fromDio so the bubble overlay and the in-app
-  // error UI surface identical wording for the same server codes.
-  return switch (status) {
+  final isQuota = status == 429 && serverCode == 'quota_exceeded';
+  final message = switch (status) {
     401 => 'Please log in to TransKey',
     403 when serverCode == 'feature_disabled' => 'This feature requires a paid plan',
     403 when serverCode == 'email_not_verified' => 'Please verify your email',
@@ -1055,6 +1074,7 @@ String _friendlyDioError(DioException e) {
     503 => 'Service under maintenance',
     _ => 'Translation failed',
   };
+  return (message: message, code: isQuota ? 'quota_exceeded' : null);
 }
 
 Future<void> _sendResultToBubble({

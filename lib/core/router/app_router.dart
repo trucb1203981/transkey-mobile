@@ -156,10 +156,22 @@ void _initDeepLinkListener(Ref ref, GoRouter router) {
   if (kIsWeb) return;
 
   try {
+    // transkey://upgrade — fired by the iOS keyboard extension's "Upgrade"
+    // CTA when a free user hits the daily quota. Route to the upgrade screen
+    // (same destination as the bubble/keyboard upsell on Android); auth links
+    // (transkey://auth/...) still go through the auth handler.
+    bool handleUpgradeLink(Uri uri) {
+      if (uri.host != 'upgrade') return false;
+      ref.read(trackingServiceProvider).event('keyboard_quota_upsell');
+      router.push('/upgrade');
+      return true;
+    }
+
     final appLinks = AppLinks();
     _deepLinkSub = appLinks.uriLinkStream.listen(
       (Uri uri) {
         debugPrint('[DeepLink] Received: $uri');
+        if (handleUpgradeLink(uri)) return;
         ref.read(authStateProvider.notifier).handleDeepLink(uri);
       },
       onError: (err) => debugPrint('[DeepLink] Error: $err'),
@@ -168,6 +180,7 @@ void _initDeepLinkListener(Ref ref, GoRouter router) {
     appLinks.getInitialLink().then((Uri? uri) {
       if (uri != null) {
         debugPrint('[DeepLink] Initial: $uri');
+        if (handleUpgradeLink(uri)) return;
         ref.read(authStateProvider.notifier).handleDeepLink(uri);
       }
     }).catchError((_) {});

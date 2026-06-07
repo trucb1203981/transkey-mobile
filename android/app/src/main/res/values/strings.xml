@@ -97,6 +97,7 @@
     <string name="ime_service_label">TransKey Keyboard</string>
     <string name="ime_subtype_default">TransKey (EN · Tiếng Việt Telex)</string>
     <string name="ime_action_translate">Translate</string>
+    <string name="ime_quota_reached">Daily limit reached. Tap to upgrade</string>
     <string name="ime_action_refine">Refine</string>
     <string name="ime_processing">Processing…</string>
     <string name="ime_no_text">Enter some text first</string>

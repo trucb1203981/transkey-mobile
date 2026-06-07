@@ -51,4 +51,24 @@ class TelexProcessorTest {
     @Test fun dd() = assertEquals("đ", type("dd"))
     @Test fun toneSac() = assertEquals("á", type("as"))
     @Test fun toneUndoEmitsLiteral() = assertEquals("as", type("ass"))
+
+    // ---- strict Telex (autoRime = false, the keyboard's autocorrect-OFF
+    //      default): the ie/yê rime is NOT auto-filled, so plain letters stay
+    //      plain ("viet" -> "viet") and ê needs the explicit "ee" key. Every
+    //      key-driven transform (tones, doubled vowels, horn, đ) still works. ----
+
+    private fun typeStrict(keys: String): String {
+        val t = TelexProcessor()
+        t.autoRime = false
+        for (c in keys) t.input(c)
+        return t.composingText
+    }
+
+    @Test fun strict_viet_staysPlain() = assertEquals("viet", typeStrict("viet"))
+    @Test fun strict_tien_staysPlain() = assertEquals("tien", typeStrict("tien"))
+    @Test fun strict_eViaDoubleE() = assertEquals("viêt", typeStrict("vieet"))
+    @Test fun strict_tone_stillWorks() = assertEquals("á", typeStrict("as"))
+    @Test fun strict_circumflex_stillWorks() = assertEquals("â", typeStrict("aa"))
+    @Test fun strict_horn_stillWorks() = assertEquals("thương", typeStrict("thuongw"))
+    @Test fun strict_dd_stillWorks() = assertEquals("đ", typeStrict("dd"))
 }

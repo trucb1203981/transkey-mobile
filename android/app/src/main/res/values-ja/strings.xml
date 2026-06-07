@@ -90,6 +90,7 @@
     <string name="lens_regrant_prompt">このアプリを翻訳するにはタップ</string>
     <string name="bubble_hide_for_screenshot">スクショ用にバブルを隠す</string>
     <string name="ime_action_translate">翻訳</string>
+    <string name="ime_quota_reached">本日の利用上限に達しました。タップでアップグレード</string>
     <string name="ime_action_refine">推敲</string>
     <string name="ime_processing">処理中…</string>
     <string name="ime_no_text">まずテキストを入力してください</string>

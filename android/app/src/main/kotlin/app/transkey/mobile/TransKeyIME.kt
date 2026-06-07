@@ -282,6 +282,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             onGridTap = { openSettings() }
             onUndoTap = { performUndo() }
             onExpandTap = { openCandidateGrid() }
+            onNoticeTap = { openUpgradeFromKeyboard() }
         }
         refreshActionLabels()
         refreshLangPill()
@@ -711,6 +712,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         // Cursor jumped to a new field — flush any leftover Telex buffer
         // so the next keypress starts a clean word in the new context.
         telex.reset()
+        // Strict Telex unless the user opted into autocorrect: with it OFF
+        // (default) typing plain letters never auto-fills the iê/yê rime, so
+        // "viet" stays "viet" (no surprise diacritics for no-tone typists).
+        telex.autoRime = autocorrectEnabled
         hangul.reset()
         romaji.reset()
         chunjiin.reset()
@@ -724,6 +729,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         // whole-field replace - clearing undo there would hide the chip the
         // instant it appears.
         if (!restarting) clearUndo()
+        if (!restarting) clearQuotaNotice() // a genuinely new field drops the banner
         refreshActionLabels()  // pick up a UI-language change since last shown
         refreshLangPill()      // reflect any source/target change since last shown
         applyPremiumChrome()   // gradient border for paid, flat panel for free
@@ -818,6 +824,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
     override fun onKey(primaryCode: Int, keyCodes: IntArray?) {
         val ic = currentInputConnection ?: return
+        clearQuotaNotice() // any keypress means the user moved on from the banner
         when (primaryCode) {
             KEYCODE_SHIFT -> {
                 if (mode == Mode.TH) {
@@ -1585,8 +1592,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         currentActionReq = reqId
         actionInFlight = true
         suggestionStrip?.setProcessing(true, localized(R.string.ime_processing))
-        TransKeyApp.registerImeResult(reqId) { translation, error ->
-            mainHandler.post { onTranslateResult(reqId, translation, error) }
+        TransKeyApp.registerImeResult(reqId) { translation, error, errorCode ->
+            mainHandler.post { onTranslateResult(reqId, translation, error, errorCode) }
         }
         invokeTranslate(engine, text, mode, targetLang, reqId, attempt = 0)
     }
@@ -1630,7 +1637,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             object : io.flutter.plugin.common.MethodChannel.Result {
                 override fun success(result: Any?) { /* delivered via deliverResult */ }
                 override fun error(code: String, msg: String?, details: Any?) {
-                    mainHandler.post { onTranslateResult(reqId, null, msg ?: code) }
+                    mainHandler.post { onTranslateResult(reqId, null, msg ?: code, null) }
                 }
                 override fun notImplemented() {
                     if (attempt < 5) {
@@ -1639,7 +1646,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
                         }, 300L)
                     } else {
                         mainHandler.post {
-                            onTranslateResult(reqId, null, localized(R.string.bubble_panel_app_not_ready))
+                            onTranslateResult(reqId, null, localized(R.string.bubble_panel_app_not_ready), null)
                         }
                     }
                 }
@@ -1647,13 +1654,25 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         )
     }
 
-    private fun onTranslateResult(reqId: Long, translation: String?, error: String?) {
+    private fun onTranslateResult(
+        reqId: Long,
+        translation: String?,
+        error: String?,
+        errorCode: String?,
+    ) {
         // Superseded by a field switch / newer request — drop it.
         if (reqId != currentActionReq || !actionInFlight) return
         actionInFlight = false
         currentActionReq = -1L
         suggestionStrip?.setProcessing(false)
         if (!error.isNullOrEmpty() || translation.isNullOrEmpty()) {
+            // Free user hit the daily quota: a 2s toast is too easy to miss
+            // while typing, so persist a tappable banner on the strip (clears on
+            // the next keypress / field switch) that opens the upgrade screen.
+            if (errorCode == "quota_exceeded") {
+                suggestionStrip?.setNotice(localized(R.string.ime_quota_reached))
+                return
+            }
             val msg = error?.takeIf { it.isNotEmpty() }
                 ?: localized(R.string.bubble_panel_translation_failed)
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
@@ -1664,6 +1683,19 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         pendingUndoText = null
         replaceAllText(translation)
         refreshUndo()
+    }
+
+    /** Hide the quota banner (user resumed typing / switched field). */
+    private fun clearQuotaNotice() {
+        suggestionStrip?.setNotice("")
+    }
+
+    /** Banner tapped: open the in-app upgrade screen, same route the bubble's
+     *  feature upsell uses (a screen, not a sheet, for a clean landing). */
+    private fun openUpgradeFromKeyboard() {
+        clearQuotaNotice()
+        invokeBubble("showKeyboardUpsell")
+        bringAppToFront()
     }
 
     /** Restore the field to its pre-action text, then clear the undo state. */
@@ -1745,9 +1777,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         val root = rootView as? android.view.ViewGroup ?: return
         val kv = keyboardView ?: return
         currentInputConnection?.let { commitComposed(it) }
-        val labels = BubbleService.LANG_LABELS
-        val sources = BubbleService.SOURCE_LANGS.map { code -> code to (labels[code] ?: code) }
-        val targets = BubbleService.TARGET_LANGS.map { code -> code to (labels[code] ?: code) }
+        // Use the SAME server-synced catalog the bubble picker uses (Dart mirrors
+        // /features languages to flutter.tk_lang_catalog). Falls back to the
+        // hardcoded short list pre-login / when the catalog hasn't synced yet.
+        val prefs = flutterPrefs()
+        val labels = BubbleService.effectiveLangLabels(prefs)
+        val sources = BubbleService.effectiveSourceLangs(prefs).map { code -> code to (labels[code] ?: code) }
+        val targets = BubbleService.effectiveTargetLangs(prefs).map { code -> code to (labels[code] ?: code) }
         val h = kv.height + (suggestionStrip?.height ?: 0)
 
         // Drop any stale instance from a previous open, then build fresh.
@@ -1830,7 +1866,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         settingsView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         val view = KeyboardSettingsView(this)
         settingsView = view
-        view.onAutocorrectChange = { on -> prefs.edit().putBoolean("autocorrect", on).apply() }
+        view.onAutocorrectChange = { on ->
+            prefs.edit().putBoolean("autocorrect", on).apply()
+            telex.autoRime = on // strict Telex (no auto iê) follows autocorrect live
+        }
         view.onHapticChange = { on -> prefs.edit().putBoolean("haptic", on).apply() }
         view.onAutocapChange = { on -> prefs.edit().putBoolean("autocap", on).apply() }
         view.onDoubleSpaceChange = { on -> prefs.edit().putBoolean("dot_double_space", on).apply() }

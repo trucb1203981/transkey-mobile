@@ -23,11 +23,11 @@
     <Row>
         <Key android:codes="163" android:keyLabel="£"/>
         <Key android:codes="8364" android:keyLabel="€"/>
-        <Key android:codes="36"  android:keyLabel="$"/>
-        <Key android:codes="162" android:keyLabel="¢"/>
         <Key android:codes="94"  android:keyLabel="^"/>
         <Key android:codes="176" android:keyLabel="°"/>
         <Key android:codes="61"  android:keyLabel="="/>
+        <Key android:codes="60"  android:keyLabel="&lt;"/>
+        <Key android:codes="62"  android:keyLabel="&gt;"/>
         <Key android:codes="123" android:keyLabel="{"/>
         <Key android:codes="125" android:keyLabel="}"/>
         <Key android:codes="92"  android:keyLabel="\\"/>

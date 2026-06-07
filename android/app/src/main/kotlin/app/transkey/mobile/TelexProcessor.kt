@@ -23,6 +23,20 @@ class TelexProcessor {
     private var composed = ""
     private var literal = false
 
+    /**
+     * Strict-Telex switch for the ONLY rule that adds a diacritic without an
+     * explicit Telex keystroke: the "ie/ye + consonant -> iê/yê" rime fill (see
+     * [normalizeIeYeUe]). Every other transform (tones s/f/r/x/j, doubled
+     * aa/ee/oo, dd, the w horn) is triggered by a key the user actually pressed.
+     *
+     * When false, "viet" stays "viet" and ê must be typed explicitly as "ee"
+     * ("vieet"). The keyboard wires this to the autocorrect setting, so with
+     * autocorrect OFF (the default) typing plain letters yields plain text -
+     * what someone typing Vietnamese WITHOUT diacritics expects. Default true
+     * keeps the convenience for callers/tests that don't set it.
+     */
+    var autoRime: Boolean = true
+
     val hasComposingText: Boolean get() = raw.isNotEmpty()
     val composingText: String get() = composed
     val literalIntent: Boolean get() = literal
@@ -116,7 +130,7 @@ class TelexProcessor {
             }
 
             if (!handled) out.append(c)
-            normalizeIeYeUe(out)
+            if (autoRime) normalizeIeYeUe(out)
         }
         composed = out.toString()
         literal = lit

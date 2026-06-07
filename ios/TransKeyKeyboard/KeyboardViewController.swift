@@ -24,6 +24,7 @@ class KeyboardViewController: UIInputViewController {
     private var resultSourceLabel: UILabel!
     private var resultLabel: UILabel!
     private var resultErrorLabel: UILabel!
+    private var upgradeBtn: UIButton!
     private var activityIndicator: UIActivityIndicatorView!
     private var insertBtn: UIButton!
     private var undoBtn: UIButton!
@@ -214,6 +215,20 @@ class KeyboardViewController: UIInputViewController {
         resultErrorLabel.isHidden = true
         stack.addArrangedSubview(resultErrorLabel)
 
+        // Upgrade CTA — shown only on a daily-quota error so the free user has
+        // a clear path out (opens the host app's upgrade screen). A prominent
+        // filled pill (not the dimmed text buttons) so it reads as the action.
+        upgradeBtn = UIButton(type: .system)
+        upgradeBtn.setTitle("Upgrade for unlimited", for: .normal)
+        upgradeBtn.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        upgradeBtn.setTitleColor(.white, for: .normal)
+        upgradeBtn.backgroundColor = primaryColor
+        upgradeBtn.layer.cornerRadius = 8
+        upgradeBtn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
+        upgradeBtn.addTarget(self, action: #selector(upgradeTapped), for: .touchUpInside)
+        upgradeBtn.isHidden = true
+        stack.addArrangedSubview(upgradeBtn)
+
         // Loading
         activityIndicator = UIActivityIndicatorView(style: .medium)
         activityIndicator.hidesWhenStopped = true
@@ -354,7 +369,7 @@ class KeyboardViewController: UIInputViewController {
                 lastSource = clipboard
                 showResult(source: clipboard, result: translation)
             } catch {
-                showResultError(error.localizedDescription)
+                handleRequestError(error)
             }
             setLoading(false)
         }
@@ -385,7 +400,7 @@ class KeyboardViewController: UIInputViewController {
                 showResult(source: fullText, result: translation)
                 autoInsertReply(originalText: fullText, replyText: translation)
             } catch {
-                showResultError(error.localizedDescription)
+                handleRequestError(error)
             }
             setLoading(false)
         }
@@ -441,7 +456,7 @@ class KeyboardViewController: UIInputViewController {
                 lastSource = context
                 showResult(source: context, result: refined)
             } catch {
-                showResultError(error.localizedDescription)
+                handleRequestError(error)
             }
             setLoading(false)
         }
@@ -472,6 +487,7 @@ class KeyboardViewController: UIInputViewController {
         undoTimer = nil
         undoBtn?.isHidden = true
         insertBtn?.isHidden = false
+        upgradeBtn?.isHidden = true
         undoSnapshot = nil
     }
 
@@ -483,12 +499,14 @@ class KeyboardViewController: UIInputViewController {
         resultSourceLabel.text = String(source.prefix(100))
         resultLabel.text = ""
         resultErrorLabel.isHidden = true
+        upgradeBtn.isHidden = true
     }
 
     private func showResult(source: String, result: String) {
         resultSourceLabel.text = String(source.prefix(100))
         resultLabel.text = result
         resultErrorLabel.isHidden = true
+        upgradeBtn.isHidden = true
     }
 
     private func showResultError(_ message: String) {
@@ -500,6 +518,38 @@ class KeyboardViewController: UIInputViewController {
         resultLabel.text = ""
         resultErrorLabel.text = message
         resultErrorLabel.isHidden = false
+        // Generic errors never offer the upgrade CTA; only showQuotaError does.
+        upgradeBtn.isHidden = true
+    }
+
+    /// Route an API error: a daily-quota hit gets the upgrade CTA so the free
+    /// user can act on it; everything else is a plain red message.
+    private func handleRequestError(_ error: Error) {
+        if case APIError.quotaExceeded = error {
+            showResultError(APIError.quotaExceeded.errorDescription ?? "Daily quota exceeded.")
+            upgradeBtn.isHidden = false
+        } else {
+            showResultError(error.localizedDescription)
+        }
+    }
+
+    @objc private func upgradeTapped() {
+        openHostApp("transkey://upgrade")
+    }
+
+    /// Open a host-app URL from the keyboard extension. extensionContext.open is
+    /// unreliable for keyboards, so walk the responder chain to UIApplication
+    /// and call open(_:) there (the standard keyboard-extension pattern).
+    private func openHostApp(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        var responder: UIResponder? = self
+        while let r = responder {
+            if let app = r as? UIApplication {
+                app.open(url, options: [:], completionHandler: nil)
+                return
+            }
+            responder = r.next
+        }
     }
 
     private func setLoading(_ loading: Bool) {

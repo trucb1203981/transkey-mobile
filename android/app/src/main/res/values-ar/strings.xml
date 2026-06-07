@@ -96,6 +96,7 @@
     <string name="lens_regrant_prompt">اضغط لترجمة هذا التطبيق</string>
     <string name="bubble_hide_for_screenshot">إخفاء الفقاعة لالتقاط الشاشة</string>
     <string name="ime_action_translate">ترجمة</string>
+    <string name="ime_quota_reached">انتهت محاولاتك اليوم. اضغط للترقية</string>
     <string name="ime_action_refine">تحسين</string>
     <string name="ime_processing">جارٍ المعالجة…</string>
     <string name="ime_no_text">أدخل بعض النص أولاً</string>

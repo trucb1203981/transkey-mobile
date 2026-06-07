@@ -96,6 +96,7 @@
     <string name="lens_regrant_prompt">Tocca per tradurre questa app</string>
     <string name="bubble_hide_for_screenshot">Nascondi bolla per screenshot</string>
     <string name="ime_action_translate">Traduci</string>
+    <string name="ime_quota_reached">Limite giornaliero raggiunto. Tocca per migliorare</string>
     <string name="ime_action_refine">Rifinisci</string>
     <string name="ime_processing">Elaborazione…</string>
     <string name="ime_no_text">Inserisci prima del testo</string>

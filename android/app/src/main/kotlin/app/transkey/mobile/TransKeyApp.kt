@@ -23,9 +23,12 @@ class TransKeyApp : FlutterApplication() {
         // overlay. Lookups are by registry membership, so the two surfaces
         // never cross even if their requestId numbers were to overlap.
         private val imeResultListeners =
-            java.util.concurrent.ConcurrentHashMap<Long, (translation: String?, error: String?) -> Unit>()
+            java.util.concurrent.ConcurrentHashMap<Long, (translation: String?, error: String?, errorCode: String?) -> Unit>()
 
-        fun registerImeResult(reqId: Long, cb: (translation: String?, error: String?) -> Unit) {
+        fun registerImeResult(
+            reqId: Long,
+            cb: (translation: String?, error: String?, errorCode: String?) -> Unit,
+        ) {
             imeResultListeners[reqId] = cb
         }
 
@@ -39,10 +42,17 @@ class TransKeyApp : FlutterApplication() {
          * Called from BOTH deliverResult handlers (TransKeyApp's and the one
          * MainActivity installs over it on the shared engine), so the result
          * lands on the keyboard whichever handler currently owns the channel.
+         * [errorCode] is the machine-readable code (e.g. "quota_exceeded") the
+         * IME branches on; null for success/generic failures.
          */
-        fun dispatchImeResult(reqId: Long, translation: String?, error: String?): Boolean {
+        fun dispatchImeResult(
+            reqId: Long,
+            translation: String?,
+            error: String?,
+            errorCode: String?,
+        ): Boolean {
             val cb = imeResultListeners.remove(reqId) ?: return false
-            cb(translation, error)
+            cb(translation, error, errorCode)
             return true
         }
     }
@@ -71,6 +81,7 @@ class TransKeyApp : FlutterApplication() {
                     val romanization = args?.get("romanization") as? String
                     val detectedLang = args?.get("detectedLang") as? String
                     val error = args?.get("error") as? String
+                    val errorCode = args?.get("errorCode") as? String
                     val reqId = (args?.get("requestId") as? Number)?.toLong() ?: -1L
                     // Bilingual suggestions arrive as two parallel arrays —
                     // sources are the reply text to send back to the
@@ -87,7 +98,7 @@ class TransKeyApp : FlutterApplication() {
 
                     // Keyboard-originated request? Hand the result to its
                     // listener instead of waking BubbleService/the overlay.
-                    if (!dispatchImeResult(reqId, translation, error)) {
+                    if (!dispatchImeResult(reqId, translation, error, errorCode)) {
                         val intent = Intent(this, BubbleService::class.java).apply {
                             action = BubbleService.ACTION_SHOW_RESULT
                             putExtra(BubbleService.EXTRA_TRANSLATION, translation)

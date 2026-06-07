@@ -24,6 +24,11 @@ class AppGroupBridge {
       });
     } on PlatformException catch (e) {
       debugPrint('[AppGroupBridge] saveAuth failed: $e');
+    } on MissingPluginException {
+      // iOS keyboard / share extensions + App Group are DEFERRED (need Xcode
+      // targets + a paid account), so the native `transkey/appgroup` channel
+      // isn't registered yet — there is nothing to write to. Degrade to a
+      // no-op instead of letting the exception escape into the auth flow.
     }
   }
 
@@ -34,6 +39,10 @@ class AppGroupBridge {
       await _channel.invokeMethod<void>('clearAuth');
     } on PlatformException catch (e) {
       debugPrint('[AppGroupBridge] clearAuth failed: $e');
+    } on MissingPluginException {
+      // See saveAuth: the iOS App Group channel is deferred. clearAuth runs in
+      // logout() with no caller-side try/catch, so an uncaught MissingPlugin
+      // here would abort logout and leave the UI stuck "logged in".
     }
   }
 }

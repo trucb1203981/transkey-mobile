@@ -188,6 +188,7 @@ class MainActivity : FlutterActivity() {
                         val romanization = args?.get("romanization") as? String
                         val detectedLang = args?.get("detectedLang") as? String
                         val error = args?.get("error") as? String
+                        val errorCode = args?.get("errorCode") as? String
                         val reqId = (args?.get("requestId") as? Number)?.toLong() ?: -1L
                         val sources = (args?.get("suggestionSources") as? List<*>)
                             ?.map { (it as? String).orEmpty() }
@@ -197,7 +198,7 @@ class MainActivity : FlutterActivity() {
                             ?.toTypedArray()
                         // Keyboard-originated request routes back to the IME;
                         // otherwise forward to BubbleService/the overlay.
-                        if (!TransKeyApp.dispatchImeResult(reqId, translation, error)) {
+                        if (!TransKeyApp.dispatchImeResult(reqId, translation, error, errorCode)) {
                             val i = Intent(this, BubbleService::class.java).apply {
                                 action = BubbleService.ACTION_SHOW_RESULT
                                 putExtra(BubbleService.EXTRA_TRANSLATION, translation)

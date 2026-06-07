@@ -96,6 +96,7 @@
     <string name="lens_regrant_prompt">Нажмите, чтобы перевести это приложение</string>
     <string name="bubble_hide_for_screenshot">Скрыть пузырь для скриншота</string>
     <string name="ime_action_translate">Перевести</string>
+    <string name="ime_quota_reached">Дневной лимит исчерпан. Нажмите, чтобы улучшить</string>
     <string name="ime_action_refine">Улучшить</string>
     <string name="ime_processing">Обработка…</string>
     <string name="ime_no_text">Сначала введите текст</string>

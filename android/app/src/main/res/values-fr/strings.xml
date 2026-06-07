@@ -90,6 +90,7 @@
     <string name="lens_regrant_prompt">Appuyez pour traduire cette appli</string>
     <string name="bubble_hide_for_screenshot">Masquer la bulle pour la capture</string>
     <string name="ime_action_translate">Traduire</string>
+    <string name="ime_quota_reached">Limite du jour atteinte. Touchez pour améliorer</string>
     <string name="ime_action_refine">Affiner</string>
     <string name="ime_processing">Traitement…</string>
     <string name="ime_no_text">Saisissez d\'abord du texte</string>

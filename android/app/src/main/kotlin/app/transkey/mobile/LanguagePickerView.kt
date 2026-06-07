@@ -126,7 +126,16 @@ class LanguagePickerView(context: Context) : LinearLayout(context) {
         val tv = TextView(context).apply {
             text = label
             textSize = 16f
-            gravity = Gravity.CENTER_VERTICAL
+            // Keep every row absolute-left like Gboard. START gravity resolves
+            // against layoutDirection, which an RTL name (العربية / اردو) flips
+            // to RTL so the label floats to the right edge, out of line with the
+            // others. Pin to a full-width, LTR, ABSOLUTE-left box so RTL names
+            // hug the left too (glyphs still shape RTL internally). Mirrors the
+            // same fix in VoicePickerView.langRow.
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            textDirection = View.TEXT_DIRECTION_LTR
+            gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
             setPadding(dp(18), dp(11), dp(18), dp(11))
             setTextColor(rowText)
             isClickable = true

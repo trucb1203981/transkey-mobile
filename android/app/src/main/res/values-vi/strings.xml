@@ -88,6 +88,7 @@
     <string name="lens_regrant_prompt">Chạm để dịch ứng dụng này</string>
     <string name="bubble_hide_for_screenshot">Ẩn bóng để chụp màn hình</string>
     <string name="ime_action_translate">Dịch</string>
+    <string name="ime_quota_reached">Hết lượt dùng hôm nay. Chạm để nâng cấp</string>
     <string name="ime_action_refine">Trau chuốt</string>
     <string name="ime_processing">Đang xử lý…</string>
     <string name="ime_no_text">Hãy nhập nội dung trước</string>
