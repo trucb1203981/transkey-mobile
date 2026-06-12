@@ -1108,11 +1108,41 @@ Future<void> _sendResultToBubble({
 
 // ── App widget ──
 
-class TransKeyApp extends ConsumerWidget {
+class TransKeyApp extends ConsumerStatefulWidget {
   const TransKeyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TransKeyApp> createState() => _TransKeyAppState();
+}
+
+class _TransKeyAppState extends ConsumerState<TransKeyApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // The language pair can change outside the app while it sits in the
+    // background: the Android bubble/keyboard writes SharedPreferences, the
+    // iOS keyboard writes the App Group (dirty flag). Re-read on resume so
+    // the home language bar shows the current pair.
+    ref.read(languageSettingsProvider.notifier).reload().catchError((Object e) {
+      debugPrint('[lifecycle] language reload failed: $e');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final locale =
         ref.watch(localeProvider).valueOrNull ?? const Locale('en');

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/auth/app_group_bridge.dart';
+
 const _kSourceLangKey = 'tk_source_lang';
 const _kTargetLangKey = 'tk_target_lang';
 const _kRecentTargetsKey = 'tk_recent_target_langs';
@@ -42,10 +44,36 @@ class LanguageSettingsNotifier extends AsyncNotifier<LanguageSettings> {
   @override
   Future<LanguageSettings> build() async {
     final prefs = await SharedPreferences.getInstance();
-    return LanguageSettings(
+    var settings = LanguageSettings(
       sourceLang: prefs.getString(_kSourceLangKey) ?? _kDefaultSourceLang,
       targetLang: prefs.getString(_kTargetLangKey) ?? _kDefaultTargetLang,
     );
+    settings = await _mergeFromAppGroup(prefs, settings);
+    return settings;
+  }
+
+  /// iOS: the keyboard extension can change the pair (App Group store, dirty
+  /// flag). Adopt its values when dirty, otherwise push ours to the group so
+  /// the extensions always mirror the app. No-op on Android (bridge is null).
+  Future<LanguageSettings> _mergeFromAppGroup(
+    SharedPreferences prefs,
+    LanguageSettings current,
+  ) async {
+    final group = await AppGroupBridge.readLanguages();
+    if (group == null) return current;
+    if (group.dirty) {
+      await prefs.setString(_kSourceLangKey, group.source);
+      await prefs.setString(_kTargetLangKey, group.target);
+      await _pushRecentTarget(group.target);
+      return LanguageSettings(sourceLang: group.source, targetLang: group.target);
+    }
+    if (group.source != current.sourceLang || group.target != current.targetLang) {
+      await AppGroupBridge.saveLanguages(
+        source: current.sourceLang,
+        target: current.targetLang,
+      );
+    }
+    return current;
   }
 
   Future<void> setSourceLang(String code) async {
@@ -53,6 +81,7 @@ class LanguageSettingsNotifier extends AsyncNotifier<LanguageSettings> {
     if (current == null || current.sourceLang == code) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSourceLangKey, code);
+    await AppGroupBridge.saveLanguages(source: code, target: current.targetLang);
     state = AsyncData(current.copyWith(sourceLang: code));
   }
 
@@ -62,6 +91,7 @@ class LanguageSettingsNotifier extends AsyncNotifier<LanguageSettings> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kTargetLangKey, code);
     await _pushRecentTarget(code);
+    await AppGroupBridge.saveLanguages(source: current.sourceLang, target: code);
     state = AsyncData(current.copyWith(targetLang: code));
   }
 
@@ -74,6 +104,10 @@ class LanguageSettingsNotifier extends AsyncNotifier<LanguageSettings> {
     // The old source becomes the new target — record it so the picker's
     // "Recent" section reflects every way the user reaches a target lang.
     await _pushRecentTarget(current.sourceLang);
+    await AppGroupBridge.saveLanguages(
+      source: current.targetLang,
+      target: current.sourceLang,
+    );
     state = AsyncData(LanguageSettings(
       sourceLang: current.targetLang,
       targetLang: current.sourceLang,
@@ -81,22 +115,25 @@ class LanguageSettingsNotifier extends AsyncNotifier<LanguageSettings> {
   }
 
   /// Re-reads from SharedPreferences. Use when external code (native bubble
-  /// service) may have changed the values — e.g. when the app resumes from
-  /// background after the user changed languages in the floating popup.
-  /// Calls prefs.reload() to invalidate the shared_preferences Dart-side
-  /// cache so native writes become visible.
+  /// service, iOS keyboard extension) may have changed the values — e.g. when
+  /// the app resumes from background after the user changed languages in the
+  /// floating popup. Calls prefs.reload() to invalidate the shared_preferences
+  /// Dart-side cache so native writes become visible.
   Future<void> reload() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final source = prefs.getString(_kSourceLangKey) ?? _kDefaultSourceLang;
-    final target = prefs.getString(_kTargetLangKey) ?? _kDefaultTargetLang;
+    var settings = LanguageSettings(
+      sourceLang: prefs.getString(_kSourceLangKey) ?? _kDefaultSourceLang,
+      targetLang: prefs.getString(_kTargetLangKey) ?? _kDefaultTargetLang,
+    );
+    settings = await _mergeFromAppGroup(prefs, settings);
     final current = state.valueOrNull;
     if (current != null &&
-        current.sourceLang == source &&
-        current.targetLang == target) {
+        current.sourceLang == settings.sourceLang &&
+        current.targetLang == settings.targetLang) {
       return;
     }
-    state = AsyncData(LanguageSettings(sourceLang: source, targetLang: target));
+    state = AsyncData(settings);
   }
 }
 

@@ -565,6 +565,31 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             }
             final layoutWidth = math.max(cardWidth, maxRight - left);
 
+            // Cap DOWNWARD growth at the nearest block BELOW the card's
+            // expanded span. The readable-floor font (below) grows the card
+            // past a tiny source box, and without this cap the card paints
+            // over the next dish row on dense menus - overlapping cards that
+            // hide the row underneath. Width expansion stops at same-row
+            // neighbours; this is the matching guard for the vertical axis.
+            final spanRight = left + layoutWidth;
+            var maxBottom = viewSize.height - 4;
+            for (var j = 0; j < viewRects.length; j++) {
+              if (j == i) continue;
+              final r = viewRects[j];
+              final hOverlap =
+                  math.min(spanRight, r.right) - math.max(left, r.left);
+              if (hOverlap <= 0) continue;
+              // Only blocks whose top sits under this card's midline count
+              // as "below" - a same-row neighbour with a slightly offset box
+              // must not cap the height to a sliver.
+              if (r.top >= top + boxH * 0.6 && r.top < maxBottom) {
+                maxBottom = r.top - 4;
+              }
+            }
+            // Never tighter than the source box itself: rows whose source
+            // bboxes already touch keep at least their own text mass.
+            final availHeight = math.max(boxH, maxBottom - top);
+
             // Normal mode: auto-fit font to source box height.
             final lines = _sourceLineCount(block.text);
             final startFont = _estimateSourceFont(boxH, lines);
@@ -585,7 +610,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             // (tightH below is no longer hard-capped to the tiny source
             // height); the width already expanded into free space, so the
             // text stays on as few lines as the room allows.
-            final fontSize = isTranslated
+            var fontSize = isTranslated
                 ? math.max(fit1.fontSize, 13.0)
                 : fit1.fontSize;
             // Hard-lock the card to the source OCR box height. Earlier
@@ -628,25 +653,48 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             var tightW = layoutWidth;
             var tightH = cardHeight;
             if (!(widget.showOriginalAlways && isTranslated)) {
-              final renderedFont = fontSize * widget.fontScale;
-              final tp = TextPainter(
-                text: TextSpan(
-                  text: displayText,
-                  style: TextStyle(
-                    fontSize: renderedFont,
-                    fontWeight:
-                        isTranslated ? FontWeight.w500 : FontWeight.normal,
-                    height: 1.25,
-                  ),
-                ),
-                textDirection: TextDirection.ltr,
-              )..layout(maxWidth: math.max(20, layoutWidth - _kCardHPad * 2));
-              tightW = math.min(layoutWidth, tp.size.width + _kCardHPad * 2);
+              TextPainter measure(double font) => TextPainter(
+                    text: TextSpan(
+                      text: displayText,
+                      style: TextStyle(
+                        fontSize: font,
+                        fontWeight: isTranslated
+                            ? FontWeight.w500
+                            : FontWeight.normal,
+                        height: 1.25,
+                      ),
+                    ),
+                    textDirection: TextDirection.ltr,
+                  )..layout(
+                      maxWidth: math.max(20, layoutWidth - _kCardHPad * 2));
+
+              var tp = measure(fontSize * widget.fontScale);
               // Grow DOWN to fit the rendered text. The readable-floor font
               // above can exceed the tiny source box, and clipping to boxH
               // would cut the translation off. The width already expanded, so
               // height growth stays minimal (mostly one readable line).
               tightH = tp.size.height + _kCardVPad * 2;
+              // The readable floor can still overflow the gap to the row
+              // below. Refit the font into the available height so the card
+              // stops short of the next block instead of painting over it.
+              // If even the minimum font can't fit (huge translation over a
+              // hairline gap) we keep the overflow - never truncate text.
+              // fontScale > 1.0 is the user explicitly asking for bigger
+              // text at the cost of overlap, so the slider bypasses this.
+              if (tightH > availHeight && widget.fontScale <= 1.0) {
+                final fit2 = _fitFont(
+                  text: displayText,
+                  maxWidth: layoutWidth,
+                  maxHeight: availHeight,
+                  startFont: fontSize,
+                  fontWeight:
+                      isTranslated ? FontWeight.w500 : FontWeight.normal,
+                );
+                fontSize = fit2.fontSize;
+                tp = measure(fontSize * widget.fontScale);
+                tightH = tp.size.height + _kCardVPad * 2;
+              }
+              tightW = math.min(layoutWidth, tp.size.width + _kCardHPad * 2);
             }
 
             cards.add(_CardLayout(

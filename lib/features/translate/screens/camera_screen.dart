@@ -22,6 +22,7 @@ import '../../../core/camera/text_tracker.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
+import '../../glossary/providers/glossary_provider.dart';
 import '../../translate/providers/camera_settings_provider.dart';
 import '../../translate/providers/features_provider.dart';
 import '../../translate/providers/language_settings_provider.dart';
@@ -332,6 +333,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     _cameraService.liveDetectionEnabled = enabled;
     _cameraService.liveSourceHint =
         ref.read(languageSettingsProvider).valueOrNull?.sourceLang;
+    // iOS: glossary source terms become Apple Vision customWords so domain
+    // names (dishes, brands, character names) survive language correction.
+    // Android's ML Kit has no equivalent, skip the read there.
+    _cameraService.customOcrWords = Platform.isIOS
+        ? ref
+            .read(glossaryProvider)
+            .entries
+            .map((e) => e.source.trim())
+            .where((s) => s.isNotEmpty)
+            .toList()
+        : const [];
     // Disabled now → clear any boxes left from a menu/sign session.
     if (!enabled && _liveBlocks.isNotEmpty) {
       _liveTracker.reset();

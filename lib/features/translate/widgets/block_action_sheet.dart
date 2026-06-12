@@ -181,8 +181,12 @@ class BlockActionSheet extends ConsumerWidget {
             // breaking a block into lines (a dish per row, a sign's phone /
             // address per row) is the point. On other scenes (manga,
             // document, auto) a long multi-line block would emit a row per
-            // line, bloating the sheet, so we skip them there.
-            if (scene == 'menu' || scene == 'sign')
+            // line, bloating the sheet, so we skip them there. Sign gets the
+            // SEMANTIC split (store name / phone / address groups) instead
+            // of raw lines.
+            if (scene == 'sign')
+              ..._buildSignSplitRows(context, ref)
+            else if (scene == 'menu')
               ..._buildPerLineCopyRows(context, ref),
             const Divider(height: 1),
             // Action list — Material ListTile so the touch targets get
@@ -303,6 +307,197 @@ class BlockActionSheet extends ConsumerWidget {
     ];
   }
 
+  /// Semantic split for SIGN blocks. A storefront sign aggregates into
+  /// ONE block ("Tuấn Vũ\nTẠO MẪU TÓC NAM NỮ\nĐT: 0967 678 161\n213
+  /// TÂY HÒA - Q9") and the user almost always wants exactly one of
+  /// three things out of it: the STORE NAME (to search), a PHONE
+  /// NUMBER (to dial) or the ADDRESS (to paste into Maps). Instead of
+  /// one raw row per line we classify and regroup:
+  ///   - phone numbers are EXTRACTED from their line (the "ĐT:" label
+  ///     is dropped, a line holding two numbers becomes two rows, the
+  ///     copied text is stripped to a dial-ready number);
+  ///   - consecutive address lines are joined into one row ("213 TÂY
+  ///     HÒA", "Q9" → "213 TÂY HÒA, Q9") so Maps gets the full address
+  ///     in one paste;
+  ///   - the leading non-phone non-address lines are joined as the
+  ///     store name (signs put the brand on top, often across 2 lines).
+  /// Lines that fit nowhere stay as generic copy rows so nothing is
+  /// ever lost by the grouping.
+  List<Widget> _buildSignSplitRows(BuildContext context, WidgetRef ref) {
+    final lines = block.text
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (lines.length < 2) return const [];
+
+    final phones = <String>[];
+    final addressLines = <String>[];
+    final nameLines = <String>[];
+    final otherLines = <String>[];
+    // The store name is the LEADING run of unclassified lines; once a
+    // phone / address line appears, later unclassified lines (slogans,
+    // opening hours) go to the generic bucket instead.
+    var headerDone = false;
+
+    for (final line in lines) {
+      final extracted = _extractPhoneRuns(line);
+      var rest = line;
+      for (final run in extracted) {
+        rest = rest.replaceFirst(run, ' ');
+      }
+      if (extracted.isNotEmpty) {
+        phones.addAll(extracted.map(_dialReadyPhone));
+        headerDone = true;
+        // A pure phone line ("ĐT: 0967 678 161") is fully consumed;
+        // a mixed line keeps its non-phone remainder for classification.
+        rest = rest.replaceAll(_phoneLabelRe, ' ').trim();
+        if (_letterCount(rest) < 3) continue;
+      }
+      if (_looksLikeAddress(rest)) {
+        addressLines.add(rest);
+        headerDone = true;
+      } else if (!headerDone) {
+        nameLines.add(rest);
+      } else {
+        otherLines.add(rest);
+      }
+    }
+
+    // Nothing classified → fall back to the plain per-line rows rather
+    // than showing one giant unlabeled "store name".
+    if (phones.isEmpty && addressLines.isEmpty) {
+      return _buildPerLineCopyRows(context, ref);
+    }
+
+    final l = AppLocalizations.of(context)!;
+    final storeName = nameLines.join(' ');
+    final address = addressLines.join(', ');
+
+    void track(String kind) {
+      ref.read(trackingServiceProvider).event('block_copy_line',
+          properties: {
+            'kind': kind,
+            'scene': scene,
+            'lines': lines.length,
+          });
+    }
+
+    void copyWithSnack(String text, String kind) {
+      Clipboard.setData(ClipboardData(text: text));
+      track(kind);
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(l.copied),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    return [
+      const Divider(height: 1),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+        child: Text(
+          l.cameraCopyLineHeader,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.55),
+          ),
+        ),
+      ),
+      if (storeName.isNotEmpty)
+        _LineRow(
+          line: storeName,
+          label: l.cameraSignStoreName,
+          icon: Icons.storefront_outlined,
+          onTap: () => copyWithSnack(storeName, 'store'),
+        ),
+      for (final phone in phones)
+        _LineRow(
+          line: phone,
+          label: l.cameraSignPhone,
+          icon: Icons.phone_outlined,
+          onTap: () => copyWithSnack(phone, 'phone'),
+        ),
+      if (address.isNotEmpty)
+        _LineRow(
+          line: address,
+          label: l.cameraSignAddress,
+          icon: Icons.location_on_outlined,
+          onTap: () => copyWithSnack(address, 'address'),
+        ),
+      for (final line in otherLines)
+        _LineRow(
+          line: line,
+          icon: Icons.content_copy_outlined,
+          onTap: () => copyWithSnack(line, 'line'),
+        ),
+      const SizedBox(height: 6),
+    ];
+  }
+
+  /// Phone-shaped digit runs inside a line: an optional +, then digits
+  /// with common separators, at least 8 digits total. Catches "0967 678
+  /// 161", "0909.123.456", "(028) 3812 3456". A line listing TWO numbers
+  /// ("0946 123 032 - 0902 111 222") matches as ONE run because hyphen /
+  /// space are both separators; [_splitJoinedRun] breaks it apart after.
+  static final RegExp _phoneRunRe = RegExp(r'\+?\d[\d\s().\-]{6,}\d');
+
+  /// Label tokens that commonly precede a phone number on signs. Used
+  /// to blank the label out of a phone line's remainder so "ĐT:" alone
+  /// doesn't survive as a fake store-name/slogan line.
+  static final RegExp _phoneLabelRe = RegExp(
+    r'(điện thoại|đt|sđt|d\.?t\.?|tel|telephone|phone|hotline|fax|zalo|whatsapp|mobile|call|電話|전화|โทร)\s*[:.]*',
+    caseSensitive: false,
+  );
+
+  /// Extract dial-worthy runs (≥ 8 digits) from [line]; returns the
+  /// matched substrings as they appear so the caller can blank them out.
+  List<String> _extractPhoneRuns(String line) {
+    return _phoneRunRe
+        .allMatches(line)
+        .map((m) => m.group(0)!)
+        .expand(_splitJoinedRun)
+        .where((run) => _digitCount(run) >= 8)
+        .toList();
+  }
+
+  /// Split a run holding TWO phone numbers ("0946 123 032 - 0902 111
+  /// 222") into one run per number. Only splits on a hyphen / slash /
+  /// pipe where BOTH sides keep ≥ 8 digits — so a number with internal
+  /// hyphens ("555-123-4567") stays whole (each side of its hyphens is
+  /// under 8 digits).
+  List<String> _splitJoinedRun(String run) {
+    for (final sep in RegExp(r'\s*[-/|]\s*').allMatches(run)) {
+      final leftPart = run.substring(0, sep.start);
+      final rightPart = run.substring(sep.end);
+      if (_digitCount(leftPart) >= 8 && _digitCount(rightPart) >= 8) {
+        return [..._splitJoinedRun(leftPart), ..._splitJoinedRun(rightPart)];
+      }
+    }
+    return [run];
+  }
+
+  int _digitCount(String s) => RegExp(r'\d').allMatches(s).length;
+
+  /// Strip separators so the copied number pastes straight into the
+  /// dialer: "0967 678.161" → "0967678161", keeps a leading +.
+  String _dialReadyPhone(String run) {
+    final plus = run.trimLeft().startsWith('+') ? '+' : '';
+    return plus + run.replaceAll(RegExp(r'\D'), '');
+  }
+
+  /// Letters (any script) in [s] — digits/punctuation excluded. Used to
+  /// decide whether a phone line has meaningful text besides the number.
+  int _letterCount(String s) =>
+      RegExp(r'[^\W\d_]', unicode: true).allMatches(s).length;
+
   /// Heuristics for line classification. Order matters — phones look
   /// like addresses with digits, so phone matches first; address
   /// keywords come next; everything else gets the generic icon.
@@ -345,15 +540,31 @@ class BlockActionSheet extends ConsumerWidget {
       'blvd', 'lane', 'highway',
       // Vietnamese
       'đường', 'phố ', 'quận ', 'p. ', 'q. ', 'phường', 'tp.',
+      'hẻm', 'ngõ', 'đại lộ', 'thị trấn', 'khu phố',
       // Japanese
       '丁目', '番地', '市', '区', '町', '通り',
       // Chinese
       '路', '街', '号', '里',
       // Korean
       '로', '길', '동',
+      // Thai
+      'ถนน', 'ซอย',
     ];
     for (final m in markers) {
       if (lower.contains(m)) return true;
+    }
+    // VN compact district/ward token: "Q9", "Q.9", "P 12". Word-bounded
+    // so a dish code "Q9" alone matches too — acceptable on the sign
+    // scene where this runs.
+    if (RegExp(r'(^|[\s,.-])[qp]\.?\s?\d{1,2}($|[\s,.-])').hasMatch(lower)) {
+      return true;
+    }
+    // House-number lead ("213 Tây Hòa", "25/3A Lê Lợi") — digits then a
+    // separator then a real word. Require ≥3 letters in the line so a
+    // bare price/quantity ("65.000đ") doesn't classify as an address.
+    if (RegExp(r'^\d{1,4}[a-z]?[\s/,.-]').hasMatch(lower) &&
+        _letterCount(line) >= 3) {
+      return true;
     }
     return false;
   }
@@ -501,11 +712,16 @@ class _LineRow extends StatelessWidget {
     required this.line,
     required this.icon,
     required this.onTap,
+    this.label,
   });
 
   final String line;
   final IconData icon;
   final VoidCallback onTap;
+
+  /// Optional semantic caption rendered above the value (sign split:
+  /// "Store name" / "Phone number" / "Address"). Null = plain copy row.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -525,11 +741,31 @@ class _LineRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                line,
-                style: const TextStyle(fontSize: 13, height: 1.3),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (label != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 1),
+                      child: Text(
+                        label!,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  Text(
+                    line,
+                    style: const TextStyle(fontSize: 13, height: 1.3),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 8),

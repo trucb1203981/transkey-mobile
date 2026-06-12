@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/dio_client.dart';
+import '../../../core/auth/app_group_bridge.dart';
 import '../models/language.dart';
 
 /// Shared-prefs keys mirrored to the Android bubble so the native
@@ -210,6 +211,12 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
         await prefs.setBool(_kSharedSummarizeKey, flags.summarize);
         await prefs.setBool(_kSharedExplainKey, flags.explain);
         await prefs.setBool(_kSharedRefineKey, flags.refine);
+        // Same mirror for the iOS keyboard extension (App Group instead of
+        // SharedPreferences); it gates the Reply/Refine chips like Android.
+        await AppGroupBridge.saveFeatures(
+          reply: flags.replyTranslate,
+          refine: flags.refine,
+        );
         // Mirror the server-driven language catalog so the bubble picker
         // shows the SAME list as the home language bar (admin can
         // enable/disable per plan via /admin/features without an app
@@ -226,6 +233,8 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
               .map((l) => {'code': l.code, 'label': l.name ?? l.nativeName})
               .toList());
           await prefs.setString(_kSharedLangsCatalogKey, encoded);
+          // Same catalog for the iOS keyboard picker (App Group mirror).
+          await AppGroupBridge.saveLangCatalog(encoded);
         }
       } catch (e) {
         // Persistence is best-effort — if it fails the bubble falls

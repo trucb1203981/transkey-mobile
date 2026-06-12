@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -142,6 +141,12 @@ class CameraService {
   /// auto. When concrete + script-supported, the stream runs only that
   /// script's recognizer for lower latency.
   String? liveSourceHint;
+
+  /// User glossary source terms, pushed by the camera screen alongside
+  /// [liveSourceHint]. iOS only: fed to Apple Vision as `customWords`, which
+  /// take priority over the built-in lexicon so domain names (dish names,
+  /// brands, character names) survive language correction. No-op on Android.
+  List<String> customOcrWords = const [];
 
   // ── Blur detection (live preview) ─────────────────────────────────
   //
@@ -411,6 +416,26 @@ class CameraService {
       case 'auto':
       default:
         return 1600;
+    }
+  }
+
+  /// Long-edge cap (px) for the iOS Apple Vision OCR decode, per scene.
+  /// Higher than the ML Kit 1600 cap because the downscale happens in
+  /// native ImageIO (hardware, ~free) and Vision's accurate engine stays
+  /// fast on the Neural Engine at these sizes — the extra pixels buy
+  /// fine-print recall (menu footnotes, document body text). Sign text is
+  /// large by nature, so it keeps a lower cap for minimal latency.
+  static int _ocrMaxEdgeForScene(String scene) {
+    switch (scene) {
+      case 'document':
+      case 'menu':
+        return 2560;
+      case 'sign':
+        return 1536;
+      case 'screenshot':
+      case 'auto':
+      default:
+        return 2048;
     }
   }
 
@@ -895,45 +920,45 @@ class CameraService {
     String imagePath, {
     required String scene,
   }) async {
-    final ocrReadyPath = await _writeDownscaled(imagePath, maxEdge: 1600);
+    // The ORIGINAL path goes straight to the native side: ImageIO does a
+    // hardware EXIF-upright decode + long-edge downscale there, which
+    // replaces the Dart decode/resize/re-encode isolate (hundreds of ms on
+    // a 12 MP capture) AND the size-probe decode below — the channel reply
+    // carries the EXIF-applied original dimensions.
     final langs = _visionLangsForHint(liveSourceHint);
-    List<dynamic>? raw;
+    Map<dynamic, dynamic>? raw;
     try {
       final sw = Stopwatch()..start();
-      raw = await _visionChannel.invokeMethod<List<dynamic>>('recognize', {
-        'path': ocrReadyPath,
-        'languages': langs,
-        'level': 'accurate',
-      });
+      raw = await _visionChannel.invokeMethod<Map<dynamic, dynamic>>(
+        'recognize',
+        {
+          'path': imagePath,
+          'languages': langs,
+          'level': 'accurate',
+          'maxEdge': _ocrMaxEdgeForScene(scene),
+          'customWords': customOcrWords,
+        },
+      );
       debugPrint('[OCR] Vision 1-pass: ${sw.elapsedMilliseconds}ms '
-          '(${raw?.length ?? 0} lines)');
+          '(${(raw?['lines'] as List?)?.length ?? 0} lines)');
     } catch (e) {
       debugPrint('[OCR] Vision failed: $e');
       return const <OcrBlock>[];
     }
-    if (raw == null || raw.isEmpty) return const <OcrBlock>[];
+    final lines = (raw?['lines'] as List?) ?? const [];
+    if (lines.isEmpty) return const <OcrBlock>[];
 
     // Vision returns NORMALIZED [0..1] boxes. Map them into the same space the
     // overlay uses: the EXIF-applied dimensions of the ORIGINAL capture (which
     // camera_screen computes via instantiateImageCodec for its `size`). Without
     // this, boxes stay in the downscaled OCR pixel space and shrink into the
-    // top-left corner whenever the capture is larger than the 1600px OCR image.
-    double imgW = 0, imgH = 0;
-    try {
-      final origBytes = await File(imagePath).readAsBytes();
-      final codec = await ui.instantiateImageCodec(origBytes);
-      final frame = await codec.getNextFrame();
-      imgW = frame.image.width.toDouble();
-      imgH = frame.image.height.toDouble();
-      frame.image.dispose();
-      codec.dispose();
-    } catch (e) {
-      debugPrint('[OCR] Vision size decode failed: $e');
-      return const <OcrBlock>[];
-    }
+    // top-left corner whenever the capture is larger than the OCR image.
+    final imgW = (raw!['width'] as num).toDouble();
+    final imgH = (raw['height'] as num).toDouble();
+    if (imgW <= 0 || imgH <= 0) return const <OcrBlock>[];
 
     final blocks = <OcrBlock>[];
-    for (final item in raw) {
+    for (final item in lines) {
       final m = (item as Map).cast<String, dynamic>();
       final text = (m['text'] as String?)?.trim() ?? '';
       if (text.isEmpty) continue;
@@ -1021,6 +1046,142 @@ class CameraService {
         // mixing them with Latin doesn't hurt Latin recall. Order = priority.
         return const ['ja-JP', 'zh-Hans', 'zh-Hant', 'ko-KR', 'en-US'];
     }
+  }
+
+  /// iOS-only: batched Apple Vision per-region recognition. Sends every
+  /// region in ONE channel call; the native side decodes the image once and
+  /// runs a Neural-Engine request per region (regionOfInterest), so there
+  /// are no crop files. Returns blocks keyed by region INDEX into [boxes].
+  ///
+  /// Each region's lines are reassembled in reading order by
+  /// [_orderVisionRegionLines]. The block bbox is the union of the line
+  /// boxes (+4% pad) when [tightenToLineUnion] — the BubbleDetector/TABD
+  /// path, whose input boxes can be whole-bubble crops — otherwise the
+  /// input box is kept (DBNet boxes are already the tight text union, same
+  /// rule as the ML Kit loop).
+  Future<Map<int, OcrBlock>> _visionRecognizeRegions(
+    String imagePath,
+    List<Rect> boxes,
+    double pageW,
+    double pageH,
+    String? scriptHint, {
+    required bool tightenToLineUnion,
+  }) async {
+    if (boxes.isEmpty || pageW <= 0 || pageH <= 0) return const {};
+    final regions = boxes
+        .map((b) => [
+              (b.left / pageW).clamp(0.0, 1.0),
+              (b.top / pageH).clamp(0.0, 1.0),
+              (b.width / pageW).clamp(0.0, 1.0),
+              (b.height / pageH).clamp(0.0, 1.0),
+            ])
+        .toList();
+    Map<dynamic, dynamic>? raw;
+    try {
+      final sw = Stopwatch()..start();
+      raw = await _visionChannel.invokeMethod<Map<dynamic, dynamic>>(
+        'recognize',
+        {
+          'path': imagePath,
+          'languages': _visionLangsForHint(scriptHint),
+          'level': 'accurate',
+          'maxEdge': 2560,
+          'customWords': customOcrWords,
+          'regions': regions,
+        },
+      );
+      debugPrint('[OCR] Vision regions (${boxes.length}): '
+          '${sw.elapsedMilliseconds}ms');
+    } catch (e) {
+      debugPrint('[OCR] Vision regions failed: $e');
+      return const {};
+    }
+    final lines = (raw?['lines'] as List?) ?? const [];
+    if (lines.isEmpty) return const {};
+    final imgW = (raw!['width'] as num).toDouble();
+    final imgH = (raw['height'] as num).toDouble();
+    if (imgW <= 0 || imgH <= 0) return const {};
+    // EXIF-rotated originals decode differently in Dart (`img.decodeImage`
+    // does NOT bake orientation) vs native ImageIO (upright). If the frames
+    // disagree, the regions we sent were already misplaced — skip the race
+    // instead of emitting garbage.
+    if ((imgW - pageW).abs() > 2 || (imgH - pageH).abs() > 2) {
+      debugPrint('[OCR] Vision regions frame mismatch '
+          '(${imgW}x$imgH vs ${pageW}x$pageH) — skipped');
+      return const {};
+    }
+
+    final byRegion = <int, List<OcrBlock>>{};
+    for (final item in lines) {
+      final m = (item as Map).cast<String, dynamic>();
+      final text = (m['text'] as String?)?.trim() ?? '';
+      final region = (m['region'] as num?)?.toInt() ?? -1;
+      if (text.isEmpty || region < 0 || region >= boxes.length) continue;
+      byRegion.putIfAbsent(region, () => []).add(OcrBlock(
+            text: text,
+            boundingBox: Rect.fromLTWH(
+              (m['left'] as num).toDouble() * imgW,
+              (m['top'] as num).toDouble() * imgH,
+              (m['width'] as num).toDouble() * imgW,
+              (m['height'] as num).toDouble() * imgH,
+            ),
+            confidence: (m['confidence'] as num?)?.toDouble(),
+          ));
+    }
+
+    final out = <int, OcrBlock>{};
+    byRegion.forEach((index, regionLines) {
+      final ordered = _orderVisionRegionLines(regionLines);
+      final text = ordered.map((l) => l.text).join('\n').trim();
+      // Same floor as the ML Kit race: < 2 meaningful chars is noise.
+      if (_meaningfulCharCount(text) < 2) return;
+      var bbox = boxes[index];
+      if (tightenToLineUnion) {
+        var union = ordered.first.boundingBox;
+        for (final l in ordered.skip(1)) {
+          union = union.expandToInclude(l.boundingBox);
+        }
+        final pad = math.max(union.width, union.height) * 0.04;
+        bbox = Rect.fromLTRB(
+          (union.left - pad).clamp(0.0, imgW),
+          (union.top - pad).clamp(0.0, imgH),
+          (union.right + pad).clamp(0.0, imgW),
+          (union.bottom + pad).clamp(0.0, imgH),
+        );
+      }
+      double? conf;
+      final confs =
+          ordered.map((l) => l.confidence).whereType<double>().toList();
+      if (confs.isNotEmpty) {
+        conf = confs.reduce((a, b) => a + b) / confs.length;
+      }
+      out[index] = OcrBlock(text: text, boundingBox: bbox, confidence: conf);
+    });
+    return out;
+  }
+
+  /// Reading order for Vision lines inside one region. Vision emits vertical
+  /// CJK as one observation per COLUMN (taller than wide); columns read
+  /// right→left. Horizontal lines read top→bottom. Mixed regions follow the
+  /// majority shape.
+  List<OcrBlock> _orderVisionRegionLines(List<OcrBlock> lines) {
+    if (lines.length < 2) return lines;
+    final verticalCount = lines
+        .where((l) => l.boundingBox.height > l.boundingBox.width * 1.3)
+        .length;
+    final sorted = [...lines];
+    if (verticalCount * 2 > lines.length) {
+      sorted.sort((a, b) {
+        final dx = b.boundingBox.left.compareTo(a.boundingBox.left);
+        return dx != 0 ? dx : a.boundingBox.top.compareTo(b.boundingBox.top);
+      });
+    } else {
+      sorted.sort((a, b) {
+        final dy = a.boundingBox.top.compareTo(b.boundingBox.top);
+        return dy != 0 ? dy : a.boundingBox.left.compareTo(b.boundingBox.left);
+      });
+    }
+    return sorted;
   }
 
   /// Detect text regions via DBNet then ML-Kit-OCR each region
@@ -1356,6 +1517,24 @@ class CameraService {
         if (boxes.isEmpty) return const [];
       }
 
+      // iOS: race a single BATCHED Apple Vision pass over the same regions
+      // against the ML Kit per-crop loop below. One channel call, one native
+      // image decode, one Neural-Engine request per region (regionOfInterest)
+      // — no crop JPEGs. Per region the winner is whichever engine read more
+      // meaningful chars: Vision tends to win stylized / low-contrast
+      // lettering, ML Kit (with the vertical reading-order rebuild) keeps
+      // vertical CJK safe.
+      final visionFuture = Platform.isIOS
+          ? _visionRecognizeRegions(
+              imagePath,
+              boxes,
+              decoded.width.toDouble(),
+              decoded.height.toDouble(),
+              scriptHint,
+              tightenToLineUnion: dbnetBoxes.isEmpty,
+            )
+          : null;
+
       // Always run Latin recognizer; add scriptHint recognizer when
       // it's a different script (Japanese / Chinese / Korean). Manga
       // is mostly Japanese, but English / Spanish / French manga
@@ -1508,6 +1687,31 @@ class CameraService {
         if (kDebugMode && logLines.isNotEmpty) {
           unawaited(_dumpOcrLog(imagePath, logLines));
         }
+        // Fold in the Vision race (iOS): `results` is index-aligned with
+        // `boxes` (built via boxes.map), so per region keep whichever engine
+        // read more meaningful characters. A Vision-only win is the payoff
+        // case — stylized lettering ML Kit returned nothing for.
+        var perBox = results;
+        if (visionFuture != null) {
+          Map<int, OcrBlock> vision = const {};
+          try {
+            vision = await visionFuture;
+          } catch (e) {
+            debugPrint('[CameraService] Vision region race failed: $e');
+          }
+          if (vision.isNotEmpty) {
+            perBox = List<OcrBlock?>.generate(results.length, (i) {
+              final mk = results[i];
+              final vn = vision[i];
+              if (vn == null) return mk;
+              if (mk == null) return vn;
+              return _meaningfulCharCount(vn.text) >
+                      _meaningfulCharCount(mk.text)
+                  ? vn
+                  : mk;
+            });
+          }
+        }
         // Post-OCR text+geometry dedup. Each bbox (SHAPE from
         // BubbleDetector + TABD orphans + DBNet text boxes) ran an
         // independent per-region OCR; when two bboxes covered the same
@@ -1525,7 +1729,7 @@ class CameraService {
         // overlap (or one contains the other) collapse to the larger
         // bbox - the larger one is empirically the bubble-shape match
         // and keeps the user's tap region intuitive.
-        final ocrBlocks = results.whereType<OcrBlock>().toList();
+        final ocrBlocks = perBox.whereType<OcrBlock>().toList();
         return _dedupSameTextOverlapping(ocrBlocks);
       } finally {
         for (final r in recognizers.values) {
@@ -1722,6 +1926,14 @@ class CameraService {
   /// see each case's comment for the empirical reasoning. When adding
   /// a new scene, decide the "one block = ?" goal FIRST, then pick
   /// tolerances that achieve it.
+  /// Test-only window into the menu row pipeline (noise filter → row
+  /// cluster → dish/price pairing → metadata filter → reading-order sort)
+  /// so the grid-vs-list grouping rules can be pinned without booting
+  /// ML Kit. Runs exactly the 'menu' branch of [_mergeForScene].
+  @visibleForTesting
+  List<OcrBlock> mergeMenuRowsForTest(List<OcrBlock> blocks) =>
+      _mergeForScene(blocks, 'menu');
+
   List<OcrBlock> _mergeForScene(List<OcrBlock> blocks, String scene) {
     switch (scene) {
       case 'document':
@@ -1782,9 +1994,29 @@ class CameraService {
           allRows.addAll(_pairRowSegments(row));
         }
         // Drop anything still pure metadata (a standalone phone / hours block
-        // that shared a row with no dish).
+        // that shared a row with no dish). Price-ish too: a noisy price tag
+        // alone on its visual row ("1.300 R 5FE") bypasses the pairing's
+        // text assembly via the row.length < 2 shortcut, so it must be
+        // filtered here.
         final cleaned = allRows
-            .where((b) => !_isMenuMetadata(b.text) && !_isMenuNoise(b.text))
+            .where((b) =>
+                !_isMenuMetadata(b.text) &&
+                !_isMenuNoise(b.text) &&
+                !_isPriceishBlock(b.text))
+            // Single-block rows take the row.length < 2 shortcut in
+            // _pairRowSegments and skip its assembly-time price strip, so
+            // "Phở bò 65k" kept its price. Strip here instead — idempotent
+            // for already-assembled rows (their trailing price is gone).
+            .map((b) {
+              final stripped = _stripTrailingPrice(b.text).trimRight();
+              return stripped == b.text
+                  ? b
+                  : OcrBlock(
+                      text: stripped,
+                      boundingBox: b.boundingBox,
+                      confidence: b.confidence,
+                    );
+            })
             .toList();
         // Reading order: top-to-bottom, left-to-right within a row.
         cleaned.sort((a, b) {
@@ -2494,6 +2726,25 @@ class CameraService {
   static final RegExp _letterRe = RegExp(r'\p{L}', unicode: true);
   bool _hasLetters(String text) => _letterRe.hasMatch(text);
 
+  /// Price-ish: a price token that picked up OCR noise letters ("1.350 Ta",
+  /// "1500a", "1200 CEna" — photo-grid price tags misread next to the photo).
+  /// Pure prices already match [_isPriceBlock]; this catches digit-dominant
+  /// segments with at most marginal letters so they still (a) end a
+  /// dish+price group in [_pairRowSegments] and (b) stay OUT of the dish
+  /// text sent to the translator. Guards: ≥3 digits (a "Phở 24" / "Combo 2"
+  /// dish keeps its number) and letters either ≤2 or outnumbered 1.5:1 by
+  /// digits — "Mì 350g" (3 digits / 3 letters) stays a dish, a row of
+  /// noisy grid price tags "1500a 03A 1.350 Ta 1200 CEna 1200 Sb"
+  /// (18 digits / 10 letters) doesn't.
+  bool _isPriceishBlock(String text) {
+    if (_isPriceBlock(text)) return true;
+    final t = text.trim();
+    final digits = _hasDigit.allMatches(t).length;
+    if (digits < 3) return false;
+    final letters = _letterRe.allMatches(t).length;
+    return letters <= 2 || digits >= letters * 1.5;
+  }
+
   /// Cluster blocks into visual ROWS by vertical midpoint. Two blocks share a
   /// row when their centres are within 0.6 × the taller box — tight enough to
   /// keep stacked dish rows apart, loose enough to group a dish with the price
@@ -2529,11 +2780,13 @@ class CameraService {
   /// MENU smart row pairing. Within one visual row, group each dish with the
   /// price (and reading) that follow it, emitting ONE wide block per dish that
   /// spans dish → price. A new group starts at a dish that follows an
-  /// already-completed dish+price pair (the next column's entry) OR across a
-  /// column-gutter-sized gap — so a 2-/3-column menu keeps each "món + giá" as
-  /// its own block instead of merging across columns. Price text is stripped
-  /// (the user reads it off the photo); the wide box is what stops the
-  /// translation wrapping inside a narrow dish column.
+  /// already-completed dish+price pair (the next column's entry), across a
+  /// column-gutter-sized gap, OR at a second dish past a column-sized gap —
+  /// the last rule is what keeps PHOTO-GRID menus (a row of caption columns
+  /// with no inline price between them) from merging the whole row into one
+  /// mega-dish. Price text is stripped (the user reads it off the photo); the
+  /// wide box is what stops the translation wrapping inside a narrow dish
+  /// column.
   List<OcrBlock> _pairRowSegments(List<OcrBlock> row) {
     if (row.length < 2) return row;
     final sorted = [...row]
@@ -2541,24 +2794,37 @@ class CameraService {
     final groups = <List<OcrBlock>>[];
     var current = <OcrBlock>[];
     var hasPrice = false;
+    var hasDish = false;
     for (final b in sorted) {
-      final isPrice = _isPriceBlock(b.text);
+      // Price-ISH (not just pure price): photo-grid price tags OCR with
+      // noise letters ("1.350 Ta") — they must still close a group, or
+      // every caption after them chains into one block.
+      final isPrice = _isPriceishBlock(b.text);
       final isDish = !isPrice && _hasLetters(b.text);
       if (current.isEmpty) {
         current = [b];
         hasPrice = isPrice;
+        hasDish = isDish;
         continue;
       }
       final prevRight = current.last.boundingBox.right;
       final lineH = current.map((c) => c.boundingBox.height).reduce(math.max);
-      final bigGap = (b.boundingBox.left - prevRight) > lineH * 4;
-      if (isDish && (hasPrice || bigGap)) {
+      final gap = b.boundingBox.left - prevRight;
+      final bigGap = gap > lineH * 4;
+      // A second dish across a column-sized gap = the next grid cell's
+      // caption. 1.5 × line height clears within-caption word gaps (ML Kit
+      // splits a caption at well under one line height) while staying under
+      // typical photo-grid cell margins.
+      final nextColumn = hasDish && gap > lineH * 1.5;
+      if (isDish && (hasPrice || bigGap || nextColumn)) {
         groups.add(current);
         current = [b];
         hasPrice = false;
+        hasDish = true;
       } else {
         current.add(b);
         if (isPrice) hasPrice = true;
+        if (isDish) hasDish = true;
       }
     }
     if (current.isNotEmpty) groups.add(current);
@@ -2570,7 +2836,10 @@ class CameraService {
       var confSum = 0.0;
       var confN = 0;
       for (final b in g) {
+        // Expand BEFORE the price skip: the wide box still spans dish →
+        // price so the translation gets the room; only the TEXT is dropped.
         box = box.expandToInclude(b.boundingBox);
+        if (_isPriceishBlock(b.text)) continue;
         final stripped = _stripTrailingPrice(b.text).trim();
         if (stripped.isNotEmpty && _hasLetters(stripped)) parts.add(stripped);
         final c = b.confidence;
