@@ -265,6 +265,7 @@ class KeyboardViewController: UIInputViewController {
     private var variantOptions: [String] = []
     private var variantSelectedIndex = 0
     private var langPicker: LanguagePairPickerView?
+    private var clipPanel: UIView?
 
     private var resultPanel: UIView!
     private var resultErrorLabel: UILabel!
@@ -581,11 +582,18 @@ class KeyboardViewController: UIInputViewController {
         let store = AppGroupStore.shared
         let pairTitle = "\(Self.shortLang(store.sourceLang))→\(Self.shortLang(store.targetLang))"
         barContentStack.addArrangedSubview(langChip(pairTitle, #selector(langPairTapped)))
-        if store.featureReply {
-            barContentStack.addArrangedSubview(gradientChip("Trả lời", #selector(replyTapped), enabled: true))
-        } else {
-            barContentStack.addArrangedSubview(gradientChip("Dịch", #selector(translateTapped), enabled: true))
-        }
+        // "Dịch" = READ the conversation: translate whatever the user copied
+        // and show it in a panel over the keys (X closes back to typing).
+        barContentStack.addArrangedSubview(gradientChip("Dịch", #selector(clipboardTranslateTapped), enabled: true))
+        // "Trả lời" = COMPOSE: replace the field in place (undo pill arms).
+        // Free runs the plain translate flow; entitled accounts run the
+        // context-aware reply flow - same button, plan decides the engine
+        // (user decision 2026-06-13, intentionally diverges from the Android
+        // strip where Reply replaces Translate).
+        let replySelector = store.featureReply
+            ? #selector(replyTapped)
+            : #selector(translateTapped)
+        barContentStack.addArrangedSubview(gradientChip("Trả lời", replySelector, enabled: true))
         if store.featureRefine {
             barContentStack.addArrangedSubview(gradientChip("Trau chuốt", #selector(refineTapped), enabled: true))
         }
@@ -696,6 +704,77 @@ class KeyboardViewController: UIInputViewController {
     private func dismissLangPicker() {
         langPicker?.removeFromSuperview()
         langPicker = nil
+    }
+
+    /// Reading panel over the key area for clipboard translations (same
+    /// overlay geometry as the language pickers). The text is selectable so
+    /// a fragment can be copied; ✕ returns to the keys.
+    private func showClipboardPanel(translated: String) {
+        dismissClipboardPanel()
+        dismissLangPicker()
+
+        let panel = UIView()
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.backgroundColor = .systemGroupedBackground
+
+        let title = UILabel()
+        title.text = "Bản dịch"
+        title.font = .systemFont(ofSize: 14, weight: .semibold)
+        title.textColor = .secondaryLabel
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let close = UIButton(type: .system)
+        close.setTitle("✕", for: .normal)
+        close.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        close.setTitleColor(.secondaryLabel, for: .normal)
+        close.accessibilityLabel = "Đóng"
+        close.addTarget(self, action: #selector(clipboardPanelCloseTapped), for: .touchUpInside)
+        close.translatesAutoresizingMaskIntoConstraints = false
+
+        let textView = UITextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.text = translated
+        textView.font = .systemFont(ofSize: 16)
+        textView.textColor = .label
+        textView.backgroundColor = .secondarySystemGroupedBackground
+        textView.layer.cornerRadius = 12
+        textView.textContainerInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        textView.translatesAutoresizingMaskIntoConstraints = false
+
+        panel.addSubview(title)
+        panel.addSubview(close)
+        panel.addSubview(textView)
+        view.addSubview(panel)
+        NSLayoutConstraint.activate([
+            panel.topAnchor.constraint(equalTo: topBar.bottomAnchor),
+            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            panel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            panel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            title.topAnchor.constraint(equalTo: panel.topAnchor, constant: 8),
+            title.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 14),
+
+            close.centerYAnchor.constraint(equalTo: title.centerYAnchor),
+            close.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -10),
+            close.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
+            close.heightAnchor.constraint(greaterThanOrEqualToConstant: 30),
+
+            textView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 6),
+            textView.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 10),
+            textView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -10),
+            textView.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -8),
+        ])
+        clipPanel = panel
+    }
+
+    @objc private func clipboardPanelCloseTapped() {
+        dismissClipboardPanel()
+    }
+
+    private func dismissClipboardPanel() {
+        clipPanel?.removeFromSuperview()
+        clipPanel = nil
     }
 
     /// Open the typing-language picker (all native layouts), overlaid on the
@@ -1804,6 +1883,44 @@ class KeyboardViewController: UIInputViewController {
                 )
                 actionInFlight = false
                 applyActionResult(original: fullText, replacement: extractTranslation(json))
+            } catch {
+                actionInFlight = false
+                showActionBar()
+                handleRequestError(error)
+            }
+        }
+    }
+
+    /// Translate the CLIPBOARD and show it in a reading panel over the keys
+    /// (X returns to typing). Covers the "understand the incoming message"
+    /// case the in-field actions can't reach: copy their message, tap, read.
+    /// UIPasteboard returns nil without Full Access - same requirement every
+    /// network chip already has.
+    @objc private func clipboardTranslateTapped() {
+        guard !actionInFlight else { return }
+        commitComposing()
+        let raw = UIPasteboard.general.string?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !raw.isEmpty else {
+            showResultError("Chưa có chữ nào được sao chép. Hãy copy tin nhắn cần dịch trước.")
+            return
+        }
+        let text = String(raw.prefix(3000))
+
+        actionInFlight = true
+        showBarProcessing()
+
+        Task { @MainActor in
+            do {
+                let store = AppGroupStore.shared
+                let json = try await api.translate(
+                    text: text,
+                    targetLang: store.targetLang,
+                    sourceLang: store.sourceLang
+                )
+                actionInFlight = false
+                showActionBar()
+                showClipboardPanel(translated: extractTranslation(json))
             } catch {
                 actionInFlight = false
                 showActionBar()
