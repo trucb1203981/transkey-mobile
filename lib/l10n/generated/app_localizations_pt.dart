@@ -1686,4 +1686,7 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get appleSignInFailed =>
       'Falha ao entrar com a Apple. Tente novamente.';
+
+  @override
+  String get pasteTranslate => 'Colar e traduzir';
 }

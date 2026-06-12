@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "Удалить навсегда",
   "accountDeleteFailed": "Не удалось удалить аккаунт. Попробуйте ещё раз.",
   "continueWithApple": "Продолжить с Apple",
-  "appleSignInFailed": "Не удалось войти через Apple. Попробуйте ещё раз."
+  "appleSignInFailed": "Не удалось войти через Apple. Попробуйте ещё раз.",
+  "pasteTranslate": "Вставить и перевести"
 }

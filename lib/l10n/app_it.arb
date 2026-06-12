@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "Elimina definitivamente",
   "accountDeleteFailed": "Impossibile eliminare l'account. Riprova.",
   "continueWithApple": "Continua con Apple",
-  "appleSignInFailed": "Accesso con Apple non riuscito. Riprova."
+  "appleSignInFailed": "Accesso con Apple non riuscito. Riprova.",
+  "pasteTranslate": "Incolla e traduci"
 }

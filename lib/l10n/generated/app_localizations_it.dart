@@ -1682,4 +1682,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get appleSignInFailed => 'Accesso con Apple non riuscito. Riprova.';
+
+  @override
+  String get pasteTranslate => 'Incolla e traduci';
 }

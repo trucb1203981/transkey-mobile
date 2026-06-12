@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "完全に削除",
   "accountDeleteFailed": "アカウントを削除できませんでした。もう一度お試しください。",
   "continueWithApple": "Appleで続ける",
-  "appleSignInFailed": "Appleサインインに失敗しました。もう一度お試しください。"
+  "appleSignInFailed": "Appleサインインに失敗しました。もう一度お試しください。",
+  "pasteTranslate": "ペーストして翻訳"
 }

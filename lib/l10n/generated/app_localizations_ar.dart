@@ -1664,4 +1664,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get appleSignInFailed => 'فشل تسجيل الدخول عبر Apple. حاول مرة أخرى.';
+
+  @override
+  String get pasteTranslate => 'لصق وترجمة';
 }

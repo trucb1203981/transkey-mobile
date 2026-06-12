@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "永久删除",
   "accountDeleteFailed": "无法删除账号,请重试。",
   "continueWithApple": "通过 Apple 继续",
-  "appleSignInFailed": "Apple 登录失败,请重试。"
+  "appleSignInFailed": "Apple 登录失败,请重试。",
+  "pasteTranslate": "粘贴并翻译"
 }

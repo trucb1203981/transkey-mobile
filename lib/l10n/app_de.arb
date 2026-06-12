@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "Endgültig löschen",
   "accountDeleteFailed": "Konto konnte nicht gelöscht werden. Bitte versuche es erneut.",
   "continueWithApple": "Mit Apple fortfahren",
-  "appleSignInFailed": "Apple-Anmeldung fehlgeschlagen. Bitte versuche es erneut."
+  "appleSignInFailed": "Apple-Anmeldung fehlgeschlagen. Bitte versuche es erneut.",
+  "pasteTranslate": "Einfügen & übersetzen"
 }

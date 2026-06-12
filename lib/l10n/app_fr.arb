@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "Supprimer définitivement",
   "accountDeleteFailed": "Impossible de supprimer le compte. Veuillez réessayer.",
   "continueWithApple": "Continuer avec Apple",
-  "appleSignInFailed": "Échec de la connexion avec Apple. Veuillez réessayer."
+  "appleSignInFailed": "Échec de la connexion avec Apple. Veuillez réessayer.",
+  "pasteTranslate": "Coller et traduire"
 }

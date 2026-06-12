@@ -1655,4 +1655,7 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get appleSignInFailed =>
       'ลงชื่อเข้าใช้ด้วย Apple ไม่สำเร็จ โปรดลองอีกครั้ง';
+
+  @override
+  String get pasteTranslate => 'วางแล้วแปล';
 }

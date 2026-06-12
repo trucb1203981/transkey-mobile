@@ -1678,4 +1678,7 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get appleSignInFailed =>
       'Не удалось войти через Apple. Попробуйте ещё раз.';
+
+  @override
+  String get pasteTranslate => 'Вставить и перевести';
 }

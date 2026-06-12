@@ -675,5 +675,6 @@
   "accountDeleteConfirm": "Delete permanently",
   "accountDeleteFailed": "Could not delete the account. Please try again.",
   "continueWithApple": "Continue with Apple",
-  "appleSignInFailed": "Apple sign-in failed. Please try again."
+  "appleSignInFailed": "Apple sign-in failed. Please try again.",
+  "pasteTranslate": "Paste & translate"
 }

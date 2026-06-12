@@ -1685,4 +1685,7 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get appleSignInFailed =>
       'Échec de la connexion avec Apple. Veuillez réessayer.';
+
+  @override
+  String get pasteTranslate => 'Coller et traduire';
 }

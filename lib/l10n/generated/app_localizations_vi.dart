@@ -1661,4 +1661,7 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get appleSignInFailed =>
       'Đăng nhập Apple chưa thành công. Vui lòng thử lại.';
+
+  @override
+  String get pasteTranslate => 'Dán & dịch';
 }

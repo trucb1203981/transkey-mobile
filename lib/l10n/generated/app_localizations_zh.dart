@@ -1588,4 +1588,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appleSignInFailed => 'Apple 登录失败,请重试。';
+
+  @override
+  String get pasteTranslate => '粘贴并翻译';
 }

@@ -1674,4 +1674,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get appleSignInFailed => 'Gagal masuk dengan Apple. Coba lagi.';
+
+  @override
+  String get pasteTranslate => 'Tempel & terjemahkan';
 }

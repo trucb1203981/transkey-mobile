@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "Excluir permanentemente",
   "accountDeleteFailed": "Não foi possível excluir a conta. Tente novamente.",
   "continueWithApple": "Continuar com a Apple",
-  "appleSignInFailed": "Falha ao entrar com a Apple. Tente novamente."
+  "appleSignInFailed": "Falha ao entrar com a Apple. Tente novamente.",
+  "pasteTranslate": "Colar e traduzir"
 }

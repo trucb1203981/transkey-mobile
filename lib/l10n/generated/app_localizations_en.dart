@@ -1669,4 +1669,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appleSignInFailed => 'Apple sign-in failed. Please try again.';
+
+  @override
+  String get pasteTranslate => 'Paste & translate';
 }

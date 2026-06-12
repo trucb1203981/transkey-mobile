@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "Xóa vĩnh viễn",
   "accountDeleteFailed": "Chưa xóa được tài khoản. Vui lòng thử lại.",
   "continueWithApple": "Tiếp tục với Apple",
-  "appleSignInFailed": "Đăng nhập Apple chưa thành công. Vui lòng thử lại."
+  "appleSignInFailed": "Đăng nhập Apple chưa thành công. Vui lòng thử lại.",
+  "pasteTranslate": "Dán & dịch"
 }

@@ -304,9 +304,13 @@ class ShareViewController: UIViewController {
                 DispatchQueue.main.async {
                     if let text = item as? String {
                         self?.setSource(text)
+                        // Same zero-tap convenience as the screenshot flow:
+                        // the user shared text TO a translator — translate.
+                        self?.translateTapped()
                     } else if let url = item as? URL,
                               let text = try? String(contentsOf: url, encoding: .utf8) {
                         self?.setSource(text)
+                        self?.translateTapped()
                     } else {
                         self?.sourceTextView.text = "Could not read text"
                     }
@@ -364,7 +368,42 @@ class ShareViewController: UIViewController {
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: maxOCRPixelSize,
         ] as CFDictionary
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, thumbOpts)
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbOpts) else {
+            return nil
+        }
+        if let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+           let w = props[kCGImagePropertyPixelWidth] as? CGFloat,
+           let h = props[kCGImagePropertyPixelHeight] as? CGFloat {
+            return cropScreenshotChrome(image, originalSize: CGSize(width: w, height: h))
+        }
+        return image
+    }
+
+    /// Screenshots carry the status bar (clock, battery, "100") and the
+    /// home-indicator strip; OCR happily reads that chrome and pollutes the
+    /// result (Android parity: status-bar crop before OCR). Fires ONLY when
+    /// the image pixel size exactly matches this device's portrait screen,
+    /// i.e. a screenshot taken on this phone — regular photos are untouched.
+    private static func cropScreenshotChrome(_ image: CGImage, originalSize: CGSize) -> CGImage {
+        let native = UIScreen.main.nativeBounds.size // portrait pixels
+        let isPortraitScreenshot = originalSize == native
+        guard isPortraitScreenshot else { return image }
+
+        let screenHpts = max(UIScreen.main.bounds.height, UIScreen.main.bounds.width)
+        // Notched/Dynamic-Island devices: status area 44-59pt -> 60pt crop;
+        // home-bar devices also reserve ~24pt at the bottom. Older devices:
+        // 20pt status bar, no home bar.
+        let notched = screenHpts >= 812
+        let topPts: CGFloat = notched ? 60 : 24
+        let bottomPts: CGFloat = notched ? 24 : 0
+        let h = CGFloat(image.height)
+        let topPx = (topPts / screenHpts * h).rounded()
+        let bottomPx = (bottomPts / screenHpts * h).rounded()
+        let rect = CGRect(x: 0, y: topPx,
+                          width: CGFloat(image.width),
+                          height: h - topPx - bottomPx)
+        guard rect.height > 50, let cropped = image.cropping(to: rect) else { return image }
+        return cropped
     }
 
     private static func downsample(image: UIImage) -> CGImage? {

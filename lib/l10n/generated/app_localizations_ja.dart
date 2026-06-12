@@ -1605,4 +1605,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get appleSignInFailed => 'Appleサインインに失敗しました。もう一度お試しください。';
+
+  @override
+  String get pasteTranslate => 'ペーストして翻訳';
 }

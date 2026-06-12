@@ -62,6 +62,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   String? _clipboardSuggestion;
   String? _dismissedClipboard;
+  // iOS-only: "clipboard has text" chip shown WITHOUT reading the pasteboard
+  // (UIPasteboard.hasStrings raises no paste banner). The actual read — and
+  // the one-time iOS paste confirmation — happens on tap.
+  bool _clipboardChipIOS = false;
+  bool _clipboardChipDismissed = false;
+  // The iOS paste confirmation briefly backgrounds the app; the resume that
+  // follows re-peeks and would resurrect the chip right after a successful
+  // paste. Suppress peeks for a short window around a paste action.
+  DateTime? _lastIOSPasteAt;
   // True while we're populating _textController from saved storage — the
   // controller listener would otherwise schedule a redundant write of the
   // value we just read.
@@ -140,13 +149,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       // Pick up admin changes to the language catalog (enable/disable/rename)
       // without forcing a full app restart.
       ref.read(featuresProvider.notifier).refreshIfNeeded();
-      // Skip the clipboard peek on iOS resume — every Clipboard.getData call
-      // raises a "TransKey pasted from..." privacy banner on iOS 14+. We pay
-      // that cost once at cold start; on resume the user can long-press the
-      // input to paste manually. Android has no such banner, so peek freely.
-      if (!Platform.isIOS) {
-        _peekClipboard();
-      }
+      // Re-peek on EVERY resume: on iOS this is banner-free now (hasStrings
+      // only; the read happens on chip tap), and coming back from another
+      // app is exactly when a fresh copy is most likely. Reset the dismiss
+      // so a chip the user hid in a previous session can reappear.
+      _clipboardChipDismissed = false;
+      _peekClipboard();
     }
   }
 
@@ -171,9 +179,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _peekClipboard() async {
-    // Read clipboard *without* requesting focus (no popup spam). On iOS,
-    // accessing pasteboard surfaces a system banner — that's the OS, not us.
     try {
+      if (Platform.isIOS) {
+        // hasStrings = UIPasteboard.hasStrings: answers "is there text?"
+        // WITHOUT reading, so no iOS "Allow Paste" banner. The read (and its
+        // one-time confirmation) happens only when the user taps the chip.
+        final justPasted = _lastIOSPasteAt != null &&
+            DateTime.now().difference(_lastIOSPasteAt!).inSeconds < 5;
+        final has = await Clipboard.hasStrings();
+        if (!mounted) return;
+        setState(() =>
+            _clipboardChipIOS = has && !_clipboardChipDismissed && !justPasted);
+        return;
+      }
+      // Android: no paste banner, read freely and preview the text.
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text?.trim();
       if (text == null || text.isEmpty || text.length > _maxChars) {
@@ -190,6 +209,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _useClipboardSuggestion() {
+    if (Platform.isIOS && _clipboardSuggestion == null) {
+      _pasteAndTranslateIOS();
+      return;
+    }
     final text = _clipboardSuggestion;
     if (text == null) return;
     _textController.text = text;
@@ -199,10 +222,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _handleAction(TranslateMode.translate);
   }
 
+  /// iOS chip tap: read the pasteboard NOW (the system paste confirmation
+  /// appears tied to this explicit user intent), fill and translate in one go.
+  Future<void> _pasteAndTranslateIOS() async {
+    _lastIOSPasteAt = DateTime.now();
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim();
+      if (!mounted) return;
+      _lastIOSPasteAt = DateTime.now();
+      setState(() => _clipboardChipIOS = false);
+      if (text == null || text.isEmpty || text.length > _maxChars) return;
+      _textController.text = text;
+      _handleAction(TranslateMode.translate);
+    } catch (_) {
+      if (mounted) setState(() => _clipboardChipIOS = false);
+    }
+  }
+
   void _dismissClipboardSuggestion() {
     setState(() {
       _dismissedClipboard = _clipboardSuggestion;
       _clipboardSuggestion = null;
+      _clipboardChipDismissed = true;
+      _clipboardChipIOS = false;
     });
   }
 
@@ -576,9 +619,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // returns SizedBox.shrink() with no margin when nothing is to
           // be shown, so no awkward spacing on the common case.
           const PlanStatusBanner(),
-          if (_clipboardSuggestion != null) ...[
+          if (_clipboardSuggestion != null || _clipboardChipIOS) ...[
             ClipboardChip(
-              text: _clipboardSuggestion!,
+              // iOS can't preview without triggering the paste banner —
+              // show a generic call-to-action instead of the text.
+              text: _clipboardSuggestion ??
+                  AppLocalizations.of(context)!.pasteTranslate,
               onUse: _useClipboardSuggestion,
               onDismiss: _dismissClipboardSuggestion,
             ),

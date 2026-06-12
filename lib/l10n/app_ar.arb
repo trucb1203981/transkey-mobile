@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "حذف نهائي",
   "accountDeleteFailed": "تعذّر حذف الحساب. حاول مرة أخرى.",
   "continueWithApple": "المتابعة مع Apple",
-  "appleSignInFailed": "فشل تسجيل الدخول عبر Apple. حاول مرة أخرى."
+  "appleSignInFailed": "فشل تسجيل الدخول عبر Apple. حاول مرة أخرى.",
+  "pasteTranslate": "لصق وترجمة"
 }

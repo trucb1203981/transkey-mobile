@@ -1685,4 +1685,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get appleSignInFailed =>
       'Apple-Anmeldung fehlgeschlagen. Bitte versuche es erneut.';
+
+  @override
+  String get pasteTranslate => 'Einfügen & übersetzen';
 }

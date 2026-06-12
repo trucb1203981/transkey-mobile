@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "ลบถาวร",
   "accountDeleteFailed": "ลบบัญชีไม่สำเร็จ โปรดลองอีกครั้ง",
   "continueWithApple": "ดำเนินการต่อด้วย Apple",
-  "appleSignInFailed": "ลงชื่อเข้าใช้ด้วย Apple ไม่สำเร็จ โปรดลองอีกครั้ง"
+  "appleSignInFailed": "ลงชื่อเข้าใช้ด้วย Apple ไม่สำเร็จ โปรดลองอีกครั้ง",
+  "pasteTranslate": "วางแล้วแปล"
 }

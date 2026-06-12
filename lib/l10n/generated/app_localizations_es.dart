@@ -1683,4 +1683,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get appleSignInFailed =>
       'Error al iniciar sesión con Apple. Inténtalo de nuevo.';
+
+  @override
+  String get pasteTranslate => 'Pegar y traducir';
 }

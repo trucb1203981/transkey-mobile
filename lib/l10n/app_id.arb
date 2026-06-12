@@ -656,5 +656,6 @@
   "accountDeleteConfirm": "Hapus permanen",
   "accountDeleteFailed": "Tidak dapat menghapus akun. Coba lagi.",
   "continueWithApple": "Lanjutkan dengan Apple",
-  "appleSignInFailed": "Gagal masuk dengan Apple. Coba lagi."
+  "appleSignInFailed": "Gagal masuk dengan Apple. Coba lagi.",
+  "pasteTranslate": "Tempel & terjemahkan"
 }

@@ -3169,6 +3169,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Apple sign-in failed. Please try again.'**
   String get appleSignInFailed;
+
+  /// No description provided for @pasteTranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste & translate'**
+  String get pasteTranslate;
 }
 
 class _AppLocalizationsDelegate
