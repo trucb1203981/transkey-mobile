@@ -657,13 +657,15 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func langChip(_ title: String, _ action: Selector) -> UIButton {
+        // Quieter than the gradient action chips: smaller font + tighter
+        // padding so the pair/typing-lang pills don't crowd the bar.
         let btn = UIButton(type: .system)
         btn.setTitle(title, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .semibold)
         btn.setTitleColor(.label, for: .normal)
         btn.backgroundColor = .tertiarySystemFill
-        btn.layer.cornerRadius = 15
-        btn.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+        btn.layer.cornerRadius = 13
+        btn.contentEdgeInsets = UIEdgeInsets(top: 5, left: 9, bottom: 5, right: 9)
         shrinkTitleToFit(btn)
         btn.addTarget(self, action: action, for: .touchUpInside)
         return btn
