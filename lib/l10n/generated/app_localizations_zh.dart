@@ -1260,6 +1260,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraCopyLineHeader => '按行复制';
 
   @override
+  String get cameraSignStoreName => '店名';
+
+  @override
+  String get cameraSignPhone => '电话';
+
+  @override
+  String get cameraSignAddress => '地址';
+
+  @override
   String get cameraShare => '分享';
 
   @override
@@ -1557,4 +1566,26 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       '点按悬浮球打开菜单，然后点按右下角的相机图标。悬浮球会隐藏几秒，让你拍出干净的截屏，之后会自动恢复。';
+
+  @override
+  String get accountDeleteButton => '删除账号';
+
+  @override
+  String get accountDeleteTitle => '要删除账号吗?';
+
+  @override
+  String get accountDeleteWarning =>
+      '账号及其所有相关数据(历史记录、短语本、设备信息)将被永久删除,无法恢复。如果你有付费订阅,请先在应用商店取消订阅。';
+
+  @override
+  String get accountDeleteConfirm => '永久删除';
+
+  @override
+  String get accountDeleteFailed => '无法删除账号,请重试。';
+
+  @override
+  String get continueWithApple => '通过 Apple 继续';
+
+  @override
+  String get appleSignInFailed => 'Apple 登录失败,请重试。';
 }

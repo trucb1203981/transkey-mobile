@@ -1309,6 +1309,15 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraCopyLineHeader => 'คัดลอกแต่ละบรรทัด';
 
   @override
+  String get cameraSignStoreName => 'ชื่อร้าน';
+
+  @override
+  String get cameraSignPhone => 'เบอร์โทรศัพท์';
+
+  @override
+  String get cameraSignAddress => 'ที่อยู่';
+
+  @override
   String get cameraShare => 'แชร์';
 
   @override
@@ -1623,4 +1632,27 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'แตะบับเบิลเพื่อเปิดเมนู แล้วแตะไอคอนกล้องที่มุมขวาล่าง บับเบิลจะซ่อนไปสองสามวินาทีเพื่อให้คุณจับภาพหน้าจอได้สะอาด แล้วจะกลับมาเอง';
+
+  @override
+  String get accountDeleteButton => 'ลบบัญชี';
+
+  @override
+  String get accountDeleteTitle => 'ลบบัญชีหรือไม่?';
+
+  @override
+  String get accountDeleteWarning =>
+      'บัญชีและข้อมูลทั้งหมดที่เกี่ยวข้อง (ประวัติ สมุดวลี อุปกรณ์) จะถูกลบอย่างถาวรและกู้คืนไม่ได้ หากคุณมีแพ็กเกจแบบชำระเงิน โปรดยกเลิกในสโตร์ก่อน';
+
+  @override
+  String get accountDeleteConfirm => 'ลบถาวร';
+
+  @override
+  String get accountDeleteFailed => 'ลบบัญชีไม่สำเร็จ โปรดลองอีกครั้ง';
+
+  @override
+  String get continueWithApple => 'ดำเนินการต่อด้วย Apple';
+
+  @override
+  String get appleSignInFailed =>
+      'ลงชื่อเข้าใช้ด้วย Apple ไม่สำเร็จ โปรดลองอีกครั้ง';
 }

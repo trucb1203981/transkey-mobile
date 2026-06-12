@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "ex.: perto do hotel, muito picante",
   "cameraSaveSkipNote": "Pular",
   "cameraCopyLineHeader": "COPIAR LINHA",
+  "cameraSignStoreName": "Nome da loja",
+  "cameraSignPhone": "Número de telefone",
+  "cameraSignAddress": "Endereço",
   "cameraShare": "Compartilhar",
   "cameraShareSubject": "Traduzido pelo TransKey",
   "cameraShareFailed": "Falha ao compartilhar. Tente novamente.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "Fazer upgrade ilimitado",
   "quotaWallCloseCta": "Mais tarde",
   "guideScreenshotTipTitle": "Captura de tela sem a bolha",
-  "guideScreenshotTipBody": "Toque na bolha para abrir o menu e toque no ícone de câmera no canto inferior direito. A bolha some por alguns segundos para você fazer uma captura limpa e depois volta sozinha."
+  "guideScreenshotTipBody": "Toque na bolha para abrir o menu e toque no ícone de câmera no canto inferior direito. A bolha some por alguns segundos para você fazer uma captura limpa e depois volta sozinha.",
+  "accountDeleteButton": "Excluir conta",
+  "accountDeleteTitle": "Excluir a conta?",
+  "accountDeleteWarning": "Sua conta e todos os dados vinculados (histórico, caderno de frases, dispositivos) serão excluídos permanentemente. Isso não pode ser desfeito. Se você tem uma assinatura ativa, cancele-a primeiro na loja de aplicativos.",
+  "accountDeleteConfirm": "Excluir permanentemente",
+  "accountDeleteFailed": "Não foi possível excluir a conta. Tente novamente.",
+  "continueWithApple": "Continuar com a Apple",
+  "appleSignInFailed": "Falha ao entrar com a Apple. Tente novamente."
 }

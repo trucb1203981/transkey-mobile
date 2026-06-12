@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "es. vicino all'hotel, molto piccante",
   "cameraSaveSkipNote": "Salta",
   "cameraCopyLineHeader": "COPIA RIGA",
+  "cameraSignStoreName": "Nome del negozio",
+  "cameraSignPhone": "Numero di telefono",
+  "cameraSignAddress": "Indirizzo",
   "cameraShare": "Condividi",
   "cameraShareSubject": "Tradotto con TransKey",
   "cameraShareFailed": "Impossibile condividere. Riprova.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "Passa al piano illimitato",
   "quotaWallCloseCta": "Più tardi",
   "guideScreenshotTipTitle": "Screenshot senza la bolla",
-  "guideScreenshotTipBody": "Tocca la bolla per aprire il menu, poi tocca l'icona della fotocamera in basso a destra. La bolla scompare per qualche secondo così puoi fare uno screenshot pulito, poi torna da sola."
+  "guideScreenshotTipBody": "Tocca la bolla per aprire il menu, poi tocca l'icona della fotocamera in basso a destra. La bolla scompare per qualche secondo così puoi fare uno screenshot pulito, poi torna da sola.",
+  "accountDeleteButton": "Elimina account",
+  "accountDeleteTitle": "Eliminare l'account?",
+  "accountDeleteWarning": "Il tuo account e tutti i dati collegati (cronologia, frasario, dispositivi) verranno eliminati definitivamente. L'operazione non può essere annullata. Se hai un abbonamento attivo, annullalo prima nello store.",
+  "accountDeleteConfirm": "Elimina definitivamente",
+  "accountDeleteFailed": "Impossibile eliminare l'account. Riprova.",
+  "continueWithApple": "Continua con Apple",
+  "appleSignInFailed": "Accesso con Apple non riuscito. Riprova."
 }

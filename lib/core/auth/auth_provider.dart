@@ -219,6 +219,53 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     }
   }
 
+  /// Native Sign in with Apple: the app already obtained an `identityToken`
+  /// from AuthenticationServices. Verify-and-mint server-side via
+  /// POST /auth/apple/mobile — mirror of the Google flow. `name` is only
+  /// available on the FIRST authorization, forwarded when present.
+  Future<void> signInWithAppleIdentityToken(String identityToken, {String? name}) async {
+    final tracking = ref.read(trackingServiceProvider);
+    tracking.event('login_attempt', properties: {'method': 'apple'});
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final api = ref.read(apiClientProvider);
+      final response = await api.dio.post(
+        '/auth/apple/mobile',
+        data: {
+          'identityToken': identityToken,
+          if (name != null && name.isNotEmpty) 'name': name,
+        },
+      ).timeout(const Duration(seconds: 20));
+
+      final data = response.data;
+      final user = data['user'] as Map<String, dynamic>;
+      final session = AuthSession(
+        accessToken: data['accessToken'] as String,
+        userId: user['id'].toString(),
+        email: user['email'] as String,
+        name: user['name'] as String?,
+        plan: user['plan'] as String? ?? 'free',
+        expiresAt: data['expiresAt'] as String?,
+      );
+
+      final sessionStore = ref.read(sessionStoreProvider);
+      await sessionStore.save(session);
+      _invalidateApiSessionCache();
+      _invalidateUserScopedProviders();
+      await _syncToAppGroup(session);
+
+      tracking.event('login_success',
+          properties: {'method': 'apple', 'plan': session.plan});
+      return AuthState(isLoggedIn: true, session: session);
+    });
+    if (state.hasError) {
+      tracking.event('login_fail', properties: {
+        'method': 'apple',
+        'error':  state.error.runtimeType.toString(),
+      });
+    }
+  }
+
   /// Native Google sign-in: the mobile app already used GoogleSignIn SDK to
   /// produce `idToken`. Verify-and-mint server-side via POST /auth/google/mobile
   /// — no browser, no deep link.

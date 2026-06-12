@@ -1274,6 +1274,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraCopyLineHeader => '줄 복사';
 
   @override
+  String get cameraSignStoreName => '상호명';
+
+  @override
+  String get cameraSignPhone => '전화번호';
+
+  @override
+  String get cameraSignAddress => '주소';
+
+  @override
   String get cameraShare => '공유';
 
   @override
@@ -1578,4 +1587,26 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       '버블을 탭해 메뉴를 연 다음 오른쪽 아래의 카메라 아이콘을 탭하세요. 버블이 몇 초간 사라져 깔끔하게 스크린샷을 찍을 수 있고, 이후 자동으로 다시 나타납니다.';
+
+  @override
+  String get accountDeleteButton => '계정 삭제';
+
+  @override
+  String get accountDeleteTitle => '계정을 삭제할까요?';
+
+  @override
+  String get accountDeleteWarning =>
+      '계정과 연결된 모든 데이터(기록, 표현 노트, 기기 정보)가 영구적으로 삭제되며 복구할 수 없습니다. 유료 구독 중이라면 먼저 스토어에서 구독을 해지하세요.';
+
+  @override
+  String get accountDeleteConfirm => '영구 삭제';
+
+  @override
+  String get accountDeleteFailed => '계정을 삭제하지 못했습니다. 다시 시도해 주세요.';
+
+  @override
+  String get continueWithApple => 'Apple로 계속하기';
+
+  @override
+  String get appleSignInFailed => 'Apple 로그인에 실패했습니다. 다시 시도해 주세요.';
 }

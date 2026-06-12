@@ -1322,6 +1322,15 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraCopyLineHeader => 'SALIN BARIS';
 
   @override
+  String get cameraSignStoreName => 'Nama toko';
+
+  @override
+  String get cameraSignPhone => 'Nomor telepon';
+
+  @override
+  String get cameraSignAddress => 'Alamat';
+
+  @override
   String get cameraShare => 'Bagikan';
 
   @override
@@ -1643,4 +1652,26 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'Ketuk bubble untuk membuka menu, lalu ketuk ikon kamera di pojok kanan bawah. Bubble akan tersembunyi beberapa detik agar Anda bisa mengambil tangkapan layar yang bersih, lalu muncul kembali sendiri.';
+
+  @override
+  String get accountDeleteButton => 'Hapus akun';
+
+  @override
+  String get accountDeleteTitle => 'Hapus akun?';
+
+  @override
+  String get accountDeleteWarning =>
+      'Akun dan semua data terkait (riwayat, buku frasa, perangkat) akan dihapus secara permanen dan tidak dapat dikembalikan. Jika kamu punya langganan aktif, batalkan dulu di toko aplikasi.';
+
+  @override
+  String get accountDeleteConfirm => 'Hapus permanen';
+
+  @override
+  String get accountDeleteFailed => 'Tidak dapat menghapus akun. Coba lagi.';
+
+  @override
+  String get continueWithApple => 'Lanjutkan dengan Apple';
+
+  @override
+  String get appleSignInFailed => 'Gagal masuk dengan Apple. Coba lagi.';
 }

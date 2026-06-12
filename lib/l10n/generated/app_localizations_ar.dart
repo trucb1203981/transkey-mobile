@@ -1319,6 +1319,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraCopyLineHeader => 'نسخ السطر';
 
   @override
+  String get cameraSignStoreName => 'اسم المتجر';
+
+  @override
+  String get cameraSignPhone => 'رقم الهاتف';
+
+  @override
+  String get cameraSignAddress => 'العنوان';
+
+  @override
   String get cameraShare => 'مشاركة';
 
   @override
@@ -1633,4 +1642,26 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'اضغط على الفقاعة لفتح القائمة، ثم اضغط على أيقونة الكاميرا في الزاوية السفلية اليمنى. ستختفي الفقاعة لبضع ثوانٍ حتى تتمكن من التقاط لقطة شاشة نظيفة، ثم تعود تلقائيًا.';
+
+  @override
+  String get accountDeleteButton => 'حذف الحساب';
+
+  @override
+  String get accountDeleteTitle => 'حذف الحساب؟';
+
+  @override
+  String get accountDeleteWarning =>
+      'سيتم حذف حسابك وجميع البيانات المرتبطة به (السجل، دفتر العبارات، الأجهزة) نهائيًا ولا يمكن التراجع عن ذلك. إذا كان لديك اشتراك نشط، فألغِه أولًا من متجر التطبيقات.';
+
+  @override
+  String get accountDeleteConfirm => 'حذف نهائي';
+
+  @override
+  String get accountDeleteFailed => 'تعذّر حذف الحساب. حاول مرة أخرى.';
+
+  @override
+  String get continueWithApple => 'المتابعة مع Apple';
+
+  @override
+  String get appleSignInFailed => 'فشل تسجيل الدخول عبر Apple. حاول مرة أخرى.';
 }

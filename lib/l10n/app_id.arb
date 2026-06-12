@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "mis. dekat hotel, sangat pedas",
   "cameraSaveSkipNote": "Lewati",
   "cameraCopyLineHeader": "SALIN BARIS",
+  "cameraSignStoreName": "Nama toko",
+  "cameraSignPhone": "Nomor telepon",
+  "cameraSignAddress": "Alamat",
   "cameraShare": "Bagikan",
   "cameraShareSubject": "Diterjemahkan oleh TransKey",
   "cameraShareFailed": "Gagal membagikan. Coba lagi.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "Upgrade untuk tanpa batas",
   "quotaWallCloseCta": "Nanti saja",
   "guideScreenshotTipTitle": "Tangkapan layar tanpa bubble",
-  "guideScreenshotTipBody": "Ketuk bubble untuk membuka menu, lalu ketuk ikon kamera di pojok kanan bawah. Bubble akan tersembunyi beberapa detik agar Anda bisa mengambil tangkapan layar yang bersih, lalu muncul kembali sendiri."
+  "guideScreenshotTipBody": "Ketuk bubble untuk membuka menu, lalu ketuk ikon kamera di pojok kanan bawah. Bubble akan tersembunyi beberapa detik agar Anda bisa mengambil tangkapan layar yang bersih, lalu muncul kembali sendiri.",
+  "accountDeleteButton": "Hapus akun",
+  "accountDeleteTitle": "Hapus akun?",
+  "accountDeleteWarning": "Akun dan semua data terkait (riwayat, buku frasa, perangkat) akan dihapus secara permanen dan tidak dapat dikembalikan. Jika kamu punya langganan aktif, batalkan dulu di toko aplikasi.",
+  "accountDeleteConfirm": "Hapus permanen",
+  "accountDeleteFailed": "Tidak dapat menghapus akun. Coba lagi.",
+  "continueWithApple": "Lanjutkan dengan Apple",
+  "appleSignInFailed": "Gagal masuk dengan Apple. Coba lagi."
 }

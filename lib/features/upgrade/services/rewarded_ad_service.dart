@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -13,28 +14,29 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 /// flips it to ON without an app update — so this class assumes any
 /// call site has already checked the flag.
 ///
-/// Per-platform unit IDs:
-///  - Android — production unit in release builds, Google's public TEST
-///    unit in debug to avoid invalid-traffic strikes from developer
-///    devices hitting real impressions.
-///  - iOS — still on TEST until the iOS release lands + an iOS prod
-///    ad unit is provisioned in AdMob console. TODO before iOS GA.
+/// Per-platform unit IDs: production unit in release builds, Google's
+/// public TEST unit in debug to avoid invalid-traffic strikes from
+/// developer devices hitting real impressions.
 class RewardedAdService {
   // Android — TransKey AdMob production rewarded unit.
   static const _adUnitAndroidProd = 'ca-app-pub-4388572340562895/8963970428';
   // Android — Google public test unit (always fills with test creative).
   static const _adUnitAndroidTest = 'ca-app-pub-3940256099942544/5224354917';
 
-  // iOS — Google public test unit. Swap to TransKey iOS prod unit before
-  // shipping the iOS build to the App Store; do NOT ship test IDs to a
-  // production iOS release (AdMob policy violation, account ban risk).
-  static const _adUnitIOS = 'ca-app-pub-3940256099942544/1712485313';
+  // iOS — TransKey AdMob production rewarded unit (AdMob console > TransKey
+  // iOS > quota_rewarded_ios).
+  static const _adUnitIOSProd = 'ca-app-pub-4388572340562895/6127564268';
+  // iOS — Google public test unit (always fills with test creative).
+  static const _adUnitIOSTest = 'ca-app-pub-3940256099942544/1712485313';
 
   RewardedAd? _ad;
   Completer<RewardedAd?>? _loadCompleter;
 
   String get _adUnitId {
-    if (defaultTargetPlatform == TargetPlatform.iOS) return _adUnitIOS;
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final hasProd = !_adUnitIOSProd.startsWith('REPLACE_');
+      return kReleaseMode && hasProd ? _adUnitIOSProd : _adUnitIOSTest;
+    }
     return kReleaseMode ? _adUnitAndroidProd : _adUnitAndroidTest;
   }
 
@@ -42,11 +44,21 @@ class RewardedAdService {
   /// share the same in-flight Future, idempotent if an ad is already
   /// loaded. Return the loaded ad (or null on failure) so callers can
   /// await readiness instead of polling.
-  Future<RewardedAd?> preload() {
+  Future<RewardedAd?> preload() async {
     if (_ad != null) return Future.value(_ad);
     if (_loadCompleter != null) return _loadCompleter!.future;
     final completer = Completer<RewardedAd?>();
     _loadCompleter = completer;
+    // iOS App Tracking Transparency: must be resolved before the first ad
+    // request. No-op once the user has answered (status != notDetermined);
+    // on deny AdMob automatically serves non-personalized ads.
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      } catch (_) {
+        // Never block ad loading on the ATT dialog failing.
+      }
+    }
     RewardedAd.load(
       adUnitId: _adUnitId,
       request: const AdRequest(),

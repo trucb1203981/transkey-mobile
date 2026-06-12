@@ -1273,6 +1273,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraCopyLineHeader => '行ごとにコピー';
 
   @override
+  String get cameraSignStoreName => '店名';
+
+  @override
+  String get cameraSignPhone => '電話番号';
+
+  @override
+  String get cameraSignAddress => '住所';
+
+  @override
   String get cameraShare => '共有';
 
   @override
@@ -1574,4 +1583,26 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'バブルをタップしてメニューを開き、右下のカメラアイコンをタップします。バブルが数秒間消えるので、きれいなスクリーンショットを撮れます。その後は自動で戻ります。';
+
+  @override
+  String get accountDeleteButton => 'アカウントを削除';
+
+  @override
+  String get accountDeleteTitle => 'アカウントを削除しますか?';
+
+  @override
+  String get accountDeleteWarning =>
+      'アカウントと関連するすべてのデータ(履歴、フレーズ帳、端末情報)が完全に削除され、元に戻せません。有料プランをご利用中の場合は、先にストアで解約してください。';
+
+  @override
+  String get accountDeleteConfirm => '完全に削除';
+
+  @override
+  String get accountDeleteFailed => 'アカウントを削除できませんでした。もう一度お試しください。';
+
+  @override
+  String get continueWithApple => 'Appleで続ける';
+
+  @override
+  String get appleSignInFailed => 'Appleサインインに失敗しました。もう一度お試しください。';
 }

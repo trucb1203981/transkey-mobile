@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "ví dụ: gần khách sạn, rất cay",
   "cameraSaveSkipNote": "Bỏ qua",
   "cameraCopyLineHeader": "SAO CHÉP TỪNG DÒNG",
+  "cameraSignStoreName": "Tên cửa hàng",
+  "cameraSignPhone": "Số điện thoại",
+  "cameraSignAddress": "Địa chỉ",
   "cameraShare": "Chia sẻ",
   "cameraShareSubject": "Dịch bởi TransKey",
   "cameraShareFailed": "Không chia sẻ được. Thử lại.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "Nâng cấp để dùng không giới hạn",
   "quotaWallCloseCta": "Để sau",
   "guideScreenshotTipTitle": "Chụp màn hình không dính bóng",
-  "guideScreenshotTipBody": "Chạm vào bóng để mở menu, rồi chạm biểu tượng máy ảnh ở góc dưới bên phải. Bóng sẽ tạm ẩn vài giây để bạn chụp màn hình, rồi tự hiện lại."
+  "guideScreenshotTipBody": "Chạm vào bóng để mở menu, rồi chạm biểu tượng máy ảnh ở góc dưới bên phải. Bóng sẽ tạm ẩn vài giây để bạn chụp màn hình, rồi tự hiện lại.",
+  "accountDeleteButton": "Xóa tài khoản",
+  "accountDeleteTitle": "Xóa tài khoản?",
+  "accountDeleteWarning": "Tài khoản và toàn bộ dữ liệu kèm theo (lịch sử, sổ tay từ, thiết bị) sẽ bị xóa vĩnh viễn, không thể khôi phục. Nếu bạn đang có gói trả phí, hãy hủy gói trong cửa hàng ứng dụng trước.",
+  "accountDeleteConfirm": "Xóa vĩnh viễn",
+  "accountDeleteFailed": "Chưa xóa được tài khoản. Vui lòng thử lại.",
+  "continueWithApple": "Tiếp tục với Apple",
+  "appleSignInFailed": "Đăng nhập Apple chưa thành công. Vui lòng thử lại."
 }

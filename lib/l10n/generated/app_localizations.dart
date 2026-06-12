@@ -2522,6 +2522,24 @@ abstract class AppLocalizations {
   /// **'COPY LINE'**
   String get cameraCopyLineHeader;
 
+  /// No description provided for @cameraSignStoreName.
+  ///
+  /// In en, this message translates to:
+  /// **'Store name'**
+  String get cameraSignStoreName;
+
+  /// No description provided for @cameraSignPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get cameraSignPhone;
+
+  /// No description provided for @cameraSignAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get cameraSignAddress;
+
   /// No description provided for @cameraShare.
   ///
   /// In en, this message translates to:
@@ -3109,6 +3127,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap the bubble to open the menu, then tap the camera icon in the bottom-right corner. The bubble hides for a few seconds so you can take a clean screenshot, then comes back on its own.'**
   String get guideScreenshotTipBody;
+
+  /// No description provided for @accountDeleteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get accountDeleteButton;
+
+  /// No description provided for @accountDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account?'**
+  String get accountDeleteTitle;
+
+  /// No description provided for @accountDeleteWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account and all data linked to it (history, phrasebook, devices) will be permanently deleted. This cannot be undone. If you have an active subscription, cancel it in the app store first.'**
+  String get accountDeleteWarning;
+
+  /// No description provided for @accountDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get accountDeleteConfirm;
+
+  /// No description provided for @accountDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete the account. Please try again.'**
+  String get accountDeleteFailed;
+
+  /// No description provided for @continueWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get continueWithApple;
+
+  /// No description provided for @appleSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple sign-in failed. Please try again.'**
+  String get appleSignInFailed;
 }
 
 class _AppLocalizationsDelegate

@@ -1330,6 +1330,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cameraCopyLineHeader => 'ZEILE KOPIEREN';
 
   @override
+  String get cameraSignStoreName => 'Geschäftsname';
+
+  @override
+  String get cameraSignPhone => 'Telefonnummer';
+
+  @override
+  String get cameraSignAddress => 'Adresse';
+
+  @override
   String get cameraShare => 'Teilen';
 
   @override
@@ -1652,4 +1661,28 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'Tippe auf die Bubble, um das Menü zu öffnen, und tippe dann unten rechts auf das Kamerasymbol. Die Bubble verschwindet für ein paar Sekunden, damit du einen sauberen Screenshot machen kannst, und kommt dann von selbst zurück.';
+
+  @override
+  String get accountDeleteButton => 'Konto löschen';
+
+  @override
+  String get accountDeleteTitle => 'Konto löschen?';
+
+  @override
+  String get accountDeleteWarning =>
+      'Dein Konto und alle damit verbundenen Daten (Verlauf, Phrasenbuch, Geräte) werden dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden. Wenn du ein aktives Abo hast, kündige es zuerst im App-Store.';
+
+  @override
+  String get accountDeleteConfirm => 'Endgültig löschen';
+
+  @override
+  String get accountDeleteFailed =>
+      'Konto konnte nicht gelöscht werden. Bitte versuche es erneut.';
+
+  @override
+  String get continueWithApple => 'Mit Apple fortfahren';
+
+  @override
+  String get appleSignInFailed =>
+      'Apple-Anmeldung fehlgeschlagen. Bitte versuche es erneut.';
 }

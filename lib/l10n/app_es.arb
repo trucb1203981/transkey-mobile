@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "p. ej., cerca del hotel, muy picante",
   "cameraSaveSkipNote": "Omitir",
   "cameraCopyLineHeader": "COPIAR LÍNEA",
+  "cameraSignStoreName": "Nombre de la tienda",
+  "cameraSignPhone": "Número de teléfono",
+  "cameraSignAddress": "Dirección",
   "cameraShare": "Compartir",
   "cameraShareSubject": "Traducido con TransKey",
   "cameraShareFailed": "No se pudo compartir. Inténtalo de nuevo.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "Mejorar para uso ilimitado",
   "quotaWallCloseCta": "Más tarde",
   "guideScreenshotTipTitle": "Captura de pantalla sin la burbuja",
-  "guideScreenshotTipBody": "Toca la burbuja para abrir el menú y luego toca el icono de la cámara en la esquina inferior derecha. La burbuja se oculta unos segundos para que puedas hacer una captura limpia y luego vuelve sola."
+  "guideScreenshotTipBody": "Toca la burbuja para abrir el menú y luego toca el icono de la cámara en la esquina inferior derecha. La burbuja se oculta unos segundos para que puedas hacer una captura limpia y luego vuelve sola.",
+  "accountDeleteButton": "Eliminar cuenta",
+  "accountDeleteTitle": "¿Eliminar la cuenta?",
+  "accountDeleteWarning": "Tu cuenta y todos los datos vinculados (historial, libro de frases, dispositivos) se eliminarán de forma permanente. Esta acción no se puede deshacer. Si tienes una suscripción activa, cancélala primero en la tienda de aplicaciones.",
+  "accountDeleteConfirm": "Eliminar definitivamente",
+  "accountDeleteFailed": "No se pudo eliminar la cuenta. Inténtalo de nuevo.",
+  "continueWithApple": "Continuar con Apple",
+  "appleSignInFailed": "Error al iniciar sesión con Apple. Inténtalo de nuevo."
 }

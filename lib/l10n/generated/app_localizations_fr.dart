@@ -1330,6 +1330,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cameraCopyLineHeader => 'COPIER LA LIGNE';
 
   @override
+  String get cameraSignStoreName => 'Nom du commerce';
+
+  @override
+  String get cameraSignPhone => 'Numéro de téléphone';
+
+  @override
+  String get cameraSignAddress => 'Adresse';
+
+  @override
   String get cameraShare => 'Partager';
 
   @override
@@ -1652,4 +1661,28 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'Touchez la bulle pour ouvrir le menu, puis touchez l\'icône d\'appareil photo en bas à droite. La bulle disparaît quelques secondes pour vous laisser faire une capture nette, puis revient toute seule.';
+
+  @override
+  String get accountDeleteButton => 'Supprimer le compte';
+
+  @override
+  String get accountDeleteTitle => 'Supprimer le compte ?';
+
+  @override
+  String get accountDeleteWarning =>
+      'Votre compte et toutes les données associées (historique, carnet de phrases, appareils) seront définitivement supprimés. Cette action est irréversible. Si vous avez un abonnement actif, annulez-le d\'abord dans la boutique d\'applications.';
+
+  @override
+  String get accountDeleteConfirm => 'Supprimer définitivement';
+
+  @override
+  String get accountDeleteFailed =>
+      'Impossible de supprimer le compte. Veuillez réessayer.';
+
+  @override
+  String get continueWithApple => 'Continuer avec Apple';
+
+  @override
+  String get appleSignInFailed =>
+      'Échec de la connexion avec Apple. Veuillez réessayer.';
 }

@@ -1,9 +1,12 @@
+import 'dart:io' show Platform;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/api/api_errors.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -197,6 +200,54 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       if (mounted) {
         setState(() => _errorMessage = l.googleSignInFailed(e.toString()));
       }
+    }
+  }
+
+  /// Native Sign in with Apple (App Store Guideline 4.8 — required because
+  /// Google sign-in is offered). AuthenticationServices returns an
+  /// identityToken JWT; the backend verifies it against Apple's JWKS.
+  /// fullName is only exposed on the FIRST authorization — forward it then.
+  Future<void> _appleSignIn() async {
+    final l = AppLocalizations.of(context)!;
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final identityToken = credential.identityToken;
+      if (identityToken == null || identityToken.isEmpty) {
+        setState(() => _errorMessage = l.appleSignInFailed);
+        return;
+      }
+      final name = [credential.givenName, credential.familyName]
+          .whereType<String>()
+          .where((s) => s.isNotEmpty)
+          .join(' ');
+      await ref.read(authStateProvider.notifier).signInWithAppleIdentityToken(
+            identityToken,
+            name: name.isEmpty ? null : name,
+          );
+
+      final state = ref.read(authStateProvider);
+      if (state.hasError) {
+        final err = state.error;
+        if (err is DioException) {
+          setState(() => _errorMessage = ApiException.fromDio(err).code.localize(l));
+        } else {
+          setState(() => _errorMessage = err.toString());
+        }
+        return;
+      }
+      if (mounted) context.go('/');
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return; // user cancelled
+      setState(() => _errorMessage = e.message);
+    } on DioException catch (e) {
+      setState(() => _errorMessage = ApiException.fromDio(e).message);
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
     }
   }
 
@@ -466,6 +517,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               label: Text(l.continueWithGoogle),
             ),
           ),
+          // Sign in with Apple — iOS only (Guideline 4.8: must be offered
+          // alongside Google, at least as prominently).
+          if (Platform.isIOS) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: isLoading ? null : _appleSignIn,
+                icon: const Icon(Icons.apple, size: 24),
+                label: Text(l.continueWithApple),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.xl),
         ],
       ),

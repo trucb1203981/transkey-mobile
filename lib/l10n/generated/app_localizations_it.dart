@@ -1328,6 +1328,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get cameraCopyLineHeader => 'COPIA RIGA';
 
   @override
+  String get cameraSignStoreName => 'Nome del negozio';
+
+  @override
+  String get cameraSignPhone => 'Numero di telefono';
+
+  @override
+  String get cameraSignAddress => 'Indirizzo';
+
+  @override
   String get cameraShare => 'Condividi';
 
   @override
@@ -1650,4 +1659,27 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'Tocca la bolla per aprire il menu, poi tocca l\'icona della fotocamera in basso a destra. La bolla scompare per qualche secondo così puoi fare uno screenshot pulito, poi torna da sola.';
+
+  @override
+  String get accountDeleteButton => 'Elimina account';
+
+  @override
+  String get accountDeleteTitle => 'Eliminare l\'account?';
+
+  @override
+  String get accountDeleteWarning =>
+      'Il tuo account e tutti i dati collegati (cronologia, frasario, dispositivi) verranno eliminati definitivamente. L\'operazione non può essere annullata. Se hai un abbonamento attivo, annullalo prima nello store.';
+
+  @override
+  String get accountDeleteConfirm => 'Elimina definitivamente';
+
+  @override
+  String get accountDeleteFailed =>
+      'Impossibile eliminare l\'account. Riprova.';
+
+  @override
+  String get continueWithApple => 'Continua con Apple';
+
+  @override
+  String get appleSignInFailed => 'Accesso con Apple non riuscito. Riprova.';
 }

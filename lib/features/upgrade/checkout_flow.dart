@@ -30,12 +30,22 @@ Future<void> startPlanCheckout(
 ) async {
   final l = AppLocalizations.of(context)!;
 
-  if (Platform.isAndroid && PurchasesService.isReady) {
+  if ((Platform.isAndroid || Platform.isIOS) && PurchasesService.isReady) {
     await _checkoutViaRevenueCat(context, ref, plan, l);
     return;
   }
 
-  // LemonSqueezy web checkout — iOS / desktop / web / RC not configured.
+  // App Store guideline 3.1.1: digital plans on iOS MUST go through Apple
+  // IAP. If RC isn't configured, fail with an error — opening the web
+  // checkout here is an instant review rejection.
+  if (Platform.isIOS) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l.upgradeCheckoutFailed), backgroundColor: AppColors.red),
+    );
+    return;
+  }
+
+  // LemonSqueezy web checkout — desktop / web / Android without RC.
   try {
     final api = ref.read(apiClientProvider);
     final response =

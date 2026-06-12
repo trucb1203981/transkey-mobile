@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "ex. : près de l'hôtel, très épicé",
   "cameraSaveSkipNote": "Ignorer",
   "cameraCopyLineHeader": "COPIER LA LIGNE",
+  "cameraSignStoreName": "Nom du commerce",
+  "cameraSignPhone": "Numéro de téléphone",
+  "cameraSignAddress": "Adresse",
   "cameraShare": "Partager",
   "cameraShareSubject": "Traduit par TransKey",
   "cameraShareFailed": "Partage impossible. Réessayez.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "Passer à l'illimité",
   "quotaWallCloseCta": "Plus tard",
   "guideScreenshotTipTitle": "Capture d'écran sans la bulle",
-  "guideScreenshotTipBody": "Touchez la bulle pour ouvrir le menu, puis touchez l'icône d'appareil photo en bas à droite. La bulle disparaît quelques secondes pour vous laisser faire une capture nette, puis revient toute seule."
+  "guideScreenshotTipBody": "Touchez la bulle pour ouvrir le menu, puis touchez l'icône d'appareil photo en bas à droite. La bulle disparaît quelques secondes pour vous laisser faire une capture nette, puis revient toute seule.",
+  "accountDeleteButton": "Supprimer le compte",
+  "accountDeleteTitle": "Supprimer le compte ?",
+  "accountDeleteWarning": "Votre compte et toutes les données associées (historique, carnet de phrases, appareils) seront définitivement supprimés. Cette action est irréversible. Si vous avez un abonnement actif, annulez-le d'abord dans la boutique d'applications.",
+  "accountDeleteConfirm": "Supprimer définitivement",
+  "accountDeleteFailed": "Impossible de supprimer le compte. Veuillez réessayer.",
+  "continueWithApple": "Continuer avec Apple",
+  "appleSignInFailed": "Échec de la connexion avec Apple. Veuillez réessayer."
 }

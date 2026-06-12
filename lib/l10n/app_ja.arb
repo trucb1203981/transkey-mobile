@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "例：ホテルの近く、辛い",
   "cameraSaveSkipNote": "スキップ",
   "cameraCopyLineHeader": "行ごとにコピー",
+  "cameraSignStoreName": "店名",
+  "cameraSignPhone": "電話番号",
+  "cameraSignAddress": "住所",
   "cameraShare": "共有",
   "cameraShareSubject": "TransKeyで翻訳",
   "cameraShareFailed": "共有できませんでした。再試行してください。",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "アップグレードして無制限利用",
   "quotaWallCloseCta": "あとで",
   "guideScreenshotTipTitle": "バブルを写さずにスクショ",
-  "guideScreenshotTipBody": "バブルをタップしてメニューを開き、右下のカメラアイコンをタップします。バブルが数秒間消えるので、きれいなスクリーンショットを撮れます。その後は自動で戻ります。"
+  "guideScreenshotTipBody": "バブルをタップしてメニューを開き、右下のカメラアイコンをタップします。バブルが数秒間消えるので、きれいなスクリーンショットを撮れます。その後は自動で戻ります。",
+  "accountDeleteButton": "アカウントを削除",
+  "accountDeleteTitle": "アカウントを削除しますか?",
+  "accountDeleteWarning": "アカウントと関連するすべてのデータ(履歴、フレーズ帳、端末情報)が完全に削除され、元に戻せません。有料プランをご利用中の場合は、先にストアで解約してください。",
+  "accountDeleteConfirm": "完全に削除",
+  "accountDeleteFailed": "アカウントを削除できませんでした。もう一度お試しください。",
+  "continueWithApple": "Appleで続ける",
+  "appleSignInFailed": "Appleサインインに失敗しました。もう一度お試しください。"
 }

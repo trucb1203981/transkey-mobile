@@ -38,14 +38,17 @@ class PurchasesService {
   static Future<void> init() async {
     if (_configured) return;
 
-    // Only Android is provisioned today. iOS will get its own RC API key
-    // when the iOS build goes to TestFlight; until then, calling RC on
-    // iOS would fail with "no entitlement configured".
-    if (!Platform.isAndroid) return;
+    // Android -> Google Play Billing, iOS -> Apple In-App Purchase. Both go
+    // through the same RC entitlements (mobile/pro) and the same backend
+    // webhook, so everything past init is store-agnostic.
+    if (!Platform.isAndroid && !Platform.isIOS) return;
 
-    final key = dotenv.env['REVENUECAT_API_KEY_ANDROID'];
+    final envKey = Platform.isAndroid
+        ? 'REVENUECAT_API_KEY_ANDROID'
+        : 'REVENUECAT_API_KEY_IOS';
+    final key = dotenv.env[envKey];
     if (key == null || key.isEmpty || key.startsWith('REPLACE_')) {
-      AppLog.w('RC', 'REVENUECAT_API_KEY_ANDROID not set — billing disabled');
+      AppLog.w('RC', '$envKey not set — billing disabled');
       return;
     }
 
@@ -53,7 +56,7 @@ class PurchasesService {
       await Purchases.setLogLevel(LogLevel.warn);
       await Purchases.configure(PurchasesConfiguration(key));
       _configured = true;
-      AppLog.i('RC', 'configured (Android)');
+      AppLog.i('RC', 'configured (${Platform.isAndroid ? 'Android' : 'iOS'})');
     } catch (e) {
       AppLog.w('RC', 'configure failed', e);
     }

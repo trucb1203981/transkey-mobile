@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "เช่น ใกล้โรงแรม, เผ็ดมาก",
   "cameraSaveSkipNote": "ข้าม",
   "cameraCopyLineHeader": "คัดลอกแต่ละบรรทัด",
+  "cameraSignStoreName": "ชื่อร้าน",
+  "cameraSignPhone": "เบอร์โทรศัพท์",
+  "cameraSignAddress": "ที่อยู่",
   "cameraShare": "แชร์",
   "cameraShareSubject": "แปลโดย TransKey",
   "cameraShareFailed": "แชร์ไม่สำเร็จ ลองอีกครั้ง",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "อัปเกรดใช้งานไม่จำกัด",
   "quotaWallCloseCta": "ไว้ค่อย",
   "guideScreenshotTipTitle": "จับภาพหน้าจอโดยไม่ติดบับเบิล",
-  "guideScreenshotTipBody": "แตะบับเบิลเพื่อเปิดเมนู แล้วแตะไอคอนกล้องที่มุมขวาล่าง บับเบิลจะซ่อนไปสองสามวินาทีเพื่อให้คุณจับภาพหน้าจอได้สะอาด แล้วจะกลับมาเอง"
+  "guideScreenshotTipBody": "แตะบับเบิลเพื่อเปิดเมนู แล้วแตะไอคอนกล้องที่มุมขวาล่าง บับเบิลจะซ่อนไปสองสามวินาทีเพื่อให้คุณจับภาพหน้าจอได้สะอาด แล้วจะกลับมาเอง",
+  "accountDeleteButton": "ลบบัญชี",
+  "accountDeleteTitle": "ลบบัญชีหรือไม่?",
+  "accountDeleteWarning": "บัญชีและข้อมูลทั้งหมดที่เกี่ยวข้อง (ประวัติ สมุดวลี อุปกรณ์) จะถูกลบอย่างถาวรและกู้คืนไม่ได้ หากคุณมีแพ็กเกจแบบชำระเงิน โปรดยกเลิกในสโตร์ก่อน",
+  "accountDeleteConfirm": "ลบถาวร",
+  "accountDeleteFailed": "ลบบัญชีไม่สำเร็จ โปรดลองอีกครั้ง",
+  "continueWithApple": "ดำเนินการต่อด้วย Apple",
+  "appleSignInFailed": "ลงชื่อเข้าใช้ด้วย Apple ไม่สำเร็จ โปรดลองอีกครั้ง"
 }

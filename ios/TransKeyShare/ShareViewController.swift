@@ -1,6 +1,12 @@
 import UIKit
 import Social
+import Vision
+import UniformTypeIdentifiers
+import ImageIO
 
+/// Share-sheet card: receives text, URLs or IMAGES (the iOS replacement for
+/// Android's screen translate - screenshot, share to TransKey, on-device OCR
+/// via Vision, then translate).
 class ShareViewController: UIViewController {
 
     // MARK: - UI
@@ -8,6 +14,7 @@ class ShareViewController: UIViewController {
     private let scrollView = UIScrollView()
     private let contentView = UIView()
 
+    private let imagePreview = UIImageView()
     private let sourceLabel = UILabel()
     private let sourceTextView = UITextView()
 
@@ -43,7 +50,7 @@ class ShareViewController: UIViewController {
 
         isPro = AppGroupStore.shared.plan != "free"
 
-        extractSharedText()
+        extractSharedContent()
     }
 
     // MARK: - Navigation
@@ -89,6 +96,14 @@ class ShareViewController: UIViewController {
             stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16),
         ])
+
+        // Screenshot preview (hidden unless an image was shared)
+        imagePreview.contentMode = .scaleAspectFill
+        imagePreview.clipsToBounds = true
+        imagePreview.layer.cornerRadius = 12
+        imagePreview.isHidden = true
+        imagePreview.heightAnchor.constraint(equalToConstant: 120).isActive = true
+        stack.addArrangedSubview(imagePreview)
 
         // Source header
         sourceLabel.text = "Source text"
@@ -205,64 +220,200 @@ class ShareViewController: UIViewController {
         btn.heightAnchor.constraint(equalToConstant: 44).isActive = true
     }
 
-    // MARK: - Extract shared text
+    // MARK: - Extract shared content (text, URL or screenshot)
 
-    private func extractSharedText() {
-        guard let extensionItem = extensionContext?.inputItems.first as? NSExtensionItem,
-              let itemProvider = extensionItem.attachments?.first else {
+    private func extractSharedContent() {
+        let attachments = (extensionContext?.inputItems as? [NSExtensionItem])?
+            .flatMap { $0.attachments ?? [] } ?? []
+        guard !attachments.isEmpty else {
             sourceTextView.text = "No text found"
             return
         }
 
-        let textType = kUTTypePlainText as String
-        if itemProvider.hasItemConformingToTypeIdentifier(textType) {
-            itemProvider.loadItem(forTypeIdentifier: textType, options: nil) { [weak self] item, _ in
+        // An image wins over text: the screenshot-share flow is the whole
+        // point of this extension on iOS.
+        if let imageProvider = attachments.first(where: {
+            $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+        }) {
+            extractImage(from: imageProvider)
+            return
+        }
+
+        if let textProvider = attachments.first(where: {
+            $0.hasItemConformingToTypeIdentifier(UTType.plainText.identifier)
+        }) {
+            textProvider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { [weak self] item, _ in
                 DispatchQueue.main.async {
                     if let text = item as? String {
-                        self?.sourceText = text
-                        self?.sourceTextView.text = text
+                        self?.setSource(text)
                     } else if let url = item as? URL,
                               let text = try? String(contentsOf: url, encoding: .utf8) {
-                        self?.sourceText = text
-                        self?.sourceTextView.text = text
+                        self?.setSource(text)
                     } else {
                         self?.sourceTextView.text = "Could not read text"
                     }
                 }
             }
-        } else {
-            // Try URL type
-            let urlType = kUTTypeURL as String
-            itemProvider.loadItem(forTypeIdentifier: urlType, options: nil) { [weak self] item, _ in
+            return
+        }
+
+        if let urlProvider = attachments.first(where: {
+            $0.hasItemConformingToTypeIdentifier(UTType.url.identifier)
+        }) {
+            urlProvider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { [weak self] item, _ in
                 DispatchQueue.main.async {
                     if let url = item as? URL {
-                        self?.sourceText = url.absoluteString
-                        self?.sourceTextView.text = url.absoluteString
+                        self?.setSource(url.absoluteString)
                     } else {
                         self?.sourceTextView.text = "No text found"
                     }
                 }
             }
+            return
+        }
+
+        sourceTextView.text = "No text found"
+    }
+
+    private func setSource(_ text: String) {
+        sourceText = text
+        sourceTextView.text = text
+    }
+
+    // MARK: - Screenshot OCR (Vision, on-device)
+
+    /// Share extensions are jetsamed at ~120MB; a 12MP photo decoded at full
+    /// resolution plus the Vision model already exceeds that. Decode straight
+    /// to a capped-size bitmap via ImageIO so the full-res image never exists.
+    /// 1536 (not 2048): Vision .accurate peaks >110MB on a 2048px image on
+    /// 3GB devices (iPhone X) - measured jetsam at the 120MB cap.
+    private static let maxOCRPixelSize: CGFloat = 1536
+
+    private static func downsample(url: URL? = nil, data: Data? = nil) -> CGImage? {
+        let sourceOpts = [kCGImageSourceShouldCache: false] as CFDictionary
+        let source: CGImageSource?
+        if let url {
+            source = CGImageSourceCreateWithURL(url as CFURL, sourceOpts)
+        } else if let data {
+            source = CGImageSourceCreateWithData(data as CFData, sourceOpts)
+        } else {
+            source = nil
+        }
+        guard let source else { return nil }
+        let thumbOpts = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxOCRPixelSize,
+        ] as CFDictionary
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, thumbOpts)
+    }
+
+    private static func downsample(image: UIImage) -> CGImage? {
+        let w = image.size.width * image.scale
+        let h = image.size.height * image.scale
+        let scale = min(1, maxOCRPixelSize / max(w, h))
+        if scale >= 1 { return image.cgImage }
+        let size = CGSize(width: floor(w * scale), height: floor(h * scale))
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let small = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        return small.cgImage
+    }
+
+    private func extractImage(from provider: NSItemProvider) {
+        sourceTextView.text = "Đang đọc chữ trong ảnh..."
+        activityIndicator.startAnimating()
+        provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { [weak self] item, _ in
+            let cgImage: CGImage?
+            if let url = item as? URL {
+                cgImage = Self.downsample(url: url)
+            } else if let img = item as? UIImage {
+                cgImage = Self.downsample(image: img)
+            } else if let data = item as? Data {
+                cgImage = Self.downsample(data: data)
+            } else {
+                cgImage = nil
+            }
+            DispatchQueue.main.async {
+                guard let cgImage else {
+                    self?.activityIndicator.stopAnimating()
+                    self?.sourceTextView.text = "Could not read image"
+                    return
+                }
+                self?.imagePreview.image = UIImage(cgImage: cgImage)
+                self?.imagePreview.isHidden = false
+                self?.runOCR(on: cgImage)
+            }
+        }
+    }
+
+    private func runOCR(on cgImage: CGImage) {
+        let request = VNRecognizeTextRequest { [weak self] request, error in
+            let lines = (request.results as? [VNRecognizedTextObservation])?
+                .compactMap { $0.topCandidates(1).first?.string } ?? []
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.activityIndicator.stopAnimating()
+                if let error {
+                    self.errorLabel.text = error.localizedDescription
+                    self.errorLabel.isHidden = false
+                    self.sourceTextView.text = ""
+                    return
+                }
+                let text = lines.joined(separator: "\n")
+                guard !text.isEmpty else {
+                    self.sourceTextView.text = "No text found in image"
+                    return
+                }
+                self.setSource(text)
+                // Screenshot shared to translate: go straight to the result,
+                // no extra tap.
+                self.translateTapped()
+            }
+        }
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+        if #available(iOS 16.0, *) {
+            request.automaticallyDetectsLanguage = true
+        } else {
+            request.recognitionLanguages = ["vi-VT", "en-US"]
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            try? handler.perform([request])
         }
     }
 
     // MARK: - Actions
 
+    /// The pair the user picked in the app (mirrored via the App Group).
+    private var targetLang: String { AppGroupStore.shared.targetLang }
+
     @objc private func translateTapped() {
         performAPI { [weak self] in
-            try await self?.api.translate(text: self!.sourceText, targetLang: "en") ?? [:]
+            guard let self else { return [:] }
+            return try await self.api.translate(
+                text: self.sourceText,
+                targetLang: self.targetLang,
+                sourceLang: AppGroupStore.shared.sourceLang
+            )
         }
     }
 
     @objc private func summarizeTapped() {
         performAPI { [weak self] in
-            try await self?.api.summarize(text: self!.sourceText, targetLang: "en") ?? [:]
+            guard let self else { return [:] }
+            return try await self.api.summarize(text: self.sourceText, targetLang: self.targetLang)
         }
     }
 
     @objc private func explainTapped() {
         performAPI { [weak self] in
-            try await self?.api.explain(text: self!.sourceText, targetLang: "en") ?? [:]
+            guard let self else { return [:] }
+            return try await self.api.explain(text: self.sourceText, targetLang: self.targetLang)
         }
     }
 

@@ -560,6 +560,9 @@
   "cameraSaveNoteHint": "e.g. near the hotel, very spicy",
   "cameraSaveSkipNote": "Skip",
   "cameraCopyLineHeader": "COPY LINE",
+  "cameraSignStoreName": "Store name",
+  "cameraSignPhone": "Phone number",
+  "cameraSignAddress": "Address",
   "cameraShare": "Share",
   "cameraShareSubject": "Translated by TransKey",
   "cameraShareFailed": "Couldn't share. Try again.",
@@ -665,5 +668,12 @@
   "quotaWallUpgradeCta": "Upgrade for unlimited",
   "quotaWallCloseCta": "Maybe later",
   "guideScreenshotTipTitle": "Screenshot without the bubble",
-  "guideScreenshotTipBody": "Tap the bubble to open the menu, then tap the camera icon in the bottom-right corner. The bubble hides for a few seconds so you can take a clean screenshot, then comes back on its own."
+  "guideScreenshotTipBody": "Tap the bubble to open the menu, then tap the camera icon in the bottom-right corner. The bubble hides for a few seconds so you can take a clean screenshot, then comes back on its own.",
+  "accountDeleteButton": "Delete account",
+  "accountDeleteTitle": "Delete account?",
+  "accountDeleteWarning": "Your account and all data linked to it (history, phrasebook, devices) will be permanently deleted. This cannot be undone. If you have an active subscription, cancel it in the app store first.",
+  "accountDeleteConfirm": "Delete permanently",
+  "accountDeleteFailed": "Could not delete the account. Please try again.",
+  "continueWithApple": "Continue with Apple",
+  "appleSignInFailed": "Apple sign-in failed. Please try again."
 }

@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "例如：酒店附近、很辣",
   "cameraSaveSkipNote": "跳过",
   "cameraCopyLineHeader": "按行复制",
+  "cameraSignStoreName": "店名",
+  "cameraSignPhone": "电话",
+  "cameraSignAddress": "地址",
   "cameraShare": "分享",
   "cameraShareSubject": "由 TransKey 翻译",
   "cameraShareFailed": "分享失败，请重试。",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "升级享受无限使用",
   "quotaWallCloseCta": "稍后再说",
   "guideScreenshotTipTitle": "截屏时不显示悬浮球",
-  "guideScreenshotTipBody": "点按悬浮球打开菜单，然后点按右下角的相机图标。悬浮球会隐藏几秒，让你拍出干净的截屏，之后会自动恢复。"
+  "guideScreenshotTipBody": "点按悬浮球打开菜单，然后点按右下角的相机图标。悬浮球会隐藏几秒，让你拍出干净的截屏，之后会自动恢复。",
+  "accountDeleteButton": "删除账号",
+  "accountDeleteTitle": "要删除账号吗?",
+  "accountDeleteWarning": "账号及其所有相关数据(历史记录、短语本、设备信息)将被永久删除,无法恢复。如果你有付费订阅,请先在应用商店取消订阅。",
+  "accountDeleteConfirm": "永久删除",
+  "accountDeleteFailed": "无法删除账号,请重试。",
+  "continueWithApple": "通过 Apple 继续",
+  "appleSignInFailed": "Apple 登录失败,请重试。"
 }

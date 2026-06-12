@@ -1325,6 +1325,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraCopyLineHeader => 'КОПИРОВАТЬ СТРОКУ';
 
   @override
+  String get cameraSignStoreName => 'Название магазина';
+
+  @override
+  String get cameraSignPhone => 'Номер телефона';
+
+  @override
+  String get cameraSignAddress => 'Адрес';
+
+  @override
   String get cameraShare => 'Поделиться';
 
   @override
@@ -1645,4 +1654,28 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'Нажмите на пузырь, чтобы открыть меню, затем нажмите значок камеры в правом нижнем углу. Пузырь скроется на несколько секунд, чтобы вы сделали чистый скриншот, а потом вернётся сам.';
+
+  @override
+  String get accountDeleteButton => 'Удалить аккаунт';
+
+  @override
+  String get accountDeleteTitle => 'Удалить аккаунт?';
+
+  @override
+  String get accountDeleteWarning =>
+      'Ваш аккаунт и все связанные данные (история, разговорник, устройства) будут удалены без возможности восстановления. Если у вас есть активная подписка, сначала отмените её в магазине приложений.';
+
+  @override
+  String get accountDeleteConfirm => 'Удалить навсегда';
+
+  @override
+  String get accountDeleteFailed =>
+      'Не удалось удалить аккаунт. Попробуйте ещё раз.';
+
+  @override
+  String get continueWithApple => 'Продолжить с Apple';
+
+  @override
+  String get appleSignInFailed =>
+      'Не удалось войти через Apple. Попробуйте ещё раз.';
 }

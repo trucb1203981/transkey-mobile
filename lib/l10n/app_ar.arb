@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "مثلاً: قرب الفندق، حار جداً",
   "cameraSaveSkipNote": "تخطّي",
   "cameraCopyLineHeader": "نسخ السطر",
+  "cameraSignStoreName": "اسم المتجر",
+  "cameraSignPhone": "رقم الهاتف",
+  "cameraSignAddress": "العنوان",
   "cameraShare": "مشاركة",
   "cameraShareSubject": "ترجمت بواسطة TransKey",
   "cameraShareFailed": "تعذّرت المشاركة. حاول مرة أخرى.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "الترقية للاستخدام غير المحدود",
   "quotaWallCloseCta": "ربما لاحقًا",
   "guideScreenshotTipTitle": "لقطة شاشة بدون الفقاعة",
-  "guideScreenshotTipBody": "اضغط على الفقاعة لفتح القائمة، ثم اضغط على أيقونة الكاميرا في الزاوية السفلية اليمنى. ستختفي الفقاعة لبضع ثوانٍ حتى تتمكن من التقاط لقطة شاشة نظيفة، ثم تعود تلقائيًا."
+  "guideScreenshotTipBody": "اضغط على الفقاعة لفتح القائمة، ثم اضغط على أيقونة الكاميرا في الزاوية السفلية اليمنى. ستختفي الفقاعة لبضع ثوانٍ حتى تتمكن من التقاط لقطة شاشة نظيفة، ثم تعود تلقائيًا.",
+  "accountDeleteButton": "حذف الحساب",
+  "accountDeleteTitle": "حذف الحساب؟",
+  "accountDeleteWarning": "سيتم حذف حسابك وجميع البيانات المرتبطة به (السجل، دفتر العبارات، الأجهزة) نهائيًا ولا يمكن التراجع عن ذلك. إذا كان لديك اشتراك نشط، فألغِه أولًا من متجر التطبيقات.",
+  "accountDeleteConfirm": "حذف نهائي",
+  "accountDeleteFailed": "تعذّر حذف الحساب. حاول مرة أخرى.",
+  "continueWithApple": "المتابعة مع Apple",
+  "appleSignInFailed": "فشل تسجيل الدخول عبر Apple. حاول مرة أخرى."
 }

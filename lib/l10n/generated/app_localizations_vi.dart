@@ -1312,6 +1312,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraCopyLineHeader => 'SAO CHÉP TỪNG DÒNG';
 
   @override
+  String get cameraSignStoreName => 'Tên cửa hàng';
+
+  @override
+  String get cameraSignPhone => 'Số điện thoại';
+
+  @override
+  String get cameraSignAddress => 'Địa chỉ';
+
+  @override
   String get cameraShare => 'Chia sẻ';
 
   @override
@@ -1628,4 +1637,28 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get guideScreenshotTipBody =>
       'Chạm vào bóng để mở menu, rồi chạm biểu tượng máy ảnh ở góc dưới bên phải. Bóng sẽ tạm ẩn vài giây để bạn chụp màn hình, rồi tự hiện lại.';
+
+  @override
+  String get accountDeleteButton => 'Xóa tài khoản';
+
+  @override
+  String get accountDeleteTitle => 'Xóa tài khoản?';
+
+  @override
+  String get accountDeleteWarning =>
+      'Tài khoản và toàn bộ dữ liệu kèm theo (lịch sử, sổ tay từ, thiết bị) sẽ bị xóa vĩnh viễn, không thể khôi phục. Nếu bạn đang có gói trả phí, hãy hủy gói trong cửa hàng ứng dụng trước.';
+
+  @override
+  String get accountDeleteConfirm => 'Xóa vĩnh viễn';
+
+  @override
+  String get accountDeleteFailed =>
+      'Chưa xóa được tài khoản. Vui lòng thử lại.';
+
+  @override
+  String get continueWithApple => 'Tiếp tục với Apple';
+
+  @override
+  String get appleSignInFailed =>
+      'Đăng nhập Apple chưa thành công. Vui lòng thử lại.';
 }

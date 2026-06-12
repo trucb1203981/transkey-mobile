@@ -549,6 +549,9 @@
   "cameraSaveNoteHint": "z. B. nahe dem Hotel, sehr scharf",
   "cameraSaveSkipNote": "Überspringen",
   "cameraCopyLineHeader": "ZEILE KOPIEREN",
+  "cameraSignStoreName": "Geschäftsname",
+  "cameraSignPhone": "Telefonnummer",
+  "cameraSignAddress": "Adresse",
   "cameraShare": "Teilen",
   "cameraShareSubject": "Übersetzt mit TransKey",
   "cameraShareFailed": "Teilen fehlgeschlagen. Erneut versuchen.",
@@ -646,5 +649,12 @@
   "quotaWallUpgradeCta": "Upgraden für unbegrenzte Nutzung",
   "quotaWallCloseCta": "Vielleicht später",
   "guideScreenshotTipTitle": "Screenshot ohne die Bubble",
-  "guideScreenshotTipBody": "Tippe auf die Bubble, um das Menü zu öffnen, und tippe dann unten rechts auf das Kamerasymbol. Die Bubble verschwindet für ein paar Sekunden, damit du einen sauberen Screenshot machen kannst, und kommt dann von selbst zurück."
+  "guideScreenshotTipBody": "Tippe auf die Bubble, um das Menü zu öffnen, und tippe dann unten rechts auf das Kamerasymbol. Die Bubble verschwindet für ein paar Sekunden, damit du einen sauberen Screenshot machen kannst, und kommt dann von selbst zurück.",
+  "accountDeleteButton": "Konto löschen",
+  "accountDeleteTitle": "Konto löschen?",
+  "accountDeleteWarning": "Dein Konto und alle damit verbundenen Daten (Verlauf, Phrasenbuch, Geräte) werden dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden. Wenn du ein aktives Abo hast, kündige es zuerst im App-Store.",
+  "accountDeleteConfirm": "Endgültig löschen",
+  "accountDeleteFailed": "Konto konnte nicht gelöscht werden. Bitte versuche es erneut.",
+  "continueWithApple": "Mit Apple fortfahren",
+  "appleSignInFailed": "Apple-Anmeldung fehlgeschlagen. Bitte versuche es erneut."
 }
