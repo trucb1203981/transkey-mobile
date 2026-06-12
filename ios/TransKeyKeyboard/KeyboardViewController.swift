@@ -335,6 +335,11 @@ class KeyboardViewController: UIInputViewController {
         // The app (or a previous keyboard session) may have changed languages
         // or settings while we were away; re-read and rebuild.
         autocorrectEnabled = AppGroupStore.shared.keyboardAutocorrectEnabled
+        // Strict Telex by default (Android parity): the ie/ye/ue auto-rime is
+        // the ONLY no-trigger-key transform and must stay opt-in behind the
+        // autocorrect setting — unwired it defaults true and rewrites plain
+        // letters ("vien" -> "viên", English "friend" -> "friênd").
+        telex.autoRime = autocorrectEnabled
         inputLang = AppGroupStore.shared.keyboardInputLang
         if !Self.typingLangs.contains(inputLang) {
             inputLang = "vi"
