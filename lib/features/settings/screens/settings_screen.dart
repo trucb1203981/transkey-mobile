@@ -308,6 +308,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     subtitle: Text(_version),
                   ),
 
+                if (session != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  const DeleteAccountButton(),
+                ],
                 const SizedBox(height: AppSpacing.xl),
               ],
             ),

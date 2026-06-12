@@ -65,17 +65,22 @@ class AppGroupBridge {
     }
   }
 
-  /// Mirror plan-gated feature flags so the keyboard extension can gate its
-  /// Reply/Refine chips exactly like the Android suggestion strip.
+  /// Mirror plan-gated feature flags so the extensions gate exactly like the
+  /// app: keyboard -> Reply/Refine chips, share extension ->
+  /// Summarize/Explain/Refine buttons. Same server-driven flags as home.
   static Future<void> saveFeatures({
     required bool reply,
     required bool refine,
+    required bool summarize,
+    required bool explain,
   }) async {
     if (!Platform.isIOS || kIsWeb) return;
     try {
       await _channel.invokeMethod<void>('saveFeatures', {
         'reply': reply,
         'refine': refine,
+        'summarize': summarize,
+        'explain': explain,
       });
     } on PlatformException catch (e) {
       debugPrint('[AppGroupBridge] saveFeatures failed: $e');

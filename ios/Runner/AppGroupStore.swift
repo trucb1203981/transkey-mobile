@@ -21,6 +21,8 @@ class AppGroupStore {
     private let kLangsDirty = "tk_langs_dirty"
     private let kFeatureReply = "tk_feature_reply"
     private let kFeatureRefine = "tk_feature_refine"
+    private let kFeatureSummarize = "tk_feature_summarize"
+    private let kFeatureExplain = "tk_feature_explain"
     private let kLangCatalog = "tk_lang_catalog"
 
     private init() {
@@ -124,6 +126,16 @@ class AppGroupStore {
     var featureRefine: Bool {
         get { defaults?.bool(forKey: kFeatureRefine) ?? false }
         set { defaults?.set(newValue, forKey: kFeatureRefine) }
+    }
+
+    var featureSummarize: Bool {
+        get { defaults?.bool(forKey: kFeatureSummarize) ?? false }
+        set { defaults?.set(newValue, forKey: kFeatureSummarize) }
+    }
+
+    var featureExplain: Bool {
+        get { defaults?.bool(forKey: kFeatureExplain) ?? false }
+        set { defaults?.set(newValue, forKey: kFeatureExplain) }
     }
 
     /// Server-driven language catalog, JSON `[{code,label}, ...]`, mirrored

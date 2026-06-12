@@ -211,11 +211,15 @@ class FeaturesNotifier extends Notifier<FeaturesState> {
         await prefs.setBool(_kSharedSummarizeKey, flags.summarize);
         await prefs.setBool(_kSharedExplainKey, flags.explain);
         await prefs.setBool(_kSharedRefineKey, flags.refine);
-        // Same mirror for the iOS keyboard extension (App Group instead of
-        // SharedPreferences); it gates the Reply/Refine chips like Android.
+        // Same mirror for the iOS extensions (App Group instead of
+        // SharedPreferences): the keyboard gates Reply/Refine chips, the
+        // share extension gates Summarize/Explain/Refine — SAME server flags
+        // as the home buttons, never a hardcoded plan check.
         await AppGroupBridge.saveFeatures(
           reply: flags.replyTranslate,
           refine: flags.refine,
+          summarize: flags.summarize,
+          explain: flags.explain,
         );
         // Mirror the server-driven language catalog so the bubble picker
         // shows the SAME list as the home language bar (admin can

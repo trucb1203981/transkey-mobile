@@ -95,72 +95,9 @@ class AccountSection extends ConsumerWidget {
           ],
           const SizedBox(height: AppSpacing.md),
           _actionRow(context, ref, t),
-          const SizedBox(height: AppSpacing.xs),
-          _deleteAccountButton(context, ref, t),
         ],
       ),
     );
-  }
-
-  /// App Store Guideline 5.1.1(v): account deletion must be reachable
-  /// in-app. Low-emphasis text button so it doesn't compete with the
-  /// primary actions, but still discoverable right under them.
-  Widget _deleteAccountButton(
-      BuildContext context, WidgetRef ref, AppLocalizations t) {
-    return TextButton(
-      onPressed: () => _confirmDeleteAccount(context, ref, t),
-      style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
-      child: Text(
-        t.accountDeleteButton,
-        style: const TextStyle(
-          fontSize: 12,
-          decoration: TextDecoration.underline,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDeleteAccount(
-      BuildContext context, WidgetRef ref, AppLocalizations t) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t.accountDeleteTitle),
-        content: Text(t.accountDeleteWarning),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(t.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.red),
-            child: Text(t.accountDeleteConfirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    if (!context.mounted) return;
-
-    // Capture before the async gap — ref must not be used after the
-    // settings screen is popped by the logout below.
-    final api = ref.read(apiClientProvider);
-    final auth = ref.read(authStateProvider.notifier);
-    try {
-      await api.dio.delete('/auth/me');
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(t.accountDeleteFailed),
-            backgroundColor: AppColors.red,
-          ),
-        );
-      }
-      return;
-    }
-    await auth.logout();
   }
 
   Widget _actionRow(BuildContext context, WidgetRef ref, AppLocalizations t) {
@@ -253,5 +190,68 @@ class AccountSection extends ConsumerWidget {
         : session.email.trim();
     if (source.isEmpty) return '?';
     return source.characters.first.toUpperCase();
+  }
+}
+
+/// App Store Guideline 5.1.1(v): account deletion must be reachable in-app.
+/// Lives at the very BOTTOM of the Settings list (standard iOS placement for
+/// destructive account actions) — away from the primary Upgrade/Log out
+/// buttons so it can't be fat-fingered, but still discoverable for review.
+class DeleteAccountButton extends ConsumerWidget {
+  const DeleteAccountButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context)!;
+    return Center(
+      child: TextButton(
+        onPressed: () => _confirmDeleteAccount(context, ref, t),
+        style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+        child: Text(t.accountDeleteButton, style: const TextStyle(fontSize: 13)),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(
+      BuildContext context, WidgetRef ref, AppLocalizations t) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.accountDeleteTitle),
+        content: Text(t.accountDeleteWarning),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(t.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.red),
+            child: Text(t.accountDeleteConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    // Capture before the async gap — ref must not be used after the
+    // settings screen is popped by the logout below.
+    final api = ref.read(apiClientProvider);
+    final auth = ref.read(authStateProvider.notifier);
+    try {
+      await api.dio.delete('/auth/me');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(t.accountDeleteFailed),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+      return;
+    }
+    await auth.logout();
   }
 }

@@ -67,6 +67,12 @@ class AppGroupPlugin: NSObject, FlutterPlugin {
             if let refine = args["refine"] as? Bool {
                 store.featureRefine = refine
             }
+            if let summarize = args["summarize"] as? Bool {
+                store.featureSummarize = summarize
+            }
+            if let explain = args["explain"] as? Bool {
+                store.featureExplain = explain
+            }
             result(true)
 
         case "saveLangCatalog":

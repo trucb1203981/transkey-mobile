@@ -38,18 +38,53 @@ class ShareViewController: UIViewController {
     private let api = APIClient()
     private var sourceText = ""
     private var resultText = ""
-    private var isPro = false
+    // Per-feature gates mirrored from features_provider.dart via the App
+    // Group — the SAME server-driven flags the home buttons use (admin can
+    // flip per plan via /admin/features), never a hardcoded plan check.
+    private var canSummarize = false
+    private var canExplain = false
+    private var canRefine = false
+
+    // MARK: - Theme (mirrors lib/shared/theme/app_theme.dart AppColors)
+
+    private enum TKTheme {
+        static let primary = UIColor(red: 0.424, green: 0.388, blue: 1.0, alpha: 1)      // #6C63FF
+        static let red = UIColor(red: 1.0, green: 0.420, blue: 0.420, alpha: 1)          // #FF6B6B
+        static let bg = UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor(red: 0.055, green: 0.055, blue: 0.067, alpha: 1)                   // #0E0E11
+            : UIColor(red: 0.961, green: 0.949, blue: 0.933, alpha: 1) }                 // #F5F2EE
+        static let surface = UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor(red: 0.086, green: 0.086, blue: 0.102, alpha: 1)                   // #16161A
+            : .white }
+        static let border = UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor(red: 0.165, green: 0.165, blue: 0.208, alpha: 1)                   // #2A2A35
+            : UIColor(red: 0.898, green: 0.882, blue: 0.859, alpha: 1) }                 // #E5E1DB
+        static let textPrimary = UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor(red: 0.910, green: 0.910, blue: 0.941, alpha: 1)                   // #E8E8F0
+            : UIColor(red: 0.102, green: 0.102, blue: 0.180, alpha: 1) }                 // #1A1A2E
+        static let textSecondary = UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor(red: 0.533, green: 0.533, blue: 0.627, alpha: 1)                   // #8888A0
+            : UIColor(red: 0.420, green: 0.447, blue: 0.502, alpha: 1) }                 // #6B7280
+        static let cardRadius: CGFloat = 16   // AppSpacing.cardRadius
+        static let buttonRadius: CGFloat = 12 // AppSpacing.buttonRadius
+    }
 
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = TKTheme.bg
+
+        // Read the mirrored feature flags BEFORE setupUI — the buttons take
+        // their enabled state at configure time (the legacy code read the
+        // plan after setupUI, so every gated button rendered disabled).
+        let store = AppGroupStore.shared
+        canSummarize = store.featureSummarize
+        canExplain = store.featureExplain
+        canRefine = store.featureRefine
+
         setupNavigation()
         setupUI()
-
-        isPro = AppGroupStore.shared.plan != "free"
-
         extractSharedContent()
     }
 
@@ -61,13 +96,21 @@ class ShareViewController: UIViewController {
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             title: "✕", style: .plain, target: self, action: #selector(closeTapped)
         )
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = TKTheme.bg
+        appearance.titleTextAttributes = [.foregroundColor: TKTheme.textPrimary]
+        appearance.shadowColor = .clear
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.navigationBar.tintColor = TKTheme.primary
     }
 
     // MARK: - UI Setup
 
     private func setupUI() {
-        let primary = UIColor(red: 0.42, green: 0.39, blue: 1.0, alpha: 1.0) // #6C63FF
-        let secondaryLabel = UIColor.secondaryLabel
+        let primary = TKTheme.primary
+        let secondaryLabel = TKTheme.textSecondary
 
         // ScrollView
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -100,7 +143,7 @@ class ShareViewController: UIViewController {
         // Screenshot preview (hidden unless an image was shared)
         imagePreview.contentMode = .scaleAspectFill
         imagePreview.clipsToBounds = true
-        imagePreview.layer.cornerRadius = 12
+        imagePreview.layer.cornerRadius = TKTheme.cardRadius
         imagePreview.isHidden = true
         imagePreview.heightAnchor.constraint(equalToConstant: 120).isActive = true
         stack.addArrangedSubview(imagePreview)
@@ -115,9 +158,11 @@ class ShareViewController: UIViewController {
         sourceTextView.isEditable = false
         sourceTextView.isScrollEnabled = false
         sourceTextView.font = .systemFont(ofSize: 15)
-        sourceTextView.textColor = .label
-        sourceTextView.backgroundColor = .secondarySystemBackground
-        sourceTextView.layer.cornerRadius = 12
+        sourceTextView.textColor = TKTheme.textPrimary
+        sourceTextView.backgroundColor = TKTheme.surface
+        sourceTextView.layer.cornerRadius = TKTheme.cardRadius
+        sourceTextView.layer.borderWidth = 1
+        sourceTextView.layer.borderColor = TKTheme.border.cgColor
         sourceTextView.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         sourceTextView.heightAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
         stack.addArrangedSubview(sourceTextView)
@@ -128,9 +173,9 @@ class ShareViewController: UIViewController {
         buttonStack.spacing = 8
 
         configureButton(translateBtn, title: "Translate", icon: "doc.text.magnifyingglass", color: primary, enabled: true)
-        configureButton(summarizeBtn, title: "Summarize", icon: "list.bullet.clipboard", color: primary, enabled: isPro)
-        configureButton(explainBtn, title: "Explain", icon: "lightbulb", color: primary, enabled: isPro)
-        configureButton(refineBtn, title: "Refine", icon: "wand.and.stars", color: primary, enabled: isPro)
+        configureButton(summarizeBtn, title: "Summarize", icon: "list.bullet.clipboard", color: primary, enabled: canSummarize)
+        configureButton(explainBtn, title: "Explain", icon: "lightbulb", color: primary, enabled: canExplain)
+        configureButton(refineBtn, title: "Refine", icon: "wand.and.stars", color: primary, enabled: canRefine)
 
         translateBtn.addTarget(self, action: #selector(translateTapped), for: .touchUpInside)
         summarizeBtn.addTarget(self, action: #selector(summarizeTapped), for: .touchUpInside)
@@ -144,25 +189,30 @@ class ShareViewController: UIViewController {
         stack.addArrangedSubview(buttonStack)
 
         // Error
-        errorLabel.textColor = .systemRed
+        errorLabel.textColor = TKTheme.red
         errorLabel.font = .systemFont(ofSize: 14)
         errorLabel.numberOfLines = 0
         errorLabel.isHidden = true
         stack.addArrangedSubview(errorLabel)
 
         // Activity indicator
+        activityIndicator.color = TKTheme.primary
         activityIndicator.hidesWhenStopped = true
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(activityIndicator)
 
-        // Result container
-        resultContainer.backgroundColor = primary.withAlphaComponent(0.08)
-        resultContainer.layer.cornerRadius = 12
+        // Result container — surface card with a primary-tinted border, the
+        // result text in normal text color (matches the home result sheet;
+        // primary-on-primary was hard to read).
+        resultContainer.backgroundColor = TKTheme.surface
+        resultContainer.layer.cornerRadius = TKTheme.cardRadius
+        resultContainer.layer.borderWidth = 1
+        resultContainer.layer.borderColor = primary.withAlphaComponent(0.45).cgColor
         resultContainer.isHidden = true
 
         resultTextView.isEditable = false
         resultTextView.font = .systemFont(ofSize: 16)
-        resultTextView.textColor = primary
+        resultTextView.textColor = TKTheme.textPrimary
         resultTextView.backgroundColor = .clear
         resultTextView.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         resultTextView.isScrollEnabled = false
@@ -188,15 +238,17 @@ class ShareViewController: UIViewController {
         copyButton.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
         copyButton.backgroundColor = primary
         copyButton.setTitleColor(.white, for: .normal)
-        copyButton.layer.cornerRadius = 12
+        copyButton.layer.cornerRadius = TKTheme.buttonRadius
         copyButton.addTarget(self, action: #selector(copyTapped), for: .touchUpInside)
         copyButton.isHidden = true
 
         closeButton.setTitle("Close", for: .normal)
         closeButton.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
-        closeButton.backgroundColor = .secondarySystemFill
-        closeButton.setTitleColor(.label, for: .normal)
-        closeButton.layer.cornerRadius = 12
+        closeButton.backgroundColor = TKTheme.surface
+        closeButton.setTitleColor(TKTheme.textPrimary, for: .normal)
+        closeButton.layer.cornerRadius = TKTheme.buttonRadius
+        closeButton.layer.borderWidth = 1
+        closeButton.layer.borderColor = TKTheme.border.cgColor
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
 
         let btnHeight: CGFloat = 48
@@ -209,13 +261,19 @@ class ShareViewController: UIViewController {
     }
 
     private func configureButton(_ btn: UIButton, title: String, icon: String, color: UIColor, enabled: Bool) {
-        let config = UIButton.Configuration.filled()
-        btn.configuration = config
+        // Plain UIButton, NOT UIButton.Configuration.filled() — the filled
+        // configuration paints its own tint-blue background over the theme
+        // colors set below.
         btn.setTitle(title, for: .normal)
         btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
-        btn.backgroundColor = enabled ? color.withAlphaComponent(0.12) : UIColor.separator
-        btn.setTitleColor(enabled ? color : .tertiaryLabel, for: .normal)
-        btn.layer.cornerRadius = 12
+        btn.titleLabel?.adjustsFontSizeToFitWidth = true
+        btn.titleLabel?.minimumScaleFactor = 0.7
+        btn.titleLabel?.numberOfLines = 1
+        btn.backgroundColor = enabled ? color.withAlphaComponent(0.16) : TKTheme.surface
+        btn.setTitleColor(enabled ? color : TKTheme.textSecondary.withAlphaComponent(0.5), for: .normal)
+        btn.layer.cornerRadius = TKTheme.buttonRadius
+        btn.layer.borderWidth = enabled ? 0 : 1
+        btn.layer.borderColor = TKTheme.border.cgColor
         btn.isEnabled = enabled
         btn.heightAnchor.constraint(equalToConstant: 44).isActive = true
     }
@@ -482,11 +540,9 @@ class ShareViewController: UIViewController {
 
     private func setButtonsEnabled(_ enabled: Bool) {
         translateBtn.isEnabled = enabled
-        if isPro {
-            summarizeBtn.isEnabled = enabled
-            explainBtn.isEnabled = enabled
-            refineBtn.isEnabled = enabled
-        }
+        if canSummarize { summarizeBtn.isEnabled = enabled }
+        if canExplain { explainBtn.isEnabled = enabled }
+        if canRefine { refineBtn.isEnabled = enabled }
     }
 }
 
