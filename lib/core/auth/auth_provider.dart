@@ -8,6 +8,7 @@ import '../diagnostics/app_log.dart';
 import '../../features/glossary/providers/glossary_provider.dart';
 import '../../features/settings/providers/devices_provider.dart';
 import '../../features/settings/providers/subscription_provider.dart';
+import '../../features/translate/providers/features_provider.dart';
 import '../../features/translate/providers/translate_provider.dart';
 import '../../features/upgrade/providers/usage_provider.dart';
 import '../api/dio_client.dart';
@@ -111,6 +112,17 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     ref.invalidate(glossaryProvider);
     ref.invalidate(subscriptionProvider);
     ref.invalidate(devicesProvider);
+    // Feature flags are PLAN-scoped, so a login / logout / account-switch can
+    // flip the allowed set entirely. refresh() force-refetches /features with
+    // the new identity (ignoring the 5-min TTL that refreshIfNeeded honours).
+    // Without this the previous account's flags lingered: logging in as Pro
+    // kept camera/refine/reply OFF, so the camera FAB wrongly showed the
+    // upgrade nudge until a manual app restart (reported 2026-06-13). The
+    // refresh() method existed for exactly this but was never wired in.
+    // Fire-and-forget: session is already saved + the API token cache cleared
+    // above, so the refetch uses the new token; on logout the doomed 401 is
+    // swallowed by fetch()'s catch (keeps prior flags).
+    unawaited(ref.read(featuresProvider.notifier).refresh());
   }
 
   Future<void> login({
