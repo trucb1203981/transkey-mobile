@@ -270,7 +270,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   FeatureFlags get _features => ref.watch(featuresProvider).flags;
 
   bool _isModeAllowed(TranslateMode mode) {
-    final flags = _features;
+    // Fail OPEN until /features has resolved (fetchedAt != null). Before the
+    // first response every paid flag holds its pessimistic default (off), so
+    // gating on that wrongly nudged a paid user to upgrade during the load /
+    // failure window - the "pro account but upgrade popup" bug (also seen on
+    // Refine). The server's 403 is the real gate for a genuine free user.
+    final featState = ref.watch(featuresProvider);
+    if (featState.fetchedAt == null) return true;
+    final flags = featState.flags;
     switch (mode) {
       case TranslateMode.translate:
         return flags.translate;
@@ -351,7 +358,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   /// where camera is disabled see the upgrade nudge instead of opening
   /// the screen and hitting a 403 on the first capture.
   void _handleCameraTap() {
-    if (!_features.camera) {
+    // Only block when we KNOW the plan lacks camera, i.e. /features has
+    // actually loaded (fetchedAt != null). The default before the first
+    // response is camera=false; gating on that wrongly nudged a paid user
+    // who tapped during the load window - the "camera opens sometimes,
+    // sometimes not" bug. When the flag state is unknown, open optimistically
+    // and let the capture path's server guard (403) be the real gate.
+    final featState = ref.read(featuresProvider);
+    if (featState.fetchedAt != null && !featState.flags.camera) {
       final l = AppLocalizations.of(context)!;
       UpgradeNudgeSheet.show(context, featureName: l.cameraTitle);
       return;

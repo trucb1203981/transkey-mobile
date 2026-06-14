@@ -128,6 +128,7 @@ class CameraResultOverlay extends StatefulWidget {
     this.usePrimaryColor = false,
     this.pendingIndices = const {},
     this.mangaMode = false,
+    this.menuMode = false,
     this.fontScale = 1.0,
     this.onBackgroundTap,
     this.onExplain,
@@ -174,6 +175,12 @@ class CameraResultOverlay extends StatefulWidget {
   final Set<int> pendingIndices;
 
   final bool mangaMode;
+
+  /// Menu scene: the server blanks non-dish fragments (prices, headers,
+  /// hours, address, shop logo) to "". When true, cards with an empty
+  /// translation are dropped so only dish names + notes render - the
+  /// original noise stays visible on the photo behind the overlay.
+  final bool menuMode;
 
   /// User-tunable multiplier on the overlay font. At 1.0 the auto fitter
   /// chooses a size that fits the source bbox; above 1.0 the text is
@@ -315,11 +322,12 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
   }
 
   bool _isOverTrash(Offset point, Size viewSize) {
-    final trashCenter = Offset(
-      viewSize.width / 2,
-      viewSize.height - _kTrashBottomGap - _kTrashRadius,
-    );
-    return (point - trashCenter).distance <= _kTrashRadius;
+    // Full-width band across the bottom: cards drag vertically only now (so
+    // horizontal swipes page the batch), keeping their column x, so a centred
+    // circular zone is unreachable for side cards. Any card dragged far enough
+    // DOWN lands in the band; the trash icon stays centred as the visual cue.
+    final bandTop = viewSize.height - _kTrashBottomGap - _kTrashRadius * 2;
+    return point.dy >= bandTop;
   }
 
   /// Number of visual lines occupied by the source text inside its
@@ -480,6 +488,17 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
           final translation = i < widget.translations.length
               ? widget.translations[i]
               : '';
+          // Menu scene: the server returns "" for non-dish fragments
+          // (prices, headers, hours, address, shop logo). Drop those cards
+          // so only dish names + notes render. Skip the drop while the
+          // block is still pending (empty == not-yet-translated, not
+          // blanked) and while the user is inspecting originals.
+          if (widget.menuMode &&
+              !widget.showOriginal &&
+              !widget.pendingIndices.contains(i) &&
+              translation.trim().isEmpty) {
+            continue;
+          }
           final isTranslated = !widget.showOriginal &&
               translation.isNotEmpty &&
               translation != block.text;
@@ -563,7 +582,31 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                 maxRight = r.left - 6;
               }
             }
-            final layoutWidth = math.max(cardWidth, maxRight - left);
+            var layoutWidth = math.max(cardWidth, maxRight - left);
+
+            // Narrow-source readability floor. A vertical sign strip or a thin
+            // menu column has a tiny boxW, and when grow-right is capped by a
+            // neighbour the horizontal Vietnamese wraps to 1-2 chars per line
+            // (seen on Korean vertical signs: "Piano" -> a column of single
+            // letters). If the chosen width can't even hold this card's longest
+            // word, widen it to fit that word (capped at the viewport), even if
+            // that means slightly overrunning a neighbour - an unreadable
+            // 1-char column is worse than a small overlap, and cards are
+            // draggable. Only kicks in for genuinely-too-narrow boxes.
+            final renderFont = (isTranslated
+                    ? math.max(_estimateSourceFont(boxH, 1), 13.0)
+                    : _estimateSourceFont(boxH, _sourceLineCount(block.text))) *
+                widget.fontScale;
+            final neededWordW = _longestWordWidth(
+                  displayText,
+                  renderFont,
+                  isTranslated ? FontWeight.w500 : FontWeight.normal,
+                ) +
+                _kCardHPad * 2;
+            if (layoutWidth < neededWordW) {
+              layoutWidth =
+                  math.min(viewSize.width - left - 4, neededWordW);
+            }
 
             // Cap DOWNWARD growth at the nearest block BELOW the card's
             // expanded span. The readable-floor font (below) grows the card
@@ -579,16 +622,23 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               final hOverlap =
                   math.min(spanRight, r.right) - math.max(left, r.left);
               if (hOverlap <= 0) continue;
-              // Only blocks whose top sits under this card's midline count
+              // Only blocks whose top sits under this card's upper half count
               // as "below" - a same-row neighbour with a slightly offset box
-              // must not cap the height to a sliver.
-              if (r.top >= top + boxH * 0.6 && r.top < maxBottom) {
-                maxBottom = r.top - 4;
+              // must not cap the height to a sliver. Lowered 0.6 -> 0.5 so a
+              // tightly-stacked next row (dense menus) is caught and caps the
+              // card before it paints over that row.
+              if (r.top >= top + boxH * 0.5 && r.top < maxBottom) {
+                maxBottom = r.top - 3;
               }
             }
-            // Never tighter than the source box itself: rows whose source
-            // bboxes already touch keep at least their own text mass.
-            final availHeight = math.max(boxH, maxBottom - top);
+            // Cap the card to the real gap down to the next row so it can't
+            // bleed over it. Floored at one readable line (so a card never
+            // collapses to nothing) but NOT at the full source box: on dense
+            // menus the source line boxes themselves nearly touch, and forcing
+            // the old `max(boxH, …)` minimum made every card overrun its
+            // neighbour by the card padding. The font refit + FittedBox below
+            // shrink the text to whatever height this leaves.
+            final availHeight = math.max(18.0, maxBottom - top);
 
             // Normal mode: auto-fit font to source box height.
             final lines = _sourceLineCount(block.text);
@@ -957,6 +1007,32 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     );
   }
 
+  /// Width (px) of the single widest whitespace-delimited word in [text] at
+  /// [fontSize]/[fontWeight]. Used to guarantee a card is at least wide enough
+  /// to hold its longest word on one line, so a narrow source box (vertical
+  /// sign strip, thin menu column) doesn't wrap the horizontal translation
+  /// into an unreadable 1-2-char-per-line column.
+  double _longestWordWidth(
+    String text,
+    double fontSize,
+    FontWeight fontWeight,
+  ) {
+    var widest = 0.0;
+    for (final word in text.split(RegExp(r'\s+'))) {
+      if (word.isEmpty) continue;
+      final tp = TextPainter(
+        text: TextSpan(
+          text: word,
+          style: TextStyle(fontSize: fontSize, fontWeight: fontWeight),
+        ),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      if (tp.size.width > widest) widest = tp.size.width;
+    }
+    return widest;
+  }
+
   double _measureText(
     String text,
     double maxWidth, {
@@ -1083,10 +1159,15 @@ class _BlockCard extends StatelessWidget {
           // so a quick tap never gets misread as a drag.
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onPanStart: (_) => onDragStart?.call(),
-            onPanUpdate: (d) => onDrag(d.delta),
-            onPanEnd: (_) => onDragEnd?.call(),
-            onPanCancel: () => onDragEnd?.call(),
+            // Vertical-only drag so a HORIZONTAL swipe over a card is NOT
+            // claimed here and bubbles up to the result's page-swipe handler.
+            // Dense menus cover the whole image with cards; with onPan they ate
+            // every swipe and batch paging never fired (manga only worked
+            // because its bubbles are sparse). Card still drags DOWN to trash.
+            onVerticalDragStart: (_) => onDragStart?.call(),
+            onVerticalDragUpdate: (d) => onDrag(d.delta),
+            onVerticalDragEnd: (_) => onDragEnd?.call(),
+            onVerticalDragCancel: () => onDragEnd?.call(),
             child: InkWell(
               onTap: onTap,
               borderRadius: BorderRadius.circular(4),
@@ -1213,10 +1294,12 @@ class _BlockCard extends StatelessWidget {
           type: MaterialType.transparency,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onPanStart: (_) => onDragStart?.call(),
-            onPanUpdate: (details) => onDrag(details.delta),
-            onPanEnd: (_) => onDragEnd?.call(),
-            onPanCancel: () => onDragEnd?.call(),
+            // Vertical-only (see the non-manga card above): horizontal swipes
+            // stay free for batch paging; card still drags down to the trash.
+            onVerticalDragStart: (_) => onDragStart?.call(),
+            onVerticalDragUpdate: (details) => onDrag(details.delta),
+            onVerticalDragEnd: (_) => onDragEnd?.call(),
+            onVerticalDragCancel: () => onDragEnd?.call(),
             child: InkWell(
               onTap: onTap,
               onLongPress: onExplain,

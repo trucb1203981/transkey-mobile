@@ -5,7 +5,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
-import 'package:dio/dio.dart' show Options;
+import 'package:dio/dio.dart' show DioException, Options;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -21,6 +21,7 @@ import '../../../core/camera/camera_service.dart';
 import '../../../core/camera/text_tracker.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../glossary/providers/glossary_provider.dart';
 import '../../translate/providers/camera_settings_provider.dart';
@@ -69,6 +70,22 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// (preserves card drag-to-trash) and turns on once the user has
   /// pinched in, so they can drag around the magnified menu.
   final TransformationController _zoomController = TransformationController();
+
+  // ── Batch page-swipe via raw pointer Listener ─────────────────────
+  //
+  // A GestureDetector.onHorizontalDragEnd cannot reliably page the batch:
+  // it competes in the gesture arena with the InteractiveViewer's scale
+  // recognizer (and, on dense menus, every card's drag recognizer), so the
+  // horizontal swipe is frequently swallowed before the drag end fires
+  // (verified on-device: swipe + arrows dead on non-manga results). A
+  // Listener is NOT an arena participant - it receives the raw pointer
+  // stream regardless of which recognizer wins - so reading the swipe from
+  // pointer down→up here is immune to that contention. Guards below keep it
+  // from firing during a pinch (multi-touch) or a pan while zoomed in.
+  int _swipePointerCount = 0;
+  int? _swipePointerId;
+  Offset _swipeStartPos = Offset.zero;
+  bool _swipeMultiTouch = false;
 
   /// Cache of /split-block results keyed by the block's source text.
   /// A repeat long-press on the same card (same OCR output) reuses the
@@ -276,7 +293,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// flag (same one /admin/plans toggles) to match server policy exactly —
   /// hardcoding `isPro` would diverge if admin disabled camera for pro.
   bool _isCameraAllowed() {
-    return ref.read(featuresProvider).flags.camera;
+    // Fail OPEN until /features has actually resolved (fetchedAt != null).
+    // Before the first response the flag holds its pessimistic default
+    // (camera = false), so gating on it here wrongly threw a paid user into
+    // the "Unlock Camera" sheet whenever /features was still loading or had
+    // failed - the recurring "pro account but upgrade popup" bug. Matches
+    // home_screen._handleCameraTap; the capture path's server 403 is the
+    // real gate for a genuine free user. Kick a refresh so a stale/failed
+    // earlier load self-heals.
+    final fs = ref.read(featuresProvider);
+    if (fs.fetchedAt == null) {
+      unawaited(ref.read(featuresProvider.notifier).refreshIfNeeded());
+      return true;
+    }
+    return fs.flags.camera;
   }
 
   Future<void> _initCamera() async {
@@ -752,6 +782,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       usePrimaryColor: settings.usePrimaryOverlayColor,
       pendingIndices: _pendingIndices,
       mangaMode: settings.scene == CameraScene.manga,
+      menuMode: settings.scene == CameraScene.menu,
       fontScale: settings.overlayFontScale,
       onBackgroundTap: settings.scene == CameraScene.manga
           ? () => setState(() => _mangaUiVisible = !_mangaUiVisible)
@@ -1215,19 +1246,47 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         CameraSettings.defaults;
     final isManga = settings.scene == CameraScene.manga;
 
-    return GestureDetector(
-      // Manga: horizontal swipe switches batch pages; tap empty area
-      // toggles UI chrome visibility.
-      onHorizontalDragEnd: isManga && _batchTotal > 1
-          ? (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (velocity < -300) {
-                _switchBatch(_activeBatchIndex + 1);
-              } else if (velocity > 300) {
-                _switchBatch(_activeBatchIndex - 1);
-              }
-            }
-          : null,
+    return Listener(
+      // Raw pointer stream (NOT a gesture-arena recognizer) so the batch
+      // page-swipe survives the arena contention from InteractiveViewer +
+      // dense card recognizers that made onHorizontalDragEnd unreliable on
+      // non-manga results. We read the swipe from down→up deltas directly.
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (e) {
+        _swipePointerCount++;
+        if (_swipePointerCount == 1) {
+          _swipePointerId = e.pointer;
+          _swipeStartPos = e.position;
+          _swipeMultiTouch = false;
+        } else {
+          // A second finger = pinch-zoom, never a page swipe.
+          _swipeMultiTouch = true;
+        }
+      },
+      onPointerCancel: (e) {
+        _swipePointerCount = math.max(0, _swipePointerCount - 1);
+        if (e.pointer == _swipePointerId) _swipePointerId = null;
+      },
+      onPointerUp: (e) {
+        final tracked = e.pointer == _swipePointerId;
+        _swipePointerCount = math.max(0, _swipePointerCount - 1);
+        if (!tracked) return;
+        _swipePointerId = null;
+        if (_swipeMultiTouch || _batchTotal <= 1) return;
+        // Zoomed in: a one-finger drag pans the magnified image, so it must
+        // not also page the batch.
+        if (_zoomController.value.getMaxScaleOnAxis() > 1.05) return;
+        final d = e.position - _swipeStartPos;
+        // Decisive horizontal travel, clearly more horizontal than vertical
+        // (vertical drag belongs to card drag-to-trash).
+        if (d.dx.abs() > 56 && d.dx.abs() > d.dy.abs() * 1.4) {
+          if (d.dx < 0) {
+            _switchBatch(_activeBatchIndex + 1);
+          } else {
+            _switchBatch(_activeBatchIndex - 1);
+          }
+        }
+      },
       child: Stack(
       fit: StackFit.expand,
       children: [
@@ -1321,23 +1380,24 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         // spinner + pending count whenever queue is shorter than total.
         // Outside the RepaintBoundary so a Share screenshot doesn't
         // bake "2 / 4" + arrow controls into the exported PNG.
+        // Anchored at the BOTTOM (above the discoverability hint), not the top:
+        // the top band y~100-150 is a tap dead zone (a sibling painted above
+        // the result intercepts pointers there), so the arrow chevrons were
+        // untappable up top. The bottom is in the live hit-test zone, so the
+        // arrows respond. Still outside the RepaintBoundary so a Share
+        // screenshot doesn't bake "2 / 4" + controls into the exported PNG.
         if (_batchTotal > 1 && (!isManga || _mangaUiVisible))
           Positioned(
-            top: 0,
             left: 0,
             right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 56),
-                child: Center(
-                  child: _BatchPageNav(
-                    currentIndex: _activeBatchIndex,
-                    loaded: _batchQueue.length,
-                    total: _batchTotal,
-                    onPrev: () => _switchBatch(_activeBatchIndex - 1),
-                    onNext: () => _switchBatch(_activeBatchIndex + 1),
-                  ),
-                ),
+            bottom: 148,
+            child: Center(
+              child: _BatchPageNav(
+                currentIndex: _activeBatchIndex,
+                loaded: _batchQueue.length,
+                total: _batchTotal,
+                onPrev: () => _switchBatch(_activeBatchIndex - 1),
+                onNext: () => _switchBatch(_activeBatchIndex + 1),
               ),
             ),
           ),
@@ -1401,6 +1461,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   tooltip: AppLocalizations.of(context)!
                       .cameraTapShowTranslations,
                   onTap: () => _overlayController.toggleVisible(),
+                ),
+                const SizedBox(width: 8),
+                // List view: read every detected line as a clean original ->
+                // translation list. The on-image card overlay can't lay out a
+                // SUPER-dense menu without overlap (readable text needs more
+                // height than the cramped rows leave), so the list is the
+                // reliable way to read those.
+                _RoundIconButton(
+                  icon: Icons.format_list_bulleted,
+                  tooltip: AppLocalizations.of(context)!.cameraListView,
+                  onTap: _showResultList,
                 ),
                 const SizedBox(width: 8),
                 _RoundIconButton(
@@ -1524,13 +1595,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                               'camera_tips_open',
                               properties: {'source': 'help_button'},
                             );
-                        CameraTipsSheet.show(context);
+                        _withPreviewStreamPaused(
+                            () => CameraTipsSheet.show(context));
                       },
                     ),
                   IconButton(
                     icon: const Icon(Icons.tune, color: Colors.white),
                     tooltip: l.cameraSettingsTitle,
-                    onPressed: () => CameraSettingsSheet.show(context),
+                    onPressed: () => _withPreviewStreamPaused(
+                        () => CameraSettingsSheet.show(context)),
                   ),
                 ],
               ),
@@ -1859,12 +1932,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final List<XFile> rawPicked;
     try {
       rawPicked = await ImagePicker().pickMultiImage(
-        // Cap dimensions to 1600 px so OCR + (optional) vision upload run
-        // fast on a gallery pick — going larger only adds latency without
-        // improving recognition (ML Kit's detection grid plateaus before
-        // 2000 px). Matches the same long-edge cap used for vision uploads.
-        maxWidth: 1600,
-        maxHeight: 1600,
+        // Cap dimensions to 1280 px so a gallery pick is as fast as a live
+        // capture: a library photo is a full ~12 MP HEIC, and the picker has
+        // to decode + downscale + re-encode it before OCR even starts. 1280
+        // matches the shutter's ResolutionPreset.high (1280x720) so the OCR
+        // step does the same amount of work both ways, and on-device Apple
+        // Vision / ML Kit recognition plateaus well before this size. Larger
+        // (was 1600) only added decode + recognition latency on the common
+        // menu/document batch without measurably better reads. Trade-off:
+        // very small text on an extremely dense menu may read slightly worse.
+        maxWidth: 1280,
+        maxHeight: 1280,
         imageQuality: 90,
         // Enforce the batch cap at the picker UI so the user can't tick
         // more than [_kMaxBatchImages] checkboxes in the first place —
@@ -2073,15 +2151,40 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       jobs.add(fut);
     }
 
+    if (!mounted) return;
+    final noTextMsg = AppLocalizations.of(context)!.cameraNoText;
     for (var i = 0; i < jobs.length; i++) {
       if (!mounted) return;
       final drainSw = Stopwatch()..start();
-      final snap = await jobs[i];
+      // One image throwing (decode/OCR/network) must NOT kill the whole
+      // batch and strand the user on the spinner. Catch per-image: turn a
+      // thrown failure into an error snapshot (plan-gate message when it is
+      // one) so the gallery walker still advances and the other images show.
+      _BatchSnapshot? snap;
+      try {
+        snap = await jobs[i];
+      } catch (e) {
+        debugPrint('[Camera] batch img$i failed: $e');
+        snap = _BatchSnapshot(
+          path: picked[i].path,
+          imageSize: Size.zero,
+          blocks: const [],
+          translations: const [],
+          error: _planGateMessage(e) ?? noTextMsg,
+        );
+      }
       if (!mounted) return;
       if (snap == null) {
         _dbg('img$i drained null +${batchSw.elapsedMilliseconds}ms');
-        setState(() => _batchDone = i + 1);
-        continue;
+        // Still surface a navigable slot so the page count stays correct and
+        // the walker doesn't skip an image silently.
+        snap = _BatchSnapshot(
+          path: picked[i].path,
+          imageSize: Size.zero,
+          blocks: const [],
+          translations: const [],
+          error: noTextMsg,
+        );
       }
       _batchQueue.add(snap);
       final isFirst = _batchQueue.length == 1;
@@ -2089,7 +2192,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         _batchDone = i + 1;
         if (isFirst) {
           _activeBatchIndex = 0;
-          _restoreFromSnapshot(snap);
+          _restoreFromSnapshot(snap!);
           _isBatchProcessing = false;
           _step = _resultStepRespectingBatch();
         }
@@ -2106,12 +2209,66 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// with empty blocks is still returned with `error = 'No text found'`
   /// so the gallery walker can present it as "no text" rather than
   /// silently dropping the slot.
+  /// Maps a translate-endpoint failure to a user-facing plan-gate message,
+  /// or null when the failure is transient (network/server blip). Gate
+  /// errors must NOT fall back to original-text placeholder cards: on a
+  /// document capture the placeholder renders a card visually identical to
+  /// the source page, so the user sees "translate did nothing" with no
+  /// explanation (found in on-device testing 2026-06-13).
+  String? _planGateMessage(Object e) {
+    if (e is! DioException || !mounted) return null;
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+    final code = data is Map ? data['error'] : null;
+    final l = AppLocalizations.of(context)!;
+    if (status == 403 && code == 'feature_disabled') {
+      return l.errorFeatureRequiresPaid;
+    }
+    if (status == 429 && code == 'quota_exceeded') {
+      return l.errorQuotaExceeded;
+    }
+    return null;
+  }
+
   Future<_BatchSnapshot?> _runOcrAndTranslatePure(
     XFile file, {
     required CameraScene scene,
     required double confidenceThreshold,
   }) async {
     final sw = Stopwatch()..start();
+
+    // Explicitly-pinned unsupported-script source (Thai, Arabic, Cyrillic, …):
+    // skip on-device OCR and go straight to the vision LLM, exactly like the
+    // single-capture path's `sourceWantsVision` branch. On-device OCR can't
+    // read these scripts and returns HIGH-confidence Latin garbage, which the
+    // weak-OCR escalation below never catches (high conf = "not weak"), so the
+    // garbage gets translated. This parallel gallery path was missing the
+    // guard the single-capture path already has (parity gap found on-device
+    // 2026-06-13: an Arabic menu came back as nonsense cards).
+    final pinnedSource =
+        ref.read(languageSettingsProvider).valueOrNull?.sourceLang;
+    if (_sourceNeedsVision(pinnedSource)) {
+      try {
+        final vision = await _runVisionPure(file.path, scene: scene.id);
+        _dbg('  ${file.path.split('/').last} src=$pinnedSource '
+            'vision-only ${sw.elapsedMilliseconds}ms (${vision.blocks.length}b)');
+        return vision;
+      } catch (e) {
+        debugPrint('[Camera] gallery source-vision failed: $e');
+        final gate = _planGateMessage(e);
+        if (gate != null) {
+          return _BatchSnapshot(
+            path: file.path,
+            imageSize: Size.zero,
+            blocks: const [],
+            translations: const [],
+            error: gate,
+          );
+        }
+        // Transient failure - fall through to the on-device attempt below.
+      }
+    }
+
     final ocr = await _runOcrPure(
       file.path,
       scene: scene.id,
@@ -2184,14 +2341,18 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             }
           }
           final raw = data?['translations'] as List?;
+          final isMenu = scene == CameraScene.menu;
           for (var k = 0; k < end - s; k++) {
             final origIdx = probe.missIndices[s + k];
             final origText = texts[origIdx];
             final v = (raw != null && k < raw.length) ? raw[k] : null;
-            final tr =
-                (v is String && v.trim().isNotEmpty) ? v : origText;
+            // Menu scene: preserve a server "" (intentional drop of a
+            // non-dish) so the overlay/list filter hides it.
+            final tr = (v is String && v.trim().isNotEmpty)
+                ? v
+                : (isMenu && v is String ? '' : origText);
             translations[origIdx] = tr;
-            if (tr != origText) {
+            if (tr.isNotEmpty && tr != origText) {
               TranslationCache.instance.store(
                 text: origText,
                 sourceLang: sourceLang,
@@ -2204,8 +2365,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         }
       } catch (e) {
         debugPrint('[Camera] Batch translate failed for ${ocr.path}: $e');
-        // Misses keep their original-text placeholder so the snapshot
-        // still renders something readable.
+        // Plan/quota gates are permanent for this run - surface them as
+        // the result error instead of placeholder cards (see
+        // _planGateMessage). Transient failures keep the original-text
+        // placeholder so the snapshot still renders something readable.
+        final gate = _planGateMessage(e);
+        if (gate != null) {
+          return _BatchSnapshot(
+            path: ocr.path,
+            imageSize: ocr.size,
+            blocks: const [],
+            translations: const [],
+            error: gate,
+          );
+        }
       }
     }
 
@@ -2456,14 +2629,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           'scene': scene.id,
         }).timeout(const Duration(seconds: 60));
         final raw = (resp.data as Map?)?['translations'] as List?;
+        final isMenu = scene == CameraScene.menu;
         for (var k = 0; k < end - s; k++) {
           final origIdx = probe.missIndices[s + k];
           final origText = texts[origIdx];
           final v = (raw != null && k < raw.length) ? raw[k] : null;
-          final tr = (v is String && v.trim().isNotEmpty) ? v : origText;
-          final clean = _normalizeTranslation(tr);
+          final tr = (v is String && v.trim().isNotEmpty)
+              ? v
+              : (isMenu && v is String ? '' : origText);
+          final clean = tr.isEmpty ? '' : _normalizeTranslation(tr);
           translations[origIdx] = clean;
-          if (clean != origText) {
+          if (clean.isNotEmpty && clean != origText) {
             TranslationCache.instance.store(
               text: origText,
               sourceLang: sourceLang,
@@ -2665,7 +2841,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         imageSize: Size.zero,
         blocks: const [],
         translations: const [],
-        error: e.toString(),
+        error: _planGateMessage(e) ?? e.toString(),
       );
     }
   }
@@ -2830,15 +3006,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             }
           }
           final raw = data?['translations'] as List?;
+          final isMenu = scene == CameraScene.menu;
           for (var k = 0; k < end - s; k++) {
             final origIdx = probe.missIndices[s + k];
             final origText = texts[origIdx];
             final v = (raw != null && k < raw.length) ? raw[k] : null;
-            final tr =
-                (v is String && v.trim().isNotEmpty) ? v : origText;
-            final clean = _normalizeTranslation(tr);
+            // Menu scene: server returns "" to DROP a non-dish fragment.
+            // Preserve that blank so the overlay/list filter hides it; in
+            // every other scene an empty response means "no translation"
+            // so fall back to the source text.
+            final tr = (v is String && v.trim().isNotEmpty)
+                ? v
+                : (isMenu && v is String ? '' : origText);
+            final clean = tr.isEmpty ? '' : _normalizeTranslation(tr);
             translations[origIdx] = clean;
-            if (clean != origText) {
+            if (clean.isNotEmpty && clean != origText) {
               TranslationCache.instance.store(
                 text: origText,
                 sourceLang: sourceLang,
@@ -3882,7 +4064,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       debugPrint('[Camera] Translate failed: $e');
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = _planGateMessage(e) ?? e.toString();
         _pendingIndices = {};
         _step = _resultStepRespectingBatch();
       });
@@ -3995,6 +4177,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final sourceLang = langSettings?.sourceLang ?? 'auto';
     final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
         CameraScene.auto;
+    // Menu scene: the server returns "" to DROP a non-dish fragment (price,
+    // header, shop logo, garble). That blank must survive to the overlay /
+    // list filter. In every other scene an empty response means "no usable
+    // translation" so we fall back to the source text.
+    final isMenu = scene == CameraScene.menu;
 
     // Probe the per-session cache before hitting the network.
     final probe = _probeTranslationCache(texts, forceRefresh: forceRefresh);
@@ -4067,14 +4254,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               final originalText = texts[origIdx];
               final value =
                   (raw != null && k < raw.length) ? raw[k] : null;
-              final translation =
-                  value is String && value.trim().isNotEmpty
-                      ? value
-                      : originalText;
+              final translation = value is String && value.trim().isNotEmpty
+                  ? value
+                  : (isMenu && value is String ? '' : originalText);
               results[origIdx] = translation;
               partialIndices.add(origIdx);
               partialTranslations.add(translation);
-              if (translation != originalText) {
+              if (translation.isNotEmpty && translation != originalText) {
                 TranslationCache.instance.store(
                   text: originalText,
                   sourceLang: sourceLang,
@@ -4137,9 +4323,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           final value = (raw != null && k < raw.length) ? raw[k] : null;
           final translation = value is String && value.trim().isNotEmpty
               ? value
-              : originalText;
+              : (isMenu && value is String ? '' : originalText);
           results[origIdx] = translation;
-          if (translation != originalText) {
+          if (translation.isNotEmpty && translation != originalText) {
             TranslationCache.instance.store(
               text: originalText,
               sourceLang: sourceLang,
@@ -4257,10 +4443,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   void _copyAll() {
+    // Menu scene drops non-dish rows (server blanks them to ""), so the
+    // copied text matches the dish-only cards the user sees.
+    final isMenu =
+        ref.read(cameraSettingsProvider).valueOrNull?.scene == CameraScene.menu;
     final all = <String>[];
     for (var i = 0; i < _blocks.length; i++) {
       final original = _blocks[i].text;
       final translated = i < _translations.length ? _translations[i] : '';
+      if (isMenu && translated.trim().isEmpty) continue;
       if (translated.isNotEmpty && translated != original) {
         all.add('$original → $translated');
       } else {
@@ -4271,6 +4462,133 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(AppLocalizations.of(context)!.copied)),
+    );
+  }
+
+  /// Read the active result as a scrollable original -> translation list.
+  /// The on-image overlay can't lay out a super-dense menu without card
+  /// overlap (readable text is taller than the cramped source rows), so this
+  /// sheet is the reliable way to read every line. Source rows stay in OCR
+  /// order; pending/untranslated rows show the original only.
+  void _showResultList() {
+    final isMenu =
+        ref.read(cameraSettingsProvider).valueOrNull?.scene == CameraScene.menu;
+    final items = <({String original, String translated})>[];
+    for (var i = 0; i < _blocks.length; i++) {
+      final original = _blocks[i].text.trim();
+      final translated =
+          (i < _translations.length ? _translations[i] : '').trim();
+      if (original.isEmpty && translated.isEmpty) continue;
+      // Menu scene: skip non-dish rows the server blanked to "".
+      if (isMenu && translated.isEmpty) continue;
+      items.add((original: original, translated: translated));
+    }
+    if (items.isEmpty) return;
+    final l = AppLocalizations.of(context)!;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.35,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l.cameraListView,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _copyAll();
+                        },
+                        icon: const Icon(Icons.copy,
+                            size: 16, color: AppColors.primary),
+                        label: Text(
+                          l.cameraCopyAll,
+                          style: const TextStyle(color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.border),
+                Expanded(
+                  child: ListView.separated(
+                    controller: scrollController,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 16, color: AppColors.border),
+                    itemBuilder: (context, i) {
+                      final it = items[i];
+                      final hasTranslation = it.translated.isNotEmpty &&
+                          it.translated != it.original;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SelectableText(
+                            hasTranslation ? it.translated : it.original,
+                            style: TextStyle(
+                              color: hasTranslation
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              height: 1.3,
+                            ),
+                          ),
+                          if (hasTranslation && it.original.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              it.original,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                                height: 1.25,
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -4318,6 +4636,22 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final src =
         ref.watch(languageSettingsProvider).valueOrNull?.sourceLang ?? 'auto';
     return src.toLowerCase() == 'auto' ? l.autoDetect : src.toUpperCase();
+  }
+
+  /// Run [action] (an awaitable that shows a sheet/dialog over the camera)
+  /// with the live preview stream paused, resuming it afterwards if we're
+  /// still on the preview step. Mirrors the source/target picker dance so a
+  /// modal popped over the camera doesn't keep the sensor + detector running
+  /// behind it (battery / heat - matters most on weak devices). No-op pause
+  /// when not already streaming (e.g. opened from the result step).
+  Future<void> _withPreviewStreamPaused(Future<void> Function() action) async {
+    final streaming = _step == _CameraStep.preview && !_cameraDisposed;
+    if (streaming) await _cameraService.stopTextStream();
+    try {
+      await action();
+    } finally {
+      if (mounted && streaming && _step == _CameraStep.preview) _startStream();
+    }
   }
 
   /// Open the source-language picker. Setting a concrete source (esp. a
@@ -4462,13 +4796,16 @@ class _BatchPageNav extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left, size: 22),
-            color: canPrev ? Colors.white : Colors.white38,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            onPressed: canPrev ? onPrev : null,
+          // Primary nav is the raw-pointer swipe handled by the parent
+          // Listener (arena-immune). These arrows are a secondary affordance.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: canPrev ? onPrev : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+              child: Icon(Icons.chevron_left,
+                  size: 24, color: canPrev ? Colors.white : Colors.white38),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -4504,13 +4841,14 @@ class _BatchPageNav extends StatelessWidget {
               ),
             ),
           ],
-          IconButton(
-            icon: const Icon(Icons.chevron_right, size: 22),
-            color: canNext ? Colors.white : Colors.white38,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            onPressed: canNext ? onNext : null,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: canNext ? onNext : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+              child: Icon(Icons.chevron_right,
+                  size: 24, color: canNext ? Colors.white : Colors.white38),
+            ),
           ),
         ],
       ),
