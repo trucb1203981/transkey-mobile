@@ -567,6 +567,9 @@ class KeyboardViewController: UIInputViewController {
 
     private func clearBarContent() {
         barContentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        // Suggestion/candidate modes need full-height stretching; action-bar
+        // mode overrides to .center so the pills hug their content.
+        barContentStack.alignment = .fill
     }
 
     /// Feature chips shown whenever the bar is idle - gradient pills up
@@ -577,7 +580,12 @@ class KeyboardViewController: UIInputViewController {
     /// and hidden (not greyed) for free users.
     private func showActionBar() {
         clearBarContent()
-        barContentStack.distribution = .fillProportionally
+        // .fill + .center + trailing spacer: every chip keeps its intrinsic
+        // size (the lang pills stay visibly smaller than the action chips)
+        // instead of being stretched to carve up the whole bar, which is what
+        // .fillProportionally did - the wide "Auto→VI" pill ate the row.
+        barContentStack.distribution = .fill
+        barContentStack.alignment = .center
         barContentStack.spacing = 5
         let store = AppGroupStore.shared
         let pairTitle = "\(Self.shortLang(store.sourceLang))→\(Self.shortLang(store.targetLang))"
@@ -597,6 +605,14 @@ class KeyboardViewController: UIInputViewController {
         if store.featureRefine {
             barContentStack.addArrangedSubview(gradientChip("Trau chuốt", #selector(refineTapped), enabled: true))
         }
+        // Flexible spacer absorbs the leftover width (and is the first thing
+        // squeezed when the bar is tight) so the chips never get stretched;
+        // placed BEFORE the typing-lang pill so that pill (and undo) stay
+        // pinned to the right edge while the action chips pack left.
+        let spacer = UIView()
+        spacer.setContentHuggingPriority(UILayoutPriority(1), for: .horizontal)
+        spacer.setContentCompressionResistancePriority(UILayoutPriority(1), for: .horizontal)
+        barContentStack.addArrangedSubview(spacer)
         barContentStack.addArrangedSubview(langChip(inputLang.uppercased(), #selector(inputLangPickTapped)))
         if undoSnapshot != nil {
             barContentStack.addArrangedSubview(undoChip())
