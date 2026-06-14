@@ -1140,7 +1140,7 @@ class CameraService {
     final out = <int, OcrBlock>{};
     byRegion.forEach((index, regionLines) {
       final ordered = _orderVisionRegionLines(regionLines);
-      final text = ordered.map((l) => l.text).join('\n').trim();
+      final text = joinVisionRegionText(ordered);
       // Same floor as the ML Kit race: < 2 meaningful chars is noise.
       if (_meaningfulCharCount(text) < 2) return;
       var bbox = boxes[index];
@@ -1174,11 +1174,8 @@ class CameraService {
   /// majority shape.
   List<OcrBlock> _orderVisionRegionLines(List<OcrBlock> lines) {
     if (lines.length < 2) return lines;
-    final verticalCount = lines
-        .where((l) => l.boundingBox.height > l.boundingBox.width * 1.3)
-        .length;
     final sorted = [...lines];
-    if (verticalCount * 2 > lines.length) {
+    if (_regionIsVertical(lines)) {
       sorted.sort((a, b) {
         final dx = b.boundingBox.left.compareTo(a.boundingBox.left);
         return dx != 0 ? dx : a.boundingBox.top.compareTo(b.boundingBox.top);
@@ -1190,6 +1187,49 @@ class CameraService {
       });
     }
     return sorted;
+  }
+
+  /// Join a region's already-ordered observations into the source string.
+  ///
+  /// Apple Vision returns vertical CJK as one observation per column - OFTEN
+  /// per glyph (a near-square box). An aspect-ratio "is it tall?" test misses
+  /// the per-glyph case, so a plain `join('\n')` stacked the source ONE
+  /// CHARACTER PER LINE in the list view ("source not reassembled
+  /// left-to-right"). Join with '\n' first, then collapse those newlines for
+  /// CJK-dominant content via [collapseCjkNewlines] - vertical Japanese /
+  /// Chinese / Korean reads as one continuous run per bubble (no inter-word
+  /// spaces); genuine Latin multi-line text keeps its line breaks.
+  @visibleForTesting
+  static String joinVisionRegionText(List<OcrBlock> ordered) {
+    final text = ordered.map((l) => l.text).join('\n').trim();
+    return collapseCjkNewlines(text);
+  }
+
+  /// Collapse intra-bubble newlines for CJK-dominant text into a continuous
+  /// horizontal string. OCR engines (Apple Vision per-glyph, ML Kit per-line)
+  /// and the vision LLM can return vertical-CJK source with a newline between
+  /// every glyph / column, which renders as one character per line. CJK has no
+  /// inter-word spaces, so a bubble reads as one run; Latin / mixed text (where
+  /// line breaks can be meaningful) is left untouched.
+  static String collapseCjkNewlines(String s) {
+    if (!s.contains('\n')) return s;
+    final cjk = _cjkCharCount(s);
+    if (cjk >= 2 && cjk * 2 >= _meaningfulCharCount(s)) {
+      return s.replaceAll(RegExp(r'\s*\n\s*'), '').trim();
+    }
+    return s;
+  }
+
+  /// True when a region's observations are mostly vertical-CJK COLUMNS
+  /// (taller than wide). Drives both the reading-order sort (columns
+  /// right->left) and the join separator (vertical -> continuous string so
+  /// the source isn't stacked one glyph per line).
+  static bool _regionIsVertical(List<OcrBlock> lines) {
+    if (lines.length < 2) return false;
+    final verticalCount = lines
+        .where((l) => l.boundingBox.height > l.boundingBox.width * 1.3)
+        .length;
+    return verticalCount * 2 > lines.length;
   }
 
   /// Detect text regions via DBNet then ML-Kit-OCR each region
@@ -1486,14 +1526,6 @@ class CameraService {
       debugPrint('[CameraService] TABD failed: $e');
     }
 
-    // Debug-only annotated dump so you can adb-pull the temp file
-    // and see which detector contributed which box (DBNet blue,
-    // Bubble red — TABD orphans render as red too since they go
-    // into bubbleBoxes). Stripped in release builds via kDebugMode.
-    if (kDebugMode) {
-      unawaited(_dumpDetectionDebug(imagePath, dbnetBoxes, bubbleBoxes));
-    }
-
     if (boxes.isEmpty) return const [];
 
     try {
@@ -1611,7 +1643,7 @@ class CameraService {
                 final cand =
                     (isCjk ? _cjkVerticalReadingOrder(rs[i]) : rs[i].text)
                         .trim();
-                final sc = _meaningfulCharCount(cand);
+                final sc = _ocrPickScore(cand);
                 if (sc > bs) {
                   bs = sc;
                   bt = cand;
@@ -1782,10 +1814,7 @@ class CameraService {
               final vn = vision[i];
               if (vn == null) return mk;
               if (mk == null) return vn;
-              return _meaningfulCharCount(vn.text) >
-                      _meaningfulCharCount(mk.text)
-                  ? vn
-                  : mk;
+              return _ocrPickScore(vn.text) > _ocrPickScore(mk.text) ? vn : mk;
             });
           }
         }
@@ -2010,6 +2039,19 @@ class CameraService {
   @visibleForTesting
   List<OcrBlock> mergeMenuRowsForTest(List<OcrBlock> blocks) =>
       _mergeForScene(blocks, 'menu');
+
+  /// Test-only window into the vertical-CJK column merge used by the manga
+  /// orphan path in [_groupDbnetByBubbles], so the "N columns -> 1 bubble"
+  /// fusion (and the thin-aspect gate / no-over-merge / area-cap guards) can be
+  /// pinned without booting ML Kit or the camera.
+  @visibleForTesting
+  List<Rect> mergeVerticalColumnsForTest(
+    List<Rect> regions, {
+    double pageArea = 1500000,
+    double maxAreaRatio = 0.2,
+  }) =>
+      _mergeVerticalColumns(regions,
+          pageArea: pageArea, maxAreaRatio: maxAreaRatio);
 
   List<OcrBlock> _mergeForScene(List<OcrBlock> blocks, String scene) {
     switch (scene) {
@@ -3189,11 +3231,16 @@ class CameraService {
     return OcrBlock(text: text, boundingBox: box, confidence: conf);
   }
 
-  void dispose() {
+  Future<void> dispose() async {
+    final wasStreaming = _isStreaming;
     _isStreaming = false;
-    // Stop image stream before disposing the controller to prevent native crash
+    // Stop the image stream and AWAIT it before disposing the controller.
+    // Firing both without awaiting raced them: controller.dispose() ran before
+    // stopImageStream() finished, so the native AVCaptureSession was never
+    // released and the camera sensor stayed powered - the device kept heating
+    // while the user browsed the gallery or the app sat backgrounded.
     try {
-      _controller?.stopImageStream();
+      if (wasStreaming) await _controller?.stopImageStream();
     } catch (_) {}
     for (final recognizer in _streamRecognizers.values) {
       try {
@@ -3202,9 +3249,12 @@ class CameraService {
     }
     _streamRecognizers.clear();
     _dbnet.close();
-    _controller?.dispose();
+    try {
+      await _controller?.dispose();
+    } catch (_) {}
     _controller = null;
     _isInitialized = false;
+    debugPrint('[Camera] disposed - AVCaptureSession released, sensor off');
   }
 
   /// Intersection-over-union for two axis-aligned rectangles. Returns
@@ -3232,6 +3282,88 @@ class CameraService {
     final bo = math.min(a.bottom, b.bottom);
     if (r <= l || bo <= t) return 0.0;
     return (r - l) * (bo - t);
+  }
+
+  /// Fuse adjacent THIN vertical-CJK text columns into one region, so a
+  /// vertical Japanese bubble renders as ONE card instead of one card per
+  /// column. On a vertical bubble whose SHAPE the BubbleDetector missed, DBNet
+  /// emits one tall box per column and those boxes become orphans ~50 px apart
+  /// - too far for the 3 % [_clusterRectsCapped] orphan threshold to join, so
+  /// each column becomes its own stacked-character card (the reported bug;
+  /// ground truth: cols 412,768 32x238 and 498,724 32x164, gap 54 px on the
+  /// "みーいます" bubble).
+  ///
+  /// Safe by construction - the gate fires ONLY when BOTH boxes are genuinely
+  /// thin single columns ([minColAspect] = height/width). Horizontal comic text
+  /// (wide boxes, aspect < 1), square per-glyph fragments and multi-column
+  /// bubble shapes all sit below that floor, so the merge never touches them.
+  /// This is why it does not regress the working horizontal-comic path, nor the
+  /// adjacent-separate-bubble case the earlier shape-level merge broke (the
+  /// 19-18-54 page's bubbles are aspect ~1.3-1.6 and are left untouched).
+  /// Joins two columns when they ALSO vertically overlap (same bubble height)
+  /// and the horizontal gap is small relative to BOTH the column width and its
+  /// height. Each fused union is area-capped; an over-cap union is reverted to
+  /// its members.
+  static List<Rect> _mergeVerticalColumns(
+    List<Rect> regions, {
+    required double pageArea,
+    required double maxAreaRatio,
+    double minColAspect = 2.5,
+    double vOverlapFrac = 0.5,
+  }) {
+    final n = regions.length;
+    if (n <= 1) return List<Rect>.of(regions);
+    bool isCol(Rect r) => r.width > 0 && r.height / r.width >= minColAspect;
+    final parent = List<int>.generate(n, (i) => i);
+    int find(int x) {
+      while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+      }
+      return x;
+    }
+
+    bool adjacentColumns(Rect a, Rect b) {
+      if (!isCol(a) || !isCol(b)) return false;
+      final ovTop = math.max(a.top, b.top);
+      final ovBot = math.min(a.bottom, b.bottom);
+      final ovH = ovBot - ovTop;
+      final minH = math.min(a.height, b.height);
+      if (ovH <= 0 || minH <= 0 || ovH / minH < vOverlapFrac) return false;
+      final hGap = math.max(0.0, math.max(a.left - b.right, b.left - a.right));
+      final minW = math.min(a.width, b.width);
+      if (minW <= 0) return false;
+      // Columns of one bubble sit ~1 column-width apart; require the gap to be
+      // small relative to BOTH the width AND the height, so neither a very tall
+      // nor a very wide box earns an outsized threshold.
+      return hGap <= 2.5 * minW && hGap <= 0.45 * minH;
+    }
+
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        if (adjacentColumns(regions[i], regions[j])) {
+          parent[find(i)] = find(j);
+        }
+      }
+    }
+    final groups = <int, List<Rect>>{};
+    for (var i = 0; i < n; i++) {
+      (groups[find(i)] ??= <Rect>[]).add(regions[i]);
+    }
+    final out = <Rect>[];
+    for (final g in groups.values) {
+      if (g.length == 1) {
+        out.add(g.first);
+        continue;
+      }
+      final u = _unionBbox(g);
+      if (pageArea > 0 && u.width * u.height > maxAreaRatio * pageArea) {
+        out.addAll(g); // over-merge guard: keep members separate
+      } else {
+        out.add(u);
+      }
+    }
+    return out;
   }
 
   /// Single-link agglomerative clustering on [rects]. Two rects join
@@ -3410,7 +3542,7 @@ class CameraService {
     // directly; the per-region OCR's >= 2 meaningful-char floor drops the
     // genuinely empty ones. Band-limit to skip panel-sized boxes and
     // sub-noise specks.
-    var emptyFill = 0;
+    final emptyCandidates = <Rect>[];
     for (var j = 0; j < bubbles.length; j++) {
       if (perBubble.containsKey(j) || pageArea <= 0) continue;
       final b = bubbles[j];
@@ -3425,15 +3557,23 @@ class CameraService {
           ? b.width / math.max(b.height, 1.0)
           : b.height / math.max(b.width, 1.0);
       if (aspect > 2.5) continue;
-      result.add(b);
-      emptyFill++;
+      emptyCandidates.add(b);
     }
+    final emptyRaw = emptyCandidates.length;
+    // NOTE: the _mergeColumnBubbles step was REMOVED here - on real pages it
+    // over-merged separate side-by-side bubbles into one card (verified offline
+    // + visually on Screenshot_2026-06-02-19-18-54: "時計回り..." + "大事な..."
+    // fused into one 671px-wide region), and vertical-JP bubbles actually reach
+    // this fallback as ONE whole-bubble shape (not per-column), so the merge
+    // solved a non-problem while regressing multi-bubble pages. Real per-column
+    // fragmentation comes from elsewhere; pending on-device geometry repro.
+    result.addAll(emptyCandidates);
     if (orphans.isNotEmpty) {
       result.addAll(
           _clusterRectsCapped(orphans, orphanThresh, pageArea, maxAreaRatio));
     }
     debugPrint('[CameraService] _groupDbnetByBubbles: withText=$withText '
-        'emptyBubbleFill=$emptyFill orphans=${orphans.length}');
+        'emptyBubbleFill=$emptyRaw orphans=${orphans.length}');
     return result;
   }
 
@@ -3460,6 +3600,129 @@ class CameraService {
     }
     return Rect.fromLTRB(l, t, r, bo);
   }
+
+  /// Min height/width ratio for a rect to count as a vertical-CJK column.
+  static const double _kColumnAspect = 2.0;
+
+  /// Two columns of ONE vertical bubble sit side-by-side with a tight
+  /// intra-column gutter; link only when the horizontal gap is within this
+  /// fraction of the (smaller) column width. A real inter-bubble gutter is
+  /// far wider, so separate side-by-side bubbles stay apart.
+  static const double _kColumnLinkRatio = 0.6;
+
+  /// Fuse side-by-side columns of ONE vertical-CJK (Japanese/Chinese) bubble
+  /// into a single region. When DBNet has weak recall on a vertical bubble,
+  /// its columns can fall to the empty-bubble OCR fallback as SEPARATE
+  /// [BubbleDetector] shapes (one thin tall rect per column), which would
+  /// paint one card per column. Two columns link only when they are
+  /// horizontally adjacent (gap <= [_kColumnLinkRatio] x column width) AND
+  /// vertically overlapping, so:
+  ///   - separate side-by-side bubbles (wide gutter) stay separate;
+  ///   - vertically-stacked dialogue bubbles (no vertical overlap) stay
+  ///     separate;
+  ///   - non-column (wide/horizontal) shapes pass through untouched.
+  /// A fused union larger than [maxAreaRatio] of [pageArea] falls back to its
+  /// member columns (panel-cap), mirroring [_clusterRectsCapped].
+  ///
+  /// NOTE: NOT wired into the live pipeline - confirmed UNNECESSARY on device.
+  /// The per-column fragmentation it targets (flow 2026-06-14: the "みーは" page
+  /// rendered as 5 cards, withText=2 emptyBubbleFill=10) was caused by weak
+  /// DBNet recall on vertical Japanese. The current manga-OCR-recall work fixes
+  /// that at the source: re-running the SAME みーは page on device now gives
+  /// withText=10 emptyBubbleFill=3 -> 13 regions, ONE card per bubble (each
+  /// multi-column vertical bubble is a single region). The 3 empty candidates
+  /// are chunky blobs (asp ~1.0-1.6), never thin side-by-side columns, so this
+  /// merge would do nothing useful and only risks the over-merge it was removed
+  /// for. Kept dormant + pinned by manga_column_merge_test as a guarded
+  /// safety net; only wire it if DBNet recall regresses and a real page is
+  /// shown to fragment a single bubble into thin columns again.
+  static List<Rect> _mergeColumnBubbles(
+    List<Rect> rects, {
+    required double pageArea,
+    required double maxAreaRatio,
+  }) {
+    if (rects.length <= 1) return List<Rect>.of(rects);
+    final columns = <Rect>[];
+    final passthrough = <Rect>[];
+    for (final r in rects) {
+      final w = math.max(r.width, 1.0);
+      if (r.height / w >= _kColumnAspect) {
+        columns.add(r);
+      } else {
+        passthrough.add(r);
+      }
+    }
+    if (columns.length <= 1) return List<Rect>.of(rects);
+
+    final n = columns.length;
+    final parent = List<int>.generate(n, (i) => i);
+    int find(int i) {
+      var root = i;
+      while (parent[root] != root) {
+        root = parent[root];
+      }
+      var cur = i;
+      while (parent[cur] != root) {
+        final next = parent[cur];
+        parent[cur] = root;
+        cur = next;
+      }
+      return root;
+    }
+
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        final a = columns[i];
+        final b = columns[j];
+        // Real columns of ONE bubble share nearly their full height; require
+        // >=50% vertical overlap so two stacked separate bubbles that merely
+        // touch do NOT fuse. (A real page had a 9px / ~4% overlap pair of
+        // stacked bubbles that a `vOverlap > 0` guard wrongly merged.)
+        final vOverlap =
+            math.min(a.bottom, b.bottom) - math.max(a.top, b.top);
+        if (vOverlap < 0.5 * math.min(a.height, b.height)) continue;
+        final horizGap = math.max(a.left, b.left) - math.min(a.right, b.right);
+        final linkGap = _kColumnLinkRatio * math.min(a.width, b.width);
+        if (horizGap <= linkGap) {
+          final ri = find(i);
+          final rj = find(j);
+          if (ri != rj) parent[ri] = rj;
+        }
+      }
+    }
+
+    final groups = <int, List<Rect>>{};
+    for (var i = 0; i < n; i++) {
+      groups.putIfAbsent(find(i), () => <Rect>[]).add(columns[i]);
+    }
+    final out = <Rect>[...passthrough];
+    for (final members in groups.values) {
+      if (members.length == 1) {
+        out.add(members.first);
+        continue;
+      }
+      final u = _unionBbox(members);
+      if (pageArea > 0 && u.width * u.height > maxAreaRatio * pageArea) {
+        out.addAll(members); // panel-cap → keep member columns
+      } else {
+        out.add(u);
+      }
+    }
+    return out;
+  }
+
+  /// Test seam for [_mergeColumnBubbles]. Uses the documented 1000x1500 test
+  /// page so [maxAreaRatio] thresholds in the test match the geometry.
+  @visibleForTesting
+  List<Rect> mergeColumnBubblesForTest(
+    List<Rect> rects, {
+    double maxAreaRatio = 0.2,
+  }) =>
+      _mergeColumnBubbles(
+        rects,
+        pageArea: 1000.0 * 1500.0,
+        maxAreaRatio: maxAreaRatio,
+      );
 
   /// True when [outer] geometrically contains [inner] (with a 2-px
   /// tolerance so a slightly-larger outer box still passes when the
@@ -3597,6 +3860,121 @@ class CameraService {
     return count;
   }
 
+  /// Count of CJK characters (hiragana, katakana, CJK ideographs, hangul).
+  static int _cjkCharCount(String s) {
+    var count = 0;
+    for (final rune in s.runes) {
+      if ((rune >= 0x3040 && rune <= 0x309F) || // hiragana
+          (rune >= 0x30A0 && rune <= 0x30FF) || // katakana
+          (rune >= 0x4E00 && rune <= 0x9FFF) || // CJK unified
+          (rune >= 0xAC00 && rune <= 0xD7AF)) { // hangul syllables
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Per-region OCR winner score (manga path). Plain meaningful-char count
+  /// lets a LATIN MISREAD of vertical Japanese win: Apple Vision / the ML Kit
+  /// Latin recognizer turn a dense vertical-JP bubble into long Latin gibberish
+  /// ("rudtrudt HIPION") whose char count beats the correct - often shorter -
+  /// CJK read, so the rendered card shows garbage (verified on device, the
+  /// "みーは" page). A big bonus for a CJK-DOMINANT candidate (>=2 CJK chars AND
+  /// CJK at least half the meaningful chars) makes a real CJK read win over any
+  /// Latin-only read. Genuine Latin (Western) comics have no CJK-dominant
+  /// candidate, and a CJK recognizer's garbage on Latin text is not
+  /// CJK-dominant, so both fall through to the plain count - the Latin read
+  /// still wins there (no regression to horizontal comics).
+  static int _ocrPickScore(String s) {
+    final meaningful = _meaningfulCharCount(s);
+    final cjk = _cjkCharCount(s);
+    if (cjk >= 2 && cjk * 2 >= meaningful) return meaningful + 1000;
+    return meaningful;
+  }
+
+  /// Count of ASCII Latin letters (A-Z, a-z). Used to spot a Latin-only
+  /// misread of CJK text.
+  static int _latinCharCount(String s) {
+    var count = 0;
+    for (final rune in s.runes) {
+      if ((rune >= 0x41 && rune <= 0x5A) || (rune >= 0x61 && rune <= 0x7A)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// A page must carry at least this many CJK chars (summed over all blocks)
+  /// to count as a CJK page eligible for vision escalation. Below it the
+  /// page is treated as Latin (Western comic) and stays on-device.
+  static const int _kCjkPageMinChars = 4;
+
+  /// A block needs at least this many Latin letters (with zero CJK) to count
+  /// as a Latin-dominant misread ("garble") on a CJK page.
+  static const int _kGarbleBlockMinLatin = 4;
+
+  /// On a CJK page, also escalate when Latin letters make up at least this
+  /// PERCENT of the scriptful (Latin + CJK) chars. A genuine Japanese /
+  /// Chinese / Korean manga page is overwhelmingly CJK, so a high Latin share
+  /// is the mis-read signature even when NO single block trips the block-ratio
+  /// gate - the vertical-JP failure mode where Apple Vision mis-segments a
+  /// bubble into a MIX of short Latin gibberish ("Hom nay", "eNghe") plus
+  /// isolated 1-char CJK particles ("今", "は"). Measured on device: clean JP
+  /// reads land under ~10 %, the page that shipped garbage was ~70 %.
+  static const int _kGarbleLatinPct = 35;
+
+  /// "Smart escalation" gate for the manga hybrid path: should the on-device
+  /// read be REPLACED by a whole-page server vision-LLM pass?
+  ///
+  /// The hybrid gate used to key only on total char count, which ships
+  /// garbage on vertical-Japanese pages: Apple Vision / ML Kit turn a dense
+  /// vertical-JP bubble into LONG Latin gibberish ("rudtrudt HIPION") whose
+  /// char count clears the threshold, so the page never escalated and the
+  /// user saw nonsense. This looks at READ QUALITY instead, scoped to CJK
+  /// pages so genuine Latin (Western) comics - already excellent on-device -
+  /// never trigger a paid server call.
+  ///
+  /// Escalate when BOTH:
+  ///   1. The page is a CJK page: it carries real CJK text
+  ///      (>= [_kCjkPageMinChars] CJK chars across all blocks). A Latin
+  ///      comic has ~0 CJK -> never escalates.
+  ///   2. A large share of text blocks are Latin-dominant garble: >= 1/3 of
+  ///      them have Latin letters but NO CJK (the misread signature on a page
+  ///      that is otherwise Japanese / Chinese / Korean).
+  /// Clean CJK reads keep the free on-device result (few/no Latin-only
+  /// blocks). Returns false for an empty / whitespace-only page.
+  static bool shouldEscalateMangaToVision(List<OcrBlock> blocks) {
+    var cjkTotal = 0;
+    var latinTotal = 0;
+    var textBlocks = 0;
+    var garbleBlocks = 0;
+    for (final b in blocks) {
+      if (_meaningfulCharCount(b.text) == 0) continue;
+      textBlocks++;
+      final cjk = _cjkCharCount(b.text);
+      final latin = _latinCharCount(b.text);
+      cjkTotal += cjk;
+      latinTotal += latin;
+      if (cjk == 0 && latin >= _kGarbleBlockMinLatin) {
+        garbleBlocks++;
+      }
+    }
+    if (textBlocks == 0) return false;
+    if (cjkTotal < _kCjkPageMinChars) return false; // Latin comic -> on-device
+    // Signal 1 (block ratio): a few LONG Latin-gibberish blocks on an
+    // otherwise-CJK page (the "rudtrudt HIPION" signature).
+    if (garbleBlocks * 3 >= textBlocks) return true; // >= ~1/3 blocks garbled
+    // Signal 2 (char ratio): vertical-JP that the on-device engine mis-segments
+    // into a MIX of short Latin gibberish + isolated 1-char CJK particles.
+    // Block-ratio misses it (short garble blocks fall under the per-block Latin
+    // floor, and every lone particle inflates textBlocks). Counting CHARS is
+    // robust to both - a real CJK page is almost all CJK, so a large Latin
+    // share among the scriptful (Latin + CJK) chars means a big chunk was
+    // misread, and the server vision-LLM (clean per-bubble) is worth the call.
+    final scriptful = latinTotal + cjkTotal;
+    return scriptful > 0 && latinTotal * 100 >= scriptful * _kGarbleLatinPct;
+  }
+
   /// Re-join ML Kit lines in vertical-CJK reading order.
   ///
   /// ML Kit concatenates recognized lines in a Latin layout order
@@ -3616,13 +3994,17 @@ class CameraService {
     for (final b in r.blocks) {
       lines.addAll(b.lines);
     }
-    if (lines.length <= 1) return r.text.trim();
+    // ML Kit's default `.text` joins lines with '\n'. For per-glyph vertical
+    // CJK that stacks the source one character per line, so collapse newlines
+    // for CJK-dominant text (no-op for Latin multi-line). Same fix as the
+    // Apple Vision path's joinVisionRegionText.
+    if (lines.length <= 1) return collapseCjkNewlines(r.text.trim());
     var tall = 0;
     for (final l in lines) {
       if (l.boundingBox.height > l.boundingBox.width) tall++;
     }
     // Majority of lines must be vertical columns; else trust ML Kit.
-    if (tall * 2 < lines.length) return r.text.trim();
+    if (tall * 2 < lines.length) return collapseCjkNewlines(r.text.trim());
     final avgW =
         lines.fold<double>(0, (s, l) => s + l.boundingBox.width) /
             lines.length;
@@ -3654,51 +4036,6 @@ class CameraService {
     }
   }
 
-  /// Annotate the input capture with the per-detector boxes and write
-  /// a JPEG to the temp dir. Debug builds only — kDebugMode gates the
-  /// call site so release users don't accumulate dump files.
-  /// DBNet boxes render blue, BubbleDetector boxes render red.
-  Future<void> _dumpDetectionDebug(
-    String imagePath,
-    List<Rect> dbnetBoxes,
-    List<Rect> bubbleBoxes,
-  ) async {
-    try {
-      final bytes = await File(imagePath).readAsBytes();
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) return;
-      for (final box in dbnetBoxes) {
-        img.drawRect(
-          decoded,
-          x1: box.left.round(),
-          y1: box.top.round(),
-          x2: box.right.round(),
-          y2: box.bottom.round(),
-          color: img.ColorRgb8(40, 120, 255),
-          thickness: 3,
-        );
-      }
-      for (final box in bubbleBoxes) {
-        img.drawRect(
-          decoded,
-          x1: box.left.round(),
-          y1: box.top.round(),
-          x2: box.right.round(),
-          y2: box.bottom.round(),
-          color: img.ColorRgb8(255, 80, 80),
-          thickness: 3,
-        );
-      }
-      final dir = await getTemporaryDirectory();
-      final out =
-          '${dir.path}/lens_debug_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await File(out).writeAsBytes(img.encodeJpg(decoded, quality: 80));
-      debugPrint(
-          '[CameraService] debug dump → $out (DBNet=blue Bubble=red)');
-    } catch (e) {
-      debugPrint('[CameraService] debug dump failed: $e');
-    }
-  }
 }
 
 /// Isolate transport for [CameraService.findUncoveredTextRegions].

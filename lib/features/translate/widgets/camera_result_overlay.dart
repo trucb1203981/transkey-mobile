@@ -53,7 +53,9 @@ const double _kMaxFontSize = 28.0;
 // translated VI text readable even in a small bubble (the card grows
 // downward when it overflows); cap 16 stops a roomy bubble from getting
 // an oversized font that bleeds into the neighbouring panel.
-const double _kMangaMinFont = 10.0;
+// Matches _kMinFontSize so the manga clamp never raises the font back above
+// what _fitFont's word-width guard chose (which would re-break words).
+const double _kMangaMinFont = 9.0;
 const double _kMangaMaxFont = 16.0;
 
 // Client-side last-line guard against a single OCR/Vision/server block
@@ -431,9 +433,45 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
       safety++;
     }
 
+    // WORD-WIDTH guard (space-delimited scripts): TextPainter breaks a word
+    // mid-glyph when the word is wider than innerW, so "Được" renders as
+    // "Đư" / "ợc" - two meaningless fragments. Shrink the font until the
+    // WIDEST whole word fits innerW (down to the readable floor) so words stay
+    // intact. Skipped for CJK (no inter-word spaces; per-char wrap is correct).
+    if (RegExp(r'[A-Za-z]').hasMatch(text)) {
+      var wsafety = 0;
+      while (_widestWordWidth(text, font, fontWeight) > innerW &&
+          font > _minFont &&
+          wsafety < 30) {
+        font = math.max(_minFont, font - 1);
+        wsafety++;
+      }
+      h = measureAt(font);
+    }
+
     // h at _kMinFontSize is what the card actually renders; caller
     // grows the box if it overflows.
     return (fontSize: font, height: h + _kCardVPad * 2);
+  }
+
+  /// Width of the widest whitespace-delimited word in [text] at [font].
+  /// Used by [_fitFont]'s word guard to stop mid-word glyph breaks.
+  static double _widestWordWidth(
+      String text, double font, FontWeight fontWeight) {
+    var maxW = 0.0;
+    for (final w in text.split(RegExp(r'\s+'))) {
+      if (w.isEmpty) continue;
+      final tp = TextPainter(
+        text: TextSpan(
+          text: w,
+          style:
+              TextStyle(fontSize: font, fontWeight: fontWeight, height: 1.25),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      if (tp.width > maxW) maxW = tp.width;
+    }
+    return maxW;
   }
 
   @override
@@ -543,6 +581,43 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                 .clamp(_kMangaMinFont, _kMangaMaxFont)
                 .toDouble();
             final renderedManga = mangaFont * widget.fontScale;
+            // A vertical-JP bubble is a THIN column, but the horizontal VI word
+            // needs width; clamping to the bubble breaks a word mid-glyph
+            // ("Cảm" -> "Cả"/"m"). Grow the card (centred on the bubble) to fit
+            // the widest WHOLE word, but ONLY into the gap to the nearest
+            // neighbour bubble on each side, so cards never overlap. In a dense
+            // cluster (no gap) it stays at bubble width and _fitFont's font
+            // shrink keeps as much whole as it can.
+            final mangaCx = left + boxW / 2;
+            final mangaNeedW = _widestWordWidth(
+                  displayText,
+                  renderedManga,
+                  isTranslated ? FontWeight.w500 : FontWeight.normal,
+                ) +
+                _kCardHPad * 2;
+            var mangaLeftLimit = 4.0;
+            var mangaRightLimit = viewSize.width - 4;
+            for (var j = 0; j < viewRects.length; j++) {
+              if (j == i) continue;
+              final r = viewRects[j];
+              // Same-row only: a neighbour must overlap this bubble vertically
+              // by a real amount to cap the sideways growth.
+              final ov = math.min(top + boxH, r.bottom) - math.max(top, r.top);
+              if (ov < math.min(boxH, r.height) * 0.4) continue;
+              if (r.right <= mangaCx && r.right + 4 > mangaLeftLimit) {
+                mangaLeftLimit = r.right + 4;
+              }
+              if (r.left >= mangaCx && r.left - 4 < mangaRightLimit) {
+                mangaRightLimit = r.left - 4;
+              }
+            }
+            // Half-width the centred card may use = nearest free gap each side,
+            // never below the bubble's own half (the bubble never overlaps a
+            // neighbour, so bubble width is always collision-safe).
+            final mangaHalf = math.max(boxW / 2,
+                math.min(mangaCx - mangaLeftLimit, mangaRightLimit - mangaCx));
+            final mangaAllowW =
+                math.max(cardWidth, math.min(mangaNeedW, 2 * mangaHalf));
             final tpManga = TextPainter(
               text: TextSpan(
                 text: displayText,
@@ -554,11 +629,11 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                 ),
               ),
               textDirection: TextDirection.ltr,
-            )..layout(maxWidth: math.max(20, cardWidth - 10));
+            )..layout(maxWidth: math.max(20, mangaAllowW - 10));
             // 5px L + 5px R = 10 horizontal; 4px T + 4px B = 8 vertical.
             // Padding matches the Container padding inside the manga
             // card so glyphs sit clear of the pill border on every side.
-            final mangaTightW = math.min(cardWidth, tpManga.size.width + 10);
+            final mangaTightW = math.min(mangaAllowW, tpManga.size.width + 10);
             // Always size the card to the FULL measured (wrapped) text
             // height - never clamp to boxH. Clamping cut off wrapped lines on
             // small bubbles whose VI translation wraps to more lines than fit
@@ -575,7 +650,9 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             // panel (the case the bbox-area filter can't fully prevent
             // because a panel-spanning bbox can still be under the 10 %
             // page-area cap).
-            final mangaLeft = left + (boxW - mangaTightW) / 2;
+            final mangaLeft = (mangaCx - mangaTightW / 2)
+                .clamp(4.0, math.max(4.0, viewSize.width - mangaTightW - 4))
+                .toDouble();
             final mangaTop = top + (boxH - mangaTightH) / 2;
 
             cards.add(_CardLayout(

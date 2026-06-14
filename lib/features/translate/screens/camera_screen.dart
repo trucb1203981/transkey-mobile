@@ -429,7 +429,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     _backgroundTimer?.cancel();
     _focusResetTimer?.cancel();
     _blurDebounce?.cancel();
-    _cameraService.dispose();
+    unawaited(_cameraService.dispose());
     _overlayController.dispose();
     _zoomController.dispose();
     // Per-session scope: cache must not leak into a later camera open
@@ -465,7 +465,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// Release camera resources after the app has been backgrounded long enough.
   void _stopCameraForBackground() {
     if (_step != _CameraStep.preview) return;
-    _cameraService.dispose();
+    unawaited(_cameraService.dispose());
     _cameraStoppedForBackground = true;
     _cameraDisposed = true;
     _liveBlocks = [];
@@ -1900,6 +1900,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     try {
       final path = await _cameraService.captureImage();
+      // The result screen replaces the live preview, so fully release the
+      // camera NOW: after stopImageStream the AVCaptureSession still keeps the
+      // sensor + ISP running (device stays warm, CPU/battery wasted) while the
+      // user reads a static result. pausePreview() won't help - on iOS it only
+      // freezes the Flutter texture, the session keeps running. _retake /
+      // _recoverToPreview re-init on demand (mirrors the gallery path).
+      await _cameraService.dispose();
+      _cameraDisposed = true;
       await _processImage(path);
     } catch (e) {
       debugPrint('[Camera] Capture failed: $e');
@@ -1923,26 +1931,36 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     // browsing photos. Restart only if the user cancels (returns to
     // preview). Success path transitions to translating/result and won't
     // need the camera back until the user explicitly returns to preview.
-    _cameraService.dispose();
+    // AWAIT the teardown so the AVCaptureSession is fully released BEFORE the
+    // OS picker opens - otherwise the sensor keeps running (hot device) while
+    // the user browses photos.
+    await _cameraService.dispose();
     _cameraDisposed = true;
     _liveBlocks = [];
     _liveTracker.reset();
     if (mounted) setState(() {});
 
+    // Manga/Comic needs MORE pixels than the menu/doc default: a vertical-CJK
+    // page (e.g. 1080x2400) downscaled to 1280 becomes 576x1280, leaving each
+    // vertical text COLUMN only ~48 px wide - too low-res for Apple Vision /
+    // ML Kit, which then emit Latin gibberish ("rudtrudt") for whole bubbles
+    // (verified on device, the "みーは" page). 2560 (matches the native Vision
+    // maxEdge) keeps columns ~2x larger and readable. Other scenes keep the
+    // faster 1280 cap.
+    final pickScene = ref.read(cameraSettingsProvider).valueOrNull?.scene;
+    final double pickMaxEdge =
+        pickScene == CameraScene.manga ? 2560 : 1280;
     final List<XFile> rawPicked;
     try {
       rawPicked = await ImagePicker().pickMultiImage(
-        // Cap dimensions to 1280 px so a gallery pick is as fast as a live
-        // capture: a library photo is a full ~12 MP HEIC, and the picker has
-        // to decode + downscale + re-encode it before OCR even starts. 1280
-        // matches the shutter's ResolutionPreset.high (1280x720) so the OCR
-        // step does the same amount of work both ways, and on-device Apple
-        // Vision / ML Kit recognition plateaus well before this size. Larger
-        // (was 1600) only added decode + recognition latency on the common
-        // menu/document batch without measurably better reads. Trade-off:
-        // very small text on an extremely dense menu may read slightly worse.
-        maxWidth: 1280,
-        maxHeight: 1280,
+        // Cap dimensions so a gallery pick is as fast as a live capture: a
+        // library photo is a full ~12 MP HEIC, and the picker has to decode +
+        // downscale + re-encode it before OCR even starts. 1280 matches the
+        // shutter's ResolutionPreset.high (1280x720); manga raises this to 2560
+        // (see [pickMaxEdge] above) because dense vertical-CJK columns need the
+        // extra resolution.
+        maxWidth: pickMaxEdge,
+        maxHeight: pickMaxEdge,
         imageQuality: 90,
         // Enforce the batch cap at the picker UI so the user can't tick
         // more than [_kMaxBatchImages] checkboxes in the first place —
@@ -2452,22 +2470,52 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         if (ocrSnap != null) {
           final chars = ocrSnap.blocks
               .fold<int>(0, (sum, b) => sum + b.text.length);
-          if (chars >= _kMangaOcrMinChars) {
+          // Smart escalation: even with enough chars, a vertical-CJK page the
+          // on-device engines misread into Latin gibberish must go to the
+          // server vision-LLM (one block per bubble, correct reading order).
+          // Content-based + CJK-scoped, so Latin (Western) comics never pay.
+          final garbled =
+              CameraService.shouldEscalateMangaToVision(ocrSnap.blocks);
+          if (chars >= _kMangaOcrMinChars && !garbled) {
             _dbg('img$imgIdx HYBRID-OCR '
                 '+${batchSw.elapsedMilliseconds}ms '
                 '(${ocrSnap.blocks.length}b/${chars}c, ocr+tx ${ocrMs}ms)');
+            debugPrint('[MangaRoute] img$imgIdx ON-DEVICE '
+                '(${ocrSnap.blocks.length}b/${chars}c) - no vision call');
             return ocrSnap;
           }
-          _dbg('img$imgIdx OCR weak (${chars}c < $_kMangaOcrMinChars) '
-              '→ vision');
+          _dbg(garbled
+              ? 'img$imgIdx CJK garble → vision '
+                  '(${ocrSnap.blocks.length}b/${chars}c)'
+              : 'img$imgIdx OCR weak (${chars}c < $_kMangaOcrMinChars) '
+                  '→ vision');
+          debugPrint(garbled
+              ? '[MangaRoute] img$imgIdx ESCALATE→VISION (CJK garble, '
+                  '${ocrSnap.blocks.length}b/${chars}c)'
+              : '[MangaRoute] img$imgIdx ESCALATE→VISION (OCR weak, '
+                  '${chars}c<$_kMangaOcrMinChars)');
         }
 
-        // Step 2: vision fallback.
+        // Step 2: vision (escalation target / weak-OCR fallback).
         final visionSw = Stopwatch()..start();
         final snap = await _runVisionPure(picked[i].path, scene: scene.id);
+        // Offline / vision failed: keep the on-device read rather than an
+        // error card - the user chose on-device as the offline fallback.
+        // Only when we actually have an on-device snapshot with content.
+        if (snap.error != null &&
+            ocrSnap != null &&
+            ocrSnap.blocks.isNotEmpty) {
+          _dbg('img$imgIdx vision failed (${snap.error}) → keep on-device '
+              '(${ocrSnap.blocks.length}b)');
+          debugPrint('[MangaRoute] img$imgIdx vision FAILED (${snap.error}) '
+              '→ fell back to on-device (${ocrSnap.blocks.length}b)');
+          return ocrSnap;
+        }
         _dbg('img$imgIdx VISION +${batchSw.elapsedMilliseconds}ms '
             '(vision ${visionSw.elapsedMilliseconds}ms, '
             '${snap.blocks.length}b, total ${imgSw.elapsedMilliseconds}ms)');
+        debugPrint('[MangaRoute] img$imgIdx VISION ok '
+            '(${snap.blocks.length}b, ${visionSw.elapsedMilliseconds}ms)');
         return snap;
       });
       jobs.add(fut);
@@ -2736,7 +2784,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         final vt = <String>[];
         for (final b in rawBlocks) {
           if (b is! Map) continue;
-          final original = (b['original'] as String?)?.trim() ?? '';
+          // Collapse per-glyph/column newlines for vertical-CJK source so the
+          // list shows one continuous left-to-right line (no-op for Latin).
+          final original = CameraService.collapseCjkNewlines(
+              (b['original'] as String?)?.trim() ?? '');
           final trVi = (b['translation'] as String?)?.trim() ?? '';
           if (original.isEmpty && trVi.isEmpty) continue;
           final box = b['box'];
@@ -3551,7 +3602,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// user isn't stuck on the spinner.
   void _recoverToPreview() {
     if (mounted) setState(() => _step = _CameraStep.preview);
-    _startStream();
+    // The capture path may have released the camera (sensor-off while the
+    // result was up); re-init instead of streaming on a dead controller.
+    if (_cameraStoppedForBackground) {
+      _reinitCameraAfterBackground();
+    } else if (_cameraDisposed) {
+      _initCamera();
+    } else {
+      _startStream();
+    }
   }
 
   /// Hybrid OCR tier 2: Google Cloud Vision (via backend). Tried BEFORE
@@ -3836,7 +3895,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         final visionTranslations = <String>[];
         for (final b in rawBlocks) {
           if (b is! Map) continue;
-          final original = (b['original'] as String?)?.trim() ?? '';
+          // Collapse per-glyph/column newlines for vertical-CJK source so the
+          // list shows one continuous left-to-right line (no-op for Latin).
+          final original = CameraService.collapseCjkNewlines(
+              (b['original'] as String?)?.trim() ?? '');
           final trVi = (b['translation'] as String?)?.trim() ?? '';
           if (original.isEmpty && trVi.isEmpty) continue;
           final box = b['box'];
