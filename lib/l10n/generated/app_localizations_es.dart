@@ -1262,6 +1262,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cameraCopyAll => 'Copiar todo';
 
   @override
+  String get cameraListView => 'Lista';
+
+  @override
   String get cameraNoText => 'No se detectó texto. Inténtalo de nuevo.';
 
   @override

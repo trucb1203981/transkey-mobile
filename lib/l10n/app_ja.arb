@@ -528,6 +528,7 @@
   "cameraCapture": "撮影",
   "cameraRetake": "撮り直し",
   "cameraCopyAll": "すべてコピー",
+  "cameraListView": "リスト",
   "cameraNoText": "テキストが検出されません。もう一度お試しください。",
   "cameraTapShowTranslations": "タップして翻訳を表示",
   "cameraLowQuality": "画質が低い",

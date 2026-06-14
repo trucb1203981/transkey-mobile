@@ -1265,6 +1265,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cameraCopyAll => 'Alles kopieren';
 
   @override
+  String get cameraListView => 'Liste';
+
+  @override
   String get cameraNoText => 'Kein Text erkannt. Bitte erneut versuchen.';
 
   @override

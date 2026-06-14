@@ -1209,6 +1209,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraCopyAll => '모두 복사';
 
   @override
+  String get cameraListView => '목록';
+
+  @override
   String get cameraNoText => '텍스트가 감지되지 않았습니다. 다시 시도하세요.';
 
   @override

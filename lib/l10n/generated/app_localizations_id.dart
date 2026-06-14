@@ -1257,6 +1257,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraCopyAll => 'Salin semua';
 
   @override
+  String get cameraListView => 'Daftar';
+
+  @override
   String get cameraNoText => 'Tidak ada teks terdeteksi. Coba lagi.';
 
   @override

@@ -1195,6 +1195,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraCopyAll => '全部复制';
 
   @override
+  String get cameraListView => '列表';
+
+  @override
   String get cameraNoText => '未检测到文字，请重试。';
 
   @override

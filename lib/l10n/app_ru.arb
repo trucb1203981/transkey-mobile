@@ -528,6 +528,7 @@
   "cameraCapture": "Снять",
   "cameraRetake": "Переснять",
   "cameraCopyAll": "Копировать всё",
+  "cameraListView": "Список",
   "cameraNoText": "Текст не обнаружен. Попробуйте снова.",
   "cameraTapShowTranslations": "Нажмите, чтобы показать перевод",
   "cameraLowQuality": "Низкое качество",

@@ -1247,6 +1247,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraCopyAll => 'Sao chép';
 
   @override
+  String get cameraListView => 'Danh sách';
+
+  @override
   String get cameraNoText => 'Không phát hiện văn bản. Thử lại.';
 
   @override

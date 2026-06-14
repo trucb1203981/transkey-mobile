@@ -1260,6 +1260,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraCopyAll => 'Копировать всё';
 
   @override
+  String get cameraListView => 'Список';
+
+  @override
   String get cameraNoText => 'Текст не обнаружен. Попробуйте снова.';
 
   @override

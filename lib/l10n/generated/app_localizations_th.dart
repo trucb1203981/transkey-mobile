@@ -1244,6 +1244,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraCopyAll => 'คัดลอกทั้งหมด';
 
   @override
+  String get cameraListView => 'รายการ';
+
+  @override
   String get cameraNoText => 'ไม่พบข้อความ ลองอีกครั้ง';
 
   @override

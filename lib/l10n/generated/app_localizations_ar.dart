@@ -1254,6 +1254,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraCopyAll => 'نسخ الكل';
 
   @override
+  String get cameraListView => 'قائمة';
+
+  @override
   String get cameraNoText => 'لم يتم اكتشاف نص. حاول مرة أخرى.';
 
   @override

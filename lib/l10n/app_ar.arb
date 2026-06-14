@@ -528,6 +528,7 @@
   "cameraCapture": "التقاط",
   "cameraRetake": "إعادة",
   "cameraCopyAll": "نسخ الكل",
+  "cameraListView": "قائمة",
   "cameraNoText": "لم يتم اكتشاف نص. حاول مرة أخرى.",
   "cameraTapShowTranslations": "انقر لعرض الترجمات",
   "cameraLowQuality": "جودة منخفضة",

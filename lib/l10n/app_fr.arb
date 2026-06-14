@@ -528,6 +528,7 @@
   "cameraCapture": "Capturer",
   "cameraRetake": "Reprendre",
   "cameraCopyAll": "Tout copier",
+  "cameraListView": "Liste",
   "cameraNoText": "Aucun texte détecté. Réessayez.",
   "cameraTapShowTranslations": "Appuyez pour afficher les traductions",
   "cameraLowQuality": "Qualité faible",

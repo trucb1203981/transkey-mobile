@@ -528,6 +528,7 @@
   "cameraCapture": "촬영",
   "cameraRetake": "다시 촬영",
   "cameraCopyAll": "모두 복사",
+  "cameraListView": "목록",
   "cameraNoText": "텍스트가 감지되지 않았습니다. 다시 시도하세요.",
   "cameraTapShowTranslations": "탭하여 번역 보기",
   "cameraLowQuality": "품질 낮음",

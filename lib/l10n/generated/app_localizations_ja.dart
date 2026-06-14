@@ -1208,6 +1208,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraCopyAll => 'すべてコピー';
 
   @override
+  String get cameraListView => 'リスト';
+
+  @override
   String get cameraNoText => 'テキストが検出されません。もう一度お試しください。';
 
   @override

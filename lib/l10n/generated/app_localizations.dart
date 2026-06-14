@@ -2396,6 +2396,12 @@ abstract class AppLocalizations {
   /// **'Copy all'**
   String get cameraCopyAll;
 
+  /// No description provided for @cameraListView.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get cameraListView;
+
   /// No description provided for @cameraNoText.
   ///
   /// In en, this message translates to:

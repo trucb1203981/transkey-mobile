@@ -528,6 +528,7 @@
   "cameraCapture": "拍照",
   "cameraRetake": "重拍",
   "cameraCopyAll": "全部复制",
+  "cameraListView": "列表",
   "cameraNoText": "未检测到文字，请重试。",
   "cameraTapShowTranslations": "点击显示翻译",
   "cameraLowQuality": "质量低",
