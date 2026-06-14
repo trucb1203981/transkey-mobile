@@ -101,7 +101,18 @@ class DbnetTextDetector {
   static const int _kMinRegionPixels = 10;
 
   Interpreter? _interpreter;
-  bool _loadAttempted = false;
+
+  /// Cached in-flight (or completed) load. The manga batch fires several
+  /// pages concurrently and each calls [load] before its first [detect].
+  /// A plain `if (_loadAttempted) return;` guard let the SECOND caller
+  /// return while the FIRST was still awaiting `Interpreter.fromAsset`, so
+  /// that page saw `isAvailable == false` and silently skipped DBNet -
+  /// falling to the slower BubbleDetector / vision path and producing
+  /// inconsistent detection across pages of the same batch. Caching the
+  /// future makes every concurrent caller await the SAME load and all see
+  /// the interpreter once it resolves. A failed load caches the completed
+  /// future too, so we don't retry on every detect.
+  Future<void>? _loadFuture;
 
   /// tflite's `Interpreter.run()` is NOT thread-safe. The manga batch path
   /// (`_runBatchParallelVision`) fires several `detect()` calls concurrently
@@ -117,9 +128,9 @@ class DbnetTextDetector {
   /// Try to load the model. Safe to call repeatedly: a successful load
   /// caches the interpreter; a missing-asset failure caches that too
   /// so we don't retry on every detect.
-  Future<void> load() async {
-    if (_loadAttempted) return;
-    _loadAttempted = true;
+  Future<void> load() => _loadFuture ??= _load();
+
+  Future<void> _load() async {
     try {
       // Multi-threaded CPU (XNNPACK) inference. The conv-heavy DBNet ran
       // ~4.5 s single-threaded at 960² on a mid-range phone; threads + the
@@ -174,7 +185,7 @@ class DbnetTextDetector {
   void close() {
     _interpreter?.close();
     _interpreter = null;
-    _loadAttempted = false;
+    _loadFuture = null;
   }
 }
 

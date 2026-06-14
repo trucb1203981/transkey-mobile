@@ -117,7 +117,12 @@ class CameraService {
   // Live-preview OCR runs slightly slower than before (1 s vs 800 ms) since
   // it now fans out to all script recognizers per frame; the extra 200 ms
   // keeps frames from piling up on mid-range devices.
-  static const _ocrInterval = Duration(milliseconds: 1000);
+  // Raised 1000 -> 2200 ms: on an old A11 (iPhone X) running a live OCR pass
+  // every second on top of the 720p30 stream overheats the device within a
+  // minute, and a thermally-throttled device freezes (taps stop registering).
+  // The live boxes are only a discoverability hint - 2.2 s cadence is plenty
+  // for "aim, see boxes, capture" while roughly halving the sustained load.
+  static const _ocrInterval = Duration(milliseconds: 2200);
 
   /// Persistent recognizers for the live stream — one per script (latin /
   /// chinese / japanese / korean / devanagari). Created once in
@@ -156,7 +161,10 @@ class CameraService {
   // plane only (luma), downsampled, single-pass running variance —
   // sub-ms per frame even on mid-range devices.
   DateTime _lastBlurTime = DateTime.fromMillisecondsSinceEpoch(0);
-  static const _blurInterval = Duration(milliseconds: 250);
+  // Raised 250 -> 500 ms: the blur/sharpness variance scan reads the frame
+  // buffer 4x/sec, which adds steady heat on an old A11. 2x/sec still tracks
+  // the steady/blurry transition smoothly while halving this scan's load.
+  static const _blurInterval = Duration(milliseconds: 500);
 
   /// Laplacian-variance threshold below which the current preview
   /// frame is treated as blurry. Calibrated empirically against the
@@ -1582,40 +1590,106 @@ class CameraService {
           try {
             await File(cropPath)
                 .writeAsBytes(img.encodeJpg(cropped, quality: 90));
-            final input = InputImage.fromFilePath(cropPath);
             final scriptList = recognizers.entries.toList();
-            final ocrResults = await Future.wait(
+            // Pick the best candidate across the script recognizers by
+            // "meaningful char count" — letters / digits / CJK only.
+            // Punctuation and whitespace don't count, so a 5-char garbage
+            // like "* * *" loses to a 4-char real word. CJK rebuilds the
+            // vertical reading order from line boxes; Latin keeps ML Kit's
+            // order.
+            ({String text, int score, String script, int idx}) pickBest(
+                List<RecognizedText> rs) {
+              var bt = '';
+              var bs = 0;
+              var bsc = '';
+              var bi = -1;
+              for (var i = 0; i < rs.length; i++) {
+                final name = scriptList[i].key.name;
+                final isCjk = name == 'japanese' ||
+                    name == 'chinese' ||
+                    name == 'korean';
+                final cand =
+                    (isCjk ? _cjkVerticalReadingOrder(rs[i]) : rs[i].text)
+                        .trim();
+                final sc = _meaningfulCharCount(cand);
+                if (sc > bs) {
+                  bs = sc;
+                  bt = cand;
+                  bsc = name;
+                  bi = i;
+                }
+              }
+              return (text: bt, score: bs, script: bsc, idx: bi);
+            }
+
+            final input = InputImage.fromFilePath(cropPath);
+            var ocrResults = await Future.wait(
                 scriptList.map((e) => e.value.processImage(input)));
-            // Pick best per "meaningful char count" — letters /
-            // digits / CJK only. Punctuation and whitespace don't
-            // count, so a 5-char garbage like "* * *" loses to a
-            // 4-char real word.
-            var bestText = '';
-            var bestScore = 0;
-            var bestScript = '';
-            int bestIdx = -1;
-            for (var i = 0; i < ocrResults.length; i++) {
-              final name = scriptList[i].key.name;
-              final isCjk = name == 'japanese' ||
-                  name == 'chinese' ||
-                  name == 'korean';
-              // CJK: rebuild vertical reading order from line boxes; Latin
-              // keeps ML Kit's order.
-              final cand = (isCjk
-                      ? _cjkVerticalReadingOrder(ocrResults[i])
-                      : ocrResults[i].text)
-                  .trim();
-              final score = _meaningfulCharCount(cand);
-              if (score > bestScore) {
-                bestScore = score;
-                bestText = cand;
-                bestScript = name;
-                bestIdx = i;
+            var picked = pickBest(ocrResults);
+            // Line boxes in the chosen result are at this scale relative to
+            // the source crop (1.0 unless the upscale re-OCR below wins).
+            var ocrScale = 1.0;
+
+            // Adaptive re-OCR for SMALL, UNDER-READ crops (recall). The
+            // top-row / sound-effect bubbles DBNet drops at 640 px come
+            // back as a small crop the recognizer reads little from; a 2x
+            // cubic upscale gives those sub-16 px glyphs enough pixels to
+            // register. Bounded to the few small+weak crops so the batch
+            // stays fast - most bubbles read fine on the first pass and
+            // skip this. (Cheaper + safer than the 960 px DBNet model,
+            // which HUNG the batch; see the manga flow log.)
+            //
+            // "Small" is RELATIVE to the page, not an absolute px count: a
+            // 1080-wide capture and a 600-wide one have very different
+            // bubble pixel sizes, and an absolute gate either misses
+            // medium small-text bubbles on a big page or fires on every
+            // bubble of a small one. A bubble whose shorter side is under
+            // 15 % of the page's shorter side is the empirical small band.
+            final pageMinSide =
+                math.min(decoded.width, decoded.height).toDouble();
+            final cropShort = math.min(w, h).toDouble();
+            if (cropShort < pageMinSide * 0.15 && picked.score < 6) {
+              String? upPath;
+              try {
+                final up = img.copyResize(
+                  cropped,
+                  width: (w * 2).clamp(1, 4000),
+                  height: (h * 2).clamp(1, 4000),
+                  interpolation: img.Interpolation.cubic,
+                );
+                upPath = '${tempDir.path}/dbnet_region_up_'
+                    '${DateTime.now().microsecondsSinceEpoch}'
+                    '_${identityHashCode(box)}.jpg';
+                await File(upPath)
+                    .writeAsBytes(img.encodeJpg(up, quality: 90));
+                final upInput = InputImage.fromFilePath(upPath);
+                final upResults = await Future.wait(
+                    scriptList.map((e) => e.value.processImage(upInput)));
+                final upPicked = pickBest(upResults);
+                if (upPicked.score > picked.score) {
+                  ocrResults = upResults;
+                  picked = upPicked;
+                  ocrScale = 2.0;
+                }
+              } catch (_) {
+                // Upscale OCR is best-effort; keep the first-pass result.
+              } finally {
+                if (upPath != null) {
+                  try {
+                    await File(upPath).delete();
+                  } catch (_) {}
+                }
               }
             }
+
+            final bestText = picked.text;
+            final bestScore = picked.score;
+            final bestScript = picked.script;
+            final bestIdx = picked.idx;
             if (kDebugMode) {
               logLines.add(
-                  '[$bestScript] bbox=$l,$t+${w}x$h score=$bestScore '
+                  '[$bestScript] bbox=$l,$t+${w}x$h score=$bestScore'
+                  '${ocrScale != 1.0 ? ' (up)' : ''} '
                   'text="${bestText.replaceAll('\n', ' / ')}"');
             }
             if (bestText.isEmpty || bestScore < 2) return null;
@@ -1639,10 +1713,13 @@ class CameraService {
               for (final blk in ocrResults[bestIdx].blocks) {
                 for (final line in blk.lines) {
                   final lr = line.boundingBox;
-                  final lx0 = lr.left.toDouble();
-                  final ly0 = lr.top.toDouble();
-                  final lx1 = lr.right.toDouble();
-                  final ly1 = lr.bottom.toDouble();
+                  // Divide by ocrScale: when the upscale re-OCR won, line
+                  // boxes are in 2x crop space; bring them back to source
+                  // crop space before mapping to image coords with (l, t).
+                  final lx0 = lr.left.toDouble() / ocrScale;
+                  final ly0 = lr.top.toDouble() / ocrScale;
+                  final lx1 = lr.right.toDouble() / ocrScale;
+                  final ly1 = lr.bottom.toDouble() / ocrScale;
                   minX = (minX == null) ? lx0 : math.min(minX, lx0);
                   minY = (minY == null) ? ly0 : math.min(minY, ly0);
                   maxX = (maxX == null) ? lx1 : math.max(maxX, lx1);
@@ -3144,6 +3221,19 @@ class CameraService {
     return union <= 0 ? 0.0 : inter / union;
   }
 
+  /// Area of the overlap between two axis-aligned rectangles (0 when
+  /// disjoint). Used by [_groupDbnetByBubbles] to assign a DBNet text line
+  /// to the bubble it sits MOSTLY inside when its centre fell just outside
+  /// every bubble box.
+  static double _intersectArea(Rect a, Rect b) {
+    final l = math.max(a.left, b.left);
+    final t = math.max(a.top, b.top);
+    final r = math.min(a.right, b.right);
+    final bo = math.min(a.bottom, b.bottom);
+    if (r <= l || bo <= t) return 0.0;
+    return (r - l) * (bo - t);
+  }
+
   /// Single-link agglomerative clustering on [rects]. Two rects join
   /// the same cluster if their edge-to-edge distance is below [thresh].
   /// Each cluster's bbox is the axis-aligned union of its members.
@@ -3271,6 +3361,28 @@ class CameraService {
             best = j;
           }
         }
+      }
+      if (best < 0) {
+        // Centre fell just outside every bubble - common when DBNet's
+        // unclip expansion (x1.5) pushes a line's box past the bubble
+        // border. Rather than drop the line into the orphan pool (where it
+        // becomes a stray per-line card, the "lệch" symptom on dense
+        // pages), attach it to the bubble it overlaps MOST when that
+        // overlap covers the majority of the line. A line that barely
+        // grazes a bubble (<50%) stays an orphan so we don't pull a
+        // gutter line into the wrong bubble.
+        final lineArea = lines[i].width * lines[i].height;
+        var bestOverlap = 0.0;
+        if (lineArea > 0) {
+          for (var j = 0; j < bubbles.length; j++) {
+            final frac = _intersectArea(lines[i], bubbles[j]) / lineArea;
+            if (frac > bestOverlap) {
+              bestOverlap = frac;
+              best = j;
+            }
+          }
+        }
+        if (bestOverlap < 0.5) best = -1;
       }
       if (best >= 0) {
         (perBubble[best] ??= <Rect>[]).add(lines[i]);

@@ -48,6 +48,14 @@ const double _kCardVPad = 4.0;
 const double _kMinFontSize = 9.0;
 const double _kMaxFontSize = 28.0;
 
+// Manga cards size their font to the bubble (not to the page like menu
+// cards), so they get their own tighter range. Floor 10 keeps the
+// translated VI text readable even in a small bubble (the card grows
+// downward when it overflows); cap 16 stops a roomy bubble from getting
+// an oversized font that bleeds into the neighbouring panel.
+const double _kMangaMinFont = 10.0;
+const double _kMangaMaxFont = 16.0;
+
 // Client-side last-line guard against a single OCR/Vision/server block
 // covering most of the page. Anything above this fraction of the view
 // area gets skipped before being rendered as a card. 0.25 = no card may
@@ -513,7 +521,27 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             // text wraps the same; height grows downward past the bbox
             // when fontScale > 1.0 (the slider scales BOTH the font AND
             // the card so the text always sits inside the card).
-            const mangaFont = 6.0;
+            //
+            // Font was a hardcoded 6px - below the 9px readable floor, so
+            // every bubble rendered unreadable tiny text. Now fit the
+            // translation to the bubble (its width clamp + height) at the
+            // LARGEST size that fits, floored at a readable minimum and
+            // capped so a roomy bubble doesn't get a huge font. When even
+            // the floor overflows the bubble height the card grows
+            // downward (centred below) instead of shrinking further - a
+            // readable 10px line that spills past a tiny vertical-JP
+            // bubble beats a 6px line that fits but can't be read.
+            final mangaFit = _fitFont(
+              text: displayText,
+              maxWidth: cardWidth,
+              maxHeight: boxH,
+              startFont: _kMangaMaxFont,
+              fontWeight:
+                  isTranslated ? FontWeight.w500 : FontWeight.normal,
+            );
+            final mangaFont = mangaFit.fontSize
+                .clamp(_kMangaMinFont, _kMangaMaxFont)
+                .toDouble();
             final renderedManga = mangaFont * widget.fontScale;
             final tpManga = TextPainter(
               text: TextSpan(
