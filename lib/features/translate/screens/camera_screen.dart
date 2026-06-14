@@ -4554,31 +4554,63 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       final it = items[i];
                       final hasTranslation = it.translated.isNotEmpty &&
                           it.translated != it.original;
-                      return Column(
+                      // "What is this?" explains the SOURCE text (the model
+                      // handles the original language better than its own
+                      // translation); fall back to the translation when the
+                      // source is empty.
+                      final explainText = it.original.isNotEmpty
+                          ? it.original
+                          : it.translated;
+                      return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SelectableText(
-                            hasTranslation ? it.translated : it.original,
-                            style: TextStyle(
-                              color: hasTranslation
-                                  ? AppColors.textPrimary
-                                  : AppColors.textSecondary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              height: 1.3,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SelectableText(
+                                  hasTranslation ? it.translated : it.original,
+                                  style: TextStyle(
+                                    color: hasTranslation
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.3,
+                                  ),
+                                ),
+                                if (hasTranslation &&
+                                    it.original.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    it.original,
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13,
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          if (hasTranslation && it.original.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              it.original,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 13,
-                                height: 1.25,
+                          if (explainText.isNotEmpty)
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
                               ),
+                              tooltip: l.cameraWhatIsThis,
+                              icon: const Icon(
+                                Icons.help_outline,
+                                size: 20,
+                                color: AppColors.primary,
+                              ),
+                              onPressed: () =>
+                                  WhatIsThisSheet.show(context, explainText),
                             ),
-                          ],
                         ],
                       );
                     },
