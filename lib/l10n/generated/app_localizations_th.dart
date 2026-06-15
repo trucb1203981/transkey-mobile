@@ -1241,6 +1241,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraRetake => 'ถ่ายใหม่';
 
   @override
+  String get cameraRetranslate => 'แปลอีกครั้ง';
+
+  @override
   String get cameraCopyAll => 'คัดลอกทั้งหมด';
 
   @override
@@ -1254,9 +1257,6 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get cameraLowQuality => 'คุณภาพต่ำ';
-
-  @override
-  String get cameraConfidenceReliable => 'เชื่อถือได้';
 
   @override
   String get cameraConfidenceCaution => 'ควรตรวจสอบ';
@@ -1472,9 +1472,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraExplainError => 'ไม่สามารถดึงคำอธิบาย ลองใหม่';
 
   @override
-  String get cameraResultExplainHint => 'กดค้างที่การ์ดเพื่อถาม';
-
-  @override
   String get cameraExplainDisclaimer =>
       'ใช้อ้างอิงเท่านั้น — ความหมายจริงอาจแตกต่าง';
 
@@ -1600,6 +1597,17 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'กู้คืนการซื้อ';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      'การสมัครสมาชิกจะต่ออายุโดยอัตโนมัติเว้นแต่จะยกเลิก ระบบจะเรียกเก็บเงินจากบัญชี App Store หรือ Google Play ของคุณเมื่อยืนยันการซื้อ และจะต่ออายุเว้นแต่คุณยกเลิกอย่างน้อย 24 ชั่วโมงก่อนสิ้นสุดรอบปัจจุบัน คุณสามารถจัดการหรือยกเลิกได้ทุกเมื่อในการตั้งค่าบัญชีสโตร์';
+
+  @override
+  String get subscriptionManageButton => 'จัดการการสมัครสมาชิก';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'การสมัครสมาชิกของคุณจัดการผ่าน App Store หรือ Google Play แตะด้านล่างเพื่อดู เปลี่ยน หรือยกเลิก';
 
   @override
   String get homeTagline => 'แปล · สรุป · อธิบาย';

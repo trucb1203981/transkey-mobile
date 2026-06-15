@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/locale/locale_provider.dart';
+import '../services/purchases_service.dart';
 
 /// Pick a localized string out of a server JSONB i18n map. Server stores
 /// `{ "vi": "...", "en": "...", ... }`; client picks the APP locale the
@@ -177,6 +178,18 @@ class PlansNotifier extends AsyncNotifier<List<PlanInfo>> {
 final plansProvider = AsyncNotifierProvider<PlansNotifier, List<PlanInfo>>(
   PlansNotifier.new,
 );
+
+/// Localized, store-charged monthly prices from RevenueCat, keyed by plan
+/// ('mobile' / 'pro'). The upgrade screen prefers these over the server's
+/// USD reference price so the plan cards + CTA buttons show the exact amount
+/// and currency the App Store / Play will charge. Resolves to an empty map on
+/// web / desktop or when RC isn't configured — the UI then falls back to the
+/// server price. Not auto-disposed: the offering is cached by the RC SDK, so
+/// one fetch per app session is enough.
+final storeMonthlyPricesProvider =
+    FutureProvider<Map<String, String>>((ref) async {
+  return PurchasesService.monthlyPriceStrings();
+});
 
 /// Convenience selector — pluck a single plan by key.
 PlanInfo? planByKey(List<PlanInfo>? list, String key) {

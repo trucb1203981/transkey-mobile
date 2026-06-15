@@ -1257,6 +1257,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraRetake => 'Переснять';
 
   @override
+  String get cameraRetranslate => 'Перевести снова';
+
+  @override
   String get cameraCopyAll => 'Копировать всё';
 
   @override
@@ -1270,9 +1273,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get cameraLowQuality => 'Низкое качество';
-
-  @override
-  String get cameraConfidenceReliable => 'Надёжно';
 
   @override
   String get cameraConfidenceCaution => 'Проверьте';
@@ -1493,9 +1493,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось получить объяснение. Повторите попытку.';
 
   @override
-  String get cameraResultExplainHint => 'Удерживайте карточку, чтобы спросить';
-
-  @override
   String get cameraExplainDisclaimer =>
       'Только для справки — реальное значение может отличаться';
 
@@ -1621,6 +1618,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Восстановить покупки';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      'Подписки продлеваются автоматически, если их не отменить. Оплата списывается с вашего аккаунта App Store или Google Play при подтверждении покупки, и подписка продлевается, если вы не отмените её не менее чем за 24 часа до окончания текущего периода. Вы можете управлять подпиской или отменить её в любое время в настройках аккаунта магазина.';
+
+  @override
+  String get subscriptionManageButton => 'Управление подпиской';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'Ваша подписка управляется через App Store или Google Play. Нажмите ниже, чтобы просмотреть, изменить или отменить её.';
 
   @override
   String get homeTagline => 'Переводи · Резюмируй · Объясняй';

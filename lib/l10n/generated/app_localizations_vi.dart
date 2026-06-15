@@ -1244,6 +1244,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraRetake => 'Chụp lại';
 
   @override
+  String get cameraRetranslate => 'Dịch lại';
+
+  @override
   String get cameraCopyAll => 'Sao chép';
 
   @override
@@ -1257,9 +1260,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get cameraLowQuality => 'Chất lượng thấp';
-
-  @override
-  String get cameraConfidenceReliable => 'Tin cậy';
 
   @override
   String get cameraConfidenceCaution => 'Cần kiểm tra';
@@ -1476,9 +1476,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraExplainError => 'Không lấy được giải thích. Thử lại.';
 
   @override
-  String get cameraResultExplainHint => 'Nhấn giữ thẻ để hỏi';
-
-  @override
   String get cameraExplainDisclaimer =>
       'Chỉ để tham khảo — thực tế có thể khác';
 
@@ -1604,6 +1601,17 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Khôi phục giao dịch';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      'Gói đăng ký tự động gia hạn trừ khi bạn hủy. Tiền được tính vào tài khoản App Store hoặc Google Play khi xác nhận mua và tự gia hạn nếu bạn không hủy ít nhất 24 giờ trước khi kỳ hiện tại kết thúc. Bạn có thể quản lý hoặc hủy bất cứ lúc nào trong phần cài đặt tài khoản cửa hàng.';
+
+  @override
+  String get subscriptionManageButton => 'Quản lý gói đăng ký';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'Gói đăng ký của bạn được quản lý qua App Store hoặc Google Play. Nhấn bên dưới để xem, thay đổi hoặc hủy.';
 
   @override
   String get homeTagline => 'Dịch · Tóm tắt · Giải thích';

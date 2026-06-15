@@ -1,7 +1,6 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -62,8 +61,14 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     final hasTrialPlan = plansAsync.valueOrNull?.any((p) => p.plan == 'trial') ?? false;
     final canActivateTrial = hasTrialPlan && !(usage?.trialUsed ?? false);
     // First-month half-price discount: badge on the Pro card + appended to
-    // the checkout button so the price is honest.
-    final hasDiscount = usage?.firstMonthDiscount ?? false;
+    // the checkout button so the price is honest. The discount is a
+    // LemonSqueezy coupon applied only on the web checkout (/auth/checkout);
+    // when RevenueCat is ready the purchase goes through Apple/Play IAP, which
+    // CANNOT apply that coupon — so showing the badge there would advertise a
+    // discount the IAP can't deliver (misleading + an App Store 3.1.1 risk).
+    // Only show it when checkout will actually take the LemonSqueezy path.
+    final hasDiscount =
+        (usage?.firstMonthDiscount ?? false) && !PurchasesService.isReady;
 
     // Server is the source of truth for prices, feature lists, and limits.
     // Fall back to a sensible default while the request is in flight or if
@@ -75,6 +80,17 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     final freePlan = planByKey(plans, 'free');
     final mobilePrice = mobilePlan?.priceMonthly;
     final proPrice = proPlan?.priceMonthly;
+
+    // Prefer the exact store-charged monthly price (localized currency) from
+    // RevenueCat over the server's USD reference price, so cards + CTAs match
+    // what Apple / Play actually bills. Falls back to the server price when RC
+    // isn't ready or the product is missing.
+    final storePrices =
+        ref.watch(storeMonthlyPricesProvider).valueOrNull ?? const <String, String>{};
+    String displayPrice(String planKey, num? serverPrice) {
+      final sp = storePrices[planKey];
+      return sp != null ? '$sp/mo' : _formatPrice(serverPrice);
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l.upgradeScreenTitle)),
@@ -138,7 +154,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(child: _planCard(
                     '📱 ${(mobilePlan?.displayName ?? l.planMobile).toUpperCase()}',
-                    _formatPrice(mobilePrice),
+                    displayPrice('mobile', mobilePrice),
                     l.upgradePopularBadge,
                     plan != 'free',
                     isDark,
@@ -153,7 +169,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(child: _planCard(
                     '⭐ ${(proPlan?.displayName ?? l.planPro).toUpperCase()}',
-                    _formatPrice(proPrice),
+                    displayPrice('pro', proPrice),
                     hasDiscount ? l.discountFirstMonth : null,
                     plan == 'pro',
                     isDark,
@@ -191,14 +207,14 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                 children: [
                   Expanded(
                     child: _actionButton(
-                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice)}',
+                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${displayPrice('mobile', mobilePrice)}',
                       onPressed: () => _checkout('mobile'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _actionButton(
-                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice)}',
+                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${displayPrice('pro', proPrice)}',
                       onPressed: () => _checkout('pro'),
                       isGold: true,
                     ),
@@ -210,14 +226,14 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
                 children: [
                   Expanded(
                     child: _actionButton(
-                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${_formatPrice(mobilePrice)}',
+                      label: '📱 ${mobilePlan?.displayName ?? l.planMobile} · ${displayPrice('mobile', mobilePrice)}',
                       onPressed: () => _checkout('mobile'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _actionButton(
-                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${_formatPrice(proPrice)}',
+                      label: '💻 ${proPlan?.displayName ?? l.planPro} · ${displayPrice('pro', proPrice)}',
                       onPressed: () => _checkout('pro'),
                       isGold: true,
                     ),
@@ -226,7 +242,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
               ),
             ] else if (plan == 'mobile') ...[
               _actionButton(
-                label: '💻 ${l.upgradeToPro} · ${_formatPrice(proPrice)}',
+                label: '💻 ${l.upgradeToPro} · ${displayPrice('pro', proPrice)}',
                 onPressed: () => _checkout('pro'),
                 isGold: true,
               ),
@@ -241,21 +257,55 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            // Restore button — Play policy requires every app with paid
-            // subscriptions to offer an explicit "Restore purchases" entry
-            // so users coming back after a reinstall / device switch can
-            // re-link their entitlement without re-paying. Only relevant on
-            // Android (RC + Play Billing path); the other surfaces buy
-            // through LemonSqueezy on the web where the account is the
-            // restore mechanism, so we hide the button there to avoid a
-            // dead-end click.
-            if (Platform.isAndroid && PurchasesService.isReady) ...[
+            // Restore button — BOTH the App Store and Google Play require an
+            // app with paid subscriptions to offer an explicit "Restore
+            // purchases" entry so users returning after a reinstall / device
+            // switch can re-link their entitlement without re-paying. Show it
+            // on every store-billing surface (iOS + Android via RevenueCat).
+            // The web / desktop LemonSqueezy path uses the account itself as
+            // the restore mechanism, so it stays hidden there (isReady false).
+            if (PurchasesService.isReady) ...[
               const SizedBox(height: AppSpacing.md),
               Center(
                 child: TextButton(
                   onPressed: _isLoading ? null : _restorePurchases,
                   child: Text(l.upgradeRestoreButton),
                 ),
+              ),
+              // Auto-renewable subscription disclosure, required AT THE POINT
+              // OF PURCHASE by App Store Guideline 3.1.2 (and Google Play):
+              // renewal terms + functional links to the Terms of Use (EULA)
+              // and Privacy Policy. Omitting this is a common review rejection.
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                l.upgradeSubscriptionTerms,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://transkey.app/terms'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: Text(l.termsOfService),
+                  ),
+                  const Text('·', style: TextStyle(color: AppColors.textSecondary)),
+                  TextButton(
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://transkey.app/privacy'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: Text(l.privacyPolicy),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: AppSpacing.xl),

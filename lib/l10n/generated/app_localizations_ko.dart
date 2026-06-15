@@ -1206,6 +1206,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraRetake => '다시 촬영';
 
   @override
+  String get cameraRetranslate => '다시 번역';
+
+  @override
   String get cameraCopyAll => '모두 복사';
 
   @override
@@ -1219,9 +1222,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cameraLowQuality => '품질 낮음';
-
-  @override
-  String get cameraConfidenceReliable => '신뢰 가능';
 
   @override
   String get cameraConfidenceCaution => '확인 필요';
@@ -1434,9 +1434,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraExplainError => '설명을 가져올 수 없습니다. 다시 시도하세요.';
 
   @override
-  String get cameraResultExplainHint => '카드를 길게 눌러 문의';
-
-  @override
   String get cameraExplainDisclaimer => '참고용 — 실제와 다를 수 있습니다';
 
   @override
@@ -1555,6 +1552,17 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => '구매 복원';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      '구독은 취소하지 않으면 자동으로 갱신됩니다. 구매 확정 시 App Store 또는 Google Play 계정으로 결제되며, 현재 기간이 끝나기 최소 24시간 전에 취소하지 않으면 갱신됩니다. 스토어 계정 설정에서 언제든지 관리하거나 취소할 수 있습니다.';
+
+  @override
+  String get subscriptionManageButton => '구독 관리';
+
+  @override
+  String get subscriptionStoreManaged =>
+      '구독은 App Store 또는 Google Play를 통해 관리됩니다. 아래를 눌러 보기, 변경 또는 취소하세요.';
 
   @override
   String get homeTagline => '번역 · 요약 · 설명';

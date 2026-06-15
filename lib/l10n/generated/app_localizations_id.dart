@@ -1254,6 +1254,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraRetake => 'Ulangi';
 
   @override
+  String get cameraRetranslate => 'Terjemahkan lagi';
+
+  @override
   String get cameraCopyAll => 'Salin semua';
 
   @override
@@ -1267,9 +1270,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get cameraLowQuality => 'Kualitas rendah';
-
-  @override
-  String get cameraConfidenceReliable => 'Tepercaya';
 
   @override
   String get cameraConfidenceCaution => 'Periksa lagi';
@@ -1490,9 +1490,6 @@ class AppLocalizationsId extends AppLocalizations {
       'Tidak dapat mengambil penjelasan. Coba lagi.';
 
   @override
-  String get cameraResultExplainHint => 'Tekan lama kartu untuk bertanya';
-
-  @override
   String get cameraExplainDisclaimer =>
       'Hanya referensi — arti sebenarnya mungkin berbeda';
 
@@ -1619,6 +1616,17 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Pulihkan pembelian';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      'Langganan diperpanjang otomatis kecuali dibatalkan. Pembayaran ditagihkan ke akun App Store atau Google Play Anda saat konfirmasi pembelian, dan diperpanjang kecuali Anda membatalkan setidaknya 24 jam sebelum periode berjalan berakhir. Anda dapat mengelola atau membatalkan kapan saja di pengaturan akun toko.';
+
+  @override
+  String get subscriptionManageButton => 'Kelola langganan';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'Langganan Anda dikelola melalui App Store atau Google Play. Ketuk di bawah untuk melihat, mengubah, atau membatalkannya.';
 
   @override
   String get homeTagline => 'Terjemahkan · Ringkas · Jelaskan';

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/dio_client.dart';
+import '../../upgrade/services/purchases_service.dart';
 
 class SubscriptionInfo {
   const SubscriptionInfo({
@@ -69,3 +70,12 @@ final subscriptionProvider =
     AsyncNotifierProvider<SubscriptionNotifier, SubscriptionInfo>(
   SubscriptionNotifier.new,
 );
+
+/// Store (Apple/Play) subscription from RevenueCat. Drives the management
+/// screen for IAP buyers, who have no LemonSqueezy record so
+/// [subscriptionProvider] is empty for them. Null on web/desktop or when RC
+/// isn't configured.
+final storeSubscriptionProvider =
+    FutureProvider<StoreSubscription?>((ref) async {
+  return PurchasesService.storeSubscription();
+});

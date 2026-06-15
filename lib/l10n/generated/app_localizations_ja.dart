@@ -1205,6 +1205,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraRetake => '撮り直し';
 
   @override
+  String get cameraRetranslate => '再翻訳';
+
+  @override
   String get cameraCopyAll => 'すべてコピー';
 
   @override
@@ -1218,9 +1221,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cameraLowQuality => '画質が低い';
-
-  @override
-  String get cameraConfidenceReliable => '信頼できる';
 
   @override
   String get cameraConfidenceCaution => '要確認';
@@ -1432,9 +1432,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraExplainError => '説明を取得できませんでした。再試行。';
 
   @override
-  String get cameraResultExplainHint => 'カードを長押しして質問';
-
-  @override
   String get cameraExplainDisclaimer => '参考のみ — 実際の意味と異なる場合があります';
 
   @override
@@ -1552,6 +1549,17 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => '購入を復元';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      '解約しない限り、サブスクリプションは自動的に更新されます。購入確定時にApp StoreまたはGoogle Playアカウントに課金され、現在の期間が終了する24時間以上前に解約しない限り更新されます。ストアのアカウント設定からいつでも管理・解約できます。';
+
+  @override
+  String get subscriptionManageButton => 'サブスクリプションを管理';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'お客様のサブスクリプションはApp StoreまたはGoogle Playで管理されています。下をタップして確認・変更・解約できます。';
 
   @override
   String get homeTagline => '翻訳 · 要約 · 解説';

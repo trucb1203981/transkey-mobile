@@ -1259,6 +1259,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cameraRetake => 'Repetir';
 
   @override
+  String get cameraRetranslate => 'Traducir otra vez';
+
+  @override
   String get cameraCopyAll => 'Copiar todo';
 
   @override
@@ -1272,9 +1275,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cameraLowQuality => 'Baja calidad';
-
-  @override
-  String get cameraConfidenceReliable => 'Fiable';
 
   @override
   String get cameraConfidenceCaution => 'Verificar';
@@ -1496,10 +1496,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo obtener la explicación. Inténtalo de nuevo.';
 
   @override
-  String get cameraResultExplainHint =>
-      'Mantén pulsada una tarjeta para preguntar';
-
-  @override
   String get cameraExplainDisclaimer =>
       'Solo referencia — el significado real puede diferir';
 
@@ -1626,6 +1622,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Restaurar compras';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      'Las suscripciones se renuevan automáticamente a menos que se cancelen. El pago se carga a tu cuenta de App Store o Google Play al confirmar la compra y se renueva a menos que canceles al menos 24 horas antes de que termine el período actual. Puedes gestionar o cancelar en cualquier momento en los ajustes de tu cuenta de la tienda.';
+
+  @override
+  String get subscriptionManageButton => 'Gestionar suscripción';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'Tu suscripción se gestiona a través de App Store o Google Play. Toca abajo para verla, cambiarla o cancelarla.';
 
   @override
   String get homeTagline => 'Traducir · Resumir · Explicar';

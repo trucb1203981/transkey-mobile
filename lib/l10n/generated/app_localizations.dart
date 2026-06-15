@@ -2390,6 +2390,12 @@ abstract class AppLocalizations {
   /// **'Retake'**
   String get cameraRetake;
 
+  /// No description provided for @cameraRetranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate again'**
+  String get cameraRetranslate;
+
   /// No description provided for @cameraCopyAll.
   ///
   /// In en, this message translates to:
@@ -2419,12 +2425,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Low quality'**
   String get cameraLowQuality;
-
-  /// No description provided for @cameraConfidenceReliable.
-  ///
-  /// In en, this message translates to:
-  /// **'Reliable'**
-  String get cameraConfidenceReliable;
 
   /// No description provided for @cameraConfidenceCaution.
   ///
@@ -2828,12 +2828,6 @@ abstract class AppLocalizations {
   /// **'Couldn\'t fetch explanation. Try again.'**
   String get cameraExplainError;
 
-  /// No description provided for @cameraResultExplainHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Long-press a card to ask'**
-  String get cameraResultExplainHint;
-
   /// No description provided for @cameraExplainDisclaimer.
   ///
   /// In en, this message translates to:
@@ -3067,6 +3061,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restore purchases'**
   String get upgradeRestoreButton;
+
+  /// No description provided for @upgradeSubscriptionTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscriptions automatically renew unless canceled. Payment is charged to your App Store or Google Play account at confirmation of purchase, and renews unless you cancel at least 24 hours before the current period ends. You can manage or cancel anytime in your store account settings.'**
+  String get upgradeSubscriptionTerms;
+
+  /// No description provided for @subscriptionManageButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage subscription'**
+  String get subscriptionManageButton;
+
+  /// No description provided for @subscriptionStoreManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Your subscription is managed through the App Store or Google Play. Tap below to view, change, or cancel it.'**
+  String get subscriptionStoreManaged;
 
   /// No description provided for @homeTagline.
   ///

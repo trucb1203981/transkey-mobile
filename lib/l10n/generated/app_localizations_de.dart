@@ -1262,6 +1262,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cameraRetake => 'Erneut';
 
   @override
+  String get cameraRetranslate => 'Neu übersetzen';
+
+  @override
   String get cameraCopyAll => 'Alles kopieren';
 
   @override
@@ -1275,9 +1278,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get cameraLowQuality => 'Niedrige Qualität';
-
-  @override
-  String get cameraConfidenceReliable => 'Zuverlässig';
 
   @override
   String get cameraConfidenceCaution => 'Prüfen';
@@ -1498,9 +1498,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Erklärung konnte nicht geladen werden. Erneut versuchen.';
 
   @override
-  String get cameraResultExplainHint => 'Karte lange drücken zum Fragen';
-
-  @override
   String get cameraExplainDisclaimer =>
       'Nur als Referenz — tatsächliche Bedeutung kann abweichen';
 
@@ -1628,6 +1625,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'Käufe wiederherstellen';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      'Abonnements verlängern sich automatisch, sofern sie nicht gekündigt werden. Die Zahlung wird bei Kaufbestätigung deinem App Store- oder Google Play-Konto belastet und verlängert sich, sofern du nicht mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums kündigst. Du kannst dein Abo jederzeit in den Kontoeinstellungen des Stores verwalten oder kündigen.';
+
+  @override
+  String get subscriptionManageButton => 'Abo verwalten';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'Dein Abo wird über den App Store oder Google Play verwaltet. Tippe unten, um es anzusehen, zu ändern oder zu kündigen.';
 
   @override
   String get homeTagline => 'Übersetzen · Zusammenfassen · Erklären';

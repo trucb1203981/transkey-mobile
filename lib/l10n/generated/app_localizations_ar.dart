@@ -1251,6 +1251,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraRetake => 'إعادة';
 
   @override
+  String get cameraRetranslate => 'إعادة الترجمة';
+
+  @override
   String get cameraCopyAll => 'نسخ الكل';
 
   @override
@@ -1264,9 +1267,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cameraLowQuality => 'جودة منخفضة';
-
-  @override
-  String get cameraConfidenceReliable => 'موثوق';
 
   @override
   String get cameraConfidenceCaution => 'تحقّق';
@@ -1482,9 +1482,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cameraExplainError => 'تعذر جلب الشرح. حاول مرة أخرى.';
 
   @override
-  String get cameraResultExplainHint => 'اضغط مطولاً على البطاقة للسؤال';
-
-  @override
   String get cameraExplainDisclaimer => 'للإشارة فقط — قد يختلف المعنى الفعلي';
 
   @override
@@ -1609,6 +1606,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => 'استعادة المشتريات';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      'تتجدد الاشتراكات تلقائيًا ما لم يتم إلغاؤها. يُخصم المبلغ من حساب App Store أو Google Play عند تأكيد الشراء، ويتجدد الاشتراك ما لم تقم بالإلغاء قبل 24 ساعة على الأقل من نهاية الفترة الحالية. يمكنك الإدارة أو الإلغاء في أي وقت من إعدادات حساب المتجر.';
+
+  @override
+  String get subscriptionManageButton => 'إدارة الاشتراك';
+
+  @override
+  String get subscriptionStoreManaged =>
+      'تتم إدارة اشتراكك عبر App Store أو Google Play. اضغط أدناه لعرضه أو تغييره أو إلغائه.';
 
   @override
   String get homeTagline => 'ترجم · لخّص · اشرح';

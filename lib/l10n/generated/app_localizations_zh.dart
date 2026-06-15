@@ -1192,6 +1192,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraRetake => '重拍';
 
   @override
+  String get cameraRetranslate => '重新翻译';
+
+  @override
   String get cameraCopyAll => '全部复制';
 
   @override
@@ -1205,9 +1208,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cameraLowQuality => '质量低';
-
-  @override
-  String get cameraConfidenceReliable => '可靠';
 
   @override
   String get cameraConfidenceCaution => '需核对';
@@ -1416,9 +1416,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraExplainError => '无法获取解释。请重试。';
 
   @override
-  String get cameraResultExplainHint => '长按卡片提问';
-
-  @override
   String get cameraExplainDisclaimer => '仅供参考 — 实际含义可能不同';
 
   @override
@@ -1535,6 +1532,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get upgradeRestoreButton => '恢复购买';
+
+  @override
+  String get upgradeSubscriptionTerms =>
+      '除非取消，订阅将自动续期。购买确认时将从您的 App Store 或 Google Play 账户扣款，若您未在当前周期结束前至少 24 小时取消，订阅将自动续期。您可以随时在商店账户设置中管理或取消。';
+
+  @override
+  String get subscriptionManageButton => '管理订阅';
+
+  @override
+  String get subscriptionStoreManaged =>
+      '您的订阅通过 App Store 或 Google Play 管理。点击下方可查看、更改或取消。';
 
   @override
   String get homeTagline => '翻译 · 摘要 · 解释';
