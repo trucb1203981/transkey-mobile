@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../auth/app_group_bridge.dart';
 import '../tracking/tracking_provider.dart';
 
 const _kLocaleKey = 'tk_ui_locale';
@@ -21,11 +22,16 @@ class LocaleNotifier extends AsyncNotifier<Locale> {
   Future<Locale> build() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_kLocaleKey);
-    if (stored != null && stored.isNotEmpty) return Locale(stored);
-    // No explicit choice yet: prefer the device language if we ship it,
-    // otherwise fall back to English. Not persisted, so it keeps following the
-    // device until the user picks a language. Mirrors the keyboard default.
-    return Locale(_resolveDeviceLang());
+    final lang = (stored != null && stored.isNotEmpty)
+        ? stored
+        // No explicit choice yet: prefer the device language if we ship it,
+        // otherwise fall back to English. Not persisted, so it keeps following
+        // the device until the user picks a language. Mirrors the keyboard.
+        : _resolveDeviceLang();
+    // Mirror to the App Group on startup so the iOS keyboard extension shows
+    // its chips/labels in the current app language from the first launch.
+    AppGroupBridge.saveUiLang(lang);
+    return Locale(lang);
   }
 
   String _resolveDeviceLang() {
@@ -39,6 +45,8 @@ class LocaleNotifier extends AsyncNotifier<Locale> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kLocaleKey, languageCode);
     state = AsyncData(Locale(languageCode));
+    // Keep the iOS keyboard extension's labels in sync with the app language.
+    AppGroupBridge.saveUiLang(languageCode);
     final tracking = ref.read(trackingServiceProvider);
     tracking.setLocale(languageCode);
     if (previous != languageCode) {

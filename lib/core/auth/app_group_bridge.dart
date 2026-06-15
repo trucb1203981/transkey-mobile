@@ -65,6 +65,21 @@ class AppGroupBridge {
     }
   }
 
+  /// Mirror the app's UI language into the App Group so the keyboard extension
+  /// localizes its own chips/labels to match the language the user picked IN
+  /// THE APP (not the iOS device language). Without this the keyboard always
+  /// shows its hardcoded Vietnamese labels regardless of the app language.
+  static Future<void> saveUiLang(String lang) async {
+    if (!Platform.isIOS || kIsWeb) return;
+    try {
+      await _channel.invokeMethod<void>('saveUiLang', {'lang': lang});
+    } on PlatformException catch (e) {
+      debugPrint('[AppGroupBridge] saveUiLang failed: $e');
+    } on MissingPluginException {
+      // App Group channel deferred (see saveAuth) - mirror is a no-op.
+    }
+  }
+
   /// Mirror plan-gated feature flags so the extensions gate exactly like the
   /// app: keyboard -> Reply/Refine chips, share extension ->
   /// Summarize/Explain/Refine buttons. Same server-driven flags as home.

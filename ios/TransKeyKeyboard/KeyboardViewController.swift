@@ -164,7 +164,7 @@ class KeyboardViewController: UIInputViewController {
     /// Space-bar label, like the system keyboard naming its language.
     private static let autonyms: [String: String] = [
         "auto": "Auto", "vi": "Tiếng Việt", "en": "English", "ja": "日本語",
-        "zh": "中文", "ko": "한국어", "fr": "Français", "es": "Español",
+        "ja_flick": "日本語", "zh": "中文", "ko": "한국어", "fr": "Français", "es": "Español",
         "de": "Deutsch", "ru": "Русский", "th": "ไทย", "id": "Bahasa Indonesia",
         "pt": "Português", "it": "Italiano", "ar": "العربية", "hi": "हिन्दी",
     ]
@@ -211,7 +211,12 @@ class KeyboardViewController: UIInputViewController {
     /// Every language the keyboard can type, offered in the typing picker.
     /// Latin languages (de/es/fr/id/it/pt) share QWERTY + the accent popup,
     /// mirroring the Android typing modes.
-    static let typingLangs = ["vi", "en", "ar", "zh", "fr", "de", "id", "it", "ja", "ko", "pt", "ru", "es", "th"]
+    static let typingLangs = ["vi", "en", "ar", "zh", "fr", "de", "id", "it", "ja", "ja_flick", "ko", "pt", "ru", "es", "th"]
+
+    /// Both Japanese modes (romaji qwerty + 12-key flick) drive the SAME kana
+    /// buffer + henkan, so every conversion check uses this instead of a bare
+    /// `inputLang == "ja"`.
+    private var isJa: Bool { inputLang == "ja" || inputLang == "ja_flick" }
 
     // Set on every edit we make through the proxy; textDidChange uses it to
     // tell our own edits apart from an external caret move / app edit, which
@@ -242,6 +247,13 @@ class KeyboardViewController: UIInputViewController {
     private var barContentStack: UIStackView!
     private var keyArea: KeyAreaView!
     private var keyButtons: [KeyButton] = []
+    /// The Japanese 12-key flick grid, overlaid on keyArea while inputLang ==
+    /// "ja_flick" (hidden otherwise). Created lazily, reuses the same kana
+    /// buffer + henkan as the romaji path.
+    private var flickView: FlickInputView?
+    /// The emoji picker, overlaid above the flick grid when its ☺ key is
+    /// tapped (flick mode only for now). nil = not showing.
+    private var emojiPanel: EmojiPanelView?
     private let keyPreview = UIView()
     private let keyPreviewLabel = UILabel()
     private var backspaceTicks = 0
@@ -592,7 +604,7 @@ class KeyboardViewController: UIInputViewController {
         barContentStack.addArrangedSubview(langChip(pairTitle, #selector(langPairTapped)))
         // "Dịch" = READ the conversation: translate whatever the user copied
         // and show it in a panel over the keys (X closes back to typing).
-        barContentStack.addArrangedSubview(gradientChip("Dịch", #selector(clipboardTranslateTapped), enabled: true))
+        barContentStack.addArrangedSubview(gradientChip(KB.t("translate"), #selector(clipboardTranslateTapped), enabled: true))
         // "Trả lời" = COMPOSE: replace the field in place (undo pill arms).
         // Free runs the plain translate flow; entitled accounts run the
         // context-aware reply flow - same button, plan decides the engine
@@ -601,9 +613,9 @@ class KeyboardViewController: UIInputViewController {
         let replySelector = store.featureReply
             ? #selector(replyTapped)
             : #selector(translateTapped)
-        barContentStack.addArrangedSubview(gradientChip("Trả lời", replySelector, enabled: true))
+        barContentStack.addArrangedSubview(gradientChip(KB.t("reply"), replySelector, enabled: true))
         if store.featureRefine {
-            barContentStack.addArrangedSubview(gradientChip("Trau chuốt", #selector(refineTapped), enabled: true))
+            barContentStack.addArrangedSubview(gradientChip(KB.t("refine"), #selector(refineTapped), enabled: true))
         }
         // Flexible spacer absorbs the leftover width (and is the first thing
         // squeezed when the bar is tight) so the chips never get stretched;
@@ -613,7 +625,7 @@ class KeyboardViewController: UIInputViewController {
         spacer.setContentHuggingPriority(UILayoutPriority(1), for: .horizontal)
         spacer.setContentCompressionResistancePriority(UILayoutPriority(1), for: .horizontal)
         barContentStack.addArrangedSubview(spacer)
-        barContentStack.addArrangedSubview(langChip(inputLang.uppercased(), #selector(inputLangPickTapped)))
+        barContentStack.addArrangedSubview(langChip(inputLangChipLabel, #selector(inputLangPickTapped)))
         if undoSnapshot != nil {
             barContentStack.addArrangedSubview(undoChip())
         }
@@ -631,7 +643,7 @@ class KeyboardViewController: UIInputViewController {
         btn.layer.cornerRadius = 15
         btn.contentEdgeInsets = UIEdgeInsets(top: 4, left: 11, bottom: 4, right: 11)
         btn.setContentCompressionResistancePriority(.required, for: .horizontal)
-        btn.accessibilityLabel = "Hoàn tác"
+        btn.accessibilityLabel = KB.t("undo")
         btn.addTarget(self, action: #selector(undoTapped), for: .touchUpInside)
         return btn
     }
@@ -647,7 +659,7 @@ class KeyboardViewController: UIInputViewController {
         spinner.color = primaryColor
         spinner.startAnimating()
         let label = UILabel()
-        label.text = "Đang xử lý…"
+        label.text = KB.t("processing")
         label.font = .systemFont(ofSize: 14, weight: .medium)
         label.textColor = .secondaryLabel
         barContentStack.addArrangedSubview(spinner)
@@ -736,7 +748,7 @@ class KeyboardViewController: UIInputViewController {
         panel.backgroundColor = .systemGroupedBackground
 
         let title = UILabel()
-        title.text = "Bản dịch"
+        title.text = KB.t("translation")
         title.font = .systemFont(ofSize: 14, weight: .semibold)
         title.textColor = .secondaryLabel
         title.translatesAutoresizingMaskIntoConstraints = false
@@ -745,7 +757,7 @@ class KeyboardViewController: UIInputViewController {
         close.setTitle("✕", for: .normal)
         close.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
         close.setTitleColor(.secondaryLabel, for: .normal)
-        close.accessibilityLabel = "Đóng"
+        close.accessibilityLabel = KB.t("close")
         close.addTarget(self, action: #selector(clipboardPanelCloseTapped), for: .touchUpInside)
         close.translatesAutoresizingMaskIntoConstraints = false
 
@@ -799,6 +811,7 @@ class KeyboardViewController: UIInputViewController {
     /// key area like the pair picker.
     @objc private func inputLangPickTapped() {
         commitComposing()
+        dismissEmojiPanel()
         if langPicker != nil {
             dismissLangPicker()
             return
@@ -835,7 +848,7 @@ class KeyboardViewController: UIInputViewController {
             showCandidates(zhCandidates.isEmpty ? [pinyin] : zhCandidates)
             return
         }
-        if inputLang == "ja" {
+        if isJa {
             if jaConverting {
                 showCandidates(jaCandidates, highlight: jaCandIdx)
                 return
@@ -912,7 +925,7 @@ class KeyboardViewController: UIInputViewController {
             commitZh(word)
             return
         }
-        if inputLang == "ja" {
+        if isJa {
             if jaConverting {
                 let shown = jaCandidates.indices.contains(jaCandIdx) ? jaCandidates[jaCandIdx] : ""
                 applyComposingDiff(from: shown, to: word)
@@ -930,6 +943,15 @@ class KeyboardViewController: UIInputViewController {
     private func rebuildKeys() {
         keyButtons.forEach { $0.removeFromSuperview() }
         keyButtons = []
+
+        // Japanese flick: a self-contained grid replaces the QWERTY keys.
+        if inputLang == "ja_flick" {
+            showFlickKeyboard()
+            keyArea.setNeedsLayout()
+            view.setNeedsLayout()
+            return
+        }
+        hideFlickKeyboard()
 
         for chars in activeCharRows() {
             for ch in chars {
@@ -1066,6 +1088,12 @@ class KeyboardViewController: UIInputViewController {
         Self.autonyms[inputLang] ?? inputLang
     }
 
+    /// The action-bar typing-language chip: short language code, except the
+    /// flick mode which shows かな so the two Japanese modes are distinct.
+    private var inputLangChipLabel: String {
+        inputLang == "ja_flick" ? "かな" : inputLang.uppercased()
+    }
+
     private var returnLabel: String {
         switch textDocumentProxy.returnKeyType ?? .default {
         case .go: return "go"
@@ -1080,6 +1108,8 @@ class KeyboardViewController: UIInputViewController {
     // MARK: - Key layout (manual frames, mirrors the system keyboard)
 
     private func layoutKeys() {
+        // The flick grid lays itself out (FlickInputView.layoutSubviews).
+        if inputLang == "ja_flick" { return }
         let w = keyArea.bounds.width
         guard w > 0, !keyButtons.isEmpty else { return }
 
@@ -1601,7 +1631,7 @@ class KeyboardViewController: UIInputViewController {
     private func handleSpace() {
         // Japanese: space converts kana->kanji (first press) then cycles
         // candidates; only a space with nothing composing types a space.
-        if inputLang == "ja" {
+        if isJa {
             if jaConverting { cycleJaCandidate(); return }
             if startJaConversion() { return }
         }
@@ -1622,7 +1652,7 @@ class KeyboardViewController: UIInputViewController {
             if prior.isLetter || prior.isNumber {
                 noteInternalEdit()
                 textDocumentProxy.deleteBackward()
-                let cjk = inputLang == "zh" || inputLang == "ja"
+                let cjk = inputLang == "zh" || isJa
                 textDocumentProxy.insertText(cjk ? "。" : ". ")
                 lastSpaceTap = .distantPast
                 maybeAutoShift()
@@ -1737,6 +1767,152 @@ class KeyboardViewController: UIInputViewController {
         jaCandIdx = 0
         jaReading = ""
     }
+
+    // MARK: - Japanese flick (12-key) input
+
+    private func showFlickKeyboard() {
+        let fv: FlickInputView
+        if let existing = flickView {
+            fv = existing
+        } else {
+            fv = FlickInputView()
+            fv.translatesAutoresizingMaskIntoConstraints = false
+            fv.onKana = { [weak self] in self?.flickInputKana($0) }
+            fv.onSymbol = { [weak self] in self?.flickInputSymbol($0) }
+            fv.onBackspace = { [weak self] in self?.handleBackspace() }
+            fv.onSpace = { [weak self] in self?.handleSpace() }
+            fv.onReturn = { [weak self] in self?.handleReturn() }
+            fv.onDakuten = { [weak self] in self?.flickDakuten() }
+            fv.onSwitchToRomaji = { [weak self] in self?.flickSwitchToRomaji() }
+            fv.onEmoji = { [weak self] in self?.flickToggleEmoji() }
+            fv.onTapSound = { [weak self] in self?.playClick() }
+            keyArea.addSubview(fv)
+            NSLayoutConstraint.activate([
+                fv.topAnchor.constraint(equalTo: keyArea.topAnchor),
+                fv.leadingAnchor.constraint(equalTo: keyArea.leadingAnchor),
+                fv.trailingAnchor.constraint(equalTo: keyArea.trailingAnchor),
+                fv.bottomAnchor.constraint(equalTo: keyArea.bottomAnchor),
+            ])
+            // Same system globe behaviour as the QWERTY keyboard's globe key:
+            // tap = next keyboard, long-press = the keyboard picker.
+            fv.globeButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
+            flickView = fv
+        }
+        fv.showsGlobe = needsInputModeSwitchKey
+        fv.isHidden = false
+        keyArea.bringSubviewToFront(fv)
+    }
+
+    private func hideFlickKeyboard() {
+        flickView?.isHidden = true
+        dismissEmojiPanel()
+    }
+
+    /// Toggle the emoji picker over the flick grid (the ☺ key).
+    private func flickToggleEmoji() {
+        if emojiPanel != nil { dismissEmojiPanel(); return }
+        let panel = EmojiPanelView()
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.onTapSound = { [weak self] in self?.playClick() }
+        panel.onPick = { [weak self] in self?.flickInsertEmoji($0) }
+        panel.onBackspace = { [weak self] in self?.handleBackspace() }
+        panel.onBack = { [weak self] in self?.dismissEmojiPanel() }
+        view.addSubview(panel)
+        NSLayoutConstraint.activate([
+            panel.topAnchor.constraint(equalTo: topBar.bottomAnchor),
+            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            panel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            panel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        emojiPanel = panel
+    }
+
+    private func dismissEmojiPanel() {
+        emojiPanel?.removeFromSuperview()
+        emojiPanel = nil
+    }
+
+    /// Insert an emoji: finalize any kana run, type it, remember it as recent.
+    private func flickInsertEmoji(_ e: String) {
+        commitComposing()
+        noteInternalEdit()
+        textDocumentProxy.insertText(e)
+        AppGroupStore.shared.pushEmojiRecent(e)
+        updateSuggestionBar()
+    }
+
+    /// A flick produced a kana: append it to the SAME composing buffer the
+    /// romaji path uses, so all henkan / candidate logic is shared.
+    private func flickInputKana(_ kana: String) {
+        if jaConverting { finalizeJaConversion() }
+        let prev = romaji.composingText
+        romaji.load(prev + kana)
+        applyComposingDiff(from: prev, to: romaji.composingText)
+        updateSuggestionBar()
+    }
+
+    /// A flick produced a punctuation mark (、。？！…): finalize any kana run,
+    /// then insert the mark literally (it must not enter the kana buffer or
+    /// space would try to convert it).
+    private func flickInputSymbol(_ mark: String) {
+        commitComposing()
+        noteInternalEdit()
+        textDocumentProxy.insertText(mark)
+        updateSuggestionBar()
+    }
+
+    /// The 小゛゜ key: cycle the LAST kana in the buffer through its
+    /// dakuten / handakuten / small forms (Android KEYCODE_KANA_MOD parity).
+    private func flickDakuten() {
+        guard !jaConverting, romaji.hasComposingText else { return }
+        let cur = romaji.composingText
+        guard let last = cur.last else { return }
+        // The cycle map is keyed by hiragana; map katakana down and back so the
+        // key works the same in katakana mode.
+        let scalar = last.unicodeScalars.first!.value
+        let isKata = scalar >= 0x30A1 && scalar <= 0x30F6
+        let hira: Character = isKata
+            ? Character(UnicodeScalar(scalar - 0x60)!) : last
+        guard let nextHira = Self.dakutenCycle[hira] else { return }
+        let next: Character = isKata
+            ? Character(UnicodeScalar(nextHira.unicodeScalars.first!.value + 0x60)!)
+            : nextHira
+        let prev = cur
+        romaji.load(String(cur.dropLast()) + String(next))
+        applyComposingDiff(from: prev, to: romaji.composingText)
+        updateSuggestionBar()
+    }
+
+    /// The ABC key: switch to the romaji (QWERTY) Japanese mode, where latin
+    /// letters, numbers and symbols are reachable.
+    private func flickSwitchToRomaji() {
+        commitComposing()
+        inputLang = "ja"
+        AppGroupStore.shared.keyboardInputLang = "ja"
+        shiftState = .off
+        layer = .letters
+        rebuildKeys()
+        updateSuggestionBar()
+    }
+
+    /// Closed cycle for the 小゛゜ modifier: base -> dakuten -> handakuten ->
+    /// small -> base. Only kana that have a variant appear; others are no-ops.
+    private static let dakutenCycle: [Character: Character] = [
+        "か": "が", "が": "か", "き": "ぎ", "ぎ": "き", "く": "ぐ", "ぐ": "く",
+        "け": "げ", "げ": "け", "こ": "ご", "ご": "こ",
+        "さ": "ざ", "ざ": "さ", "し": "じ", "じ": "し", "す": "ず", "ず": "す",
+        "せ": "ぜ", "ぜ": "せ", "そ": "ぞ", "ぞ": "そ",
+        "た": "だ", "だ": "た", "ち": "ぢ", "ぢ": "ち", "て": "で", "で": "て",
+        "と": "ど", "ど": "と", "つ": "づ", "づ": "っ", "っ": "つ",
+        "は": "ば", "ば": "ぱ", "ぱ": "は", "ひ": "び", "び": "ぴ", "ぴ": "ひ",
+        "ふ": "ぶ", "ぶ": "ぷ", "ぷ": "ふ", "へ": "べ", "べ": "ぺ", "ぺ": "へ",
+        "ほ": "ぼ", "ぼ": "ぽ", "ぽ": "ほ",
+        "う": "ゔ", "ゔ": "う",
+        "あ": "ぁ", "ぁ": "あ", "い": "ぃ", "ぃ": "い", "え": "ぇ", "ぇ": "え",
+        "お": "ぉ", "ぉ": "お",
+        "や": "ゃ", "ゃ": "や", "ゆ": "ゅ", "ゅ": "ゆ", "よ": "ょ", "ょ": "よ",
+        "わ": "ゎ", "ゎ": "わ",
+    ]
 
     /// Commit [text] (a chosen hanzi candidate, or the raw pinyin) and reset.
     private func commitZh(_ text: String) {
@@ -2136,4 +2312,597 @@ final class KeyAreaView: UIView {
 /// UIDevice.playInputClick() is silently ignored for the extension.
 extension UIInputView: @retroactive UIInputViewAudioFeedback {
     public var enableInputClicksWhenVisible: Bool { true }
+}
+
+/// In-app-language localization for the keyboard extension. The keyboard must
+/// follow the language the user picked INSIDE the app (mirrored to the App
+/// Group as `tk_ui_lang` by AppGroupBridge.saveUiLang), NOT the iOS device
+/// language - so the system Bundle/NSLocalizedString (which follows the
+/// device) can't be used. This small manual table keyed by the app's UI
+/// language does it; English is the fallback for any missing language/key.
+enum KB {
+    /// The app's current UI language. Prefer the mirrored app choice, then the
+    /// device language (if shipped), then English.
+    static var lang: String {
+        let stored = AppGroupStore.shared.uiLang
+        if !stored.isEmpty, table[stored] != nil { return stored }
+        let device = Locale.preferredLanguages.first.map { String($0.prefix(2)) } ?? "en"
+        return table[device] != nil ? device : "en"
+    }
+
+    static func t(_ key: String) -> String {
+        let l = lang
+        return table[l]?[key] ?? table["en"]?[key] ?? key
+    }
+
+    private static let table: [String: [String: String]] = [
+        "en": ["translate": "Translate", "reply": "Reply", "refine": "Refine", "undo": "Undo", "processing": "Processing…", "translation": "Translation", "close": "Close", "typingLanguage": "Typing language", "translationLanguage": "Translation language", "done": "Done", "swap": "⇄ Swap", "chooseTypingLanguage": "Choose the language you want to type", "sourceLanguage": "Source language", "translateTo": "Translate to", "autoDetect": "Auto detect"],
+        "vi": ["translate": "Dịch", "reply": "Trả lời", "refine": "Trau chuốt", "undo": "Hoàn tác", "processing": "Đang xử lý…", "translation": "Bản dịch", "close": "Đóng", "typingLanguage": "Ngôn ngữ gõ phím", "translationLanguage": "Ngôn ngữ dịch", "done": "Xong", "swap": "⇄ Đổi chiều", "chooseTypingLanguage": "Chọn ngôn ngữ bạn muốn gõ", "sourceLanguage": "Ngôn ngữ nguồn", "translateTo": "Dịch sang", "autoDetect": "Tự nhận diện"],
+        "ar": ["translate": "ترجمة", "reply": "رد", "refine": "تحسين", "undo": "تراجع", "processing": "جارٍ المعالجة…", "translation": "الترجمة", "close": "إغلاق", "typingLanguage": "لغة الكتابة", "translationLanguage": "لغة الترجمة", "done": "تم", "swap": "⇄ تبديل", "chooseTypingLanguage": "اختر اللغة التي تريد الكتابة بها", "sourceLanguage": "اللغة المصدر", "translateTo": "الترجمة إلى", "autoDetect": "اكتشاف تلقائي"],
+        "de": ["translate": "Übersetzen", "reply": "Antworten", "refine": "Verfeinern", "undo": "Rückgängig", "processing": "Wird verarbeitet…", "translation": "Übersetzung", "close": "Schließen", "typingLanguage": "Tippsprache", "translationLanguage": "Übersetzungssprache", "done": "Fertig", "swap": "⇄ Tauschen", "chooseTypingLanguage": "Wähle die Sprache zum Tippen", "sourceLanguage": "Ausgangssprache", "translateTo": "Übersetzen nach", "autoDetect": "Automatisch erkennen"],
+        "es": ["translate": "Traducir", "reply": "Responder", "refine": "Pulir", "undo": "Deshacer", "processing": "Procesando…", "translation": "Traducción", "close": "Cerrar", "typingLanguage": "Idioma de escritura", "translationLanguage": "Idioma de traducción", "done": "Listo", "swap": "⇄ Cambiar", "chooseTypingLanguage": "Elige el idioma que quieres escribir", "sourceLanguage": "Idioma de origen", "translateTo": "Traducir a", "autoDetect": "Detección automática"],
+        "fr": ["translate": "Traduire", "reply": "Répondre", "refine": "Peaufiner", "undo": "Annuler", "processing": "Traitement…", "translation": "Traduction", "close": "Fermer", "typingLanguage": "Langue de saisie", "translationLanguage": "Langue de traduction", "done": "Terminé", "swap": "⇄ Inverser", "chooseTypingLanguage": "Choisissez la langue de saisie", "sourceLanguage": "Langue source", "translateTo": "Traduire vers", "autoDetect": "Détection auto"],
+        "id": ["translate": "Terjemahkan", "reply": "Balas", "refine": "Perhalus", "undo": "Urungkan", "processing": "Memproses…", "translation": "Terjemahan", "close": "Tutup", "typingLanguage": "Bahasa ketik", "translationLanguage": "Bahasa terjemahan", "done": "Selesai", "swap": "⇄ Tukar", "chooseTypingLanguage": "Pilih bahasa yang ingin diketik", "sourceLanguage": "Bahasa sumber", "translateTo": "Terjemahkan ke", "autoDetect": "Deteksi otomatis"],
+        "it": ["translate": "Traduci", "reply": "Rispondi", "refine": "Rifinisci", "undo": "Annulla", "processing": "Elaborazione…", "translation": "Traduzione", "close": "Chiudi", "typingLanguage": "Lingua di digitazione", "translationLanguage": "Lingua di traduzione", "done": "Fine", "swap": "⇄ Inverti", "chooseTypingLanguage": "Scegli la lingua con cui digitare", "sourceLanguage": "Lingua di origine", "translateTo": "Traduci in", "autoDetect": "Rilevamento automatico"],
+        "ja": ["translate": "翻訳", "reply": "返信", "refine": "推敲", "undo": "取り消し", "processing": "処理中…", "translation": "翻訳", "close": "閉じる", "typingLanguage": "入力言語", "translationLanguage": "翻訳言語", "done": "完了", "swap": "⇄ 入れ替え", "chooseTypingLanguage": "入力する言語を選択", "sourceLanguage": "元の言語", "translateTo": "翻訳先", "autoDetect": "自動検出"],
+        "ko": ["translate": "번역", "reply": "답장", "refine": "다듬기", "undo": "실행 취소", "processing": "처리 중…", "translation": "번역", "close": "닫기", "typingLanguage": "입력 언어", "translationLanguage": "번역 언어", "done": "완료", "swap": "⇄ 바꾸기", "chooseTypingLanguage": "입력할 언어를 선택하세요", "sourceLanguage": "원본 언어", "translateTo": "번역 대상", "autoDetect": "자동 감지"],
+        "pt": ["translate": "Traduzir", "reply": "Responder", "refine": "Refinar", "undo": "Desfazer", "processing": "Processando…", "translation": "Tradução", "close": "Fechar", "typingLanguage": "Idioma de digitação", "translationLanguage": "Idioma de tradução", "done": "Concluir", "swap": "⇄ Inverter", "chooseTypingLanguage": "Escolha o idioma que deseja digitar", "sourceLanguage": "Idioma de origem", "translateTo": "Traduzir para", "autoDetect": "Detecção automática"],
+        "ru": ["translate": "Перевести", "reply": "Ответить", "refine": "Улучшить", "undo": "Отменить", "processing": "Обработка…", "translation": "Перевод", "close": "Закрыть", "typingLanguage": "Язык ввода", "translationLanguage": "Язык перевода", "done": "Готово", "swap": "⇄ Поменять", "chooseTypingLanguage": "Выберите язык для ввода", "sourceLanguage": "Исходный язык", "translateTo": "Перевести на", "autoDetect": "Автоопределение"],
+        "th": ["translate": "แปล", "reply": "ตอบกลับ", "refine": "ขัดเกลา", "undo": "เลิกทำ", "processing": "กำลังประมวลผล…", "translation": "คำแปล", "close": "ปิด", "typingLanguage": "ภาษาที่พิมพ์", "translationLanguage": "ภาษาที่แปล", "done": "เสร็จ", "swap": "⇄ สลับ", "chooseTypingLanguage": "เลือกภาษาที่ต้องการพิมพ์", "sourceLanguage": "ภาษาต้นทาง", "translateTo": "แปลเป็น", "autoDetect": "ตรวจจับอัตโนมัติ"],
+        "zh": ["translate": "翻译", "reply": "回复", "refine": "润色", "undo": "撤销", "processing": "处理中…", "translation": "翻译", "close": "关闭", "typingLanguage": "输入语言", "translationLanguage": "翻译语言", "done": "完成", "swap": "⇄ 互换", "chooseTypingLanguage": "选择要输入的语言", "sourceLanguage": "源语言", "translateTo": "翻译为", "autoDetect": "自动检测"],
+    ]
+}
+
+// MARK: - Japanese 12-key flick keyboard
+
+/// Shared colors so the flick grid matches the QWERTY keyboard in light/dark.
+private enum FlickPalette {
+    static let background = UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1.0)
+            : UIColor(red: 0.82, green: 0.84, blue: 0.86, alpha: 1.0)
+    }
+    static let keyFill = UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.42, green: 0.42, blue: 0.43, alpha: 1.0)
+            : UIColor.white
+    }
+    static let specialFill = UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.27, green: 0.27, blue: 0.29, alpha: 1.0)
+            : UIColor(red: 0.67, green: 0.70, blue: 0.74, alpha: 1.0)
+    }
+    static let primary = UIColor(red: 0.42, green: 0.39, blue: 1.0, alpha: 1.0)
+}
+
+/// The self-contained Japanese 12-key flick grid (フリック入力). Mirrors the
+/// Android keyboard_japanese_flick layout: a 5x4 grid where the centre three
+/// columns are the ten kana flick keys + the dakuten modifier + the punctuation
+/// flick key, flanked by function columns. Every kana produced is fed back into
+/// the SAME composing buffer the romaji path uses (via the onKana callback), so
+/// henkan / candidates / backspace all reuse the existing engine unchanged.
+final class FlickInputView: UIView {
+
+    // Callbacks into the controller (all on the main thread).
+    var onKana: ((String) -> Void)?
+    var onSymbol: ((String) -> Void)?
+    var onBackspace: (() -> Void)?
+    var onSpace: (() -> Void)?
+    var onReturn: (() -> Void)?
+    var onDakuten: (() -> Void)?
+    var onSwitchToRomaji: (() -> Void)?
+    var onEmoji: (() -> Void)?
+    var onTapSound: (() -> Void)?
+
+    /// Show the next-keyboard globe (only when the system offers a switch).
+    var showsGlobe = false { didSet { globeButton.isHidden = !showsGlobe; setNeedsLayout() } }
+
+    /// Katakana output mode (the カナ key). Keys keep their hiragana grouping;
+    /// only the emitted/displayed character is mapped to katakana.
+    private var katakana = false
+
+    let globeButton = UIButton(type: .system)
+    private let katakanaButton = UIButton(type: .system)
+    private let abcButton = UIButton(type: .system)
+    private let emojiButton = UIButton(type: .system)
+    private let dakutenButton = UIButton(type: .system)
+    private let backspaceButton = UIButton(type: .system)
+    private let spaceButton = UIButton(type: .system)
+    private let returnButton = UIButton(type: .system)
+
+    /// (kana flick key, column 0-4, row 0-3).
+    private var kanaKeys: [(view: FlickKeyView, col: Int, row: Int)] = []
+
+    // Flick options in direction order [centre, left, up, right, down].
+    private static let kanaRows: [(String, Int, Int, [String], Bool)] = [
+        ("あ", 1, 0, ["あ", "い", "う", "え", "お"], false),
+        ("か", 2, 0, ["か", "き", "く", "け", "こ"], false),
+        ("さ", 3, 0, ["さ", "し", "す", "せ", "そ"], false),
+        ("た", 1, 1, ["た", "ち", "つ", "て", "と"], false),
+        ("な", 2, 1, ["な", "に", "ぬ", "ね", "の"], false),
+        ("は", 3, 1, ["は", "ひ", "ふ", "へ", "ほ"], false),
+        ("ま", 1, 2, ["ま", "み", "む", "め", "も"], false),
+        ("や", 2, 2, ["や", "「", "ゆ", "」", "よ"], false),
+        ("ら", 3, 2, ["ら", "り", "る", "れ", "ろ"], false),
+        ("わ", 2, 3, ["わ", "を", "ん", "ー", "〜"], false),
+        ("、", 3, 3, ["、", "。", "？", "！", "…"], true),
+    ]
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        buildKeys()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private func buildKeys() {
+        for spec in Self.kanaRows {
+            let key = FlickKeyView(options: spec.3, isPunct: spec.4)
+            key.displayTransform = { [weak self] in self?.display($0) ?? $0 }
+            key.onTouchDown = { [weak self] in self?.onTapSound?() }
+            key.onEmit = { [weak self] raw, isPunct in
+                guard let self else { return }
+                if isPunct {
+                    self.onSymbol?(raw)
+                } else {
+                    self.onKana?(self.display(raw))
+                }
+            }
+            addSubview(key)
+            kanaKeys.append((key, spec.1, spec.2))
+        }
+
+        configureFn(katakanaButton, title: "カナ", action: #selector(katakanaTapped))
+        configureFn(abcButton, title: "ABC", action: #selector(abcTapped))
+        configureFn(emojiButton, title: "☺", action: #selector(emojiTapped))
+        emojiButton.titleLabel?.font = .systemFont(ofSize: 22)
+        configureFn(dakutenButton, title: "小゛゜", action: #selector(dakutenTapped))
+        configureFn(spaceButton, title: "空白", action: #selector(spaceTapped))
+        configureFn(returnButton, title: "改行", action: #selector(returnTapped))
+
+        backspaceButton.setImage(UIImage(systemName: "delete.left"), for: .normal)
+        backspaceButton.tintColor = .label
+        styleFnButton(backspaceButton)
+        backspaceButton.addTarget(self, action: #selector(backspaceTapped), for: .touchUpInside)
+        addSubview(backspaceButton)
+
+        globeButton.setImage(UIImage(systemName: "globe"), for: .normal)
+        globeButton.tintColor = .label
+        styleFnButton(globeButton)
+        globeButton.isHidden = true
+        addSubview(globeButton)
+    }
+
+    private func configureFn(_ btn: UIButton, title: String, action: Selector) {
+        btn.setTitle(title, for: .normal)
+        btn.setTitleColor(.label, for: .normal)
+        btn.titleLabel?.font = .systemFont(ofSize: 16)
+        btn.titleLabel?.adjustsFontSizeToFitWidth = true
+        btn.titleLabel?.minimumScaleFactor = 0.7
+        styleFnButton(btn)
+        btn.addTarget(self, action: action, for: .touchUpInside)
+        addSubview(btn)
+    }
+
+    private func styleFnButton(_ btn: UIButton) {
+        btn.backgroundColor = FlickPalette.specialFill
+        btn.layer.cornerRadius = 5
+    }
+
+    // MARK: Katakana mapping
+
+    /// Map a hiragana string to katakana when katakana mode is on; punctuation
+    /// and the long-vowel mark are left untouched (they share both scripts).
+    private func display(_ s: String) -> String {
+        guard katakana else { return s }
+        var out = ""
+        for sc in s.unicodeScalars {
+            if sc.value >= 0x3041, sc.value <= 0x3096, let k = UnicodeScalar(sc.value + 0x60) {
+                out.unicodeScalars.append(k)
+            } else {
+                out.unicodeScalars.append(sc)
+            }
+        }
+        return out
+    }
+
+    // MARK: Actions
+
+    @objc private func katakanaTapped() {
+        onTapSound?()
+        katakana.toggle()
+        katakanaButton.setTitle(katakana ? "かな" : "カナ", for: .normal)
+        // Repaint every key's centre label + any open preview in the new script.
+        kanaKeys.forEach { $0.view.refreshLabel() }
+    }
+
+    @objc private func abcTapped() { onTapSound?(); onSwitchToRomaji?() }
+    @objc private func emojiTapped() { onTapSound?(); onEmoji?() }
+    @objc private func dakutenTapped() { onTapSound?(); onDakuten?() }
+    @objc private func backspaceTapped() { onTapSound?(); onBackspace?() }
+    @objc private func spaceTapped() { onTapSound?(); onSpace?() }
+    @objc private func returnTapped() { onTapSound?(); onReturn?() }
+
+    // MARK: Layout (5 columns x 4 rows; return + globe span two rows)
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let cols: CGFloat = 5, rows: CGFloat = 4
+        let gap: CGFloat = 3
+        let cw = bounds.width / cols
+        let ch = bounds.height / rows
+
+        func cell(_ col: Int, _ row: Int, rowSpan: Int = 1) -> CGRect {
+            CGRect(x: CGFloat(col) * cw + gap,
+                   y: CGFloat(row) * ch + gap,
+                   width: cw - gap * 2,
+                   height: ch * CGFloat(rowSpan) - gap * 2)
+        }
+
+        for entry in kanaKeys {
+            entry.view.frame = cell(entry.col, entry.row)
+        }
+        dakutenButton.frame = cell(1, 3)
+
+        katakanaButton.frame = cell(0, 0)
+        abcButton.frame = cell(0, 1)
+        emojiButton.frame = cell(0, 2)
+        // The globe (when shown) takes the lower-left cell; otherwise that
+        // space is left empty (the ABC key already covers the latin switch).
+        globeButton.frame = cell(0, 3)
+
+        backspaceButton.frame = cell(4, 0)
+        spaceButton.frame = cell(4, 1)
+        returnButton.frame = cell(4, 2, rowSpan: 2)
+    }
+}
+
+/// One kana flick key: a centre label plus a five-way flick. Touch-down shows a
+/// cross preview of the five options; the finger's offset on lift picks one
+/// (dead-zone in the middle = the centre kana). Raw options are hiragana; the
+/// owning view's displayTransform renders/emits katakana when that mode is on.
+final class FlickKeyView: UIView {
+
+    private let options: [String]          // [centre, left, up, right, down]
+    private let isPunct: Bool
+    var displayTransform: (String) -> String = { $0 }
+    var onEmit: ((_ raw: String, _ isPunct: Bool) -> Void)?
+    var onTouchDown: (() -> Void)?
+
+    private let label = UILabel()
+    private var startPoint: CGPoint = .zero
+    private var currentDir = 0
+    private var popup: FlickPreviewPopup?
+
+    init(options: [String], isPunct: Bool) {
+        self.options = options
+        self.isPunct = isPunct
+        super.init(frame: .zero)
+        backgroundColor = FlickPalette.keyFill
+        layer.cornerRadius = 5
+        isMultipleTouchEnabled = false
+        label.text = options[0]
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 24)
+        label.textColor = .label
+        label.frame = bounds
+        label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(label)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    /// Re-render the centre label (after a katakana toggle).
+    func refreshLabel() {
+        label.text = displayTransform(options[0])
+    }
+
+    // MARK: Flick gesture
+
+    private func direction(for p: CGPoint) -> Int {
+        let dx = p.x - startPoint.x
+        let dy = p.y - startPoint.y
+        if hypot(dx, dy) < 18 { return 0 }          // dead-zone -> centre
+        if abs(dx) >= abs(dy) { return dx < 0 ? 1 : 3 }
+        return dy < 0 ? 2 : 4
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let t = touches.first else { return }
+        startPoint = t.location(in: self)
+        currentDir = 0
+        backgroundColor = FlickPalette.specialFill
+        onTouchDown?()
+        showPopup()
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let t = touches.first else { return }
+        let dir = direction(for: t.location(in: self))
+        if dir != currentDir {
+            currentDir = dir
+            popup?.highlight(dir)
+        }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let dir = touches.first.map { direction(for: $0.location(in: self)) } ?? currentDir
+        finish(emit: options[dir])
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        finish(emit: nil)
+    }
+
+    private func finish(emit raw: String?) {
+        backgroundColor = FlickPalette.keyFill
+        popup?.removeFromSuperview()
+        popup = nil
+        if let raw { onEmit?(raw, isPunct) }
+    }
+
+    private func showPopup() {
+        popup?.removeFromSuperview()
+        let labels = options.map { displayTransform($0) }
+        let pop = FlickPreviewPopup(options: labels)
+        // Centre the cross over this key, clamped inside the grid so it never
+        // runs off the side. It may extend above the grid (UIView doesn't clip)
+        // which is fine - it overlaps the suggestion bar like the key preview.
+        guard let host = superview else { return }
+        var origin = CGPoint(x: frame.midX - pop.bounds.width / 2,
+                             y: frame.midY - pop.bounds.height / 2)
+        origin.x = max(2, min(origin.x, host.bounds.width - pop.bounds.width - 2))
+        pop.frame = CGRect(origin: origin, size: pop.bounds.size)
+        pop.highlight(0)
+        host.addSubview(pop)
+        host.bringSubviewToFront(pop)
+        popup = pop
+    }
+}
+
+/// The five-cell cross shown while a flick key is held; highlights the cell the
+/// finger is currently pointing at.
+final class FlickPreviewPopup: UIView {
+
+    private var cells: [UIView] = []       // index 0-4 = centre,left,up,right,down
+    private let cellSize: CGFloat = 46
+
+    init(options: [String]) {
+        super.init(frame: CGRect(x: 0, y: 0, width: 46 * 3, height: 46 * 3))
+        backgroundColor = .clear
+        // (col, row) for centre,left,up,right,down in a 3x3 grid.
+        let pos: [(CGFloat, CGFloat)] = [(1, 1), (0, 1), (1, 0), (2, 1), (1, 2)]
+        for (i, opt) in options.enumerated() {
+            let c = UIView(frame: CGRect(x: pos[i].0 * cellSize, y: pos[i].1 * cellSize,
+                                         width: cellSize, height: cellSize))
+            c.backgroundColor = FlickPalette.specialFill
+            c.layer.cornerRadius = 6
+            c.layer.shadowColor = UIColor.black.cgColor
+            c.layer.shadowOpacity = 0.25
+            c.layer.shadowOffset = CGSize(width: 0, height: 1)
+            c.layer.shadowRadius = 3
+            let l = UILabel(frame: c.bounds)
+            l.text = opt
+            l.textAlignment = .center
+            l.font = .systemFont(ofSize: 24)
+            l.textColor = .label
+            c.addSubview(l)
+            addSubview(c)
+            cells.append(c)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    func highlight(_ dir: Int) {
+        for (i, c) in cells.enumerated() {
+            c.backgroundColor = i == dir ? FlickPalette.primary : FlickPalette.specialFill
+            (c.subviews.first as? UILabel)?.textColor = i == dir ? .white : .label
+        }
+    }
+}
+
+// MARK: - Emoji picker (flick keyboard)
+
+/// A self-contained emoji grid shown over the flick keyboard (the ☺ key).
+/// iOS does not let a third-party keyboard open the system emoji keyboard, so
+/// this is our own picker: a scrollable grid plus a bottom bar with the
+/// category selector, an あ key (back to kana) and a backspace. "Recently used"
+/// is the first category, persisted in the App Group. Curated emoji sets keep
+/// every glyph valid (no tofu) on the shipped iOS range.
+final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
+
+    var onPick: ((String) -> Void)?
+    var onBack: (() -> Void)?
+    var onBackspace: (() -> Void)?
+    var onTapSound: (() -> Void)?
+
+    private let collection: UICollectionView
+    private let bottomBar = UIView()
+    private let backButton = UIButton(type: .system)
+    private let backspaceButton = UIButton(type: .system)
+    private let catScroll = UIScrollView()
+    private let catStack = UIStackView()
+    private var catButtons: [UIButton] = []
+
+    /// (tab icon, emoji list). Recents is prepended when non-empty.
+    private var sections: [(icon: String, emojis: [String])] = []
+    private var currentIndex = 0
+
+    override init(frame: CGRect) {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .vertical
+        layout.minimumInteritemSpacing = 0
+        layout.minimumLineSpacing = 2
+        collection = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        super.init(frame: frame)
+        backgroundColor = FlickPalette.background
+        buildSections()
+        setupCollection()
+        setupBottomBar()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private func buildSections() {
+        var s: [(String, [String])] = []
+        let recents = AppGroupStore.shared.emojiRecents
+        if !recents.isEmpty { s.append(("🕘", recents)) }
+        for c in Self.categories { s.append((c.icon, c.emojis)) }
+        sections = s
+        if currentIndex >= sections.count { currentIndex = 0 }
+    }
+
+    private func setupCollection() {
+        collection.backgroundColor = .clear
+        collection.dataSource = self
+        collection.delegate = self
+        collection.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "emoji")
+        collection.alwaysBounceVertical = true
+        collection.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(collection)
+    }
+
+    private func setupBottomBar() {
+        bottomBar.backgroundColor = .clear
+        bottomBar.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(bottomBar)
+
+        backButton.setTitle("あ", for: .normal)
+        backButton.setTitleColor(.label, for: .normal)
+        backButton.titleLabel?.font = .systemFont(ofSize: 17)
+        backButton.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
+        backButton.translatesAutoresizingMaskIntoConstraints = false
+        bottomBar.addSubview(backButton)
+
+        backspaceButton.setImage(UIImage(systemName: "delete.left"), for: .normal)
+        backspaceButton.tintColor = .label
+        backspaceButton.addTarget(self, action: #selector(backspaceTapped), for: .touchUpInside)
+        backspaceButton.translatesAutoresizingMaskIntoConstraints = false
+        bottomBar.addSubview(backspaceButton)
+
+        catScroll.showsHorizontalScrollIndicator = false
+        catScroll.translatesAutoresizingMaskIntoConstraints = false
+        bottomBar.addSubview(catScroll)
+
+        catStack.axis = .horizontal
+        catStack.distribution = .fill
+        catStack.translatesAutoresizingMaskIntoConstraints = false
+        catScroll.addSubview(catStack)
+        for (i, sec) in sections.enumerated() {
+            let b = UIButton(type: .system)
+            b.setTitle(sec.icon, for: .normal)
+            b.titleLabel?.font = .systemFont(ofSize: 18)
+            b.widthAnchor.constraint(equalToConstant: 38).isActive = true
+            b.tag = i
+            b.addTarget(self, action: #selector(categoryTapped(_:)), for: .touchUpInside)
+            catStack.addArrangedSubview(b)
+            catButtons.append(b)
+        }
+
+        NSLayoutConstraint.activate([
+            collection.topAnchor.constraint(equalTo: topAnchor),
+            collection.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
+            collection.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
+            collection.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
+
+            bottomBar.leadingAnchor.constraint(equalTo: leadingAnchor),
+            bottomBar.trailingAnchor.constraint(equalTo: trailingAnchor),
+            bottomBar.bottomAnchor.constraint(equalTo: bottomAnchor),
+            bottomBar.heightAnchor.constraint(equalToConstant: 44),
+
+            backButton.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor),
+            backButton.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
+            backButton.widthAnchor.constraint(equalToConstant: 46),
+            backButton.heightAnchor.constraint(equalTo: bottomBar.heightAnchor),
+
+            backspaceButton.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor),
+            backspaceButton.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
+            backspaceButton.widthAnchor.constraint(equalToConstant: 46),
+            backspaceButton.heightAnchor.constraint(equalTo: bottomBar.heightAnchor),
+
+            catScroll.leadingAnchor.constraint(equalTo: backButton.trailingAnchor),
+            catScroll.trailingAnchor.constraint(equalTo: backspaceButton.leadingAnchor),
+            catScroll.topAnchor.constraint(equalTo: bottomBar.topAnchor),
+            catScroll.bottomAnchor.constraint(equalTo: bottomBar.bottomAnchor),
+
+            catStack.topAnchor.constraint(equalTo: catScroll.topAnchor),
+            catStack.bottomAnchor.constraint(equalTo: catScroll.bottomAnchor),
+            catStack.leadingAnchor.constraint(equalTo: catScroll.leadingAnchor),
+            catStack.trailingAnchor.constraint(equalTo: catScroll.trailingAnchor),
+            catStack.heightAnchor.constraint(equalTo: catScroll.heightAnchor),
+        ])
+        highlightCategory()
+    }
+
+    private func highlightCategory() {
+        for (i, b) in catButtons.enumerated() {
+            b.backgroundColor = i == currentIndex ? FlickPalette.keyFill : .clear
+            b.layer.cornerRadius = 6
+        }
+    }
+
+    // MARK: Actions
+
+    @objc private func backTapped() { onTapSound?(); onBack?() }
+    @objc private func backspaceTapped() { onTapSound?(); onBackspace?() }
+
+    @objc private func categoryTapped(_ sender: UIButton) {
+        onTapSound?()
+        currentIndex = sender.tag
+        highlightCategory()
+        collection.reloadData()
+        if collection.numberOfItems(inSection: 0) > 0 {
+            collection.scrollToItem(at: IndexPath(item: 0, section: 0), at: .top, animated: false)
+        }
+    }
+
+    // MARK: Collection
+
+    func collectionView(_ cv: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        sections.indices.contains(currentIndex) ? sections[currentIndex].emojis.count : 0
+    }
+
+    func collectionView(_ cv: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = cv.dequeueReusableCell(withReuseIdentifier: "emoji", for: indexPath)
+        let tag = 77
+        let label: UILabel
+        if let l = cell.contentView.viewWithTag(tag) as? UILabel {
+            label = l
+        } else {
+            label = UILabel(frame: cell.contentView.bounds)
+            label.tag = tag
+            label.textAlignment = .center
+            label.font = .systemFont(ofSize: 30)
+            label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            cell.contentView.addSubview(label)
+        }
+        label.text = sections[currentIndex].emojis[indexPath.item]
+        return cell
+    }
+
+    func collectionView(_ cv: UICollectionView, layout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let cols: CGFloat = 8
+        let w = floor(cv.bounds.width / cols)
+        return CGSize(width: w, height: w)
+    }
+
+    func collectionView(_ cv: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        onTapSound?()
+        onPick?(sections[currentIndex].emojis[indexPath.item])
+    }
+
+    // MARK: Curated emoji sets (valid on the shipped iOS range)
+
+    static let categories: [(icon: String, emojis: [String])] = [
+        ("😀", ["😀","😃","😄","😁","😆","😅","😂","🤣","🥲","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓","😎","🥸","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👹","👺","🤡","💩","👻","💀","👽","👾","🤖","🎃","😺","😸","😹","😻","😼","😽","🙀","😿","😾","👋","🤚","🖐","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🙏","💪","👀","👁️","👅","👄","💋","🧠","🫀","🦷","👶","🧒","👦","👧","🧑","👨","👩","🧓","👴","👵","🙆","🙅","💁","🙋","🙇","🤦","🤷"]),
+        ("🐻", ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐽","🐸","🐵","🙈","🙉","🙊","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🐛","🦋","🐌","🐞","🐜","🦗","🕷️","🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙","🐐","🦌","🐕","🐩","🦮","🐈","🐓","🦃","🦚","🦜","🦢","🦩","🕊️","🐇","🦝","🦨","🦦","🦥","🐁","🐀","🐿️","🦔","🐉","🐲","🌵","🎄","🌲","🌳","🌴","🌱","🌿","☘️","🍀","🎍","🍃","🍂","🍁","🌾","🌺","🌸","🌼","🌻","🌷","🌹","🥀","🌽","🍄","🐚","🌊","💧","🔥","🌈","⭐️","🌟","✨","⚡️","☀️","🌤️","⛅️","☁️","🌧️","⛈️","❄️","☃️","⛄️","💨","🌪️","🌫️","🌙","🌝","🌚","🌕","🌑","🪐","🌎","🌍","🌏"]),
+        ("🍎", ["🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶️","🫑","🌽","🥕","🧄","🧅","🥔","🍠","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓","🥩","🍗","🍖","🌭","🍔","🍟","🍕","🥪","🥙","🧆","🌮","🌯","🥗","🥘","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🍤","🍙","🍚","🍘","🍥","🥮","🍢","🍡","🍧","🍨","🍦","🥧","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","🌰","🥜","🍯","🥛","🍼","☕️","🍵","🧃","🥤","🧋","🍶","🍺","🍻","🥂","🍷","🥃","🍸","🍹","🧉","🍾","🥄","🍴","🍽️","🥣","🥡","🥢","🧂"]),
+        ("⚽️", ["⚽️","🏀","🏈","⚾️","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🥅","⛳️","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️","🤼","🤸","⛹️","🤺","🤾","🏌️","🏇","🧘","🏄","🏊","🤽","🚣","🧗","🚵","🚴","🏆","🥇","🥈","🥉","🏅","🎖️","🏵️","🎗️","🎫","🎟️","🎪","🤹","🎭","🩰","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🪘","🎷","🎺","🪗","🎸","🪕","🎻","🎲","♟️","🎯","🎳","🎮","🎰","🧩"]),
+        ("🚗", ["🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🛻","🚚","🚛","🚜","🦯","🦽","🦼","🛴","🚲","🛵","🏍️","🛺","🚨","🚔","🚍","🚘","🚖","🚡","🚠","🚟","🚃","🚋","🚝","🚄","🚅","🚈","🚂","🚆","🚇","🚊","🚉","✈️","🛫","🛬","🛩️","💺","🛰️","🚀","🛸","🚁","🛶","⛵️","🚤","🛥️","🛳️","⛴️","🚢","⚓️","⛽️","🚧","🚦","🚥","🗺️","🗿","🗽","🗼","🏰","🏯","🏟️","🎡","🎢","🎠","⛲️","⛱️","🏖️","🏝️","🏜️","🌋","⛰️","🏔️","🗻","🏕️","⛺️","🏠","🏡","🏘️","🏚️","🏗️","🏢","🏬","🏣","🏤","🏥","🏦","🏨","🏪","🏫","🏩","💒","🏛️","⛪️","🕌","🕍","🛕","🕋","⛩️","🛤️","🌁","🌃","🏙️","🌄","🌅","🌆","🌇","🌉","🎑","🌌"]),
+        ("💡", ["⌚️","📱","📲","💻","⌨️","🖥️","🖨️","🖱️","🕹️","💽","💾","💿","📀","📼","📷","📸","📹","🎥","📞","☎️","📟","📠","📺","📻","🎙️","⏱️","⏲️","⏰","🕰️","⌛️","⏳","📡","🔋","🔌","💡","🔦","🕯️","🧯","🛢️","💸","💵","💴","💶","💷","💰","💳","💎","⚖️","🧰","🔧","🔨","⚒️","🛠️","⛏️","🔩","⚙️","🧱","⛓️","🧲","🔫","💣","🧨","🔪","🗡️","⚔️","🛡️","🚬","⚰️","⚱️","🏺","🔮","📿","🧿","💈","⚗️","🔭","🔬","🕳️","💊","💉","🩸","🧬","🦠","🧫","🧪","🌡️","🧹","🧺","🧻","🚽","🚰","🚿","🛁","🛀","🧼","🪒","🧽","🧴","🛎️","🔑","🗝️","🚪","🛋️","🛏️","🛌","🧸","🖼️","🛍️","🛒","🎁","🎈","🎏","🎀","🎊","🎉","🧧","✉️","📩","📨","📧","💌","📦","📫","📮","📝","✏️","📚","📖","🔖","🔗","📎","📐","📏","📌","📍","✂️","🖊️","🖌️","🔍","🔎","🔒","🔓","🔑"]),
+        ("❤️", ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☪️","🕉️","☸️","✡️","🔯","🕎","☯️","☦️","🛐","⛎","♈️","♉️","♊️","♋️","♌️","♍️","♎️","♏️","♐️","♑️","♒️","♓️","🆔","⚛️","🉑","☢️","☣️","📴","📳","🈶","🈚️","🈸","🈺","🈷️","✴️","🆚","💮","🉐","㊙️","㊗️","🈴","🈵","🈹","🈲","🅰️","🅱️","🆎","🆑","🅾️","🆘","❌","⭕️","🛑","⛔️","📛","🚫","💯","💢","♨️","🚷","🚯","🚳","🚱","🔞","📵","🚭","❗️","❓","❕","❔","‼️","⁉️","🔅","🔆","〽️","⚠️","🚸","🔱","⚜️","🔰","♻️","✅","🈯️","💹","❇️","✳️","❎","🌐","💠","Ⓜ️","🌀","💤","🏧","🚾","♿️","🅿️","🈳","🈂️","🛂","🛃","🛄","🛅","🚹","🚺","🚼","🚻","🚮","🎦","📶","🈁","🔣","ℹ️","🔤","🔡","🔠","🆖","🆗","🆙","🆒","🆕","🆓","🔟","🔢","▶️","⏸️","⏯️","⏹️","⏺️","⏭️","⏮️","⏩️","⏪️","🔼","🔽","➡️","⬅️","⬆️","⬇️","↗️","↘️","↙️","↖️","↕️","↔️","↪️","↩️","🔀","🔁","🔂","🔄","🎵","🎶","➕","➖","➗","✖️","♾️","💲","💱","™️","©️","®️","✔️","☑️","🔘","🔴","🟠","🟡","🟢","🔵","🟣","⚫️","⚪️","🟤","🔺","🔻","🔸","🔹","🔶","🔷","🔳","🔲","⬛️","⬜️","🟥","🟧","🟨","🟩","🟦","🟪","🟫","🔔","🔕"]),
+        ("🚩", ["🏳️","🏴","🏁","🚩","🏳️‍🌈","🏴‍☠️","🇯🇵","🇻🇳","🇺🇸","🇬🇧","🇰🇷","🇨🇳","🇫🇷","🇩🇪","🇪🇸","🇮🇹","🇷🇺","🇧🇷","🇮🇩","🇹🇭","🇮🇳","🇨🇦","🇦🇺","🇸🇬","🇲🇾","🇵🇭","🇳🇱","🇸🇪","🇨🇭","🇹🇷","🇸🇦","🇦🇪","🇭🇰","🇹🇼","🇲🇽","🇦🇷","🇵🇹","🇵🇱","🇺🇦","🇳🇿"]),
+    ]
 }

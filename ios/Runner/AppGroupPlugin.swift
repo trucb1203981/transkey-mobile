@@ -56,6 +56,17 @@ class AppGroupPlugin: NSObject, FlutterPlugin {
             }
             result(true)
 
+        case "saveUiLang":
+            // App -> group mirror of the in-app UI language, so the keyboard
+            // localizes its chips/labels to match the app (not the device).
+            guard let args = call.arguments as? [String: Any],
+                  let lang = args["lang"] as? String else {
+                result(FlutterError(code: "INVALID_ARGS", message: "Expected lang", details: nil))
+                return
+            }
+            store.uiLang = lang
+            result(true)
+
         case "saveFeatures":
             guard let args = call.arguments as? [String: Any] else {
                 result(FlutterError(code: "INVALID_ARGS", message: "Expected map", details: nil))

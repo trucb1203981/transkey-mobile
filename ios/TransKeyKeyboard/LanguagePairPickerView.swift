@@ -50,6 +50,7 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
         ("vi", "Tiếng Việt"), ("en", "English"),
         ("ar", "العربية"), ("zh", "中文 (拼音)"), ("fr", "Français"), ("de", "Deutsch"),
         ("id", "Bahasa Indonesia"), ("it", "Italiano"), ("ja", "日本語 (ローマ字)"),
+        ("ja_flick", "日本語 (フリック)"),
         ("ko", "한국어"), ("pt", "Português"), ("ru", "Русский"), ("es", "Español"), ("th", "ไทย"),
     ]
 
@@ -82,16 +83,16 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
 
         let title = UILabel()
         if case .typing = mode {
-            title.text = "Ngôn ngữ gõ phím"
+            title.text = KB.t("typingLanguage")
         } else {
-            title.text = "Ngôn ngữ dịch"
+            title.text = KB.t("translationLanguage")
         }
         title.font = .systemFont(ofSize: 15, weight: .semibold)
         title.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(title)
 
         let done = UIButton(type: .system)
-        done.setTitle("Xong", for: .normal)
+        done.setTitle(KB.t("done"), for: .normal)
         done.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
         done.addTarget(self, action: #selector(doneTapped), for: .touchUpInside)
         done.translatesAutoresizingMaskIntoConstraints = false
@@ -120,7 +121,7 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
         } else {
             // Swap button between the title and Done, Android's "⇄ Đổi chiều".
             let swap = UIButton(type: .system)
-            swap.setTitle("⇄ Đổi chiều", for: .normal)
+            swap.setTitle(KB.t("swap"), for: .normal)
             swap.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
             swap.addTarget(self, action: #selector(swapTapped), for: .touchUpInside)
             swap.translatesAutoresizingMaskIntoConstraints = false
@@ -212,8 +213,8 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
     func numberOfSections(in tableView: UITableView) -> Int { 1 }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        if case .typing = mode { return "Chọn ngôn ngữ bạn muốn gõ" }
-        return tableView === srcTable ? "Ngôn ngữ nguồn" : "Dịch sang"
+        if case .typing = mode { return KB.t("chooseTypingLanguage") }
+        return tableView === srcTable ? KB.t("sourceLanguage") : KB.t("translateTo")
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -226,7 +227,7 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
             return Self.typingLanguages[row]
         }
         if tableView === srcTable {
-            if row == 0 { return ("auto", "Tự nhận diện") }
+            if row == 0 { return ("auto", KB.t("autoDetect")) }
             return languages[row - 1]
         }
         return languages[row]

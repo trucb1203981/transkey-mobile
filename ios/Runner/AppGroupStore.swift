@@ -17,6 +17,7 @@ class AppGroupStore {
     private let kKeyboardAutocorrect = "tk_kb_autocorrect"
     private let kSourceLang = "tk_source_lang"
     private let kTargetLang = "tk_target_lang"
+    private let kUiLang = "tk_ui_lang"
     private let kInputLang = "tk_kb_input_lang"
     private let kLangsDirty = "tk_langs_dirty"
     private let kFeatureReply = "tk_feature_reply"
@@ -100,11 +101,39 @@ class AppGroupStore {
         set { defaults?.set(newValue, forKey: kTargetLang) }
     }
 
+    /// The app's UI language (the locale the user picked INSIDE the app),
+    /// mirrored from Flutter so the keyboard extension can localize its own
+    /// chips/labels to match the app instead of always showing Vietnamese.
+    /// Empty when never mirrored; callers fall back to device language / "en".
+    var uiLang: String {
+        get { defaults?.string(forKey: kUiLang) ?? "" }
+        set { defaults?.set(newValue, forKey: kUiLang) }
+    }
+
     /// The keyboard's typing language (layout + composer), independent from
     /// the translate pair, like Android's typing_mode. Default Vietnamese.
     var keyboardInputLang: String {
         get { defaults?.string(forKey: kInputLang) ?? "vi" }
         set { defaults?.set(newValue, forKey: kInputLang) }
+    }
+
+    /// Recently-used emoji for the keyboard's emoji panel, most-recent first
+    /// (capped). Stored as a plain array so the order is preserved.
+    private let kEmojiRecents = "tk_kb_emoji_recents"
+    private static let emojiRecentsMax = 30
+
+    var emojiRecents: [String] {
+        get { (defaults?.array(forKey: kEmojiRecents) as? [String]) ?? [] }
+        set { defaults?.set(newValue, forKey: kEmojiRecents) }
+    }
+
+    /// Record `emoji` as just-used: move/insert it to the front, dedupe, cap.
+    func pushEmojiRecent(_ emoji: String) {
+        var list = emojiRecents
+        list.removeAll { $0 == emoji }
+        list.insert(emoji, at: 0)
+        if list.count > Self.emojiRecentsMax { list = Array(list.prefix(Self.emojiRecentsMax)) }
+        emojiRecents = list
     }
 
     /// Set by the keyboard when IT changes the language pair; the app reads
@@ -144,5 +173,75 @@ class AppGroupStore {
     var langCatalogJSON: String? {
         get { defaults?.string(forKey: kLangCatalog) }
         set { defaults?.set(newValue, forKey: kLangCatalog) }
+    }
+
+    // MARK: - Translate result cache
+    //
+    // Exact-match, bounded LRU cache mirroring the Flutter app's
+    // BubbleTranslateCache (lib/features/translate/services/bubble_translate_cache.dart):
+    // re-running an identical request (same text + langs + mode + tone + flags)
+    // returns the stored result with NO paid API round-trip. Lives in the App
+    // Group so the keyboard AND share extensions share ONE cache. It is NOT
+    // shared with the Flutter app's own cache - that one lives in the app's
+    // standard UserDefaults (shared_preferences), a different suite. Stored as a
+    // single JSON blob `{ "order": [key...], "entries": { key: responseJSON } }`;
+    // the order array gives cheap LRU since Swift dictionaries are unordered.
+    private static let kTranslateCache = "tk_ext_translate_cache_v1"
+    private static let translateCacheMax = 300
+
+    /// Composite key from the normalized request, kept byte-identical to
+    /// BubbleTranslateCache.keyFor so the format stays in lockstep if the two
+    /// caches are ever unified into the App Group.
+    static func translateCacheKey(
+        text: String,
+        mode: String,
+        targetLang: String,
+        sourceLang: String,
+        tone: String = "",
+        romanization: Bool = false,
+        suggestReplies: Bool = false,
+        replyToOriginal: String? = nil
+    ) -> String {
+        let r = romanization ? "1" : "0"
+        let s = suggestReplies ? "1" : "0"
+        let reply = replyToOriginal ?? ""
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(mode)\(targetLang)\(sourceLang)\(tone)\(r)\(s)\(reply)\(t)"
+    }
+
+    /// Returns the cached response JSON for `key`, or nil on a miss.
+    func cachedTranslation(forKey key: String) -> [String: Any]? {
+        guard let data = defaults?.data(forKey: Self.kTranslateCache),
+              let blob = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let entries = blob["entries"] as? [String: Any],
+              let hit = entries[key] as? [String: Any] else { return nil }
+        return hit
+    }
+
+    /// Stores `value` (the raw API response JSON) under `key`, evicting the
+    /// least-recently-used entries past the cap. Best-effort: any failure must
+    /// never break translation.
+    func storeTranslation(_ value: [String: Any], forKey key: String) {
+        guard let defaults else { return }
+        var order: [String] = []
+        var entries: [String: Any] = [:]
+        if let data = defaults.data(forKey: Self.kTranslateCache),
+           let blob = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            order = blob["order"] as? [String] ?? []
+            entries = blob["entries"] as? [String: Any] ?? [:]
+        }
+        // Move-to-end on write = most-recently-used.
+        order.removeAll { $0 == key }
+        entries[key] = value
+        order.append(key)
+        // Evict the oldest entries (front of the order) past the cap.
+        while order.count > Self.translateCacheMax {
+            let oldest = order.removeFirst()
+            entries.removeValue(forKey: oldest)
+        }
+        let blob: [String: Any] = ["order": order, "entries": entries]
+        guard JSONSerialization.isValidJSONObject(blob),
+              let data = try? JSONSerialization.data(withJSONObject: blob) else { return }
+        defaults.set(data, forKey: Self.kTranslateCache)
     }
 }
