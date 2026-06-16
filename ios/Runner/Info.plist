@@ -69,9 +69,11 @@
 	<key>NSCameraUsageDescription</key>
 	<string>TransKey uses the camera to scan and translate text from menus, signs, and documents.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>TransKey uses the microphone for voice input — speak instead of typing the text you want to translate.</string>
+	<string>TransKey uses the microphone for voice input - speak instead of typing the text you want to translate.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>TransKey transcribes your speech on-device (or via Apple's Speech service) so you can dictate text instead of typing it.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>TransKey accesses your photos so you can pick a saved image and translate the text in it.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This identifier will be used to show you ads that are more relevant to you.</string>
 	<key>SKAdNetworkItems</key>
