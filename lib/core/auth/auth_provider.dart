@@ -73,10 +73,56 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<AuthState> build() async {
     final sessionStore = ref.read(sessionStoreProvider);
     final session = await sessionStore.load();
-    if (session == null) {
-      return const AuthState();
+    if (session != null) {
+      return AuthState(isLoggedIn: true, session: session);
     }
-    return AuthState(isLoggedIn: true, session: session);
+    // No stored session: provision a device-bound anonymous guest so Translate
+    // and the keyboard work without registration (App Store 5.1.1(v)).
+    // Best-effort and time-boxed inside _provisionGuest — if it fails (offline /
+    // server down) the app still opens logged-out (no wall); the user can sign
+    // in, or continueAsGuest() retries once back online.
+    return await _provisionGuest() ?? const AuthState();
+  }
+
+  /// Provision (or restore) the device-bound anonymous guest session. The
+  /// server keys the guest to this device's id, so the SAME guest (and its
+  /// quota) comes back on every launch. Returns null on failure so callers can
+  /// fall back to a logged-out state instead of throwing.
+  Future<AuthState?> _provisionGuest() async {
+    try {
+      final api = ref.read(apiClientProvider);
+      final response = await api.dio
+          .post('/auth/guest')
+          .timeout(const Duration(seconds: 12));
+      final data = response.data;
+      final user = data['user'] as Map<String, dynamic>;
+      final session = AuthSession(
+        accessToken: data['accessToken'] as String,
+        userId: user['id'].toString(),
+        email: user['email'] as String,
+        name: user['name'] as String?,
+        plan: user['plan'] as String? ?? 'free',
+        hasPassword: user['hasPassword'] as bool? ?? true,
+        isAnonymous: true,
+      );
+      final sessionStore = ref.read(sessionStoreProvider);
+      await sessionStore.save(session);
+      _invalidateApiSessionCache();
+      await _syncToAppGroup(session);
+      return AuthState(isLoggedIn: true, session: session);
+    } catch (e) {
+      AppLog.w('Auth', 'Guest provisioning failed', e);
+      return null;
+    }
+  }
+
+  /// Public entry point for the "continue without an account" affordance and
+  /// for retrying after a first launch that started offline. No-op if a session
+  /// (guest or real) already exists.
+  Future<void> continueAsGuest() async {
+    if (state.valueOrNull?.isLoggedIn ?? false) return;
+    state = const AsyncLoading();
+    state = AsyncData(await _provisionGuest() ?? const AuthState());
   }
 
   /// Current session snapshot, readable from outside the notifier without
@@ -153,6 +199,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
+        hasPassword: user['hasPassword'] as bool? ?? true,
         expiresAt: data['expiresAt'] as String?,
       );
 
@@ -213,6 +260,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
+        hasPassword: user['hasPassword'] as bool? ?? true,
         expiresAt: data['expiresAt'] as String?,
       );
 
@@ -257,6 +305,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
+        hasPassword: user['hasPassword'] as bool? ?? true,
         expiresAt: data['expiresAt'] as String?,
       );
 
@@ -300,6 +349,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         email: user['email'] as String,
         name: user['name'] as String?,
         plan: user['plan'] as String? ?? 'free',
+        hasPassword: user['hasPassword'] as bool? ?? true,
         expiresAt: data['expiresAt'] as String?,
       );
 
@@ -328,7 +378,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     _invalidateApiSessionCache();
     _invalidateUserScopedProviders();
     await AppGroupBridge.clearAuth();
-    state = const AsyncData(AuthState());
+    // App Store 5.1.1(v): sign-out returns to an anonymous guest, not a login
+    // wall. Falls back to a logged-out (but un-walled) state if provisioning
+    // fails. _provisionGuest writes the new session + re-syncs the app group.
+    state = AsyncData(await _provisionGuest() ?? const AuthState());
   }
 
   /// Pull fresh user info from /auth/me — picks up plan changes that
@@ -346,6 +399,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         email: user['email'] as String? ?? current.email,
         name: (user['name'] as String?) ?? current.name,
         plan: user['plan'] as String? ?? current.plan,
+        hasPassword: user['hasPassword'] as bool? ?? current.hasPassword,
       );
       final sessionStore = ref.read(sessionStoreProvider);
       await sessionStore.save(updated);

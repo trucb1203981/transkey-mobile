@@ -117,4 +117,14 @@
     <string name="ime_open_bubble">フローティングバブル</string>
     <string name="ime_back_keyboard">← キーボード</string>
     <string name="ime_input_lang">入力言語</string>
+    <string name="ime_clipboard_title">翻訳</string>
+    <string name="scam_high_title">警告：このメッセージには詐欺の兆候があります</string>
+    <string name="scam_low_title">注意：このメッセージは詐欺の可能性があります</string>
+    <string name="scam_generic_hint">返信・リンクのクリック・送金の前に十分ご注意ください。</string>
+    <string name="ime_clipboard_empty">メッセージをコピーしてから「翻訳」をタップしてください</string>
+    <string name="ime_guide_title">翻訳キーボードの使い方</string>
+    <string name="ime_guide_clipboard_desc">相手のメッセージをコピーして、タップすると自分の言語で読めます。</string>
+    <string name="ime_guide_reply_desc">返信を入力して、タップすると送信前に翻訳できます。</string>
+    <string name="ime_guide_refine_desc">文章を整えて、より自然な表現にします。</string>
+    <string name="ime_guide_dismiss">わかりました</string>
 </resources>

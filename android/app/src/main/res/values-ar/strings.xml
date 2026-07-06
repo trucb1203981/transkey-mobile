@@ -123,4 +123,14 @@
     <string name="ime_open_bubble">الزر العائم</string>
     <string name="ime_back_keyboard">← لوحة المفاتيح</string>
     <string name="ime_input_lang">لغة الإدخال</string>
+    <string name="ime_clipboard_title">الترجمة</string>
+    <string name="scam_high_title">تحذير: تظهر على هذه الرسالة علامات احتيال</string>
+    <string name="scam_low_title">تنبيه: قد تكون هذه الرسالة عملية احتيال</string>
+    <string name="scam_generic_hint">كن حذرًا قبل الرد أو النقر على الروابط أو إرسال الأموال.</string>
+    <string name="ime_clipboard_empty">انسخ الرسالة أولاً ثم اضغط على ترجمة</string>
+    <string name="ime_guide_title">استخدام لوحة الترجمة</string>
+    <string name="ime_guide_clipboard_desc">انسخ رسالتهم ثم اضغط لرؤية معناها بلغتك.</string>
+    <string name="ime_guide_reply_desc">اكتب ردك ثم اضغط لترجمته قبل الإرسال.</string>
+    <string name="ime_guide_refine_desc">حسّن نصك ليصبح أكثر سلاسة وطبيعية.</string>
+    <string name="ime_guide_dismiss">فهمت</string>
 </resources>

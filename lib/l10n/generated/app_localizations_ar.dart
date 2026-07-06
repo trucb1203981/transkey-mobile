@@ -36,6 +36,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get suggestions => 'اقتراحات';
 
   @override
+  String get scamHighTitle => 'تحذير: تظهر على هذه الرسالة علامات احتيال';
+
+  @override
+  String get scamLowTitle => 'تنبيه: قد تكون هذه الرسالة عملية احتيال';
+
+  @override
+  String get scamGenericHint =>
+      'كن حذرًا قبل الرد أو النقر على الروابط أو إرسال الأموال.';
+
+  @override
   String get copy => 'نسخ';
 
   @override
@@ -281,6 +291,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get changePassword => 'تغيير كلمة المرور';
 
   @override
+  String get setPassword => 'تعيين كلمة المرور';
+
+  @override
   String get manageDevices => 'إدارة الأجهزة';
 
   @override
@@ -443,6 +456,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createAccount => 'إنشاء حساب';
 
   @override
+  String get guestBannerTitle => 'تتصفح كضيف';
+
+  @override
+  String get guestBannerSubtitle =>
+      'سجّل الدخول لمزامنة سجلك عبر الأجهزة وللاشتراك.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'يرجى تسجيل الدخول أو إنشاء حساب للاشتراك.';
+
+  @override
   String get continueWithGoogle => 'المتابعة باستخدام Google';
 
   @override
@@ -471,6 +495,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get passwordMinSix => '6 أحرف على الأقل';
+
+  @override
+  String get forgotPassword => 'هل نسيت كلمة المرور؟';
+
+  @override
+  String get forgotPasswordTitle => 'إعادة تعيين كلمة المرور';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'أدخل البريد الإلكتروني لحسابك وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.';
+
+  @override
+  String get forgotPasswordSend => 'إرسال الرابط';
+
+  @override
+  String get forgotPasswordSent =>
+      'إذا كان هذا البريد مسجلاً، فالرابط في طريقه إليك. تحقق من صندوق الوارد.';
+
+  @override
+  String get forgotPasswordError =>
+      'تعذّر إرسال البريد. تحقق من الاتصال وحاول مرة أخرى.';
 
   @override
   String get proDeviceLimitError =>

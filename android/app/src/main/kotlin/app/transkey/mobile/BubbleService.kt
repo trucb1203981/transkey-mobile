@@ -106,6 +106,10 @@ class BubbleService : Service() {
         const val EXTRA_DETECTED_LANG = "detectedLang"
         const val EXTRA_SUGGESTION_SOURCES = "suggestion_sources"
         const val EXTRA_SUGGESTION_TARGETS = "suggestion_targets"
+        // Scam warning for a received message (null level = safe).
+        const val EXTRA_SCAM_LEVEL = "scam_level"
+        const val EXTRA_SCAM_TYPE = "scam_type"
+        const val EXTRA_SCAM_REASON = "scam_reason"
         const val EXTRA_ERROR = "error"
         const val EXTRA_REQUEST_ID = "request_id"
 
@@ -380,6 +384,8 @@ class BubbleService : Service() {
     // conversation partner's language, copied on tap), second = target (the
     // same message in the user's target language, shown as a translation hint).
     internal var currentSuggestions: List<Pair<String, String>> = emptyList()
+    // Fraud warning for the current result (null = safe / cleared).
+    internal var currentScam: ScamInfo? = null
     internal var currentTargetLang: String = "en"
     private var currentRequestId: Long = -1
 
@@ -648,10 +654,15 @@ class BubbleService : Service() {
                             .filter { it.first.isNotBlank() || it.second.isNotBlank() }
                     } else emptyList()
                 val error = intent.getStringExtra(EXTRA_ERROR)
+                val scam = ScamInfo.of(
+                    intent.getStringExtra(EXTRA_SCAM_LEVEL),
+                    intent.getStringExtra(EXTRA_SCAM_TYPE),
+                    intent.getStringExtra(EXTRA_SCAM_REASON),
+                )
                 val reqId = intent.getLongExtra(EXTRA_REQUEST_ID, -1)
                 if (reqId == currentRequestId) {
                     if (!translation.isNullOrBlank()) {
-                        showResult(translation, romanization, detectedLang, suggestions)
+                        showResult(translation, romanization, detectedLang, suggestions, scam)
                     } else {
                         showError(error ?: localized(R.string.bubble_panel_translation_failed))
                     }
@@ -1001,6 +1012,7 @@ class BubbleService : Service() {
         currentRomanization = null
         currentDetectedLang = null
         currentSuggestions = emptyList()
+        currentScam = null
         currentMode = mode
 
         currentTargetLang = readTargetLang()
@@ -1132,10 +1144,14 @@ class BubbleService : Service() {
         // plugin versions — sometimes Float, sometimes a String-encoded
         // Double, sometimes prefixed via the legacy codec. Read through
         // prefs.all and accept any numeric / string representation.
+        // 1.0 = normal speed. The OS TextToSpeech engine treats 1.0 as normal,
+        // and the in-app flutter_tts path persists the same user-facing
+        // multiplier, so the bubble feeds this value to the engine as-is (no
+        // ×0.5 conversion, unlike the flutter_tts path) and both sound the same.
         return when (val v = prefs.all["flutter.tk_tts_rate"]) {
             is Number -> v.toDouble()
-            is String -> v.toDoubleOrNull() ?: 0.75
-            else -> 0.75
+            is String -> v.toDoubleOrNull() ?: 1.0
+            else -> 1.0
         }
     }
 

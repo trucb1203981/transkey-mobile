@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/api/api_errors.dart';
+import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -35,6 +36,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   String? _errorMessage;
+  // When true the message banner reads as a SUCCESS (green) instead of an error
+  // (red) - e.g. "account created, verify your email" right after sign-up. The
+  // same "verify your email" copy is an error on the login tab (a blocker) but a
+  // success on the register tab (the account was just created).
+  bool _messageIsSuccess = false;
 
   @override
   void initState() {
@@ -42,7 +48,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() => _errorMessage = null);
+        setState(() {
+        _errorMessage = null;
+        _messageIsSuccess = false;
+      });
       }
     });
   }
@@ -115,7 +124,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       // session yet. Stay on this screen and prompt the user to check their
       // inbox instead of navigating into the app.
       if (authState.valueOrNull?.needsEmailVerification == true) {
-        setState(() => _errorMessage = l.errorEmailNotVerified);
+        setState(() {
+          _errorMessage = l.errorEmailNotVerified;
+          // On the register tab this means "account created, now verify" - a
+          // success. On the login tab it's a blocker - keep it red.
+          _messageIsSuccess = _isRegister;
+        });
         return;
       }
 
@@ -137,6 +151,112 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       return ex.message;
     }
     return ex.code.localize(l);
+  }
+
+  /// "Forgot password?" flow (login tab). Collects the email and POSTs to
+  /// /auth/forgot-password, which always returns ok and never reveals whether
+  /// the email exists. The server emails a reset link that completes on the
+  /// web reset page, so there is no in-app new-password screen to build here.
+  Future<void> _showForgotPasswordDialog() async {
+    final l = AppLocalizations.of(context)!;
+    final emailController =
+        TextEditingController(text: _emailController.text.trim());
+    final dialogFormKey = GlobalKey<FormState>();
+    var sending = false;
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> send() async {
+            if (!dialogFormKey.currentState!.validate()) return;
+            setDialogState(() {
+              sending = true;
+              dialogError = null;
+            });
+            try {
+              final api = ref.read(apiClientProvider);
+              await api.dio.post('/auth/forgot-password', data: {
+                'email': emailController.text.trim(),
+              }).timeout(const Duration(seconds: 20));
+              if (!dialogContext.mounted) return;
+              Navigator.of(dialogContext).pop();
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l.forgotPasswordSent)),
+              );
+            } catch (_) {
+              if (!dialogContext.mounted) return;
+              setDialogState(() {
+                sending = false;
+                dialogError = l.forgotPasswordError;
+              });
+            }
+          }
+
+          return AlertDialog(
+            title: Text(l.forgotPasswordTitle),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.forgotPasswordSubtitle),
+                const SizedBox(height: AppSpacing.md),
+                Form(
+                  key: dialogFormKey,
+                  child: TextFormField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    autofocus: true,
+                    enabled: !sending,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return l.emailRequired;
+                      if (!v.contains('@')) return l.emailInvalid;
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      hintText: l.emailHint,
+                      prefixIcon: const Icon(Icons.email_outlined),
+                    ),
+                    onFieldSubmitted: (_) => send(),
+                  ),
+                ),
+                if (dialogError != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    dialogError!,
+                    style: const TextStyle(color: AppColors.red, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    sending ? null : () => Navigator.of(dialogContext).pop(),
+                child: Text(l.cancel),
+              ),
+              ElevatedButton(
+                onPressed: sending ? null : send,
+                child: sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(l.forgotPasswordSend),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    emailController.dispose();
   }
 
   Future<void> _googleOAuth() async {
@@ -375,30 +495,38 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_errorMessage != null)
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.red.withValues(alpha: 0.1),
-                borderRadius:
-                    BorderRadius.circular(AppSpacing.buttonRadius),
-                border: Border.all(color: AppColors.red.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline,
-                      color: AppColors.red, size: 20),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      _errorMessage!,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: AppColors.red),
+            Builder(builder: (context) {
+              // Green for a success banner (e.g. account created), red for errors.
+              final c = _messageIsSuccess ? AppColors.green : AppColors.red;
+              return Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: c.withValues(alpha: 0.1),
+                  borderRadius:
+                      BorderRadius.circular(AppSpacing.buttonRadius),
+                  border: Border.all(color: c.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                        _messageIsSuccess
+                            ? Icons.check_circle_outline
+                            : Icons.error_outline,
+                        color: c,
+                        size: 20),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style:
+                            theme.textTheme.bodyMedium?.copyWith(color: c),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              );
+            }),
 
           // Name field (register only)
           if (_isRegister) ...[
@@ -466,7 +594,25 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
+
+          // Forgot password — login tab only. Triggers POST /auth/forgot-password
+          // (the server emails a reset link; the new password is set on the web
+          // reset page, so no in-app new-password screen is needed).
+          if (!_isRegister)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: isLoading ? null : _showForgotPasswordDialog,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(l.forgotPassword),
+              ),
+            ),
+          SizedBox(height: _isRegister ? AppSpacing.xl : AppSpacing.md),
 
           // Submit button
           SizedBox(

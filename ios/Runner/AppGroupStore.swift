@@ -25,6 +25,7 @@ class AppGroupStore {
     private let kFeatureSummarize = "tk_feature_summarize"
     private let kFeatureExplain = "tk_feature_explain"
     private let kLangCatalog = "tk_lang_catalog"
+    private let kKbGuideSeen = "tk_kb_guide_seen_v1"
 
     private init() {
         defaults = UserDefaults(suiteName: appGroupIdentifier)
@@ -165,6 +166,13 @@ class AppGroupStore {
     var featureExplain: Bool {
         get { defaults?.bool(forKey: kFeatureExplain) ?? false }
         set { defaults?.set(newValue, forKey: kFeatureExplain) }
+    }
+
+    /// First-run guide for the keyboard action chips - shown exactly once
+    /// (parity with the Android keyboard's first-run guide overlay).
+    var keyboardGuideSeen: Bool {
+        get { defaults?.bool(forKey: kKbGuideSeen) ?? false }
+        set { defaults?.set(newValue, forKey: kKbGuideSeen) }
     }
 
     /// Server-driven language catalog, JSON `[{code,label}, ...]`, mirrored

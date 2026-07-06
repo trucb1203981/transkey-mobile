@@ -197,12 +197,14 @@ internal fun BubbleService.showResult(
     romanization: String?,
     detectedLang: String?,
     suggestions: List<Pair<String, String>>? = null,
+    scam: ScamInfo? = null,
 ) {
     isTranslating = false
     currentOutput = output
     currentRomanization = romanization
     currentDetectedLang = detectedLang
     currentSuggestions = suggestions ?: emptyList()
+    currentScam = scam
     // Refine mode: the output IS the improved source text — replace the
     // source so the user can translate or refine again on the improved text.
     if (currentMode == MODE_REFINE) {
@@ -544,10 +546,35 @@ internal fun BubbleService.showResultPanel(
             setPadding(0, (4 * dp).toInt(), 0, (4 * dp).toInt())
         }
 
+        // ── Fraud warning banner (populated per result from currentScam) ──
+        panel.scamBannerTitle = TextView(this).apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            setLineSpacing(1 * dp, 1f)
+        }
+        panel.scamBannerDetail = TextView(this).apply {
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setPadding(0, (2 * dp).toInt(), 0, 0)
+            setLineSpacing(1 * dp, 1f)
+        }
+        panel.scamBannerBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding((10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt(), (8 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = (6 * dp).toInt() }
+            addView(panel.scamBannerTitle)
+            addView(panel.scamBannerDetail)
+        }
+
         // All the above wrapped in a max-height ScrollView so long translations scroll
         val contentInner = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
+        contentInner.addView(panel.scamBannerBox)
         contentInner.addView(panel.detectedLangTv)
         contentInner.addView(panel.source)
         panel.sourceToggle?.let { contentInner.addView(it) }
@@ -725,6 +752,26 @@ internal fun BubbleService.showResultPanel(
         panel.romanization?.apply { text = rom; visibility = View.VISIBLE }
     } else {
         panel.romanization?.visibility = View.GONE
+    }
+
+    // Fraud warning banner (server drops "none", so present = warn). Shown
+    // above the output whenever a result carries a scamRisk.
+    val scam = currentScam
+    if (!loading && error == null && scam != null) {
+        val scamAccent = Color.parseColor(if (scam.isHigh) "#FF6B6B" else "#F59E0B")
+        val tint = (0x1F shl 24) or (scamAccent and 0x00FFFFFF)
+        panel.scamBannerBox?.setBackgroundColor(tint)
+        panel.scamBannerTitle?.apply {
+            setTextColor(scamAccent)
+            text = "🛡 " + localized(
+                if (scam.isHigh) R.string.scam_high_title else R.string.scam_low_title,
+            )
+        }
+        panel.scamBannerDetail?.text =
+            scam.reason?.takeIf { it.isNotBlank() } ?: localized(R.string.scam_generic_hint)
+        panel.scamBannerBox?.visibility = View.VISIBLE
+    } else {
+        panel.scamBannerBox?.visibility = View.GONE
     }
 
     // Quick-reply suggestions: only on the plain Translate flow. Reply

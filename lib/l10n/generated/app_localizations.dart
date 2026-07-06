@@ -176,6 +176,24 @@ abstract class AppLocalizations {
   /// **'Suggestions'**
   String get suggestions;
 
+  /// No description provided for @scamHighTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: this message shows signs of a scam'**
+  String get scamHighTitle;
+
+  /// No description provided for @scamLowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Caution: this message could be a scam'**
+  String get scamLowTitle;
+
+  /// No description provided for @scamGenericHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Be careful before replying, clicking links, or sending money.'**
+  String get scamGenericHint;
+
   /// No description provided for @copy.
   ///
   /// In en, this message translates to:
@@ -656,6 +674,12 @@ abstract class AppLocalizations {
   /// **'Change password'**
   String get changePassword;
 
+  /// No description provided for @setPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Set password'**
+  String get setPassword;
+
   /// No description provided for @manageDevices.
   ///
   /// In en, this message translates to:
@@ -968,6 +992,24 @@ abstract class AppLocalizations {
   /// **'Create Account'**
   String get createAccount;
 
+  /// No description provided for @guestBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Browsing as a guest'**
+  String get guestBannerTitle;
+
+  /// No description provided for @guestBannerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to sync your history across devices and to subscribe.'**
+  String get guestBannerSubtitle;
+
+  /// No description provided for @guestSubscribePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in or create an account to subscribe.'**
+  String get guestSubscribePrompt;
+
   /// No description provided for @continueWithGoogle.
   ///
   /// In en, this message translates to:
@@ -1027,6 +1069,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'At least 6 characters'**
   String get passwordMinSix;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get forgotPassword;
+
+  /// No description provided for @forgotPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get forgotPasswordTitle;
+
+  /// No description provided for @forgotPasswordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your account email and we\'ll send you a link to set a new password.'**
+  String get forgotPasswordSubtitle;
+
+  /// No description provided for @forgotPasswordSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reset link'**
+  String get forgotPasswordSend;
+
+  /// No description provided for @forgotPasswordSent.
+  ///
+  /// In en, this message translates to:
+  /// **'If that email is registered, a reset link is on its way. Check your inbox.'**
+  String get forgotPasswordSent;
+
+  /// No description provided for @forgotPasswordError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the reset email. Please check your connection and try again.'**
+  String get forgotPasswordError;
 
   /// No description provided for @proDeviceLimitError.
   ///

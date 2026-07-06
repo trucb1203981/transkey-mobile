@@ -367,7 +367,7 @@ class SuggestionStripView : View {
         }
         if (actions.isEmpty()) return
         val slot = (actionsRight - start) / actions.size
-        val base = cy - (textAction.descent() + textAction.ascent()) / 2f
+        val baseSize = sp(15f)
         for (i in actions.indices) {
             val left = start + slot * i + padH
             val right = start + slot * (i + 1) - padH
@@ -379,8 +379,20 @@ class SuggestionStripView : View {
                 android.graphics.Shader.TileMode.CLAMP,
             )
             c.drawRoundRect(rectF, pillH / 2, pillH / 2, chipGradient)
-            c.drawText(actions[i], (left + right) / 2f, base, textAction)
+            // Shrink the label to fit its slot (chips get narrower with 3 actions:
+            // Dịch / Trả lời / Trau chuốt) so a long label never overflows into
+            // its neighbour - the iOS chip's shrinkTitleToFit, ported across.
+            val label = actions[i]
+            val avail = (right - left) - dp(8f)
+            textAction.textSize = baseSize
+            val w = textAction.measureText(label)
+            if (w > avail && avail > 0) {
+                textAction.textSize = (baseSize * avail / w).coerceAtLeast(sp(10f))
+            }
+            val base = cy - (textAction.descent() + textAction.ascent()) / 2f
+            c.drawText(label, (left + right) / 2f, base, textAction)
         }
+        textAction.textSize = baseSize  // restore shared paint for next frame
     }
 
     /** Amber alert pill spanning the middle zone; label auto-shrinks to fit. */

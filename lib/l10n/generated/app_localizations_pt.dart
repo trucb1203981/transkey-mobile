@@ -36,6 +36,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get suggestions => 'Sugestões';
 
   @override
+  String get scamHighTitle => 'Aviso: esta mensagem mostra sinais de golpe';
+
+  @override
+  String get scamLowTitle => 'Cuidado: esta mensagem pode ser um golpe';
+
+  @override
+  String get scamGenericHint =>
+      'Tenha cuidado antes de responder, clicar em links ou enviar dinheiro.';
+
+  @override
   String get copy => 'Copiar';
 
   @override
@@ -282,6 +292,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get changePassword => 'Alterar senha';
 
   @override
+  String get setPassword => 'Definir senha';
+
+  @override
   String get manageDevices => 'Gerenciar dispositivos';
 
   @override
@@ -447,6 +460,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get createAccount => 'Criar conta';
 
   @override
+  String get guestBannerTitle => 'Navegando como convidado';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Entre para sincronizar seu histórico entre dispositivos e assinar.';
+
+  @override
+  String get guestSubscribePrompt => 'Entre ou crie uma conta para assinar.';
+
+  @override
   String get continueWithGoogle => 'Continuar com Google';
 
   @override
@@ -475,6 +498,27 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Mínimo de 6 caracteres';
+
+  @override
+  String get forgotPassword => 'Esqueceu a senha?';
+
+  @override
+  String get forgotPasswordTitle => 'Redefinir senha';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Digite o e-mail da sua conta e enviaremos um link para criar uma nova senha.';
+
+  @override
+  String get forgotPasswordSend => 'Enviar link';
+
+  @override
+  String get forgotPasswordSent =>
+      'Se esse e-mail estiver cadastrado, um link de redefinição está a caminho. Verifique sua caixa de entrada.';
+
+  @override
+  String get forgotPasswordError =>
+      'Não foi possível enviar o e-mail. Verifique sua conexão e tente novamente.';
 
   @override
   String get proDeviceLimitError =>

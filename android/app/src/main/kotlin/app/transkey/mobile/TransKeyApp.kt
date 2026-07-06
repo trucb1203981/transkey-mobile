@@ -9,6 +9,27 @@ import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
 
+/**
+ * Fraud warning delivered alongside a translation. Absent (null) when the
+ * message is safe — the server drops level "none". [reason] is a
+ * target-language explanation, only on paid plans.
+ */
+data class ScamInfo(val level: String, val type: String?, val reason: String?) {
+    val isHigh: Boolean get() = level == "high"
+
+    companion object {
+        /** Build from the flattened channel/intent fields; null unless level is low/high. */
+        fun of(level: String?, type: String?, reason: String?): ScamInfo? {
+            if (level != "low" && level != "high") return null
+            return ScamInfo(
+                level = level,
+                type = type?.takeIf { it.isNotBlank() },
+                reason = reason?.takeIf { it.isNotBlank() },
+            )
+        }
+    }
+}
+
 class TransKeyApp : FlutterApplication() {
 
     companion object {
@@ -23,11 +44,11 @@ class TransKeyApp : FlutterApplication() {
         // overlay. Lookups are by registry membership, so the two surfaces
         // never cross even if their requestId numbers were to overlap.
         private val imeResultListeners =
-            java.util.concurrent.ConcurrentHashMap<Long, (translation: String?, error: String?, errorCode: String?) -> Unit>()
+            java.util.concurrent.ConcurrentHashMap<Long, (translation: String?, error: String?, errorCode: String?, scam: ScamInfo?) -> Unit>()
 
         fun registerImeResult(
             reqId: Long,
-            cb: (translation: String?, error: String?, errorCode: String?) -> Unit,
+            cb: (translation: String?, error: String?, errorCode: String?, scam: ScamInfo?) -> Unit,
         ) {
             imeResultListeners[reqId] = cb
         }
@@ -43,16 +64,18 @@ class TransKeyApp : FlutterApplication() {
          * MainActivity installs over it on the shared engine), so the result
          * lands on the keyboard whichever handler currently owns the channel.
          * [errorCode] is the machine-readable code (e.g. "quota_exceeded") the
-         * IME branches on; null for success/generic failures.
+         * IME branches on; null for success/generic failures. [scam] carries a
+         * fraud warning for a received message (null = safe).
          */
         fun dispatchImeResult(
             reqId: Long,
             translation: String?,
             error: String?,
             errorCode: String?,
+            scam: ScamInfo?,
         ): Boolean {
             val cb = imeResultListeners.remove(reqId) ?: return false
-            cb(translation, error, errorCode)
+            cb(translation, error, errorCode, scam)
             return true
         }
     }
@@ -95,10 +118,15 @@ class TransKeyApp : FlutterApplication() {
                     val targets = (args?.get("suggestionTargets") as? List<*>)
                         ?.map { (it as? String).orEmpty() }
                         ?.toTypedArray()
+                    val scam = ScamInfo.of(
+                        args?.get("scamLevel") as? String,
+                        args?.get("scamType") as? String,
+                        args?.get("scamReason") as? String,
+                    )
 
                     // Keyboard-originated request? Hand the result to its
                     // listener instead of waking BubbleService/the overlay.
-                    if (!dispatchImeResult(reqId, translation, error, errorCode)) {
+                    if (!dispatchImeResult(reqId, translation, error, errorCode, scam)) {
                         val intent = Intent(this, BubbleService::class.java).apply {
                             action = BubbleService.ACTION_SHOW_RESULT
                             putExtra(BubbleService.EXTRA_TRANSLATION, translation)
@@ -106,6 +134,9 @@ class TransKeyApp : FlutterApplication() {
                             putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
                             putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
                             putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
+                            putExtra(BubbleService.EXTRA_SCAM_LEVEL, scam?.level)
+                            putExtra(BubbleService.EXTRA_SCAM_TYPE, scam?.type)
+                            putExtra(BubbleService.EXTRA_SCAM_REASON, scam?.reason)
                             putExtra(BubbleService.EXTRA_ERROR, error)
                             putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
                         }

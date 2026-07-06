@@ -117,4 +117,14 @@
     <string name="ime_open_bubble">Bulle flottante</string>
     <string name="ime_back_keyboard">← Clavier</string>
     <string name="ime_input_lang">Langue de saisie</string>
+    <string name="ime_clipboard_title">Traduction</string>
+    <string name="scam_high_title">Avertissement : ce message présente des signes d\'arnaque</string>
+    <string name="scam_low_title">Prudence : ce message pourrait être une arnaque</string>
+    <string name="scam_generic_hint">Soyez prudent avant de répondre, cliquer sur un lien ou envoyer de l\'argent.</string>
+    <string name="ime_clipboard_empty">Copiez d\'abord un message, puis appuyez sur Traduire</string>
+    <string name="ime_guide_title">Utiliser le clavier de traduction</string>
+    <string name="ime_guide_clipboard_desc">Copiez leur message, puis appuyez pour le lire dans votre langue.</string>
+    <string name="ime_guide_reply_desc">Saisissez votre réponse, puis appuyez pour la traduire avant l\'envoi.</string>
+    <string name="ime_guide_refine_desc">Peaufinez votre texte pour qu\'il soit fluide et naturel.</string>
+    <string name="ime_guide_dismiss">Compris</string>
 </resources>

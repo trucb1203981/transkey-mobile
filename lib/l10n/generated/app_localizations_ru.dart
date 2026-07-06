@@ -36,6 +36,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get suggestions => 'Подсказки';
 
   @override
+  String get scamHighTitle =>
+      'Предупреждение: это сообщение похоже на мошенничество';
+
+  @override
+  String get scamLowTitle =>
+      'Осторожно: это сообщение может быть мошенничеством';
+
+  @override
+  String get scamGenericHint =>
+      'Будьте осторожны, прежде чем отвечать, переходить по ссылкам или отправлять деньги.';
+
+  @override
   String get copy => 'Копировать';
 
   @override
@@ -282,6 +294,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get changePassword => 'Сменить пароль';
 
   @override
+  String get setPassword => 'Установить пароль';
+
+  @override
   String get manageDevices => 'Управление устройствами';
 
   @override
@@ -443,6 +458,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get createAccount => 'Создать аккаунт';
 
   @override
+  String get guestBannerTitle => 'Вы вошли как гость';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Войдите, чтобы синхронизировать историю между устройствами и оформить подписку.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'Войдите или создайте аккаунт, чтобы оформить подписку.';
+
+  @override
   String get continueWithGoogle => 'Продолжить с Google';
 
   @override
@@ -471,6 +497,27 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Минимум 6 символов';
+
+  @override
+  String get forgotPassword => 'Забыли пароль?';
+
+  @override
+  String get forgotPasswordTitle => 'Сброс пароля';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Введите электронную почту вашего аккаунта, и мы пришлём ссылку для создания нового пароля.';
+
+  @override
+  String get forgotPasswordSend => 'Отправить ссылку';
+
+  @override
+  String get forgotPasswordSent =>
+      'Если эта почта зарегистрирована, ссылка для сброса уже в пути. Проверьте входящие.';
+
+  @override
+  String get forgotPasswordError =>
+      'Не удалось отправить письмо. Проверьте подключение и попробуйте снова.';
 
   @override
   String get proDeviceLimitError =>

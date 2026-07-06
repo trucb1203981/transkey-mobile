@@ -123,4 +123,14 @@
     <string name="ime_open_bubble">Pulsante mobile</string>
     <string name="ime_back_keyboard">← Tastiera</string>
     <string name="ime_input_lang">Lingua di inserimento</string>
+    <string name="ime_clipboard_title">Traduzione</string>
+    <string name="scam_high_title">Avviso: questo messaggio mostra segni di truffa</string>
+    <string name="scam_low_title">Attenzione: questo messaggio potrebbe essere una truffa</string>
+    <string name="scam_generic_hint">Fai attenzione prima di rispondere, cliccare link o inviare denaro.</string>
+    <string name="ime_clipboard_empty">Copia prima un messaggio, poi tocca Traduci</string>
+    <string name="ime_guide_title">Come usare la tastiera di traduzione</string>
+    <string name="ime_guide_clipboard_desc">Copia il loro messaggio e tocca per leggerlo nella tua lingua.</string>
+    <string name="ime_guide_reply_desc">Scrivi la tua risposta e tocca per tradurla prima di inviarla.</string>
+    <string name="ime_guide_refine_desc">Rifinisci il testo perché scorra in modo naturale.</string>
+    <string name="ime_guide_dismiss">Ho capito</string>
 </resources>

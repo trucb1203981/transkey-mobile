@@ -36,6 +36,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get suggestions => '候補';
 
   @override
+  String get scamHighTitle => '警告：このメッセージには詐欺の兆候があります';
+
+  @override
+  String get scamLowTitle => '注意：このメッセージは詐欺の可能性があります';
+
+  @override
+  String get scamGenericHint => '返信・リンクのクリック・送金の前に十分ご注意ください。';
+
+  @override
   String get copy => 'コピー';
 
   @override
@@ -279,6 +288,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get changePassword => 'パスワード変更';
 
   @override
+  String get setPassword => 'パスワードを設定';
+
+  @override
   String get manageDevices => 'デバイス管理';
 
   @override
@@ -439,6 +451,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get createAccount => 'アカウントを作成';
 
   @override
+  String get guestBannerTitle => 'ゲストとして利用中';
+
+  @override
+  String get guestBannerSubtitle => 'サインインすると履歴を端末間で同期し、購読できます。';
+
+  @override
+  String get guestSubscribePrompt => '購読するにはサインインまたはアカウントを作成してください。';
+
+  @override
   String get continueWithGoogle => 'Googleで続行';
 
   @override
@@ -467,6 +488,26 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get passwordMinSix => '6文字以上';
+
+  @override
+  String get forgotPassword => 'パスワードをお忘れですか？';
+
+  @override
+  String get forgotPasswordTitle => 'パスワードの再設定';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'アカウントのメールアドレスを入力してください。新しいパスワードを設定するリンクをお送りします。';
+
+  @override
+  String get forgotPasswordSend => 'リンクを送信';
+
+  @override
+  String get forgotPasswordSent =>
+      'そのメールアドレスが登録されていれば、再設定リンクをお送りします。受信トレイをご確認ください。';
+
+  @override
+  String get forgotPasswordError => 'メールを送信できませんでした。接続を確認してもう一度お試しください。';
 
   @override
   String get proDeviceLimitError => 'Proアカウントは登録できるデバイス数の上限に達しています';

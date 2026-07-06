@@ -24,6 +24,7 @@ const _credentialPaths = {
   '/auth/login',
   '/auth/register',
   '/auth/google/mobile',
+  '/auth/guest',
 };
 
 class ApiClient {

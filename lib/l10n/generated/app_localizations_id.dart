@@ -36,6 +36,17 @@ class AppLocalizationsId extends AppLocalizations {
   String get suggestions => 'Saran';
 
   @override
+  String get scamHighTitle =>
+      'Peringatan: pesan ini menunjukkan tanda-tanda penipuan';
+
+  @override
+  String get scamLowTitle => 'Hati-hati: pesan ini mungkin penipuan';
+
+  @override
+  String get scamGenericHint =>
+      'Berhati-hatilah sebelum membalas, mengeklik tautan, atau mengirim uang.';
+
+  @override
   String get copy => 'Salin';
 
   @override
@@ -282,6 +293,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get changePassword => 'Ubah kata sandi';
 
   @override
+  String get setPassword => 'Atur kata sandi';
+
+  @override
   String get manageDevices => 'Kelola perangkat';
 
   @override
@@ -445,6 +459,17 @@ class AppLocalizationsId extends AppLocalizations {
   String get createAccount => 'Buat akun';
 
   @override
+  String get guestBannerTitle => 'Menjelajah sebagai tamu';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Masuk untuk menyinkronkan riwayat di perangkat dan berlangganan.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'Silakan masuk atau buat akun untuk berlangganan.';
+
+  @override
   String get continueWithGoogle => 'Lanjutkan dengan Google';
 
   @override
@@ -473,6 +498,27 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Minimal 6 karakter';
+
+  @override
+  String get forgotPassword => 'Lupa kata sandi?';
+
+  @override
+  String get forgotPasswordTitle => 'Atur ulang kata sandi';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Masukkan email akun Anda dan kami akan mengirim tautan untuk membuat kata sandi baru.';
+
+  @override
+  String get forgotPasswordSend => 'Kirim tautan';
+
+  @override
+  String get forgotPasswordSent =>
+      'Jika email itu terdaftar, tautan atur ulang sedang dikirim. Periksa kotak masuk Anda.';
+
+  @override
+  String get forgotPasswordError =>
+      'Gagal mengirim email. Periksa koneksi Anda dan coba lagi.';
 
   @override
   String get proDeviceLimitError =>

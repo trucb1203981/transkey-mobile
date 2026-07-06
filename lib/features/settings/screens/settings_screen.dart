@@ -161,13 +161,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     child: PlanStatusBanner(),
                   ),
                   AccountSection(session: session, plan: plan),
-                  ListTile(
-                    leading: const Icon(Icons.lock_outline),
-                    title: Text(t.changePassword),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () =>
-                        context.push('/settings/change-password'),
-                  ),
+                  // Guests have no account (and Google-only accounts have no
+                  // password), so they can't "change" one. Hide it for the guest
+                  // session; the Google-no-password case still needs a backend
+                  // `hasPassword` flag to gate properly (tracked separately).
+                  if (!session.isAnonymous)
+                    ListTile(
+                      leading: const Icon(Icons.lock_outline),
+                      title: Text(session.hasPassword
+                          ? t.changePassword
+                          : t.setPassword),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () =>
+                          context.push('/settings/change-password'),
+                    ),
                   if (plan == 'pro')
                     ListTile(
                       leading: const Icon(Icons.devices_outlined),
@@ -308,7 +315,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     subtitle: Text(_version),
                   ),
 
-                if (session != null) ...[
+                // Guests have no real account to delete (App Store 5.1.1(v));
+                // the account card already invites them to sign in instead.
+                if (session != null && !session.isAnonymous) ...[
                   const SizedBox(height: AppSpacing.md),
                   const DeleteAccountButton(),
                 ],

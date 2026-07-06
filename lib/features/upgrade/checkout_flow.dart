@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -29,6 +30,33 @@ Future<void> startPlanCheckout(
   String plan,
 ) async {
   final l = AppLocalizations.of(context)!;
+
+  // App Store 5.1.1(v) guest mode: subscribing is account-based. An IAP bought
+  // under the anonymous guest id can't be restored once the user signs in with
+  // a real account, so route guests to sign in / create an account first.
+  final isGuest =
+      ref.read(authStateProvider).valueOrNull?.session?.isAnonymous ?? false;
+  if (isGuest) {
+    final goSignIn = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.guestBannerTitle),
+        content: Text(l.guestSubscribePrompt),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.logIn),
+          ),
+        ],
+      ),
+    );
+    if (goSignIn == true && context.mounted) context.push('/auth/login');
+    return;
+  }
 
   if ((Platform.isAndroid || Platform.isIOS) && PurchasesService.isReady) {
     await _checkoutViaRevenueCat(context, ref, plan, l);

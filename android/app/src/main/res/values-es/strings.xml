@@ -117,4 +117,14 @@
     <string name="ime_open_bubble">Burbuja flotante</string>
     <string name="ime_back_keyboard">← Teclado</string>
     <string name="ime_input_lang">Idioma de entrada</string>
+    <string name="ime_clipboard_title">Traducción</string>
+    <string name="scam_high_title">Advertencia: este mensaje muestra señales de estafa</string>
+    <string name="scam_low_title">Precaución: este mensaje podría ser una estafa</string>
+    <string name="scam_generic_hint">Ten cuidado antes de responder, hacer clic en enlaces o enviar dinero.</string>
+    <string name="ime_clipboard_empty">Copia un mensaje primero y luego toca Traducir</string>
+    <string name="ime_guide_title">Cómo usar el teclado de traducción</string>
+    <string name="ime_guide_clipboard_desc">Copia su mensaje y toca para verlo en tu idioma.</string>
+    <string name="ime_guide_reply_desc">Escribe tu respuesta y toca para traducirla antes de enviarla.</string>
+    <string name="ime_guide_refine_desc">Pule tu texto para que se lea con naturalidad.</string>
+    <string name="ime_guide_dismiss">Entendido</string>
 </resources>

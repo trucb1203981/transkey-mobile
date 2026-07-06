@@ -36,6 +36,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get suggestions => '建议';
 
   @override
+  String get scamHighTitle => '警告：这条消息有诈骗迹象';
+
+  @override
+  String get scamLowTitle => '注意：这条消息可能是诈骗';
+
+  @override
+  String get scamGenericHint => '在回复、点击链接或转账前请务必小心。';
+
+  @override
   String get copy => '复制';
 
   @override
@@ -278,6 +287,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get changePassword => '修改密码';
 
   @override
+  String get setPassword => '设置密码';
+
+  @override
   String get manageDevices => '管理设备';
 
   @override
@@ -436,6 +448,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get createAccount => '创建账户';
 
   @override
+  String get guestBannerTitle => '正在以访客身份使用';
+
+  @override
+  String get guestBannerSubtitle => '登录以在设备间同步历史记录并订阅。';
+
+  @override
+  String get guestSubscribePrompt => '请登录或创建账户以订阅。';
+
+  @override
   String get continueWithGoogle => '使用 Google 继续';
 
   @override
@@ -464,6 +485,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get passwordMinSix => '至少 6 个字符';
+
+  @override
+  String get forgotPassword => '忘记密码？';
+
+  @override
+  String get forgotPasswordTitle => '重置密码';
+
+  @override
+  String get forgotPasswordSubtitle => '输入你的账户邮箱，我们会发送设置新密码的链接。';
+
+  @override
+  String get forgotPasswordSend => '发送链接';
+
+  @override
+  String get forgotPasswordSent => '如果该邮箱已注册，重置链接正在发送。请查看收件箱。';
+
+  @override
+  String get forgotPasswordError => '邮件发送失败。请检查网络后重试。';
 
   @override
   String get proDeviceLimitError => 'Pro 账户已达最大设备数';

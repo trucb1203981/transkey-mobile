@@ -114,6 +114,7 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
             r.suggestions.map((s) => s.source).toList(growable: false),
         'suggestionTargets':
             r.suggestions.map((s) => s.target).toList(growable: false),
+        if (r.scamRisk != null) 'scamRisk': r.scamRisk!.toMap(),
       };
 
   TranslateResult _resultFromCacheMap(Map<String, dynamic> m) {
@@ -128,6 +129,9 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         for (var i = 0; i < n; i++)
           SuggestionEntry(source: sources[i], target: targets[i]),
       ],
+      scamRisk: ScamRisk.fromMap(
+        (m['scamRisk'] as Map?)?.cast<String, dynamic>(),
+      ),
     );
   }
 
@@ -168,6 +172,11 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         // generates a single targeted reply, so a second "suggest more
         // replies" pass would be redundant + cost extra tokens.
         if (!isReply && s.replySuggestions) 'suggestReplies': true,
+        // Ask for a scam warning on a RECEIVED message (plain translate).
+        // Reply mode translates the user's OWN outgoing draft, so it's off
+        // there. The server gates it on the plan's scam_detection flag +
+        // only fires for conversational messages.
+        if (!isReply) 'scamCheck': true,
       },
     );
   }

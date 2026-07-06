@@ -115,4 +115,14 @@
     <string name="ime_open_bubble">Nút TransKey</string>
     <string name="ime_back_keyboard">← Bàn phím</string>
     <string name="ime_input_lang">Ngôn ngữ bàn phím</string>
+    <string name="ime_clipboard_title">Bản dịch</string>
+    <string name="scam_high_title">Cảnh báo: tin nhắn có dấu hiệu lừa đảo</string>
+    <string name="scam_low_title">Thận trọng: tin nhắn này có thể là lừa đảo</string>
+    <string name="scam_generic_hint">Hãy cẩn thận trước khi trả lời, bấm liên kết hay chuyển tiền.</string>
+    <string name="ime_clipboard_empty">Hãy copy tin nhắn trước rồi nhấn Dịch</string>
+    <string name="ime_guide_title">Cách dùng bàn phím dịch</string>
+    <string name="ime_guide_clipboard_desc">Copy tin nhắn của họ rồi nhấn để xem nội dung bằng ngôn ngữ của bạn.</string>
+    <string name="ime_guide_reply_desc">Gõ câu trả lời của bạn rồi nhấn để dịch trước khi gửi.</string>
+    <string name="ime_guide_refine_desc">Trau chuốt câu chữ cho mượt mà, tự nhiên hơn.</string>
+    <string name="ime_guide_dismiss">Đã hiểu</string>
 </resources>

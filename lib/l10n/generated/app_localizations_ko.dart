@@ -36,6 +36,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String get suggestions => '추천';
 
   @override
+  String get scamHighTitle => '경고: 이 메시지는 사기 징후가 있습니다';
+
+  @override
+  String get scamLowTitle => '주의: 이 메시지는 사기일 수 있습니다';
+
+  @override
+  String get scamGenericHint => '답장, 링크 클릭, 송금 전에 반드시 주의하세요.';
+
+  @override
   String get copy => '복사';
 
   @override
@@ -279,6 +288,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get changePassword => '비밀번호 변경';
 
   @override
+  String get setPassword => '비밀번호 설정';
+
+  @override
   String get manageDevices => '기기 관리';
 
   @override
@@ -439,6 +451,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String get createAccount => '계정 만들기';
 
   @override
+  String get guestBannerTitle => '게스트로 사용 중';
+
+  @override
+  String get guestBannerSubtitle => '로그인하면 기기 간에 기록을 동기화하고 구독할 수 있습니다.';
+
+  @override
+  String get guestSubscribePrompt => '구독하려면 로그인하거나 계정을 만드세요.';
+
+  @override
   String get continueWithGoogle => 'Google로 계속하기';
 
   @override
@@ -467,6 +488,26 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get passwordMinSix => '6자 이상';
+
+  @override
+  String get forgotPassword => '비밀번호를 잊으셨나요?';
+
+  @override
+  String get forgotPasswordTitle => '비밀번호 재설정';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      '계정 이메일을 입력하면 새 비밀번호를 설정할 수 있는 링크를 보내드립니다.';
+
+  @override
+  String get forgotPasswordSend => '링크 보내기';
+
+  @override
+  String get forgotPasswordSent =>
+      '해당 이메일이 등록되어 있다면 재설정 링크를 보내드립니다. 받은편지함을 확인하세요.';
+
+  @override
+  String get forgotPasswordError => '이메일을 보내지 못했습니다. 연결을 확인하고 다시 시도하세요.';
 
   @override
   String get proDeviceLimitError => 'Pro 계정이 최대 기기 수에 도달했습니다';

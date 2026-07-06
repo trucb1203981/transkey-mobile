@@ -123,4 +123,14 @@
     <string name="ime_open_bubble">Tombol melayang</string>
     <string name="ime_back_keyboard">← Keyboard</string>
     <string name="ime_input_lang">Bahasa input</string>
+    <string name="ime_clipboard_title">Terjemahan</string>
+    <string name="scam_high_title">Peringatan: pesan ini menunjukkan tanda-tanda penipuan</string>
+    <string name="scam_low_title">Hati-hati: pesan ini mungkin penipuan</string>
+    <string name="scam_generic_hint">Berhati-hatilah sebelum membalas, mengeklik tautan, atau mengirim uang.</string>
+    <string name="ime_clipboard_empty">Salin pesan dulu, lalu ketuk Terjemahkan</string>
+    <string name="ime_guide_title">Cara memakai keyboard terjemahan</string>
+    <string name="ime_guide_clipboard_desc">Salin pesan mereka, lalu ketuk untuk membacanya dalam bahasamu.</string>
+    <string name="ime_guide_reply_desc">Ketik balasanmu, lalu ketuk untuk menerjemahkannya sebelum dikirim.</string>
+    <string name="ime_guide_refine_desc">Perhalus teksmu agar terbaca lebih alami.</string>
+    <string name="ime_guide_dismiss">Mengerti</string>
 </resources>

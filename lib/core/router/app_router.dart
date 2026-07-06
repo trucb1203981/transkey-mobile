@@ -56,19 +56,28 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (authState.isLoading) return null;
       final auth = authState.valueOrNull;
       final isLoggedIn = auth?.isLoggedIn ?? false;
+      final isAnonymous = auth?.session?.isAnonymous ?? false;
+      // A fully signed-in (non-guest) user. Drives the "redirect away from the
+      // auth screen" rule below — guests must stay able to reach /auth.
+      final isRealUser = isLoggedIn && !isAnonymous;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final isOnboarding = state.matchedLocation == '/onboarding';
       final isBannedRoute = state.matchedLocation == '/banned';
 
       // Banned users see the full-screen notice — block every other route.
       // Logout (from inside BannedScreen) clears session, redirect then
-      // sends them to /auth/login.
+      // returns them to a guest session at '/'.
       if (isLoggedIn && (auth?.session?.isBanned ?? false)) {
         return isBannedRoute ? null : '/banned';
       }
 
-      if (!isLoggedIn && !isAuthRoute && !isOnboarding) return '/auth/login';
-      if (isLoggedIn && (isAuthRoute || isOnboarding || isBannedRoute)) return '/';
+      // App Store Guideline 5.1.1(v): NO login wall. A device-bound guest
+      // session is provisioned on launch (see AuthNotifier.build), so the app
+      // is fully usable without an account. We only bounce a REAL user off the
+      // auth / onboarding / banned routes; guests may open /auth freely to
+      // upgrade to a real account, and a logged-out fallback (guest
+      // provisioning failed while offline) is never sent to a wall.
+      if (isRealUser && (isAuthRoute || isOnboarding || isBannedRoute)) return '/';
 
       return null;
     },

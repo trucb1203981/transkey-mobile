@@ -36,6 +36,17 @@ class AppLocalizationsIt extends AppLocalizations {
   String get suggestions => 'Suggerimenti';
 
   @override
+  String get scamHighTitle => 'Avviso: questo messaggio mostra segni di truffa';
+
+  @override
+  String get scamLowTitle =>
+      'Attenzione: questo messaggio potrebbe essere una truffa';
+
+  @override
+  String get scamGenericHint =>
+      'Fai attenzione prima di rispondere, cliccare link o inviare denaro.';
+
+  @override
   String get copy => 'Copia';
 
   @override
@@ -282,6 +293,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get changePassword => 'Cambia password';
 
   @override
+  String get setPassword => 'Imposta password';
+
+  @override
   String get manageDevices => 'Gestisci dispositivi';
 
   @override
@@ -446,6 +460,16 @@ class AppLocalizationsIt extends AppLocalizations {
   String get createAccount => 'Crea account';
 
   @override
+  String get guestBannerTitle => 'Stai navigando come ospite';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Accedi per sincronizzare la cronologia tra i dispositivi e abbonarti.';
+
+  @override
+  String get guestSubscribePrompt => 'Accedi o crea un account per abbonarti.';
+
+  @override
   String get continueWithGoogle => 'Continua con Google';
 
   @override
@@ -474,6 +498,27 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Almeno 6 caratteri';
+
+  @override
+  String get forgotPassword => 'Password dimenticata?';
+
+  @override
+  String get forgotPasswordTitle => 'Reimposta password';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Inserisci l\'email del tuo account e ti invieremo un link per impostare una nuova password.';
+
+  @override
+  String get forgotPasswordSend => 'Invia link';
+
+  @override
+  String get forgotPasswordSent =>
+      'Se questa email è registrata, il link per reimpostarla è in arrivo. Controlla la posta in arrivo.';
+
+  @override
+  String get forgotPasswordError =>
+      'Impossibile inviare l\'email. Controlla la connessione e riprova.';
 
   @override
   String get proDeviceLimitError =>

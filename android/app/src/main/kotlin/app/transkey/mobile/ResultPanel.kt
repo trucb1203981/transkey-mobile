@@ -43,6 +43,10 @@ class ResultPanel {
 
     var sourceExpanded: Boolean = false
     var sourceToggle: TextView? = null
+    // Fraud warning banner (shown above the output when the server flags scamRisk).
+    var scamBannerBox: LinearLayout? = null
+    var scamBannerTitle: TextView? = null
+    var scamBannerDetail: TextView? = null
     var source: TextView? = null
     var output: TextView? = null
     var romanization: TextView? = null

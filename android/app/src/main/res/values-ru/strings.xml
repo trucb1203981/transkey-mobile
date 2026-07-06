@@ -123,4 +123,14 @@
     <string name="ime_open_bubble">Плавающая кнопка</string>
     <string name="ime_back_keyboard">← Клавиатура</string>
     <string name="ime_input_lang">Язык ввода</string>
+    <string name="ime_clipboard_title">Перевод</string>
+    <string name="scam_high_title">Предупреждение: это сообщение похоже на мошенничество</string>
+    <string name="scam_low_title">Осторожно: это сообщение может быть мошенничеством</string>
+    <string name="scam_generic_hint">Будьте осторожны, прежде чем отвечать, переходить по ссылкам или отправлять деньги.</string>
+    <string name="ime_clipboard_empty">Сначала скопируйте сообщение, затем нажмите «Перевод»</string>
+    <string name="ime_guide_title">Как пользоваться клавиатурой перевода</string>
+    <string name="ime_guide_clipboard_desc">Скопируйте их сообщение и нажмите, чтобы прочитать на своём языке.</string>
+    <string name="ime_guide_reply_desc">Введите ответ и нажмите, чтобы перевести его перед отправкой.</string>
+    <string name="ime_guide_refine_desc">Отшлифуйте текст, чтобы он читался естественно.</string>
+    <string name="ime_guide_dismiss">Понятно</string>
 </resources>

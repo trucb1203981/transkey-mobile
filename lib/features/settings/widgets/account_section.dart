@@ -33,6 +33,13 @@ class AccountSection extends ConsumerWidget {
     final t = AppLocalizations.of(context)!;
     final usage = ref.watch(usageProvider).valueOrNull;
 
+    // App Store 5.1.1(v) guest mode: a device-bound guest has no real account,
+    // so the card invites sign-in instead of showing the synthetic guest email
+    // and Log out / Delete account actions (which make no sense for a guest).
+    if (session.isAnonymous) {
+      return _guestCard(context, theme, isDark, t, usage);
+    }
+
     return Container(
       margin: const EdgeInsets.all(AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -95,6 +102,76 @@ class AccountSection extends ConsumerWidget {
           ],
           const SizedBox(height: AppSpacing.md),
           _actionRow(context, ref, t),
+        ],
+      ),
+    );
+  }
+
+  /// Settings card for the anonymous guest session: an invitation to sign in
+  /// (which unlocks sync + subscribing) plus the free quota bar, with none of
+  /// the real-account actions.
+  Widget _guestCard(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+    AppLocalizations t,
+    UsageInfo? usage,
+  ) {
+    return Container(
+      margin: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surface : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border:
+            Border.all(color: isDark ? AppColors.border : AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                child: const Icon(Icons.person_outline,
+                    size: 28, color: AppColors.primary),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t.guestBannerTitle,
+                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      t.guestBannerSubtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (usage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            QuotaBar(
+              used: usage.requestsUsed,
+              limit: usage.requestsLimit,
+              charsUsed: usage.charsUsed,
+              charsLimit: usage.charsLimit,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          ElevatedButton(
+            onPressed: () => context.push('/auth/login'),
+            child: Text(t.logIn),
+          ),
         ],
       ),
     );

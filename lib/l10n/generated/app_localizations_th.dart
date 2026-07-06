@@ -36,6 +36,16 @@ class AppLocalizationsTh extends AppLocalizations {
   String get suggestions => 'คำแนะนำ';
 
   @override
+  String get scamHighTitle => 'คำเตือน: ข้อความนี้มีสัญญาณของการหลอกลวง';
+
+  @override
+  String get scamLowTitle => 'โปรดระวัง: ข้อความนี้อาจเป็นการหลอกลวง';
+
+  @override
+  String get scamGenericHint =>
+      'โปรดระมัดระวังก่อนตอบกลับ คลิกลิงก์ หรือโอนเงิน.';
+
+  @override
   String get copy => 'คัดลอก';
 
   @override
@@ -280,6 +290,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get changePassword => 'เปลี่ยนรหัสผ่าน';
 
   @override
+  String get setPassword => 'ตั้งรหัสผ่าน';
+
+  @override
   String get manageDevices => 'จัดการอุปกรณ์';
 
   @override
@@ -441,6 +454,17 @@ class AppLocalizationsTh extends AppLocalizations {
   String get createAccount => 'สร้างบัญชี';
 
   @override
+  String get guestBannerTitle => 'กำลังใช้งานแบบผู้เยี่ยมชม';
+
+  @override
+  String get guestBannerSubtitle =>
+      'ลงชื่อเข้าใช้เพื่อซิงค์ประวัติข้ามอุปกรณ์และสมัครสมาชิก';
+
+  @override
+  String get guestSubscribePrompt =>
+      'โปรดลงชื่อเข้าใช้หรือสร้างบัญชีเพื่อสมัครสมาชิก';
+
+  @override
   String get continueWithGoogle => 'ดำเนินการต่อด้วย Google';
 
   @override
@@ -469,6 +493,27 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'อย่างน้อย 6 ตัวอักษร';
+
+  @override
+  String get forgotPassword => 'ลืมรหัสผ่าน?';
+
+  @override
+  String get forgotPasswordTitle => 'ตั้งรหัสผ่านใหม่';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'กรอกอีเมลบัญชีของคุณ แล้วเราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้';
+
+  @override
+  String get forgotPasswordSend => 'ส่งลิงก์';
+
+  @override
+  String get forgotPasswordSent =>
+      'หากอีเมลนี้ลงทะเบียนไว้ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว โปรดตรวจสอบกล่องจดหมาย';
+
+  @override
+  String get forgotPasswordError =>
+      'ส่งอีเมลไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง';
 
   @override
   String get proDeviceLimitError =>

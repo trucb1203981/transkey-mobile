@@ -57,22 +57,70 @@ class APIClient {
         sourceLang: String? = nil,
         isReply: Bool = false
     ) async throws -> [String: Any] {
+        // Smart cache: an identical request reuses the stored result with no
+        // paid API round-trip (mirrors the Flutter app's BubbleTranslateCache,
+        // shared across the keyboard + share extensions via the App Group).
+        let normalizedSource = (sourceLang.map { $0.isEmpty ? "auto" : $0 }) ?? "auto"
+        let cacheKey = AppGroupStore.translateCacheKey(
+            text: text,
+            mode: isReply ? "reply" : "translate",
+            targetLang: targetLang,
+            sourceLang: normalizedSource
+        )
+        if let cached = store.cachedTranslation(forKey: cacheKey) { return cached }
+
         var body: [String: Any] = ["text": text, "targetLang": targetLang]
         if let src = sourceLang, src != "auto" { body["sourceLang"] = src }
         if isReply { body["isReply"] = true }
-        return try await performRequest(endpoint: "/translate", body: body)
+        // Ask for a scam warning on a RECEIVED message (plain translate only —
+        // reply translates the user's own outgoing draft). Server gates it on
+        // the plan's scam_detection flag + conversational text.
+        if !isReply { body["scamCheck"] = true }
+        let json = try await performRequest(endpoint: "/translate", body: body)
+        if hasUsableResult(json) { store.storeTranslation(json, forKey: cacheKey) }
+        return json
     }
 
     func summarize(text: String, targetLang: String) async throws -> [String: Any] {
-        return try await performRequest(endpoint: "/summarize", body: ["text": text, "targetLang": targetLang])
+        let cacheKey = AppGroupStore.translateCacheKey(
+            text: text, mode: "summarize", targetLang: targetLang, sourceLang: "auto")
+        if let cached = store.cachedTranslation(forKey: cacheKey) { return cached }
+        let json = try await performRequest(endpoint: "/summarize", body: ["text": text, "targetLang": targetLang])
+        if hasUsableResult(json) { store.storeTranslation(json, forKey: cacheKey) }
+        return json
     }
 
     func explain(text: String, targetLang: String) async throws -> [String: Any] {
-        return try await performRequest(endpoint: "/explain", body: ["text": text, "targetLang": targetLang])
+        let cacheKey = AppGroupStore.translateCacheKey(
+            text: text, mode: "explain", targetLang: targetLang, sourceLang: "auto")
+        if let cached = store.cachedTranslation(forKey: cacheKey) { return cached }
+        let json = try await performRequest(endpoint: "/explain", body: ["text": text, "targetLang": targetLang])
+        if hasUsableResult(json) { store.storeTranslation(json, forKey: cacheKey) }
+        return json
     }
 
     func refine(text: String) async throws -> [String: Any] {
-        return try await performRequest(endpoint: "/refine", body: ["text": text])
+        // Refine depends only on the input text (no langs), so target/source
+        // stay empty in the key.
+        let cacheKey = AppGroupStore.translateCacheKey(
+            text: text, mode: "refine", targetLang: "", sourceLang: "")
+        if let cached = store.cachedTranslation(forKey: cacheKey) { return cached }
+        let json = try await performRequest(endpoint: "/refine", body: ["text": text])
+        if hasUsableResult(json) { store.storeTranslation(json, forKey: cacheKey) }
+        return json
+    }
+
+    /// Only cache a response that actually carries a usable result string -
+    /// never cache an empty/garbage body so a transient bad response can't get
+    /// pinned (matches the Flutter path, which skips caching empty output).
+    private func hasUsableResult(_ json: [String: Any]) -> Bool {
+        let text = (json["translation"] as? String)
+            ?? (json["result"] as? String)
+            ?? (json["summary"] as? String)
+            ?? (json["explanation"] as? String)
+            ?? (json["refined"] as? String)
+            ?? ""
+        return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func performRequest(endpoint: String, body: [String: Any]? = nil) async throws -> [String: Any] {

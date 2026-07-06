@@ -196,9 +196,14 @@ class MainActivity : FlutterActivity() {
                         val targets = (args?.get("suggestionTargets") as? List<*>)
                             ?.map { (it as? String).orEmpty() }
                             ?.toTypedArray()
+                        val scam = ScamInfo.of(
+                            args?.get("scamLevel") as? String,
+                            args?.get("scamType") as? String,
+                            args?.get("scamReason") as? String,
+                        )
                         // Keyboard-originated request routes back to the IME;
                         // otherwise forward to BubbleService/the overlay.
-                        if (!TransKeyApp.dispatchImeResult(reqId, translation, error, errorCode)) {
+                        if (!TransKeyApp.dispatchImeResult(reqId, translation, error, errorCode, scam)) {
                             val i = Intent(this, BubbleService::class.java).apply {
                                 action = BubbleService.ACTION_SHOW_RESULT
                                 putExtra(BubbleService.EXTRA_TRANSLATION, translation)
@@ -206,6 +211,9 @@ class MainActivity : FlutterActivity() {
                                 putExtra(BubbleService.EXTRA_DETECTED_LANG, detectedLang)
                                 putExtra(BubbleService.EXTRA_SUGGESTION_SOURCES, sources)
                                 putExtra(BubbleService.EXTRA_SUGGESTION_TARGETS, targets)
+                                putExtra(BubbleService.EXTRA_SCAM_LEVEL, scam?.level)
+                                putExtra(BubbleService.EXTRA_SCAM_TYPE, scam?.type)
+                                putExtra(BubbleService.EXTRA_SCAM_REASON, scam?.reason)
                                 putExtra(BubbleService.EXTRA_ERROR, error)
                                 putExtra(BubbleService.EXTRA_REQUEST_ID, reqId)
                             }

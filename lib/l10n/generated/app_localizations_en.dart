@@ -36,6 +36,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get suggestions => 'Suggestions';
 
   @override
+  String get scamHighTitle => 'Warning: this message shows signs of a scam';
+
+  @override
+  String get scamLowTitle => 'Caution: this message could be a scam';
+
+  @override
+  String get scamGenericHint =>
+      'Be careful before replying, clicking links, or sending money.';
+
+  @override
   String get copy => 'Copy';
 
   @override
@@ -281,6 +291,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changePassword => 'Change password';
 
   @override
+  String get setPassword => 'Set password';
+
+  @override
   String get manageDevices => 'Manage devices';
 
   @override
@@ -444,6 +457,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createAccount => 'Create Account';
 
   @override
+  String get guestBannerTitle => 'Browsing as a guest';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Sign in to sync your history across devices and to subscribe.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'Please sign in or create an account to subscribe.';
+
+  @override
   String get continueWithGoogle => 'Continue with Google';
 
   @override
@@ -472,6 +496,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'At least 6 characters';
+
+  @override
+  String get forgotPassword => 'Forgot password?';
+
+  @override
+  String get forgotPasswordTitle => 'Reset password';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Enter your account email and we\'ll send you a link to set a new password.';
+
+  @override
+  String get forgotPasswordSend => 'Send reset link';
+
+  @override
+  String get forgotPasswordSent =>
+      'If that email is registered, a reset link is on its way. Check your inbox.';
+
+  @override
+  String get forgotPasswordError =>
+      'Couldn\'t send the reset email. Please check your connection and try again.';
 
   @override
   String get proDeviceLimitError =>

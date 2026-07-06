@@ -36,6 +36,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get suggestions => 'Gợi ý';
 
   @override
+  String get scamHighTitle => 'Cảnh báo: tin nhắn có dấu hiệu lừa đảo';
+
+  @override
+  String get scamLowTitle => 'Thận trọng: tin nhắn này có thể là lừa đảo';
+
+  @override
+  String get scamGenericHint =>
+      'Hãy cẩn thận trước khi trả lời, bấm liên kết hay chuyển tiền.';
+
+  @override
   String get copy => 'Sao chép';
 
   @override
@@ -281,6 +291,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get changePassword => 'Đổi mật khẩu';
 
   @override
+  String get setPassword => 'Đặt mật khẩu';
+
+  @override
   String get manageDevices => 'Quản lý thiết bị';
 
   @override
@@ -443,6 +456,17 @@ class AppLocalizationsVi extends AppLocalizations {
   String get createAccount => 'Tạo tài khoản';
 
   @override
+  String get guestBannerTitle => 'Đang dùng với tư cách khách';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Đăng nhập để đồng bộ lịch sử trên các thiết bị và để mua gói.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'Vui lòng đăng nhập hoặc tạo tài khoản để mua gói.';
+
+  @override
   String get continueWithGoogle => 'Tiếp tục với Google';
 
   @override
@@ -471,6 +495,27 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Tối thiểu 6 ký tự';
+
+  @override
+  String get forgotPassword => 'Quên mật khẩu?';
+
+  @override
+  String get forgotPasswordTitle => 'Đặt lại mật khẩu';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Nhập email tài khoản của bạn, chúng tôi sẽ gửi liên kết để đặt mật khẩu mới.';
+
+  @override
+  String get forgotPasswordSend => 'Gửi liên kết';
+
+  @override
+  String get forgotPasswordSent =>
+      'Nếu email này đã đăng ký, liên kết đặt lại mật khẩu đang được gửi tới. Hãy kiểm tra hộp thư.';
+
+  @override
+  String get forgotPasswordError =>
+      'Không gửi được email đặt lại. Vui lòng kiểm tra kết nối và thử lại.';
 
   @override
   String get proDeviceLimitError =>

@@ -117,4 +117,14 @@
     <string name="ime_open_bubble">悬浮气泡</string>
     <string name="ime_back_keyboard">← 键盘</string>
     <string name="ime_input_lang">输入语言</string>
+    <string name="ime_clipboard_title">翻译</string>
+    <string name="scam_high_title">警告：这条消息有诈骗迹象</string>
+    <string name="scam_low_title">注意：这条消息可能是诈骗</string>
+    <string name="scam_generic_hint">在回复、点击链接或转账前请务必小心。</string>
+    <string name="ime_clipboard_empty">请先复制消息，再点按翻译</string>
+    <string name="ime_guide_title">翻译键盘使用方法</string>
+    <string name="ime_guide_clipboard_desc">复制对方的消息，点按即可用你的语言查看。</string>
+    <string name="ime_guide_reply_desc">输入你的回复，点按即可在发送前翻译。</string>
+    <string name="ime_guide_refine_desc">润色你的文字，让它读起来更自然。</string>
+    <string name="ime_guide_dismiss">知道了</string>
 </resources>

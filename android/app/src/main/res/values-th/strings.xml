@@ -123,4 +123,14 @@
     <string name="ime_open_bubble">ปุ่มลอย TransKey</string>
     <string name="ime_back_keyboard">← แป้นพิมพ์</string>
     <string name="ime_input_lang">ภาษาที่ใช้พิมพ์</string>
+    <string name="ime_clipboard_title">คำแปล</string>
+    <string name="scam_high_title">คำเตือน: ข้อความนี้มีสัญญาณของการหลอกลวง</string>
+    <string name="scam_low_title">โปรดระวัง: ข้อความนี้อาจเป็นการหลอกลวง</string>
+    <string name="scam_generic_hint">โปรดระมัดระวังก่อนตอบกลับ คลิกลิงก์ หรือโอนเงิน.</string>
+    <string name="ime_clipboard_empty">คัดลอกข้อความก่อน แล้วแตะ แปล</string>
+    <string name="ime_guide_title">วิธีใช้แป้นพิมพ์แปลภาษา</string>
+    <string name="ime_guide_clipboard_desc">คัดลอกข้อความของอีกฝ่าย แล้วแตะเพื่ออ่านเป็นภาษาของคุณ</string>
+    <string name="ime_guide_reply_desc">พิมพ์ข้อความตอบกลับ แล้วแตะเพื่อแปลก่อนส่ง</string>
+    <string name="ime_guide_refine_desc">ปรับข้อความให้อ่านลื่นและเป็นธรรมชาติ</string>
+    <string name="ime_guide_dismiss">เข้าใจแล้ว</string>
 </resources>

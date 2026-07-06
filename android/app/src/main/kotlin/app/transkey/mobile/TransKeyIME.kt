@@ -166,6 +166,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private var settingsView: KeyboardSettingsView? = null
     // Inline translation-history panel (opened from the settings shortcuts).
     private var historyPanelView: HistoryPanelView? = null
+    // Read-only panel for the "Dịch" clipboard translation (over the keyboard).
+    private var clipboardPanelView: ClipboardReadPanel? = null
+    // First-run guide overlay (explains the action chips), shown once.
+    private var guideOverlayView: KeyboardGuideOverlay? = null
     // Voice-language picker (long-press the mic, or auto-prompted when source=Auto).
     private var voicePickerView: VoicePickerView? = null
     // Input-language picker (globe long-press). Reuses VoicePickerView's list UI.
@@ -707,6 +711,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         super.onDestroy()
     }
 
+    override fun onWindowShown() {
+        super.onWindowShown()
+        // First-run only: explain the action chips the very first time the
+        // keyboard is shown (parity with the iOS keyboard's first-run guide).
+        maybeShowKeyboardGuide()
+    }
+
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         // Cursor jumped to a new field — flush any leftover Telex buffer
@@ -737,6 +748,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         closeLangPicker() // never reopen a field stuck in the language picker
         closeSettings() // never reopen a field stuck in the settings panel
         closeHistory() // never reopen a field stuck in the history panel
+        closeClipboardPanel() // never reopen a field stuck in the clipboard panel
+        closeKeyboardGuide() // dismiss the first-run guide if the field switches
         closeVoicePicker() // never reopen a field stuck in the voice-lang picker
         closeInputLangPicker() // nor the input-language picker
         // Typing mode for this field: numeric fields force EN (Telex is
@@ -1545,32 +1558,61 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     }
 
     /**
-     * Chip modes shown for the current entitlement, in display order:
-     *   - chip 0 = Reply (paid) else Translate (always available)
-     *   - chip 1 = Refine, only when entitled (paid) - hidden for free users
+     * Chip modes shown for the current entitlement, in display order (left to
+     * right) - kept in parity with the iOS keyboard's action bar. Order follows
+     * the user's ergonomics request (2026-06-22):
+     *   - chip 0 = "reply" (paid) else "translate" ("Trả lời"): COMPOSE - replace
+     *     the field in place. On the LEFT: the less time-critical action.
+     *   - "refine" ("Trau chuốt"): only when entitled (paid).
+     *   - last chip = "clipboard" ("Dịch"): READ the incoming message - translate
+     *     whatever the user copied and show it in a panel over the keys. On the
+     *     FAR RIGHT (next to the lang controls) so the copy -> Dịch flow is an
+     *     easy right-thumb reach. Always available (no Full Access needed).
      * onActionButton maps the tapped index through this same list.
      */
     private fun actionModes(): List<String> = buildList {
         add(if (replyEnabled()) "reply" else "translate")
         if (refineEnabled()) add("refine")
+        add("clipboard")
     }
 
     private fun refreshActionLabels() {
         val labels = actionModes().map { mode ->
             when (mode) {
-                "reply" -> localized(R.string.bubble_mode_reply)
+                // "Dịch" labels the clipboard-read chip (matches iOS, where the
+                // field-compose chip is the one labelled "Trả lời").
+                "clipboard" -> localized(R.string.ime_action_translate)
                 "refine" -> localized(R.string.ime_action_refine)
-                else -> localized(R.string.ime_action_translate)
+                // Both the free field-translate chip and the paid reply chip
+                // read as "Trả lời" - translate/compose your reply in place.
+                else -> localized(R.string.bubble_mode_reply)
             }
         }
         suggestionStrip?.setActions(labels)
+        // The app mirrors the entitlement flags (tk_feature_*) into prefs a beat
+        // after the keyboard first opens, so a first-run guide built at
+        // onWindowShown can miss the paid "Trau chuốt" row. Re-render it whenever
+        // the strip refreshes (flags settled) so the guide matches what the user has.
+        reRenderGuideIfShowing()
+    }
+
+    /** Rebuild the first-run guide rows if it is currently on screen (picks up a
+     *  late entitlement-flag sync). No-op when the guide is not showing. */
+    private fun reRenderGuideIfShowing() {
+        guideOverlayView?.configure(
+            localized(R.string.ime_guide_title),
+            guideRows(),
+            localized(R.string.ime_guide_dismiss),
+        )
     }
 
     /** A feature chip was tapped; the index maps through [actionModes]. */
     private fun onActionButton(index: Int) {
         if (actionInFlight) return
-        val ic = currentInputConnection ?: return
         val mode = actionModes().getOrNull(index) ?: return
+        // "Dịch" reads the clipboard, not the field - a separate, undo-free flow.
+        if (mode == "clipboard") { onClipboardTranslate(); return }
+        val ic = currentInputConnection ?: return
         ic.finishComposingText()
         // Snapshot the exact field (untrimmed) so a successful replace can be
         // undone. Held pending until the result arrives (a failed/cancelled
@@ -1592,7 +1634,9 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         currentActionReq = reqId
         actionInFlight = true
         suggestionStrip?.setProcessing(true, localized(R.string.ime_processing))
-        TransKeyApp.registerImeResult(reqId) { translation, error, errorCode ->
+        TransKeyApp.registerImeResult(reqId) { translation, error, errorCode, _ ->
+            // Field translate replaces the user's OWN typed text (outgoing), so
+            // the scam signal (which judges a RECEIVED message) is ignored here.
             mainHandler.post { onTranslateResult(reqId, translation, error, errorCode) }
         }
         invokeTranslate(engine, text, mode, targetLang, reqId, attempt = 0)
@@ -1683,6 +1727,188 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         pendingUndoText = null
         replaceAllText(translation)
         refreshUndo()
+    }
+
+    /**
+     * "Dịch" chip: translate whatever the user copied (the incoming message)
+     * and show it in a read-only panel over the keys - the iOS keyboard's
+     * clipboardTranslateTapped ported across. Reads the system clipboard
+     * directly (Android needs no Full Access), never touches the field, and
+     * arms no undo. Reuses the same engine/quota/processing plumbing as the
+     * field actions; only the result handling differs (panel vs replace).
+     */
+    private fun onClipboardTranslate() {
+        if (actionInFlight) return
+        currentInputConnection?.finishComposingText()
+        val clip = (getSystemService(CLIPBOARD_SERVICE) as? android.content.ClipboardManager)
+            ?.primaryClip
+        val raw = if (clip != null && clip.itemCount > 0) {
+            clip.getItemAt(0).coerceToText(this).toString().trim()
+        } else {
+            ""
+        }
+        if (raw.isEmpty()) {
+            Toast.makeText(this, localized(R.string.ime_clipboard_empty), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val text = raw.take(3000)
+        val engine = TransKeyApp.engine
+        if (engine == null) {
+            Toast.makeText(this, localized(R.string.bubble_panel_app_not_ready), Toast.LENGTH_LONG).show()
+            return
+        }
+        val targetLang = readTargetLang()
+        val reqId = imeReqSeq.incrementAndGet()
+        currentActionReq = reqId
+        actionInFlight = true
+        suggestionStrip?.setProcessing(true, localized(R.string.ime_processing))
+        TransKeyApp.registerImeResult(reqId) { translation, error, errorCode, scam ->
+            mainHandler.post { onClipboardResult(reqId, translation, error, errorCode, scam) }
+        }
+        // Plain translate of the copied message (never the reply engine).
+        invokeTranslate(engine, text, "translate", targetLang, reqId, attempt = 0)
+    }
+
+    /**
+     * Result handler for [onClipboardTranslate] - mirrors [onTranslateResult]
+     * but shows the translation in the reading panel instead of replacing the
+     * field. Same quota-banner / toast error handling as the field flow.
+     */
+    private fun onClipboardResult(
+        reqId: Long,
+        translation: String?,
+        error: String?,
+        errorCode: String?,
+        scam: ScamInfo?,
+    ) {
+        if (reqId != currentActionReq || !actionInFlight) return
+        actionInFlight = false
+        currentActionReq = -1L
+        suggestionStrip?.setProcessing(false)
+        if (!error.isNullOrEmpty() || translation.isNullOrEmpty()) {
+            if (errorCode == "quota_exceeded") {
+                suggestionStrip?.setNotice(localized(R.string.ime_quota_reached))
+                return
+            }
+            val msg = error?.takeIf { it.isNotEmpty() }
+                ?: localized(R.string.bubble_panel_translation_failed)
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            return
+        }
+        showClipboardPanel(translation, scam)
+    }
+
+    /** Show the clipboard translation in a read-only panel over the keyboard. */
+    private fun showClipboardPanel(translated: String, scam: ScamInfo? = null) {
+        val root = rootView as? android.view.ViewGroup ?: return
+        val kv = keyboardView ?: return
+        val h = kv.height + (suggestionStrip?.height ?: 0)
+        clipboardPanelView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        val panel = ClipboardReadPanel(this)
+        clipboardPanelView = panel
+        panel.onClose = { closeClipboardPanel() }
+        panel.backLabel = localized(R.string.ime_back_keyboard)
+        panel.copyLabel = localized(R.string.bubble_panel_copy)
+        panel.onCopy = {
+            (getSystemService(CLIPBOARD_SERVICE) as? android.content.ClipboardManager)
+                ?.setPrimaryClip(android.content.ClipData.newPlainText("translation", translated))
+            Toast.makeText(this, localized(R.string.bubble_panel_copied), Toast.LENGTH_SHORT).show()
+        }
+        val scamTitle = scam?.let {
+            localized(if (it.isHigh) R.string.scam_high_title else R.string.scam_low_title)
+        }
+        val scamDetail = scam?.let {
+            it.reason?.takeIf { r -> r.isNotBlank() } ?: localized(R.string.scam_generic_hint)
+        }
+        panel.configure(
+            localized(R.string.ime_clipboard_title),
+            translated,
+            scamTitle,
+            scamDetail,
+            scam?.isHigh == true,
+        )
+        root.addView(panel)
+        panel.setPanelHeight(if (h > 0) h else kv.height)
+        panel.visibility = View.VISIBLE
+        suggestionStrip?.visibility = View.GONE
+        kv.visibility = View.GONE
+    }
+
+    private fun closeClipboardPanel() {
+        clipboardPanelView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        clipboardPanelView = null
+        suggestionStrip?.visibility = View.VISIBLE
+        keyboardView?.visibility = View.VISIBLE
+    }
+
+    // ── First-run guide overlay ──
+    // Shown exactly once (a dedicated, IME-private pref), the first time the
+    // keyboard is shown, to explain the action chips. Parity with the iOS
+    // keyboard's first-run guide.
+
+    private fun guidePrefs() = getSharedPreferences("transkey_keyboard", MODE_PRIVATE)
+    private fun guideSeen() = guidePrefs().getBoolean("guide_seen_v1", false)
+    private fun markGuideSeen() = guidePrefs().edit().putBoolean("guide_seen_v1", true).apply()
+
+    private fun maybeShowKeyboardGuide() {
+        if (guideSeen() || guideOverlayView != null) return
+        // Defer to a layout pass so the keyboard/strip have measured heights.
+        rootView?.post {
+            if (guideSeen() || guideOverlayView != null) return@post
+            showKeyboardGuide()
+        }
+    }
+
+    private fun showKeyboardGuide() {
+        val root = rootView as? android.view.ViewGroup ?: return
+        val kv = keyboardView ?: return
+        val h = kv.height + (suggestionStrip?.height ?: 0)
+        if (h <= 0) return
+        // Mark seen on first SHOW (not just on dismiss) so it appears exactly
+        // once even if the user switches field instead of tapping "Got it".
+        markGuideSeen()
+        guideOverlayView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        val overlay = KeyboardGuideOverlay(this)
+        guideOverlayView = overlay
+        overlay.onDismiss = { closeKeyboardGuide() }
+        overlay.configure(
+            localized(R.string.ime_guide_title),
+            guideRows(),
+            localized(R.string.ime_guide_dismiss),
+        )
+        root.addView(overlay)
+        overlay.setPanelHeight(h)
+        overlay.visibility = View.VISIBLE
+        suggestionStrip?.visibility = View.GONE
+        kv.visibility = View.GONE
+        // Safety net: even if no strip refresh fires while the guide is up,
+        // re-read the entitlement flags shortly after so a paid user's "Trau
+        // chuốt" row appears once the app finishes mirroring tk_feature_*.
+        root.postDelayed({ reRenderGuideIfShowing() }, 700)
+        root.postDelayed({ reRenderGuideIfShowing() }, 1500)
+    }
+
+    /**
+     * Guide rows built from the SAME [actionModes] the strip shows, so a free
+     * user is never shown a paid-only chip in the guide. Each row is the chip's
+     * label paired with a plain "what you do" description.
+     */
+    private fun guideRows(): List<Pair<String, String>> = buildList {
+        // Fixed teaching order (Dịch first = "start by reading their message"),
+        // independent of the on-strip chip order. Still filtered to the chips the
+        // user actually has so a free user never sees the paid-only Refine row.
+        add(localized(R.string.ime_action_translate) to localized(R.string.ime_guide_clipboard_desc))
+        add(localized(R.string.bubble_mode_reply) to localized(R.string.ime_guide_reply_desc))
+        if (refineEnabled()) {
+            add(localized(R.string.ime_action_refine) to localized(R.string.ime_guide_refine_desc))
+        }
+    }
+
+    private fun closeKeyboardGuide() {
+        guideOverlayView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        guideOverlayView = null
+        suggestionStrip?.visibility = View.VISIBLE
+        keyboardView?.visibility = View.VISIBLE
     }
 
     /** Hide the quota banner (user resumed typing / switched field). */

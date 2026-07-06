@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_errors.dart';
 import '../../../core/api/dio_client.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 
@@ -33,8 +34,14 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    // Google/Apple accounts have no password yet -> "Set password" mode, which
+    // hides the current-password field and posts without it. Default true so a
+    // momentarily-unknown session shows the safer change flow.
+    final hasPassword =
+        ref.watch(authStateProvider).valueOrNull?.session?.hasPassword ?? true;
     return Scaffold(
-      appBar: AppBar(title: Text(l.changePassword)),
+      appBar: AppBar(
+          title: Text(hasPassword ? l.changePassword : l.setPassword)),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Form(
@@ -42,14 +49,16 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _current,
-                obscureText: true,
-                decoration: InputDecoration(labelText: l.currentPassword),
-                validator: (v) =>
-                    v == null || v.isEmpty ? l.passwordTooShort : null,
-              ),
-              const SizedBox(height: AppSpacing.md),
+              if (hasPassword) ...[
+                TextFormField(
+                  controller: _current,
+                  obscureText: true,
+                  decoration: InputDecoration(labelText: l.currentPassword),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? l.passwordTooShort : null,
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               TextFormField(
                 controller: _next,
                 obscureText: true,
@@ -74,7 +83,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(l.changePassword),
+                    : Text(hasPassword ? l.changePassword : l.setPassword),
               ),
             ],
           ),
@@ -86,13 +95,20 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   Future<void> _submit() async {
     final l = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
+    final hasPassword =
+        ref.read(authStateProvider).valueOrNull?.session?.hasPassword ?? true;
     setState(() => _submitting = true);
     try {
       final api = ref.read(apiClientProvider);
       await api.dio.post('/auth/change-password', data: {
-        'currentPassword': _current.text,
+        // Omit when SETTING a first password (Google/Apple): the backend only
+        // requires the current password for accounts that already have one.
+        if (hasPassword) 'currentPassword': _current.text,
         'newPassword': _next.text,
       });
+      // Refresh from /auth/me so hasPassword flips to true and the menu/title
+      // switch from "Set password" to "Change password" afterwards.
+      await ref.read(authStateProvider.notifier).refreshUser();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.changePasswordSuccess)),

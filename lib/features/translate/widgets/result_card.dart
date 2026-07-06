@@ -9,6 +9,7 @@ import '../models/language.dart';
 import '../models/translate_models.dart';
 import '../providers/language_settings_provider.dart';
 import '../providers/translate_provider.dart';
+import 'scam_banner.dart';
 import 'tts_button.dart';
 
 /// Translation result card shown on the home screen below the input.
@@ -77,6 +78,12 @@ class ResultCard extends ConsumerWidget {
             child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Fraud warning above everything else (only when the server flags it).
+          if (result.scamRisk != null) ...[
+            ScamBanner(scamRisk: result.scamRisk!),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+
           // Detected source language (only when auto-detect)
           if (result.detectedLang != null && sourceLang == 'auto') ...[
             Text(

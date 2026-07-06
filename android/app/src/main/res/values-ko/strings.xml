@@ -117,4 +117,14 @@
     <string name="ime_open_bubble">플로팅 버블</string>
     <string name="ime_back_keyboard">← 키보드</string>
     <string name="ime_input_lang">입력 언어</string>
+    <string name="ime_clipboard_title">번역</string>
+    <string name="scam_high_title">경고: 이 메시지는 사기 징후가 있습니다</string>
+    <string name="scam_low_title">주의: 이 메시지는 사기일 수 있습니다</string>
+    <string name="scam_generic_hint">답장, 링크 클릭, 송금 전에 반드시 주의하세요.</string>
+    <string name="ime_clipboard_empty">메시지를 먼저 복사한 후 번역을 누르세요</string>
+    <string name="ime_guide_title">번역 키보드 사용법</string>
+    <string name="ime_guide_clipboard_desc">상대방 메시지를 복사한 후 누르면 내 언어로 볼 수 있어요.</string>
+    <string name="ime_guide_reply_desc">답장을 입력한 후 누르면 보내기 전에 번역돼요.</string>
+    <string name="ime_guide_refine_desc">문장을 다듬어 더 자연스럽게 만들어요.</string>
+    <string name="ime_guide_dismiss">확인</string>
 </resources>

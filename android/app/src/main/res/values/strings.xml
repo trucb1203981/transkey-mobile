@@ -99,6 +99,16 @@
     <string name="ime_action_translate">Translate</string>
     <string name="ime_quota_reached">Daily limit reached. Tap to upgrade</string>
     <string name="ime_action_refine">Refine</string>
+    <string name="ime_clipboard_title">Translation</string>
+    <string name="scam_high_title">Warning: this message shows signs of a scam</string>
+    <string name="scam_low_title">Caution: this message could be a scam</string>
+    <string name="scam_generic_hint">Be careful before replying, clicking links, or sending money.</string>
+    <string name="ime_clipboard_empty">Copy a message first, then tap Translate</string>
+    <string name="ime_guide_title">Using the translate keyboard</string>
+    <string name="ime_guide_clipboard_desc">Copy their message, then tap to see what it says.</string>
+    <string name="ime_guide_reply_desc">Type your reply, then tap to translate it before sending.</string>
+    <string name="ime_guide_refine_desc">Polish your text so it reads smoothly.</string>
+    <string name="ime_guide_dismiss">Got it</string>
     <string name="ime_processing">Processing…</string>
     <string name="ime_no_text">Enter some text first</string>
     <string name="ime_lang_from">From</string>

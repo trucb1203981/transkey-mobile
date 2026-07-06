@@ -15,6 +15,7 @@ import '../../settings/providers/app_settings_provider.dart';
 import '../models/language.dart';
 import '../models/translate_models.dart';
 import '../providers/translate_provider.dart';
+import 'scam_banner.dart';
 import 'language_picker_sheet.dart';
 import 'tts_button.dart';
 
@@ -322,6 +323,10 @@ class _ResultBottomSheetState extends ConsumerState<ResultBottomSheet>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (result.scamRisk != null) ...[
+          ScamBanner(scamRisk: result.scamRisk!),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         SelectableWithActions(
           result.translation,
           style: theme.textTheme.bodyLarge?.copyWith(

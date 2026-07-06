@@ -36,6 +36,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get suggestions => 'Suggestions';
 
   @override
+  String get scamHighTitle =>
+      'Avertissement : ce message présente des signes d\'arnaque';
+
+  @override
+  String get scamLowTitle => 'Prudence : ce message pourrait être une arnaque';
+
+  @override
+  String get scamGenericHint =>
+      'Soyez prudent avant de répondre, cliquer sur un lien ou envoyer de l\'argent.';
+
+  @override
   String get copy => 'Copier';
 
   @override
@@ -282,6 +293,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get changePassword => 'Changer le mot de passe';
 
   @override
+  String get setPassword => 'Définir le mot de passe';
+
+  @override
   String get manageDevices => 'Gérer les appareils';
 
   @override
@@ -447,6 +461,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get createAccount => 'Créer un compte';
 
   @override
+  String get guestBannerTitle => 'Navigation en tant qu\'invité';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Connectez-vous pour synchroniser votre historique sur vos appareils et vous abonner.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'Veuillez vous connecter ou créer un compte pour vous abonner.';
+
+  @override
   String get continueWithGoogle => 'Continuer avec Google';
 
   @override
@@ -475,6 +500,27 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Au moins 6 caractères';
+
+  @override
+  String get forgotPassword => 'Mot de passe oublié ?';
+
+  @override
+  String get forgotPasswordTitle => 'Réinitialiser le mot de passe';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Saisissez l\'e-mail de votre compte et nous vous enverrons un lien pour définir un nouveau mot de passe.';
+
+  @override
+  String get forgotPasswordSend => 'Envoyer le lien';
+
+  @override
+  String get forgotPasswordSent =>
+      'Si cet e-mail est enregistré, un lien de réinitialisation est en route. Vérifiez votre boîte de réception.';
+
+  @override
+  String get forgotPasswordError =>
+      'Impossible d\'envoyer l\'e-mail. Vérifiez votre connexion et réessayez.';
 
   @override
   String get proDeviceLimitError =>

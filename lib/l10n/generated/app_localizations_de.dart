@@ -36,6 +36,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get suggestions => 'Vorschläge';
 
   @override
+  String get scamHighTitle =>
+      'Warnung: Diese Nachricht zeigt Anzeichen von Betrug';
+
+  @override
+  String get scamLowTitle => 'Vorsicht: Diese Nachricht könnte Betrug sein';
+
+  @override
+  String get scamGenericHint =>
+      'Sei vorsichtig, bevor du antwortest, Links anklickst oder Geld sendest.';
+
+  @override
   String get copy => 'Kopieren';
 
   @override
@@ -282,6 +293,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get changePassword => 'Passwort ändern';
 
   @override
+  String get setPassword => 'Passwort festlegen';
+
+  @override
   String get manageDevices => 'Geräte verwalten';
 
   @override
@@ -444,6 +458,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get createAccount => 'Konto erstellen';
 
   @override
+  String get guestBannerTitle => 'Als Gast unterwegs';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Melde dich an, um deinen Verlauf geräteübergreifend zu synchronisieren und zu abonnieren.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'Bitte melde dich an oder erstelle ein Konto, um zu abonnieren.';
+
+  @override
   String get continueWithGoogle => 'Mit Google fortfahren';
 
   @override
@@ -472,6 +497,27 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Mindestens 6 Zeichen';
+
+  @override
+  String get forgotPassword => 'Passwort vergessen?';
+
+  @override
+  String get forgotPasswordTitle => 'Passwort zurücksetzen';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Gib deine Konto-E-Mail ein und wir senden dir einen Link zum Festlegen eines neuen Passworts.';
+
+  @override
+  String get forgotPasswordSend => 'Link senden';
+
+  @override
+  String get forgotPasswordSent =>
+      'Falls diese E-Mail registriert ist, ist ein Link zum Zurücksetzen unterwegs. Prüfe dein Postfach.';
+
+  @override
+  String get forgotPasswordError =>
+      'Die E-Mail konnte nicht gesendet werden. Bitte prüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get proDeviceLimitError =>

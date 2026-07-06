@@ -14,6 +14,8 @@ class AuthSession {
     this.name,
     this.plan = 'free',
     this.expiresAt,
+    this.isAnonymous = false,
+    this.hasPassword = true,
   });
 
   final String accessToken;
@@ -23,6 +25,17 @@ class AuthSession {
   final String plan;
   final String? expiresAt;
 
+  /// False for accounts created via Google/Apple that have never set a password.
+  /// Drives "Set password" (no current-password field) vs "Change password".
+  /// Defaults to TRUE when unknown (older backend that doesn't send the flag yet)
+  /// so existing password accounts keep the working change flow before deploy.
+  final bool hasPassword;
+
+  /// True for the device-bound guest session provisioned on first launch
+  /// (App Store 5.1.1(v)). The app is fully usable, but account-only surfaces
+  /// (the Settings account card, subscribing) prompt the user to sign in first.
+  final bool isAnonymous;
+
   Map<String, dynamic> toMap() => {
         'accessToken': accessToken,
         'userId': userId,
@@ -30,6 +43,8 @@ class AuthSession {
         'name': name,
         'plan': plan,
         'expiresAt': expiresAt,
+        'isAnonymous': isAnonymous,
+        'hasPassword': hasPassword,
       };
 
   factory AuthSession.fromMap(Map<String, dynamic> map) => AuthSession(
@@ -39,6 +54,8 @@ class AuthSession {
         name: map['name'] as String?,
         plan: map['plan'] as String? ?? 'free',
         expiresAt: map['expiresAt'] as String?,
+        isAnonymous: map['isAnonymous'] as bool? ?? false,
+        hasPassword: map['hasPassword'] as bool? ?? true,
       );
 
   AuthSession copyWith({
@@ -48,6 +65,8 @@ class AuthSession {
     String? name,
     String? plan,
     String? expiresAt,
+    bool? isAnonymous,
+    bool? hasPassword,
   }) =>
       AuthSession(
         accessToken: accessToken ?? this.accessToken,
@@ -56,6 +75,8 @@ class AuthSession {
         name: name ?? this.name,
         plan: plan ?? this.plan,
         expiresAt: expiresAt ?? this.expiresAt,
+        isAnonymous: isAnonymous ?? this.isAnonymous,
+        hasPassword: hasPassword ?? this.hasPassword,
       );
 
   bool get isPro => plan == 'pro' || plan == 'mobile' || plan == 'trial';

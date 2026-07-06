@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -136,14 +137,12 @@ void main() async {
         fireImmediately: true,
       );
 
-      // Initialise the AdMob SDK as early as possible so by the time a free
-      // user exhausts their daily quota and the paywall offers "Watch ad",
-      // a rewarded video has already been preloaded. MobileAds.initialize()
-      // is idempotent and fast (~50 ms) once the platform side bootstraps.
-      // Fire-and-forget; pre-loading the actual ad happens lazily inside
-      // the paywall flow so the first frame doesn't wait on a network ad
-      // fetch.
-      unawaited(MobileAds.instance.initialize());
+      // AdMob init is deferred until AFTER the App Tracking Transparency
+      // prompt is answered (see _requestTrackingThenInitAds, scheduled on the
+      // first frame below) so no IDFA/tracking data is read before the user
+      // decides. App Store Guideline 2.1 rejection (2.0.3): ATT was only fired
+      // from the rewarded-ad path, which is server-flag-gated OFF, so the
+      // reviewer never saw the prompt.
 
       // Initialise RevenueCat for Google Play Billing. Safe no-op on iOS or
       // when the API key env var isn't set yet — callers (upgrade screen)
@@ -167,6 +166,13 @@ void main() async {
         container: _rootContainer,
         child: const TransKeyApp(),
       ));
+
+      // App Tracking Transparency must be shown while the app is active, so we
+      // wait for the first frame, then request it and only then initialise the
+      // ads SDK. iOS-only prompt; Android falls straight through to ads init.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_requestTrackingThenInitAds());
+      });
 
       // Fire-and-forget: don't make the first frame wait on platform channels.
       // tryAutoStart() reads SharedPreferences + invokes the Android bubble plugin.
@@ -197,6 +203,29 @@ void main() async {
       } catch (_) {/* nothing else we can do */}
     },
   );
+}
+
+/// iOS App Tracking Transparency: show the prompt once (only while it is still
+/// undecided), then initialise the AdMob SDK so no tracking data is read before
+/// the user has answered. On Android — and once the user has already answered —
+/// the prompt is skipped and ads initialise straight away. MobileAds.initialize()
+/// is idempotent and fast; the actual rewarded ad is still preloaded lazily by
+/// the paywall flow, so the first frame never waits on a network ad fetch.
+Future<void> _requestTrackingThenInitAds() async {
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    try {
+      final status = await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (status == TrackingStatus.notDetermined) {
+        // A short settle delay avoids the prompt racing the first frame, which
+        // can make iOS silently drop the request.
+        await Future.delayed(const Duration(milliseconds: 250));
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      }
+    } catch (_) {
+      // Never block ads init on the ATT dialog failing.
+    }
+  }
+  unawaited(MobileAds.instance.initialize());
 }
 
 // ── Bubble channel: Android (BubbleService) ↔ Flutter ↔ Android (deliverResult) ──
@@ -933,6 +962,10 @@ Future<void> _translateForBubble(
           // so non-conversational input still pays only the translate-only
           // prompt cost.
           if (replySuggestions) 'suggestReplies': true,
+          // Scam warning on the RECEIVED message. Reply mode omits it (that
+          // translates the user's own outgoing draft). Server gates on the
+          // plan's scam_detection flag + conversational text.
+          'scamCheck': true,
         },
       _ => {
           'text': text,
@@ -967,6 +1000,9 @@ Future<void> _translateForBubble(
             (cached['suggestionSources'] as List?)?.cast<String>() ?? const [],
         suggestionTargets:
             (cached['suggestionTargets'] as List?)?.cast<String>() ?? const [],
+        scamLevel: cached['scamLevel'] as String?,
+        scamType: cached['scamType'] as String?,
+        scamReason: cached['scamReason'] as String?,
         requestId: requestId,
       );
       return;
@@ -1007,12 +1043,21 @@ Future<void> _translateForBubble(
             .where((p) => p.source.isNotEmpty || p.target.isNotEmpty)
             .toList(growable: false) ??
         const [];
+    // Scam warning (server drops "none", so absent = safe). Flattened to
+    // primitives for the platform channel, like suggestions.
+    final scam = data?['scamRisk'] as Map?;
+    final scamLevel = scam?['level'] as String?;
+    final scamType = scam?['type'] as String?;
+    final scamReason = scam?['reason'] as String?;
     await _sendResultToBubble(
       translation: output,
       romanization: romanization,
       detectedLang: detectedLang,
       suggestionSources: pairs.map((p) => p.source).toList(growable: false),
       suggestionTargets: pairs.map((p) => p.target).toList(growable: false),
+      scamLevel: scamLevel,
+      scamType: scamType,
+      scamReason: scamReason,
       requestId: requestId,
     );
 
@@ -1023,6 +1068,9 @@ Future<void> _translateForBubble(
       'detectedLang': detectedLang,
       'suggestionSources': pairs.map((p) => p.source).toList(growable: false),
       'suggestionTargets': pairs.map((p) => p.target).toList(growable: false),
+      if (scamLevel != null) 'scamLevel': scamLevel,
+      if (scamType != null) 'scamType': scamType,
+      if (scamReason != null) 'scamReason': scamReason,
     }));
 
     // Save to history for translate/reply modes if user has historySave on
@@ -1083,6 +1131,11 @@ Future<void> _sendResultToBubble({
   String? detectedLang,
   List<String>? suggestionSources,
   List<String>? suggestionTargets,
+  // Scam warning (server drops "none"): level "low"/"high", optional type,
+  // and reason (paid plans). Null when the message is safe.
+  String? scamLevel,
+  String? scamType,
+  String? scamReason,
   String? error,
   // Machine-readable error code (e.g. 'quota_exceeded') so the keyboard can
   // pick a specific affordance (quota banner + tap-to-upgrade) instead of just
@@ -1097,6 +1150,9 @@ Future<void> _sendResultToBubble({
       'detectedLang': detectedLang,
       'suggestionSources': suggestionSources,
       'suggestionTargets': suggestionTargets,
+      'scamLevel': scamLevel,
+      'scamType': scamType,
+      'scamReason': scamReason,
       'error': error,
       'errorCode': errorCode,
       'requestId': requestId,

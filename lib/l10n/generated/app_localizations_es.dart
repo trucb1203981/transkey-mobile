@@ -36,6 +36,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get suggestions => 'Sugerencias';
 
   @override
+  String get scamHighTitle =>
+      'Advertencia: este mensaje muestra señales de estafa';
+
+  @override
+  String get scamLowTitle => 'Precaución: este mensaje podría ser una estafa';
+
+  @override
+  String get scamGenericHint =>
+      'Ten cuidado antes de responder, hacer clic en enlaces o enviar dinero.';
+
+  @override
   String get copy => 'Copiar';
 
   @override
@@ -282,6 +293,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get changePassword => 'Cambiar contraseña';
 
   @override
+  String get setPassword => 'Establecer contraseña';
+
+  @override
   String get manageDevices => 'Gestionar dispositivos';
 
   @override
@@ -445,6 +459,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get createAccount => 'Crear cuenta';
 
   @override
+  String get guestBannerTitle => 'Navegando como invitado';
+
+  @override
+  String get guestBannerSubtitle =>
+      'Inicia sesión para sincronizar tu historial entre dispositivos y suscribirte.';
+
+  @override
+  String get guestSubscribePrompt =>
+      'Inicia sesión o crea una cuenta para suscribirte.';
+
+  @override
   String get continueWithGoogle => 'Continuar con Google';
 
   @override
@@ -473,6 +498,27 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get passwordMinSix => 'Al menos 6 caracteres';
+
+  @override
+  String get forgotPassword => '¿Olvidaste tu contraseña?';
+
+  @override
+  String get forgotPasswordTitle => 'Restablecer contraseña';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Ingresa el correo de tu cuenta y te enviaremos un enlace para crear una nueva contraseña.';
+
+  @override
+  String get forgotPasswordSend => 'Enviar enlace';
+
+  @override
+  String get forgotPasswordSent =>
+      'Si ese correo está registrado, te enviaremos un enlace para restablecerla. Revisa tu bandeja de entrada.';
+
+  @override
+  String get forgotPasswordError =>
+      'No se pudo enviar el correo. Revisa tu conexión e inténtalo de nuevo.';
 
   @override
   String get proDeviceLimitError =>

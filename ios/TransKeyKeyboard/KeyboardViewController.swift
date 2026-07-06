@@ -234,7 +234,6 @@ class KeyboardViewController: UIInputViewController {
     // One request at a time, mirroring Android's actionInFlight guard.
     private var actionInFlight = false
     private var backspaceTimer: Timer?
-    private var accessOverlayShown = false
 
     private let api = APIClient()
 
@@ -278,6 +277,11 @@ class KeyboardViewController: UIInputViewController {
     private var variantSelectedIndex = 0
     private var langPicker: LanguagePairPickerView?
     private var clipPanel: UIView?
+    // Translated text currently shown in the clipboard panel, so the panel's
+    // Copy button can put it back on the pasteboard.
+    private var clipPanelText = ""
+    // First-run guide overlay (explains the action chips), shown once.
+    private var guidePanel: UIView?
 
     private var resultPanel: UIView!
     private var resultErrorLabel: UILabel!
@@ -366,10 +370,12 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        if !hasFullAccess && !accessOverlayShown {
-            accessOverlayShown = true
-            showAccessOverlay()
-        }
+        // App Store Guideline 4.4.1: the keyboard must type without Full Access.
+        // All input (layouts, Telex, candidates) runs on-device, so we never
+        // block the keys. Only the network action chips (Translate / Reply /
+        // Refine) require Full Access; showActionBar() swaps them for an inline
+        // "Enable Full Access" hint when it is off.
+        maybeShowGuide()
     }
 
     override func viewDidLayoutSubviews() {
@@ -420,47 +426,12 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
-    // MARK: - Full Access overlay
-
-    private func showAccessOverlay() {
-        let overlay = UIView(frame: view.bounds)
-        overlay.backgroundColor = .systemBackground
-        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.alignment = .center
-        stack.spacing = 16
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        overlay.addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
-            stack.leadingAnchor.constraint(greaterThanOrEqualTo: overlay.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: overlay.trailingAnchor, constant: -24),
-        ])
-
-        let icon = UILabel()
-        icon.text = "🔒"
-        icon.font = .systemFont(ofSize: 48)
-        stack.addArrangedSubview(icon)
-
-        let title = UILabel()
-        title.text = "Full Access Required"
-        title.font = .systemFont(ofSize: 18, weight: .bold)
-        title.textAlignment = .center
-        stack.addArrangedSubview(title)
-
-        let desc = UILabel()
-        desc.text = "To use TransKey Keyboard, please enable Full Access:\n\nSettings → General → Keyboard → Keyboards → TransKey → Allow Full Access"
-        desc.font = .systemFont(ofSize: 14)
-        desc.textColor = .secondaryLabel
-        desc.numberOfLines = 0
-        desc.textAlignment = .center
-        stack.addArrangedSubview(desc)
-
-        view.addSubview(overlay)
+    /// Instruction shown when a user taps the "Enable Full Access" hint chip
+    /// that replaces the network action chips while Full Access is off. Reuses
+    /// the reading panel (on-device, no network) so it works without access.
+    @objc private func fullAccessHintTapped() {
+        commitComposing()
+        showClipboardPanel(translated: KB.t("fullAccessInfo"), title: KB.t("enableFullAccess"))
     }
 
     // MARK: - UI setup
@@ -592,39 +563,52 @@ class KeyboardViewController: UIInputViewController {
     /// and hidden (not greyed) for free users.
     private func showActionBar() {
         clearBarContent()
-        // .fill + .center + trailing spacer: every chip keeps its intrinsic
-        // size (the lang pills stay visibly smaller than the action chips)
-        // instead of being stretched to carve up the whole bar, which is what
-        // .fillProportionally did - the wide "Auto→VI" pill ate the row.
-        barContentStack.distribution = .fill
+        // .equalSpacing keeps every chip at its intrinsic size (the lang pills stay
+        // visibly smaller than the action chips, unlike .fillProportionally which
+        // let the wide "Auto→VI" pill eat the row) AND inserts EQUAL gaps between
+        // all of them, so the bar stays balanced - including a free account that
+        // only has two action chips (Trả lời + Dịch, no paid Trau chuốt). An
+        // earlier attempt with manual flexible spacers under .fill failed: equal
+        // priority spacers don't split evenly (one ate all the slack, the rest
+        // collapsed), leaving the chips bunched left with a void on the right.
+        barContentStack.distribution = .equalSpacing
         barContentStack.alignment = .center
         barContentStack.spacing = 5
         let store = AppGroupStore.shared
         let pairTitle = "\(Self.shortLang(store.sourceLang))→\(Self.shortLang(store.targetLang))"
-        barContentStack.addArrangedSubview(langChip(pairTitle, #selector(langPairTapped)))
-        // "Dịch" = READ the conversation: translate whatever the user copied
-        // and show it in a panel over the keys (X closes back to typing).
-        barContentStack.addArrangedSubview(gradientChip(KB.t("translate"), #selector(clipboardTranslateTapped), enabled: true))
-        // "Trả lời" = COMPOSE: replace the field in place (undo pill arms).
-        // Free runs the plain translate flow; entitled accounts run the
-        // context-aware reply flow - same button, plan decides the engine
-        // (user decision 2026-06-13, intentionally diverges from the Android
-        // strip where Reply replaces Translate).
-        let replySelector = store.featureReply
-            ? #selector(replyTapped)
-            : #selector(translateTapped)
-        barContentStack.addArrangedSubview(gradientChip(KB.t("reply"), replySelector, enabled: true))
-        if store.featureRefine {
-            barContentStack.addArrangedSubview(gradientChip(KB.t("refine"), #selector(refineTapped), enabled: true))
+        // App Store Guideline 4.4.1: Translate / Reply / Refine all hit the
+        // network (and the clipboard), which a keyboard extension can only do
+        // with Full Access. The keys themselves type fine without it, so when
+        // Full Access is off we swap the action chips for a single hint chip
+        // that explains how to turn them on - the keyboard stays fully usable.
+        // .equalSpacing distributes the gaps for us; the first arranged subview
+        // pins to the leading edge and the last to the trailing edge, so the lang
+        // pills bracket the bar and the action chips spread evenly between them.
+        if hasFullAccess {
+            barContentStack.addArrangedSubview(langChip(pairTitle, #selector(langPairTapped)))
+            // "Trả lời" = COMPOSE: replace the field in place (undo pill arms).
+            // Kept on the LEFT - the less time-critical action (compose a reply,
+            // then send). Free runs the plain translate flow; entitled accounts
+            // run the context-aware reply flow - same button, plan decides the
+            // engine (user decision 2026-06-13, intentionally diverges from the
+            // Android strip where Reply replaces Translate).
+            let replySelector = store.featureReply
+                ? #selector(replyTapped)
+                : #selector(translateTapped)
+            barContentStack.addArrangedSubview(gradientChip(KB.t("reply"), replySelector, enabled: true))
+            if store.featureRefine {
+                barContentStack.addArrangedSubview(gradientChip(KB.t("refine"), #selector(refineTapped), enabled: true))
+            }
+            // "Dịch" = READ the conversation: translate whatever the user copied
+            // and show it in a panel over the keys. Last action chip, kept on the
+            // RIGHT (by the typing-lang pill) so the copy -> Dịch flow is an easy
+            // right-thumb reach (user request 2026-06-22). Needs Full Access.
+            barContentStack.addArrangedSubview(
+                gradientChip(KB.t("translate"), #selector(clipboardTranslateTapped), enabled: true))
+        } else {
+            barContentStack.addArrangedSubview(
+                langChip("🔒 " + KB.t("enableFullAccess"), #selector(fullAccessHintTapped)))
         }
-        // Flexible spacer absorbs the leftover width (and is the first thing
-        // squeezed when the bar is tight) so the chips never get stretched;
-        // placed BEFORE the typing-lang pill so that pill (and undo) stay
-        // pinned to the right edge while the action chips pack left.
-        let spacer = UIView()
-        spacer.setContentHuggingPriority(UILayoutPriority(1), for: .horizontal)
-        spacer.setContentCompressionResistancePriority(UILayoutPriority(1), for: .horizontal)
-        barContentStack.addArrangedSubview(spacer)
         barContentStack.addArrangedSubview(langChip(inputLangChipLabel, #selector(inputLangPickTapped)))
         if undoSnapshot != nil {
             barContentStack.addArrangedSubview(undoChip())
@@ -739,7 +723,13 @@ class KeyboardViewController: UIInputViewController {
     /// Reading panel over the key area for clipboard translations (same
     /// overlay geometry as the language pickers). The text is selectable so
     /// a fragment can be copied; ✕ returns to the keys.
-    private func showClipboardPanel(translated: String) {
+    private func showClipboardPanel(
+        translated: String,
+        title customTitle: String? = nil,
+        scamTitle: String? = nil,
+        scamDetail: String? = nil,
+        scamHigh: Bool = false
+    ) {
         dismissClipboardPanel()
         dismissLangPicker()
 
@@ -748,7 +738,7 @@ class KeyboardViewController: UIInputViewController {
         panel.backgroundColor = .systemGroupedBackground
 
         let title = UILabel()
-        title.text = KB.t("translation")
+        title.text = customTitle ?? KB.t("translation")
         title.font = .systemFont(ofSize: 14, weight: .semibold)
         title.textColor = .secondaryLabel
         title.translatesAutoresizingMaskIntoConstraints = false
@@ -761,6 +751,17 @@ class KeyboardViewController: UIInputViewController {
         close.addTarget(self, action: #selector(clipboardPanelCloseTapped), for: .touchUpInside)
         close.translatesAutoresizingMaskIntoConstraints = false
 
+        // Copy the translation back onto the pasteboard (the panel reads what the
+        // user copied; this puts the RESULT there so they can paste it). Brand
+        // accent so it reads as the panel's primary action. Sits left of ✕.
+        clipPanelText = translated
+        let copy = UIButton(type: .system)
+        copy.setTitle(KB.t("copy"), for: .normal)
+        copy.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        copy.setTitleColor(primaryColor, for: .normal)
+        copy.addTarget(self, action: #selector(clipboardPanelCopyTapped(_:)), for: .touchUpInside)
+        copy.translatesAutoresizingMaskIntoConstraints = false
+
         let textView = UITextView()
         textView.isEditable = false
         textView.isSelectable = true
@@ -772,11 +773,52 @@ class KeyboardViewController: UIInputViewController {
         textView.textContainerInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
         textView.translatesAutoresizingMaskIntoConstraints = false
 
+        // Optional fraud-warning banner between the title bar and the text.
+        let scamBanner: UIView? = scamTitle.map { t in
+            let accent: UIColor = scamHigh
+                ? UIColor(red: 1.0, green: 0.42, blue: 0.42, alpha: 1.0)   // #FF6B6B
+                : UIColor(red: 0.96, green: 0.62, blue: 0.07, alpha: 1.0)  // #F59E0B
+            let box = UIView()
+            box.translatesAutoresizingMaskIntoConstraints = false
+            box.backgroundColor = accent.withAlphaComponent(0.12)
+            box.layer.cornerRadius = 10
+            let titleLbl = UILabel()
+            titleLbl.text = "🛡 " + t
+            titleLbl.font = .systemFont(ofSize: 13, weight: .semibold)
+            titleLbl.textColor = accent
+            titleLbl.numberOfLines = 0
+            titleLbl.translatesAutoresizingMaskIntoConstraints = false
+            let stack = UIStackView(arrangedSubviews: [titleLbl])
+            stack.axis = .vertical
+            stack.spacing = 2
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            if let detail = scamDetail, !detail.isEmpty {
+                let detailLbl = UILabel()
+                detailLbl.text = detail
+                detailLbl.font = .systemFont(ofSize: 12)
+                detailLbl.textColor = .secondaryLabel
+                detailLbl.numberOfLines = 0
+                stack.addArrangedSubview(detailLbl)
+            }
+            box.addSubview(stack)
+            NSLayoutConstraint.activate([
+                stack.topAnchor.constraint(equalTo: box.topAnchor, constant: 8),
+                stack.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -8),
+                stack.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
+                stack.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
+            ])
+            return box
+        }
+
         panel.addSubview(title)
         panel.addSubview(close)
+        panel.addSubview(copy)
+        scamBanner.map { panel.addSubview($0) }
         panel.addSubview(textView)
         view.addSubview(panel)
-        NSLayoutConstraint.activate([
+        // textView starts below the banner when present, else below the title.
+        let textTopAnchor = scamBanner?.bottomAnchor ?? title.bottomAnchor
+        var constraints: [NSLayoutConstraint] = [
             panel.topAnchor.constraint(equalTo: topBar.bottomAnchor),
             panel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             panel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -790,11 +832,22 @@ class KeyboardViewController: UIInputViewController {
             close.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
             close.heightAnchor.constraint(greaterThanOrEqualToConstant: 30),
 
-            textView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 6),
+            copy.centerYAnchor.constraint(equalTo: title.centerYAnchor),
+            copy.trailingAnchor.constraint(equalTo: close.leadingAnchor, constant: -10),
+
+            textView.topAnchor.constraint(equalTo: textTopAnchor, constant: 6),
             textView.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 10),
             textView.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -10),
             textView.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -8),
-        ])
+        ]
+        if let banner = scamBanner {
+            constraints += [
+                banner.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 6),
+                banner.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 10),
+                banner.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -10),
+            ]
+        }
+        NSLayoutConstraint.activate(constraints)
         clipPanel = panel
     }
 
@@ -802,9 +855,125 @@ class KeyboardViewController: UIInputViewController {
         dismissClipboardPanel()
     }
 
+    @objc private func clipboardPanelCopyTapped(_ sender: UIButton) {
+        // Full Access is on whenever the Dịch chip (and so this panel) is
+        // available, so the pasteboard write is allowed. Briefly flip the label
+        // to "Copied" for feedback, then restore it.
+        UIPasteboard.general.string = clipPanelText
+        let original = sender.title(for: .normal)
+        sender.setTitle(KB.t("copied"), for: .normal)
+        sender.isEnabled = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak sender] in
+            sender?.setTitle(original, for: .normal)
+            sender?.isEnabled = true
+        }
+    }
+
     private func dismissClipboardPanel() {
         clipPanel?.removeFromSuperview()
         clipPanel = nil
+    }
+
+    // MARK: - First-run guide
+
+    /// Show the action-chip guide exactly once, the first time the keyboard
+    /// appears. Marks seen on first SHOW (not just on dismiss) so it appears
+    /// once even if the user switches field instead of tapping "Got it".
+    /// Parity with the Android keyboard's first-run guide overlay.
+    private func maybeShowGuide() {
+        guard !AppGroupStore.shared.keyboardGuideSeen, guidePanel == nil else { return }
+        AppGroupStore.shared.keyboardGuideSeen = true
+        showGuidePanel()
+    }
+
+    private func showGuidePanel() {
+        dismissClipboardPanel()
+        dismissLangPicker()
+
+        let panel = UIView()
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.backgroundColor = .systemGroupedBackground
+
+        let title = UILabel()
+        title.text = KB.t("guideTitle")
+        title.font = .systemFont(ofSize: 17, weight: .bold)
+        title.textColor = .label
+        title.numberOfLines = 0
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let rows = UIStackView()
+        rows.axis = .vertical
+        rows.spacing = 12
+        rows.translatesAutoresizingMaskIntoConstraints = false
+
+        // Rows mirror the visible chips (KeyboardViewController.showActionBar):
+        // "Dịch" reads the clipboard, "Trả lời" composes the field, and
+        // "Trau chuốt" only appears for entitled (paid) users - so a free user
+        // is never shown a chip they don't have.
+        func addRow(_ label: String, _ desc: String) {
+            let row = UIStackView()
+            row.axis = .vertical
+            row.spacing = 2
+            let l = UILabel()
+            l.text = label
+            l.font = .systemFont(ofSize: 15, weight: .semibold)
+            l.textColor = primaryColor
+            let d = UILabel()
+            d.text = desc
+            d.font = .systemFont(ofSize: 13)
+            d.textColor = .secondaryLabel
+            d.numberOfLines = 0
+            row.addArrangedSubview(l)
+            row.addArrangedSubview(d)
+            rows.addArrangedSubview(row)
+        }
+        addRow(KB.t("translate"), KB.t("guideClipboard"))
+        addRow(KB.t("reply"), KB.t("guideReply"))
+        if AppGroupStore.shared.featureRefine {
+            addRow(KB.t("refine"), KB.t("guideRefine"))
+        }
+
+        let gotIt = GradientPillButton(type: .custom)
+        gotIt.setTitle(KB.t("gotIt"), for: .normal)
+        gotIt.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        gotIt.setTitleColor(.white, for: .normal)
+        gotIt.contentEdgeInsets = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
+        gotIt.addTarget(self, action: #selector(guideGotItTapped), for: .touchUpInside)
+        gotIt.translatesAutoresizingMaskIntoConstraints = false
+
+        panel.addSubview(title)
+        panel.addSubview(rows)
+        panel.addSubview(gotIt)
+        view.addSubview(panel)
+        NSLayoutConstraint.activate([
+            panel.topAnchor.constraint(equalTo: topBar.bottomAnchor),
+            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            panel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            panel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            title.topAnchor.constraint(equalTo: panel.topAnchor, constant: 14),
+            title.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 16),
+            title.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -16),
+
+            rows.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 12),
+            rows.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 16),
+            rows.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -16),
+
+            gotIt.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 16),
+            gotIt.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -16),
+            gotIt.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -12),
+            gotIt.heightAnchor.constraint(greaterThanOrEqualToConstant: 46),
+        ])
+        guidePanel = panel
+    }
+
+    @objc private func guideGotItTapped() {
+        dismissGuidePanel()
+    }
+
+    private func dismissGuidePanel() {
+        guidePanel?.removeFromSuperview()
+        guidePanel = nil
     }
 
     /// Open the typing-language picker (all native layouts), overlaid on the
@@ -2114,7 +2283,25 @@ class KeyboardViewController: UIInputViewController {
                 )
                 actionInFlight = false
                 showActionBar()
-                showClipboardPanel(translated: extractTranslation(json))
+                // Scam warning (server drops "none", so present = warn). A
+                // received message the user copied is exactly the fraud target.
+                var scamTitle: String?
+                var scamDetail: String?
+                var scamHigh = false
+                if let scam = json["scamRisk"] as? [String: Any],
+                   let level = scam["level"] as? String, level == "low" || level == "high" {
+                    scamHigh = level == "high"
+                    scamTitle = KB.t(scamHigh ? "scamHigh" : "scamLow")
+                    let reason = (scam["reason"] as? String)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    scamDetail = (reason?.isEmpty == false) ? reason : KB.t("scamHint")
+                }
+                showClipboardPanel(
+                    translated: extractTranslation(json),
+                    scamTitle: scamTitle,
+                    scamDetail: scamDetail,
+                    scamHigh: scamHigh
+                )
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2336,20 +2523,20 @@ enum KB {
     }
 
     private static let table: [String: [String: String]] = [
-        "en": ["translate": "Translate", "reply": "Reply", "refine": "Refine", "undo": "Undo", "processing": "Processing…", "translation": "Translation", "close": "Close", "typingLanguage": "Typing language", "translationLanguage": "Translation language", "done": "Done", "swap": "⇄ Swap", "chooseTypingLanguage": "Choose the language you want to type", "sourceLanguage": "Source language", "translateTo": "Translate to", "autoDetect": "Auto detect"],
-        "vi": ["translate": "Dịch", "reply": "Trả lời", "refine": "Trau chuốt", "undo": "Hoàn tác", "processing": "Đang xử lý…", "translation": "Bản dịch", "close": "Đóng", "typingLanguage": "Ngôn ngữ gõ phím", "translationLanguage": "Ngôn ngữ dịch", "done": "Xong", "swap": "⇄ Đổi chiều", "chooseTypingLanguage": "Chọn ngôn ngữ bạn muốn gõ", "sourceLanguage": "Ngôn ngữ nguồn", "translateTo": "Dịch sang", "autoDetect": "Tự nhận diện"],
-        "ar": ["translate": "ترجمة", "reply": "رد", "refine": "تحسين", "undo": "تراجع", "processing": "جارٍ المعالجة…", "translation": "الترجمة", "close": "إغلاق", "typingLanguage": "لغة الكتابة", "translationLanguage": "لغة الترجمة", "done": "تم", "swap": "⇄ تبديل", "chooseTypingLanguage": "اختر اللغة التي تريد الكتابة بها", "sourceLanguage": "اللغة المصدر", "translateTo": "الترجمة إلى", "autoDetect": "اكتشاف تلقائي"],
-        "de": ["translate": "Übersetzen", "reply": "Antworten", "refine": "Verfeinern", "undo": "Rückgängig", "processing": "Wird verarbeitet…", "translation": "Übersetzung", "close": "Schließen", "typingLanguage": "Tippsprache", "translationLanguage": "Übersetzungssprache", "done": "Fertig", "swap": "⇄ Tauschen", "chooseTypingLanguage": "Wähle die Sprache zum Tippen", "sourceLanguage": "Ausgangssprache", "translateTo": "Übersetzen nach", "autoDetect": "Automatisch erkennen"],
-        "es": ["translate": "Traducir", "reply": "Responder", "refine": "Pulir", "undo": "Deshacer", "processing": "Procesando…", "translation": "Traducción", "close": "Cerrar", "typingLanguage": "Idioma de escritura", "translationLanguage": "Idioma de traducción", "done": "Listo", "swap": "⇄ Cambiar", "chooseTypingLanguage": "Elige el idioma que quieres escribir", "sourceLanguage": "Idioma de origen", "translateTo": "Traducir a", "autoDetect": "Detección automática"],
-        "fr": ["translate": "Traduire", "reply": "Répondre", "refine": "Peaufiner", "undo": "Annuler", "processing": "Traitement…", "translation": "Traduction", "close": "Fermer", "typingLanguage": "Langue de saisie", "translationLanguage": "Langue de traduction", "done": "Terminé", "swap": "⇄ Inverser", "chooseTypingLanguage": "Choisissez la langue de saisie", "sourceLanguage": "Langue source", "translateTo": "Traduire vers", "autoDetect": "Détection auto"],
-        "id": ["translate": "Terjemahkan", "reply": "Balas", "refine": "Perhalus", "undo": "Urungkan", "processing": "Memproses…", "translation": "Terjemahan", "close": "Tutup", "typingLanguage": "Bahasa ketik", "translationLanguage": "Bahasa terjemahan", "done": "Selesai", "swap": "⇄ Tukar", "chooseTypingLanguage": "Pilih bahasa yang ingin diketik", "sourceLanguage": "Bahasa sumber", "translateTo": "Terjemahkan ke", "autoDetect": "Deteksi otomatis"],
-        "it": ["translate": "Traduci", "reply": "Rispondi", "refine": "Rifinisci", "undo": "Annulla", "processing": "Elaborazione…", "translation": "Traduzione", "close": "Chiudi", "typingLanguage": "Lingua di digitazione", "translationLanguage": "Lingua di traduzione", "done": "Fine", "swap": "⇄ Inverti", "chooseTypingLanguage": "Scegli la lingua con cui digitare", "sourceLanguage": "Lingua di origine", "translateTo": "Traduci in", "autoDetect": "Rilevamento automatico"],
-        "ja": ["translate": "翻訳", "reply": "返信", "refine": "推敲", "undo": "取り消し", "processing": "処理中…", "translation": "翻訳", "close": "閉じる", "typingLanguage": "入力言語", "translationLanguage": "翻訳言語", "done": "完了", "swap": "⇄ 入れ替え", "chooseTypingLanguage": "入力する言語を選択", "sourceLanguage": "元の言語", "translateTo": "翻訳先", "autoDetect": "自動検出"],
-        "ko": ["translate": "번역", "reply": "답장", "refine": "다듬기", "undo": "실행 취소", "processing": "처리 중…", "translation": "번역", "close": "닫기", "typingLanguage": "입력 언어", "translationLanguage": "번역 언어", "done": "완료", "swap": "⇄ 바꾸기", "chooseTypingLanguage": "입력할 언어를 선택하세요", "sourceLanguage": "원본 언어", "translateTo": "번역 대상", "autoDetect": "자동 감지"],
-        "pt": ["translate": "Traduzir", "reply": "Responder", "refine": "Refinar", "undo": "Desfazer", "processing": "Processando…", "translation": "Tradução", "close": "Fechar", "typingLanguage": "Idioma de digitação", "translationLanguage": "Idioma de tradução", "done": "Concluir", "swap": "⇄ Inverter", "chooseTypingLanguage": "Escolha o idioma que deseja digitar", "sourceLanguage": "Idioma de origem", "translateTo": "Traduzir para", "autoDetect": "Detecção automática"],
-        "ru": ["translate": "Перевести", "reply": "Ответить", "refine": "Улучшить", "undo": "Отменить", "processing": "Обработка…", "translation": "Перевод", "close": "Закрыть", "typingLanguage": "Язык ввода", "translationLanguage": "Язык перевода", "done": "Готово", "swap": "⇄ Поменять", "chooseTypingLanguage": "Выберите язык для ввода", "sourceLanguage": "Исходный язык", "translateTo": "Перевести на", "autoDetect": "Автоопределение"],
-        "th": ["translate": "แปล", "reply": "ตอบกลับ", "refine": "ขัดเกลา", "undo": "เลิกทำ", "processing": "กำลังประมวลผล…", "translation": "คำแปล", "close": "ปิด", "typingLanguage": "ภาษาที่พิมพ์", "translationLanguage": "ภาษาที่แปล", "done": "เสร็จ", "swap": "⇄ สลับ", "chooseTypingLanguage": "เลือกภาษาที่ต้องการพิมพ์", "sourceLanguage": "ภาษาต้นทาง", "translateTo": "แปลเป็น", "autoDetect": "ตรวจจับอัตโนมัติ"],
-        "zh": ["translate": "翻译", "reply": "回复", "refine": "润色", "undo": "撤销", "processing": "处理中…", "translation": "翻译", "close": "关闭", "typingLanguage": "输入语言", "translationLanguage": "翻译语言", "done": "完成", "swap": "⇄ 互换", "chooseTypingLanguage": "选择要输入的语言", "sourceLanguage": "源语言", "translateTo": "翻译为", "autoDetect": "自动检测"],
+        "en": ["translate": "Translate", "reply": "Reply", "refine": "Refine", "undo": "Undo", "processing": "Processing…", "translation": "Translation", "close": "Close", "typingLanguage": "Typing language", "translationLanguage": "Translation language", "done": "Done", "swap": "⇄ Swap", "chooseTypingLanguage": "Choose the language you want to type", "sourceLanguage": "Source language", "translateTo": "Translate to", "autoDetect": "Auto detect", "enableFullAccess": "Enable Full Access", "fullAccessInfo": "Translate, Reply and Refine need Full Access. Turn it on:\nSettings → General → Keyboard → Keyboards → TransKey → Allow Full Access", "guideTitle": "Using the translate keyboard", "guideClipboard": "Copy their message, then tap to see what it says.", "guideReply": "Type your reply, then tap to translate it before sending.", "guideRefine": "Polish your text so it reads smoothly.", "gotIt": "Got it", "copy": "Copy", "copied": "Copied", "scamHigh": "Warning: this message shows signs of a scam", "scamLow": "Caution: this message could be a scam", "scamHint": "Be careful before replying, clicking links, or sending money."],
+        "vi": ["translate": "Dịch", "reply": "Trả lời", "refine": "Trau chuốt", "undo": "Hoàn tác", "processing": "Đang xử lý…", "translation": "Bản dịch", "close": "Đóng", "typingLanguage": "Ngôn ngữ gõ phím", "translationLanguage": "Ngôn ngữ dịch", "done": "Xong", "swap": "⇄ Đổi chiều", "chooseTypingLanguage": "Chọn ngôn ngữ bạn muốn gõ", "sourceLanguage": "Ngôn ngữ nguồn", "translateTo": "Dịch sang", "autoDetect": "Tự nhận diện", "enableFullAccess": "Bật Toàn quyền truy cập", "fullAccessInfo": "Dịch, Trả lời và Trau chuốt cần Toàn quyền truy cập. Bật tại:\nCài đặt → Cài đặt chung → Bàn phím → Bàn phím → TransKey → Cho phép Toàn quyền truy cập", "guideTitle": "Cách dùng bàn phím dịch", "guideClipboard": "Copy tin nhắn của họ rồi nhấn để xem nội dung bằng ngôn ngữ của bạn.", "guideReply": "Gõ câu trả lời của bạn rồi nhấn để dịch trước khi gửi.", "guideRefine": "Trau chuốt câu chữ cho mượt mà, tự nhiên hơn.", "gotIt": "Đã hiểu", "copy": "Copy", "copied": "Đã copy", "scamHigh": "Cảnh báo: tin nhắn có dấu hiệu lừa đảo", "scamLow": "Thận trọng: tin nhắn này có thể là lừa đảo", "scamHint": "Hãy cẩn thận trước khi trả lời, bấm liên kết hay chuyển tiền."],
+        "ar": ["translate": "ترجمة", "reply": "رد", "refine": "تحسين", "undo": "تراجع", "processing": "جارٍ المعالجة…", "translation": "الترجمة", "close": "إغلاق", "typingLanguage": "لغة الكتابة", "translationLanguage": "لغة الترجمة", "done": "تم", "swap": "⇄ تبديل", "chooseTypingLanguage": "اختر اللغة التي تريد الكتابة بها", "sourceLanguage": "اللغة المصدر", "translateTo": "الترجمة إلى", "autoDetect": "اكتشاف تلقائي", "enableFullAccess": "تفعيل الوصول الكامل", "fullAccessInfo": "الترجمة والرد والتحسين تتطلب الوصول الكامل. فعّله من:\nالإعدادات ← عام ← لوحة المفاتيح ← لوحات المفاتيح ← TransKey ← السماح بالوصول الكامل", "guideTitle": "استخدام لوحة الترجمة", "guideClipboard": "انسخ رسالتهم ثم اضغط لرؤية معناها بلغتك.", "guideReply": "اكتب ردك ثم اضغط لترجمته قبل الإرسال.", "guideRefine": "حسّن نصك ليصبح أكثر سلاسة وطبيعية.", "gotIt": "فهمت", "copy": "نسخ", "copied": "تم النسخ", "scamHigh": "تحذير: تظهر على هذه الرسالة علامات احتيال", "scamLow": "تنبيه: قد تكون هذه الرسالة عملية احتيال", "scamHint": "كن حذرًا قبل الرد أو النقر على الروابط أو إرسال الأموال."],
+        "de": ["translate": "Übersetzen", "reply": "Antworten", "refine": "Verfeinern", "undo": "Rückgängig", "processing": "Wird verarbeitet…", "translation": "Übersetzung", "close": "Schließen", "typingLanguage": "Tippsprache", "translationLanguage": "Übersetzungssprache", "done": "Fertig", "swap": "⇄ Tauschen", "chooseTypingLanguage": "Wähle die Sprache zum Tippen", "sourceLanguage": "Ausgangssprache", "translateTo": "Übersetzen nach", "autoDetect": "Automatisch erkennen", "enableFullAccess": "Vollzugriff aktivieren", "fullAccessInfo": "Übersetzen, Antworten und Verfeinern benötigen Vollzugriff. So aktivierst du ihn:\nEinstellungen → Allgemein → Tastatur → Tastaturen → TransKey → Vollzugriff erlauben", "guideTitle": "Übersetzungstastatur verwenden", "guideClipboard": "Kopiere ihre Nachricht und tippe, um sie in deiner Sprache zu lesen.", "guideReply": "Tippe deine Antwort und tippe dann, um sie vor dem Senden zu übersetzen.", "guideRefine": "Verfeinere deinen Text, damit er natürlich klingt.", "gotIt": "Verstanden", "copy": "Kopieren", "copied": "Kopiert", "scamHigh": "Warnung: Diese Nachricht zeigt Anzeichen von Betrug", "scamLow": "Vorsicht: Diese Nachricht könnte Betrug sein", "scamHint": "Sei vorsichtig, bevor du antwortest, Links anklickst oder Geld sendest."],
+        "es": ["translate": "Traducir", "reply": "Responder", "refine": "Pulir", "undo": "Deshacer", "processing": "Procesando…", "translation": "Traducción", "close": "Cerrar", "typingLanguage": "Idioma de escritura", "translationLanguage": "Idioma de traducción", "done": "Listo", "swap": "⇄ Cambiar", "chooseTypingLanguage": "Elige el idioma que quieres escribir", "sourceLanguage": "Idioma de origen", "translateTo": "Traducir a", "autoDetect": "Detección automática", "enableFullAccess": "Activar Acceso completo", "fullAccessInfo": "Traducir, Responder y Pulir necesitan Acceso completo. Actívalo:\nAjustes → General → Teclado → Teclados → TransKey → Permitir acceso completo", "guideTitle": "Cómo usar el teclado de traducción", "guideClipboard": "Copia su mensaje y toca para verlo en tu idioma.", "guideReply": "Escribe tu respuesta y toca para traducirla antes de enviarla.", "guideRefine": "Pule tu texto para que se lea con naturalidad.", "gotIt": "Entendido", "copy": "Copiar", "copied": "Copiado", "scamHigh": "Advertencia: este mensaje muestra señales de estafa", "scamLow": "Precaución: este mensaje podría ser una estafa", "scamHint": "Ten cuidado antes de responder, hacer clic en enlaces o enviar dinero."],
+        "fr": ["translate": "Traduire", "reply": "Répondre", "refine": "Peaufiner", "undo": "Annuler", "processing": "Traitement…", "translation": "Traduction", "close": "Fermer", "typingLanguage": "Langue de saisie", "translationLanguage": "Langue de traduction", "done": "Terminé", "swap": "⇄ Inverser", "chooseTypingLanguage": "Choisissez la langue de saisie", "sourceLanguage": "Langue source", "translateTo": "Traduire vers", "autoDetect": "Détection auto", "enableFullAccess": "Activer l'accès complet", "fullAccessInfo": "Traduire, Répondre et Peaufiner nécessitent l'accès complet. Activez-le :\nRéglages → Général → Clavier → Claviers → TransKey → Autoriser l'accès complet", "guideTitle": "Utiliser le clavier de traduction", "guideClipboard": "Copiez leur message, puis appuyez pour le lire dans votre langue.", "guideReply": "Saisissez votre réponse, puis appuyez pour la traduire avant l'envoi.", "guideRefine": "Peaufinez votre texte pour qu'il soit fluide et naturel.", "gotIt": "Compris", "copy": "Copier", "copied": "Copié", "scamHigh": "Avertissement : ce message présente des signes d'arnaque", "scamLow": "Prudence : ce message pourrait être une arnaque", "scamHint": "Soyez prudent avant de répondre, cliquer sur un lien ou envoyer de l'argent."],
+        "id": ["translate": "Terjemahkan", "reply": "Balas", "refine": "Perhalus", "undo": "Urungkan", "processing": "Memproses…", "translation": "Terjemahan", "close": "Tutup", "typingLanguage": "Bahasa ketik", "translationLanguage": "Bahasa terjemahan", "done": "Selesai", "swap": "⇄ Tukar", "chooseTypingLanguage": "Pilih bahasa yang ingin diketik", "sourceLanguage": "Bahasa sumber", "translateTo": "Terjemahkan ke", "autoDetect": "Deteksi otomatis", "enableFullAccess": "Aktifkan Akses Penuh", "fullAccessInfo": "Terjemahkan, Balas, dan Perhalus memerlukan Akses Penuh. Aktifkan di:\nPengaturan → Umum → Keyboard → Keyboard → TransKey → Izinkan Akses Penuh", "guideTitle": "Cara memakai keyboard terjemahan", "guideClipboard": "Salin pesan mereka, lalu ketuk untuk membacanya dalam bahasamu.", "guideReply": "Ketik balasanmu, lalu ketuk untuk menerjemahkannya sebelum dikirim.", "guideRefine": "Perhalus teksmu agar terbaca lebih alami.", "gotIt": "Mengerti", "copy": "Salin", "copied": "Tersalin", "scamHigh": "Peringatan: pesan ini menunjukkan tanda-tanda penipuan", "scamLow": "Hati-hati: pesan ini mungkin penipuan", "scamHint": "Berhati-hatilah sebelum membalas, mengeklik tautan, atau mengirim uang."],
+        "it": ["translate": "Traduci", "reply": "Rispondi", "refine": "Rifinisci", "undo": "Annulla", "processing": "Elaborazione…", "translation": "Traduzione", "close": "Chiudi", "typingLanguage": "Lingua di digitazione", "translationLanguage": "Lingua di traduzione", "done": "Fine", "swap": "⇄ Inverti", "chooseTypingLanguage": "Scegli la lingua con cui digitare", "sourceLanguage": "Lingua di origine", "translateTo": "Traduci in", "autoDetect": "Rilevamento automatico", "enableFullAccess": "Abilita Accesso completo", "fullAccessInfo": "Traduci, Rispondi e Rifinisci richiedono l'Accesso completo. Attivalo:\nImpostazioni → Generali → Tastiera → Tastiere → TransKey → Consenti accesso completo", "guideTitle": "Come usare la tastiera di traduzione", "guideClipboard": "Copia il loro messaggio e tocca per leggerlo nella tua lingua.", "guideReply": "Scrivi la tua risposta e tocca per tradurla prima di inviarla.", "guideRefine": "Rifinisci il testo perché scorra in modo naturale.", "gotIt": "Ho capito", "copy": "Copia", "copied": "Copiato", "scamHigh": "Avviso: questo messaggio mostra segni di truffa", "scamLow": "Attenzione: questo messaggio potrebbe essere una truffa", "scamHint": "Fai attenzione prima di rispondere, cliccare link o inviare denaro."],
+        "ja": ["translate": "翻訳", "reply": "返信", "refine": "推敲", "undo": "取り消し", "processing": "処理中…", "translation": "翻訳", "close": "閉じる", "typingLanguage": "入力言語", "translationLanguage": "翻訳言語", "done": "完了", "swap": "⇄ 入れ替え", "chooseTypingLanguage": "入力する言語を選択", "sourceLanguage": "元の言語", "translateTo": "翻訳先", "autoDetect": "自動検出", "enableFullAccess": "フルアクセスを許可", "fullAccessInfo": "翻訳・返信・推敲にはフルアクセスが必要です。オンにする:\n設定 → 一般 → キーボード → キーボード → TransKey → フルアクセスを許可", "guideTitle": "翻訳キーボードの使い方", "guideClipboard": "相手のメッセージをコピーして、タップすると自分の言語で読めます。", "guideReply": "返信を入力して、タップすると送信前に翻訳できます。", "guideRefine": "文章を整えて、より自然な表現にします。", "gotIt": "わかりました", "copy": "コピー", "copied": "コピーしました", "scamHigh": "警告：このメッセージには詐欺の兆候があります", "scamLow": "注意：このメッセージは詐欺の可能性があります", "scamHint": "返信・リンクのクリック・送金の前に十分ご注意ください。"],
+        "ko": ["translate": "번역", "reply": "답장", "refine": "다듬기", "undo": "실행 취소", "processing": "처리 중…", "translation": "번역", "close": "닫기", "typingLanguage": "입력 언어", "translationLanguage": "번역 언어", "done": "완료", "swap": "⇄ 바꾸기", "chooseTypingLanguage": "입력할 언어를 선택하세요", "sourceLanguage": "원본 언어", "translateTo": "번역 대상", "autoDetect": "자동 감지", "enableFullAccess": "전체 접근 허용", "fullAccessInfo": "번역, 답장, 다듬기에는 전체 접근이 필요합니다. 켜는 방법:\n설정 → 일반 → 키보드 → 키보드 → TransKey → 전체 접근 허용", "guideTitle": "번역 키보드 사용법", "guideClipboard": "상대방 메시지를 복사한 후 누르면 내 언어로 볼 수 있어요.", "guideReply": "답장을 입력한 후 누르면 보내기 전에 번역돼요.", "guideRefine": "문장을 다듬어 더 자연스럽게 만들어요.", "gotIt": "확인", "copy": "복사", "copied": "복사됨", "scamHigh": "경고: 이 메시지는 사기 징후가 있습니다", "scamLow": "주의: 이 메시지는 사기일 수 있습니다", "scamHint": "답장, 링크 클릭, 송금 전에 반드시 주의하세요."],
+        "pt": ["translate": "Traduzir", "reply": "Responder", "refine": "Refinar", "undo": "Desfazer", "processing": "Processando…", "translation": "Tradução", "close": "Fechar", "typingLanguage": "Idioma de digitação", "translationLanguage": "Idioma de tradução", "done": "Concluir", "swap": "⇄ Inverter", "chooseTypingLanguage": "Escolha o idioma que deseja digitar", "sourceLanguage": "Idioma de origem", "translateTo": "Traduzir para", "autoDetect": "Detecção automática", "enableFullAccess": "Ativar Acesso total", "fullAccessInfo": "Traduzir, Responder e Refinar precisam de Acesso total. Ative:\nAjustes → Geral → Teclado → Teclados → TransKey → Permitir acesso total", "guideTitle": "Como usar o teclado de tradução", "guideClipboard": "Copie a mensagem deles e toque para ver no seu idioma.", "guideReply": "Digite sua resposta e toque para traduzi-la antes de enviar.", "guideRefine": "Aprimore seu texto para que fique natural.", "gotIt": "Entendi", "copy": "Copiar", "copied": "Copiado", "scamHigh": "Aviso: esta mensagem mostra sinais de golpe", "scamLow": "Cuidado: esta mensagem pode ser um golpe", "scamHint": "Tenha cuidado antes de responder, clicar em links ou enviar dinheiro."],
+        "ru": ["translate": "Перевести", "reply": "Ответить", "refine": "Улучшить", "undo": "Отменить", "processing": "Обработка…", "translation": "Перевод", "close": "Закрыть", "typingLanguage": "Язык ввода", "translationLanguage": "Язык перевода", "done": "Готово", "swap": "⇄ Поменять", "chooseTypingLanguage": "Выберите язык для ввода", "sourceLanguage": "Исходный язык", "translateTo": "Перевести на", "autoDetect": "Автоопределение", "enableFullAccess": "Включить полный доступ", "fullAccessInfo": "Перевод, Ответ и Улучшение требуют полного доступа. Включите:\nНастройки → Основные → Клавиатура → Клавиатуры → TransKey → Разрешить полный доступ", "guideTitle": "Как пользоваться клавиатурой перевода", "guideClipboard": "Скопируйте их сообщение и нажмите, чтобы прочитать на своём языке.", "guideReply": "Введите ответ и нажмите, чтобы перевести его перед отправкой.", "guideRefine": "Отшлифуйте текст, чтобы он читался естественно.", "gotIt": "Понятно", "copy": "Копировать", "copied": "Скопировано", "scamHigh": "Предупреждение: это сообщение похоже на мошенничество", "scamLow": "Осторожно: это сообщение может быть мошенничеством", "scamHint": "Будьте осторожны, прежде чем отвечать, переходить по ссылкам или отправлять деньги."],
+        "th": ["translate": "แปล", "reply": "ตอบกลับ", "refine": "ขัดเกลา", "undo": "เลิกทำ", "processing": "กำลังประมวลผล…", "translation": "คำแปล", "close": "ปิด", "typingLanguage": "ภาษาที่พิมพ์", "translationLanguage": "ภาษาที่แปล", "done": "เสร็จ", "swap": "⇄ สลับ", "chooseTypingLanguage": "เลือกภาษาที่ต้องการพิมพ์", "sourceLanguage": "ภาษาต้นทาง", "translateTo": "แปลเป็น", "autoDetect": "ตรวจจับอัตโนมัติ", "enableFullAccess": "เปิดการเข้าถึงแบบเต็ม", "fullAccessInfo": "แปล ตอบกลับ และขัดเกลา ต้องใช้การเข้าถึงแบบเต็ม เปิดได้ที่:\nการตั้งค่า → ทั่วไป → แป้นพิมพ์ → แป้นพิมพ์ → TransKey → อนุญาตการเข้าถึงแบบเต็ม", "guideTitle": "วิธีใช้แป้นพิมพ์แปลภาษา", "guideClipboard": "คัดลอกข้อความของอีกฝ่าย แล้วแตะเพื่ออ่านเป็นภาษาของคุณ", "guideReply": "พิมพ์ข้อความตอบกลับ แล้วแตะเพื่อแปลก่อนส่ง", "guideRefine": "ปรับข้อความให้อ่านลื่นและเป็นธรรมชาติ", "gotIt": "เข้าใจแล้ว", "copy": "คัดลอก", "copied": "คัดลอกแล้ว", "scamHigh": "คำเตือน: ข้อความนี้มีสัญญาณของการหลอกลวง", "scamLow": "โปรดระวัง: ข้อความนี้อาจเป็นการหลอกลวง", "scamHint": "โปรดระมัดระวังก่อนตอบกลับ คลิกลิงก์ หรือโอนเงิน"],
+        "zh": ["translate": "翻译", "reply": "回复", "refine": "润色", "undo": "撤销", "processing": "处理中…", "translation": "翻译", "close": "关闭", "typingLanguage": "输入语言", "translationLanguage": "翻译语言", "done": "完成", "swap": "⇄ 互换", "chooseTypingLanguage": "选择要输入的语言", "sourceLanguage": "源语言", "translateTo": "翻译为", "autoDetect": "自动检测", "enableFullAccess": "允许完全访问", "fullAccessInfo": "翻译、回复和润色需要完全访问。开启方式:\n设置 → 通用 → 键盘 → 键盘 → TransKey → 允许完全访问", "guideTitle": "翻译键盘使用方法", "guideClipboard": "复制对方的消息，点按即可用你的语言查看。", "guideReply": "输入你的回复，点按即可在发送前翻译。", "guideRefine": "润色你的文字，让它读起来更自然。", "gotIt": "知道了", "copy": "复制", "copied": "已复制", "scamHigh": "警告：这条消息有诈骗迹象", "scamLow": "注意：这条消息可能是诈骗", "scamHint": "在回复、点击链接或转账前请务必小心。"],
     ]
 }
 

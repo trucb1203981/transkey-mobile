@@ -117,4 +117,14 @@
     <string name="ime_open_bubble">Schwebende Bubble</string>
     <string name="ime_back_keyboard">← Tastatur</string>
     <string name="ime_input_lang">Eingabesprache</string>
+    <string name="ime_clipboard_title">Übersetzung</string>
+    <string name="scam_high_title">Warnung: Diese Nachricht zeigt Anzeichen von Betrug</string>
+    <string name="scam_low_title">Vorsicht: Diese Nachricht könnte Betrug sein</string>
+    <string name="scam_generic_hint">Sei vorsichtig, bevor du antwortest, Links anklickst oder Geld sendest.</string>
+    <string name="ime_clipboard_empty">Kopiere zuerst eine Nachricht und tippe dann auf Übersetzen</string>
+    <string name="ime_guide_title">Übersetzungstastatur verwenden</string>
+    <string name="ime_guide_clipboard_desc">Kopiere ihre Nachricht und tippe, um sie in deiner Sprache zu lesen.</string>
+    <string name="ime_guide_reply_desc">Tippe deine Antwort und tippe dann, um sie vor dem Senden zu übersetzen.</string>
+    <string name="ime_guide_refine_desc">Verfeinere deinen Text, damit er natürlich klingt.</string>
+    <string name="ime_guide_dismiss">Verstanden</string>
 </resources>
