@@ -3724,6 +3724,12 @@ class CameraService {
         maxAreaRatio: maxAreaRatio,
       );
 
+  /// Test seam for [_dedupSameTextOverlapping] - the "overlay double"
+  /// collapse that merges a bubble detected at two granularities.
+  @visibleForTesting
+  List<OcrBlock> dedupOverlappingForTest(List<OcrBlock> blocks) =>
+      _dedupSameTextOverlapping(blocks);
+
   /// True when [outer] geometrically contains [inner] (with a 2-px
   /// tolerance so a slightly-larger outer box still passes when the
   /// inner detection bbox sits flush to its bounds).
@@ -3737,27 +3743,28 @@ class CameraService {
 
   /// Collapse OcrBlocks that are the same bubble detected twice.
   ///
-  /// Picking the right keeper of an overlapping pair turns out to need
-  /// TWO axes, not one:
-  ///   - **Position (bbox)** — must come from the LARGER bbox so the
-  ///     card lands at the bubble-shape boundary (BubbleDetector match)
-  ///     instead of the tight-glyph rectangle (TABD orphan / DBNet).
-  ///     Picking the small bbox makes the rendered card sit visibly
-  ///     off-centre inside the original speech bubble.
-  ///   - **Text** — must come from the OCR pass with the BEST read of
-  ///     the bubble (more meaningful characters), regardless of which
-  ///     bbox produced it. Picking the small-bbox text can be a
-  ///     garbled fragment that the downstream translate pipeline then
-  ///     hands back unchanged, surfacing as RAW SOURCE next to a clean
-  ///     translation - the original "overlay double" complaint.
+  /// Picking the right keeper of an overlapping cluster needs TWO axes:
+  ///   - **Position (bbox)** — the SMALLEST bbox in the cluster. When a
+  ///     cluster mixes a tight glyph rectangle (TABD orphan / DBNet text
+  ///     union) with a much larger one (BubbleDetector shape, or a panel
+  ///     swept in by union-find chaining), the small bbox is the more
+  ///     reliable estimate of where the text pixels actually sit; the
+  ///     large one renders the card at the bubble/panel top-left.
+  ///   - **Text** — from the OCR pass with the BEST read of the bubble
+  ///     (most meaningful characters), regardless of which bbox produced
+  ///     it. Picking the small-bbox text can be a garbled fragment that
+  ///     the translate pipeline hands back unchanged, surfacing as RAW
+  ///     SOURCE next to a clean translation - the "overlay double".
   ///
-  /// So for each cluster of overlapping blocks we MERGE: bbox = the
-  /// largest, text = the one with the most meaningful chars. This way
-  /// the card sits where the bubble actually is, AND downstream
-  /// translation gets the cleanest source text.
+  /// So each cluster collapses to: bbox = the smallest, text = the one
+  /// with the most meaningful chars.
   ///
-  /// Overlap rule: rectContains in either direction (SHAPE + TABD-orphan
-  /// pair) OR IoU > 0.4 (two SHAPE candidates from multi-threshold).
+  /// Overlap rule (any of):
+  ///   - rectContains either direction (SHAPE + contained TABD/DBNet box);
+  ///   - IoU > 0.4 (two SHAPE candidates from the multi-threshold passes);
+  ///   - intersection covers > 60 % of the SMALLER box (a partial text-line
+  ///     union vs the full-bubble / orphan-cluster box of the same bubble -
+  ///     low IoU from the area gap, but clearly the same bubble).
   /// Sibling close-but-not-overlapping bubbles stay untouched.
   static List<OcrBlock> _dedupSameTextOverlapping(List<OcrBlock> blocks) {
     if (blocks.length < 2) return blocks;
@@ -3780,7 +3787,19 @@ class CameraService {
 
     bool overlap(Rect a, Rect b) {
       if (_rectContains(a, b) || _rectContains(b, a)) return true;
-      return _iouRect(a, b) > 0.4;
+      if (_iouRect(a, b) > 0.4) return true;
+      // Same bubble detected at two granularities - a tight text-line union
+      // box (DBNet) plus either the full-bubble shape box or the orphan-line
+      // cluster box that _groupDbnetByBubbles emitted for the leftover lines
+      // of the SAME bubble. Their IoU is low because the areas differ a lot,
+      // but the overlap covers most of the SMALLER box. That is the
+      // "overlay double" signature: one box translates cleanly while the
+      // other echoes raw source, so the user sees two stacked cards. Merge
+      // when the intersection covers a majority of the smaller box.
+      final inter = _intersectArea(a, b);
+      if (inter <= 0) return false;
+      final smaller = math.min(a.width * a.height, b.width * b.height);
+      return smaller > 0 && inter / smaller > 0.6;
     }
 
     for (var i = 0; i < blocks.length; i++) {

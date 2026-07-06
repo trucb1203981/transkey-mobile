@@ -57,6 +57,30 @@ const double _kMaxFontSize = 28.0;
 // what _fitFont's word-width guard chose (which would re-break words).
 const double _kMangaMinFont = 9.0;
 const double _kMangaMaxFont = 16.0;
+// Absolute floor for the manga WORD-INTACT shrink (below the readable
+// _kMangaMinFont): when a bubble is too narrow to fit the widest whole word
+// even after growing into the neighbour gap, the font drops to here so the
+// word stays in one piece ("không", "Tôi") instead of breaking mid-glyph. A
+// small intact word reads far better than a split one.
+const double _kMangaWordFloor = 7.0;
+
+// Slack (logical px) added to the widest-word width when sizing a card, so the
+// widest word never sits EXACTLY at the wrap boundary. A tight fit re-wraps the
+// last glyph ("thương" -> "thươn"/"g") because the rendered Text and the
+// TextPainter that measured it can differ by a sub-pixel-to-~1px (rounding, and
+// any width-affecting style the Text inherits but the raw painter does not).
+// 2 px is invisible but absorbs that gap. Pair this with letterSpacing: 0 on the
+// rendered Text (kills the inherited Material letterSpacing the painter lacks).
+const double _kWordFitSlack = 2.0;
+
+// The overlay cards honour the device's system text-scale (accessibility
+// "Larger Text") but CAP it here: a translation card is sized to its source
+// bubble, so an uncapped 1.3-2.0x system scale would overflow small manga
+// bubbles badly. 1.15x gives low-vision users a real size bump while keeping
+// dense bubbles legible. The SAME capped scale is fed into every TextPainter
+// that sizes a card AND the rendered Text, so measure == render (no mid-word
+// break). The app's own font-scale slider (widget.fontScale) stacks on top.
+const double _kMaxOverlayTextScale = 1.15;
 
 // Client-side last-line guard against a single OCR/Vision/server block
 // covering most of the page. Anything above this fraction of the view
@@ -64,6 +88,26 @@ const double _kMangaMaxFont = 16.0;
 // exceed a quarter of the screen, which is well above any legitimate
 // dialogue bubble while comfortably below a panel-covering merge bug.
 const double _kMaxBboxAreaRatio = 0.25;
+
+/// Count of "meaningful" characters - Latin letters, digits, and CJK / kana /
+/// hangul codepoints (punctuation / whitespace / symbols don't count). Used to
+/// rank two overlapping manga cards so the one carrying the most real text
+/// wins the "overlay double" suppression.
+int _meaningfulChars(String s) {
+  var count = 0;
+  for (final rune in s.runes) {
+    if ((rune >= 0x30 && rune <= 0x39) || // 0-9
+        (rune >= 0x41 && rune <= 0x5A) || // A-Z
+        (rune >= 0x61 && rune <= 0x7A) || // a-z
+        (rune >= 0xC0 && rune <= 0x24F) || // Latin-1 + extended (accents)
+        (rune >= 0x3040 && rune <= 0x30FF) || // hiragana + katakana
+        (rune >= 0x4E00 && rune <= 0x9FFF) || // CJK unified
+        (rune >= 0xAC00 && rune <= 0xD7AF)) { // hangul syllables
+      count++;
+    }
+  }
+  return count;
+}
 
 /// Bridges the overlay's internal view state (card visibility + the
 /// drag/dismiss edits) out to the host screen so the action-bar buttons
@@ -246,6 +290,13 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
   /// index, the card uses [BgColorSampler.fallback].
   final Map<int, Color> _bgColors = <int, Color>{};
 
+  /// System text-scale (capped at [_kMaxOverlayTextScale]) applied to BOTH the
+  /// card-sizing TextPainters and the rendered card Text, so the overlay
+  /// follows accessibility "Larger Text" without breaking words. Recomputed at
+  /// the top of every build from MediaQuery; a plain derived cache, never a
+  /// trigger for rebuild.
+  TextScaler _overlayScaler = TextScaler.noScaling;
+
   static const double _kTrashRadius = 80;
   static const double _kTrashBottomGap = 80;
 
@@ -405,6 +456,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               TextStyle(fontSize: font, fontWeight: fontWeight, height: 1.25),
         ),
         textDirection: TextDirection.ltr,
+        textScaler: _overlayScaler,
       )..layout(maxWidth: innerW);
       return tp.size.height;
     }
@@ -440,7 +492,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
     // intact. Skipped for CJK (no inter-word spaces; per-char wrap is correct).
     if (RegExp(r'[A-Za-z]').hasMatch(text)) {
       var wsafety = 0;
-      while (_widestWordWidth(text, font, fontWeight) > innerW &&
+      while (_widestWordWidth(text, font, fontWeight) > innerW - _kWordFitSlack &&
           font > _minFont &&
           wsafety < 30) {
         font = math.max(_minFont, font - 1);
@@ -456,7 +508,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
 
   /// Width of the widest whitespace-delimited word in [text] at [font].
   /// Used by [_fitFont]'s word guard to stop mid-word glyph breaks.
-  static double _widestWordWidth(
+  double _widestWordWidth(
       String text, double font, FontWeight fontWeight) {
     var maxW = 0.0;
     for (final w in text.split(RegExp(r'\s+'))) {
@@ -468,16 +520,49 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               TextStyle(fontSize: font, fontWeight: fontWeight, height: 1.25),
         ),
         textDirection: TextDirection.ltr,
+        textScaler: _overlayScaler,
       )..layout();
       if (tp.width > maxW) maxW = tp.width;
     }
     return maxW;
   }
 
+  /// Reduce [font] until the widest whitespace-delimited word fits [innerW]
+  /// at the RENDERED size ([font] * [scale]), so a word never breaks
+  /// mid-glyph. This is the final guard after build()'s readable floor and
+  /// the font-scale slider, both of which can re-inflate a word past the card
+  /// width that [_fitFont]'s own guard had already shrunk to fit. Floored at
+  /// [_minFont] (an intact word at the floor beats a split one); skipped for
+  /// space-less scripts (CJK) where per-character wrap is correct.
+  double _clampFontToWordWidth(
+    String text,
+    double font,
+    double innerW,
+    FontWeight fontWeight,
+    double scale,
+  ) {
+    if (innerW <= 0 || scale <= 0) return font;
+    if (!RegExp(r'[A-Za-z]').hasMatch(text)) return font;
+    var f = font;
+    var safety = 0;
+    while (f > _minFont &&
+        _widestWordWidth(text, f * scale, fontWeight) > innerW - _kWordFitSlack &&
+        safety < 40) {
+      f = math.max(_minFont, f - 0.5);
+      safety++;
+    }
+    return f;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Capped system text-scale, shared by measure + render this build.
+        _overlayScaler = TextScaler.linear(math.min(
+          MediaQuery.textScalerOf(context).scale(1.0),
+          _kMaxOverlayTextScale,
+        ));
         final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
         final fit = _fitContain(widget.imageSize, viewSize);
         final scaleX = fit.fitW / widget.imageSize.width;
@@ -577,10 +662,10 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               fontWeight:
                   isTranslated ? FontWeight.w500 : FontWeight.normal,
             );
-            final mangaFont = mangaFit.fontSize
+            var mangaFont = mangaFit.fontSize
                 .clamp(_kMangaMinFont, _kMangaMaxFont)
                 .toDouble();
-            final renderedManga = mangaFont * widget.fontScale;
+            var renderedManga = mangaFont * widget.fontScale;
             // A vertical-JP bubble is a THIN column, but the horizontal VI word
             // needs width; clamping to the bubble breaks a word mid-glyph
             // ("Cảm" -> "Cả"/"m"). Grow the card (centred on the bubble) to fit
@@ -618,22 +703,74 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                 math.min(mangaCx - mangaLeftLimit, mangaRightLimit - mangaCx));
             final mangaAllowW =
                 math.max(cardWidth, math.min(mangaNeedW, 2 * mangaHalf));
+            // The card width is now fixed (it grew into whatever gap the
+            // neighbours allowed). If the widest WHOLE word still doesn't fit
+            // that width, shrink the font until it does, so the word stays
+            // intact instead of breaking mid-glyph ("không" -> "kh"/"ồng",
+            // "Tôi" -> "Tô"/"i"). Measured at the RENDERED size and against the
+            // SAME inner width the card actually wraps at (below), so the
+            // decision matches what paints. Skipped for space-less CJK.
+            final mw = isTranslated ? FontWeight.w500 : FontWeight.normal;
+            final hasLatinWords = RegExp(r'[A-Za-z]').hasMatch(displayText);
+            final mangaInnerW = math.max(8.0, mangaAllowW - 10);
+            // 1) Shrink the font so the widest WHOLE word fits the gap-limited
+            //    width; floor low (a small intact word beats a split one).
+            if (hasLatinWords) {
+              var wsafety = 0;
+              while (renderedManga > _kMangaWordFloor &&
+                  _widestWordWidth(displayText, renderedManga, mw) >
+                      mangaInnerW &&
+                  wsafety < 80) {
+                renderedManga =
+                    math.max(_kMangaWordFloor, renderedManga - 0.5);
+                wsafety++;
+              }
+              // _BlockCard renders at fontSize * fontScale, so carry the shrunk
+              // size back out through the same scale to keep them in sync.
+              if (widget.fontScale > 0) {
+                mangaFont = renderedManga / widget.fontScale;
+              }
+            }
+            // 2) If even at the font floor the widest word is STILL wider than
+            //    the gap allowed (a thin vertical-JP bubble boxed in by
+            //    neighbours), let the layout - and the card below - grow to the
+            //    word so it NEVER breaks mid-glyph ("Cảm" -> "Cả"/"m"). The card
+            //    is centred on the bubble, so the few extra px spill
+            //    symmetrically and barely touch neighbours - far less jarring
+            //    than a split word, and the font is already at its floor so the
+            //    spill stays minimal.
+            final mangaWordW = hasLatinWords
+                ? _widestWordWidth(displayText, renderedManga, mw)
+                : 0.0;
+            // Lay out (and below, size the card) with the widest word PLUS slack
+            // so the word never lands exactly on the wrap boundary, where a
+            // sub-pixel render/measure gap drops its last glyph to a new line.
+            final mangaLayoutW =
+                math.max(mangaInnerW, mangaWordW + _kWordFitSlack);
             final tpManga = TextPainter(
               text: TextSpan(
                 text: displayText,
                 style: TextStyle(
                   fontSize: renderedManga,
-                  fontWeight:
-                      isTranslated ? FontWeight.w500 : FontWeight.normal,
+                  fontWeight: mw,
                   height: 1.25,
                 ),
               ),
               textDirection: TextDirection.ltr,
-            )..layout(maxWidth: math.max(20, mangaAllowW - 10));
+              textScaler: _overlayScaler,
+            )..layout(maxWidth: mangaLayoutW);
             // 5px L + 5px R = 10 horizontal; 4px T + 4px B = 8 vertical.
             // Padding matches the Container padding inside the manga
             // card so glyphs sit clear of the pill border on every side.
-            final mangaTightW = math.min(mangaAllowW, tpManga.size.width + 10);
+            // Card hugs the rendered text. Not capped at mangaAllowW: when a
+            // word forced mangaLayoutW past the gap (step 2 above), the card
+            // must be allowed that width too, or the text would re-wrap and
+            // break the very word we just kept whole.
+            // Content width must clear the widest word + slack even if the
+            // wrapped layout's longest line measured a hair narrower, so the
+            // rendered Text always has room for the word in one piece.
+            final mangaTightW =
+                math.max(tpManga.size.width, mangaWordW + _kWordFitSlack) + 10;
             // Always size the card to the FULL measured (wrapped) text
             // height - never clamp to boxH. Clamping cut off wrapped lines on
             // small bubbles whose VI translation wraps to more lines than fit
@@ -768,6 +905,20 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             var fontSize = isTranslated
                 ? math.max(fit1.fontSize, 13.0)
                 : fit1.fontSize;
+            // Keep whole words intact. The readable floor above AND the user's
+            // font-scale slider can push a long word past the card width after
+            // _fitFont's own guard already ran, which makes TextPainter break
+            // it mid-glyph ("Được" -> "Đư" / "ợc", "translation" -> "transla"
+            // / "tion"). Re-clamp here at the RENDERED size so the widest word
+            // still fits - a smaller intact word reads far better than a split
+            // one.
+            fontSize = _clampFontToWordWidth(
+              displayText,
+              fontSize,
+              layoutWidth - _kCardHPad * 2,
+              isTranslated ? FontWeight.w500 : FontWeight.normal,
+              widget.fontScale,
+            );
             // Hard-lock the card to the source OCR box height. Earlier
             // versions let it grow when content exceeded the box, but
             // that caused cards to bleed into the row below on dense
@@ -820,6 +971,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                       ),
                     ),
                     textDirection: TextDirection.ltr,
+                    textScaler: _overlayScaler,
                   )..layout(
                       maxWidth: math.max(20, layoutWidth - _kCardHPad * 2));
 
@@ -889,6 +1041,63 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
           return a.index.compareTo(b.index); // stable tiebreak
         });
 
+        // Manga "overlay double" suppression - the last line of defence for
+        // "block chồng block". The OCR + vision-catch-up pipeline can emit two
+        // boxes for ONE speech bubble (a clean partial read that translates,
+        // plus the full garbled read that echoes raw source). Their SOURCE
+        // boxes don't overlap enough for the upstream dedup, but the rendered
+        // cards - each centred on the bubble and grown to fit its text - land
+        // on top of each other, so the user sees two stacked cards. When two
+        // rendered cards overlap by a MAJORITY of the smaller one, keep the
+        // higher-value card (a translated card beats a raw-source one; between
+        // equals the longer text wins) and drop the other. Verified on device
+        // 2026-06-15: duplicate pairs overlap ~0.7 of the smaller card while
+        // genuinely distinct neighbour bubbles overlap <0.15, so 0.5 separates
+        // them cleanly. Scoped to manga mode - menu / normal cards have their
+        // own grow-right / cap-bottom anti-overlap and must stay untouched.
+        final suppressed = <int>{};
+        if (widget.mangaMode && cards.length > 1) {
+          String shownText(int idx) {
+            final t = idx < widget.translations.length
+                ? widget.translations[idx]
+                : '';
+            final translated = !widget.showOriginal &&
+                t.isNotEmpty &&
+                t != widget.blocks[idx].text;
+            return widget.showOriginal
+                ? widget.blocks[idx].text
+                : (translated ? t : widget.blocks[idx].text);
+          }
+
+          double cardScore(_CardLayout c) =>
+              (isTranslatedCard(c.index) ? 1e9 : 0.0) +
+              _meaningfulChars(shownText(c.index));
+
+          for (var a = 0; a < cards.length; a++) {
+            if (suppressed.contains(cards[a].index)) continue;
+            for (var b = a + 1; b < cards.length; b++) {
+              if (suppressed.contains(cards[b].index)) continue;
+              final ra = Rect.fromLTWH(
+                  cards[a].left, cards[a].top, cards[a].width, cards[a].height);
+              final rb = Rect.fromLTWH(
+                  cards[b].left, cards[b].top, cards[b].width, cards[b].height);
+              final ix = math.max(0.0,
+                  math.min(ra.right, rb.right) - math.max(ra.left, rb.left));
+              final iy = math.max(0.0,
+                  math.min(ra.bottom, rb.bottom) - math.max(ra.top, rb.top));
+              final inter = ix * iy;
+              if (inter <= 0) continue;
+              final smaller =
+                  math.min(ra.width * ra.height, rb.width * rb.height);
+              if (smaller <= 0 || inter / smaller <= 0.5) continue;
+              final loser = cardScore(cards[a]) >= cardScore(cards[b])
+                  ? cards[b]
+                  : cards[a];
+              suppressed.add(loser.index);
+            }
+          }
+        }
+
         return Stack(
           children: [
             Positioned.fill(
@@ -906,7 +1115,8 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             ),
             if (_overlayVisible)
               for (final card in cards)
-                _BlockCard(
+                if (!suppressed.contains(card.index))
+                  _BlockCard(
                   block: widget.blocks[card.index],
                   translation: card.index < widget.translations.length
                       ? widget.translations[card.index]
@@ -917,6 +1127,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
                   height: card.height,
                   fontSize: card.fontSize,
                   fontScale: widget.fontScale,
+                  textScaler: _overlayScaler,
                   showOriginal: widget.showOriginal,
                   showOriginalAlways: widget.showOriginalAlways,
                   overlayOpacity: widget.overlayOpacity,
@@ -1131,6 +1342,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
           style: TextStyle(fontSize: fontSize, fontWeight: fontWeight),
         ),
         textDirection: TextDirection.ltr,
+        textScaler: _overlayScaler,
         maxLines: 1,
       )..layout();
       if (tp.size.width > widest) widest = tp.size.width;
@@ -1150,6 +1362,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
         style: TextStyle(fontSize: fontSize, height: 1.25),
       ),
       textDirection: TextDirection.ltr,
+      textScaler: _overlayScaler,
       maxLines: maxLines,
     )..layout(maxWidth: math.max(20, maxWidth));
     return tp.size.height;
@@ -1187,6 +1400,7 @@ class _BlockCard extends StatelessWidget {
     required this.height,
     required this.fontSize,
     required this.fontScale,
+    required this.textScaler,
     required this.showOriginal,
     required this.showOriginalAlways,
     required this.overlayOpacity,
@@ -1216,6 +1430,9 @@ class _BlockCard extends StatelessWidget {
   // bounds (the card background stays anchored to the bbox so only
   // glyphs spill out). Width still wraps at the card width.
   final double fontScale;
+  /// Capped system text-scale, identical to the one the parent used to size
+  /// this card, so the rendered glyphs match the measured box (no word break).
+  final TextScaler textScaler;
   final bool showOriginal;
   final bool showOriginalAlways;
   final double overlayOpacity;
@@ -1297,12 +1514,27 @@ class _BlockCard extends StatelessWidget {
                 child: Text(
                   displayText,
                   textAlign: TextAlign.center,
+                  // Render at EXACTLY the font the parent measured/fitted.
+                  // Use the SAME capped system text-scale the parent measured
+                  // this card with. A plain Text would inherit the raw
+                  // MediaQuery.textScaler (e.g. 1.3x "Larger Text"), rendering
+                  // bigger than the box and breaking the widest word mid-glyph
+                  // ("Chà" -> "Ch"/"à"). Feeding the capped scaler keeps the
+                  // overlay honouring accessibility (up to _kMaxOverlayTextScale)
+                  // while measure == render. The app's own slider stacks on top.
+                  textScaler: textScaler,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: fontSize * fontScale,
                     fontWeight:
                         isTranslated ? FontWeight.w500 : FontWeight.normal,
                     height: 1.25,
+                    // Kill any letterSpacing inherited from the ambient
+                    // DefaultTextStyle (Material bodyMedium ships 0.25): the
+                    // TextPainter that sized this card has none, so an inherited
+                    // value renders the text wider than measured and breaks the
+                    // widest word mid-glyph.
+                    letterSpacing: 0,
                   ),
                 ),
               ),
@@ -1340,6 +1572,10 @@ class _BlockCard extends StatelessWidget {
       children: [
           Text(
             displayText,
+            // Same capped system text-scale the parent measured with (see manga
+            // card note), so enlarged system text grows the card instead of
+            // overflowing it and breaking a word mid-glyph.
+            textScaler: textScaler,
             style: TextStyle(
               color: textColor,
               fontSize: renderedFont,
@@ -1347,6 +1583,9 @@ class _BlockCard extends StatelessWidget {
                   ? FontWeight.w500
                   : FontWeight.normal,
               height: 1.25,
+              // See manga card: ignore inherited letterSpacing so the render
+              // matches the TextPainter measurement that sized the card.
+              letterSpacing: 0,
             ),
           ),
           if (showOriginalAlways && isTranslated)
@@ -1364,11 +1603,13 @@ class _BlockCard extends StatelessWidget {
                 ),
                 child: Text(
                   block.text,
+                  textScaler: textScaler,
                   style: TextStyle(
                     color: textColor.withValues(alpha: 0.75),
                     fontSize: 10,
                     fontStyle: FontStyle.italic,
                     height: 1.25,
+                    letterSpacing: 0,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

@@ -1401,59 +1401,29 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               ),
             ),
           ),
-        // Discoverability hint + action bar — hide in manga reading mode.
+        // Action bar - hidden in manga reading mode. The per-card "What is
+        // this?" long-press gesture lives in the "?" tips sheet (tip 3), so we
+        // no longer show a persistent on-image hint here: the translation
+        // cards overlapped and obscured it, and it just crowded the result.
         if (!isManga || _mangaUiVisible) ...[
-          // Discoverability hint for the new per-card "What is this?"
-          // gesture. Stays subtle (white12 background, small font) so it
-          // doesn't compete with the translation cards. Anchored above
-          // the action bar so the user notices it while scanning the
-          // result screen.
-          Positioned(
-          left: 0,
-          right: 0,
-          bottom: 100,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  width: 0.5,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.psychology_outlined,
-                      size: 12, color: Colors.white70),
-                  const SizedBox(width: 6),
-                  Text(
-                    AppLocalizations.of(context)!.cameraResultExplainHint,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
         Positioned(
           left: 0,
           right: 0,
           bottom: 40,
           child: AnimatedBuilder(
             animation: _overlayController,
-            builder: (context, _) => Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // Wrap (not Row) so the bar flows onto a second line instead of
+            // overflowing when the extra "Translate again" chip plus a long
+            // localized label exceed the width on a narrow phone.
+            builder: (context, _) => Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                // Left cluster: view controls (eye + help + reset). Round
-                // icon buttons so they read as a distinct group from the
-                // labelled Retake / Copy actions on the right.
+                // Left cluster: view controls (eye + list + help + reset).
+                // Round icon buttons so they read as a distinct group from
+                // the labelled Re-translate / Retake / Copy actions.
                 _RoundIconButton(
                   icon: _overlayController.visible
                       ? Icons.visibility
@@ -1462,7 +1432,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       .cameraTapShowTranslations,
                   onTap: () => _overlayController.toggleVisible(),
                 ),
-                const SizedBox(width: 8),
                 // List view: read every detected line as a clean original ->
                 // translation list. The on-image card overlay can't lay out a
                 // SUPER-dense menu without overlap (readable text needs more
@@ -1473,7 +1442,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   tooltip: AppLocalizations.of(context)!.cameraListView,
                   onTap: _showResultList,
                 ),
-                const SizedBox(width: 8),
                 _RoundIconButton(
                   icon: Icons.help_outline,
                   tooltip: AppLocalizations.of(context)!.cameraTipsTitle,
@@ -1485,21 +1453,29 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     CameraTipsSheet.show(context);
                   },
                 ),
-                if (_overlayController.hasEdits) ...[
-                  const SizedBox(width: 8),
+                if (_overlayController.hasEdits)
                   _RoundIconButton(
                     icon: Icons.restart_alt,
                     tooltip: 'Reset',
                     onTap: () => _overlayController.reset(),
                   ),
-                ],
-                const SizedBox(width: 16),
+                // Re-translate the detected text with the target pill as it is
+                // NOW - the fix for "I picked the wrong language": change the
+                // pill, tap this, and the result is re-translated in place
+                // (reusing the existing OCR, no re-scan or vision call) WITHOUT
+                // a retake. Hidden during a multi-pick batch, where
+                // re-translating one page would drop the others.
+                if (_batchQueue.length <= 1)
+                  _ActionChip(
+                    icon: Icons.translate,
+                    label: AppLocalizations.of(context)!.cameraRetranslate,
+                    onTap: _retranslateCapture,
+                  ),
                 _ActionChip(
                   icon: Icons.refresh,
                   label: AppLocalizations.of(context)!.cameraRetake,
                   onTap: _retake,
                 ),
-                const SizedBox(width: 12),
                 _ActionChip(
                   icon: Icons.copy,
                   label: AppLocalizations.of(context)!.cameraCopyAll,
@@ -2766,11 +2742,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       final data = response.data as Map?;
       final visionConfidence = (data?['confidence'] as String?)?.toLowerCase();
       final mappedConfidence = _mapVisionConfidenceToScore(visionConfidence, scene);
-      final confChip = (visionConfidence == 'high' ||
-              visionConfidence == 'medium' ||
-              visionConfidence == 'low')
-          ? visionConfidence
-          : null;
+      // Chip only warns on model-reported uncertainty (medium/low); a
+      // self-reported "high" isn't a verified signal, so we don't show a
+      // "Reliable" badge. See the matching note in _captureWithVision.
+      final confChip =
+          (visionConfidence == 'medium' || visionConfidence == 'low')
+              ? visionConfidence
+              : null;
       final rawSrcLang = (data?['sourceLang'] as String?)?.toLowerCase();
       final captureSourceLang =
           (rawSrcLang != null && RegExp(r'^[a-z]{2}$').hasMatch(rawSrcLang))
@@ -3804,14 +3782,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       final visionConfidence = (data?['confidence'] as String?)?.toLowerCase();
       final mappedConfidence =
           _mapVisionConfidenceToScore(visionConfidence, scene);
-      // Stash for the result screen's chip — null when the server didn't
-      // include the field so the chip stays hidden on legacy responses
-      // rather than misleading the user with a fabricated rating.
-      _visionConfidence = (visionConfidence == 'high' ||
-              visionConfidence == 'medium' ||
-              visionConfidence == 'low')
-          ? visionConfidence
-          : null;
+      // Stash for the result screen's chip. Only surface it when the model
+      // flags ITS OWN uncertainty (medium/low): a self-reported "high" is not
+      // a verified accuracy signal - the model can be confidently wrong - so a
+      // green "Reliable" badge would falsely reassure the user (and crowd the
+      // corner). 'high' and any legacy/absent value collapse to null = hidden.
+      _visionConfidence =
+          (visionConfidence == 'medium' || visionConfidence == 'low')
+              ? visionConfidence
+              : null;
       // Server's content-type guess. Whitelist to the values our prompt
       // tells the model to use; anything else (legacy server, model
       // hallucination) becomes null so the chip stays hidden.
@@ -4421,6 +4400,35 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// for a 50-block capture - faster total than 60-per-chunk anyway.
   static const int _batchChunkSize = 15;
 
+  /// Re-translate the ALREADY-detected text into the language pills as they
+  /// are NOW, without making the user retake. Covers the common "wrong target
+  /// language" case: change the target pill on the result screen and tap
+  /// "Translate again". This deliberately REUSES the existing OCR blocks and
+  /// only re-runs the text translation (/translate-batch); it does NOT re-OCR
+  /// or re-route to the vision LLM (/translate-image), so it stays cheap, fast
+  /// and deterministic - an identical re-tap is served straight from the
+  /// translation cache. (Changing the SOURCE pill therefore won't re-scan the
+  /// image; for a genuinely misread script the user still retakes.) No-op when
+  /// there is nothing to re-translate or a request is already in flight.
+  Future<void> _retranslateCapture() async {
+    if (_capturedPath == null || _blocks.isEmpty) return;
+    if (_step == _CameraStep.translating || _isBatchProcessing) return;
+
+    ref.read(trackingServiceProvider).event('camera_retranslate', properties: {
+      'source':
+          ref.read(languageSettingsProvider).valueOrNull?.sourceLang ?? 'auto',
+      'target':
+          ref.read(languageSettingsProvider).valueOrNull?.targetLang ?? 'en',
+      'blocks': _blocks.length,
+    });
+
+    // Re-translate the existing blocks in place: _translateAndShow shows the
+    // cache hits immediately and only fires /translate-batch for misses - a
+    // target change misses (the cache key includes the target lang) and
+    // re-translates, while an unchanged re-tap is fully cache-served.
+    await _translateAndShow();
+  }
+
   void _retake() {
     setState(() {
       _step = _CameraStep.preview;
@@ -4695,9 +4703,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// Open the language picker to change the target translation language
   /// without leaving the camera. Pauses the OCR stream while the sheet is
   /// open (same pattern as [_explainBlock]) so the live overlay doesn't
-  /// thrash under the modal. The new lang takes effect on the NEXT capture
-  /// — already-captured results aren't re-translated automatically; the
-  /// user can tap retake.
+  /// thrash under the modal. On the live preview the new lang takes effect on
+  /// the next capture; on the result screen the user taps "Translate again"
+  /// ([_retranslateCapture]) to re-translate the detected text with no retake.
   Future<void> _changeTargetLang() async {
     final current =
         ref.read(languageSettingsProvider).valueOrNull?.targetLang ?? 'en';
@@ -5008,13 +5016,10 @@ class _ConfidenceChip extends StatelessWidget {
     final String label;
     final Color bg;
     final IconData icon;
+    // No 'high' case on purpose: we only ever warn (medium/low). A
+    // model-reported "high" is not a verified accuracy signal, so it shows
+    // nothing rather than a falsely-reassuring "Reliable" badge.
     switch (level) {
-      case 'high':
-        label = l.cameraConfidenceReliable;
-        // Tailwind green-700 — readable on bright photo backgrounds.
-        bg = const Color(0xFF15803D);
-        icon = Icons.verified_outlined;
-        break;
       case 'medium':
         label = l.cameraConfidenceCaution;
         bg = const Color(0xFFB45309); // amber-700

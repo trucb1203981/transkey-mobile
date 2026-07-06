@@ -21,7 +21,7 @@ class TtsState {
   const TtsState({
     this.isPlaying = false,
     this.currentText,
-    this.rate = 0.75,
+    this.rate = 1.0,
     this.voiceByLang = const {},
   });
 
@@ -50,6 +50,17 @@ class TtsNotifier extends Notifier<TtsState> {
 
   static const _kRateKey = 'tk_tts_rate';
   static const _kVoicePrefix = 'tk_tts_voice_';
+
+  // [state.rate] is a user-facing multiplier where 1.0 = normal speed (this is
+  // what the UI labels "1.0× (Normal)" and what we persist). flutter_tts uses a
+  // different scale: on iOS the value is passed straight to AVSpeechUtterance,
+  // whose normal (AVSpeechUtteranceDefaultSpeechRate) is 0.5; on Android the
+  // plugin doubles the value before handing it to the OS engine (whose normal
+  // is 1.0). Both land on "normal" when we feed the engine multiplier × 0.5, so
+  // a single factor converts our multiplier to the plugin scale for both
+  // platforms. The native bubble path talks to the OS engine directly (no
+  // doubling) so it consumes the raw multiplier instead — see BubbleService.
+  static const _engineRateFactor = 0.5;
 
   // ISO 639-1 code → BCP-47 locale used by Android TextToSpeech / iOS
   // AVSpeechSynthesizer. Falls back to the raw code (which both engines
@@ -126,7 +137,7 @@ class TtsNotifier extends Notifier<TtsState> {
 
   Future<void> _loadPersistedPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final rate = prefs.getDouble(_kRateKey) ?? 0.75;
+    final rate = prefs.getDouble(_kRateKey) ?? 1.0;
     final keys = prefs.getKeys().where((k) => k.startsWith(_kVoicePrefix));
     final voices = <String, String>{
       for (final k in keys)
@@ -190,7 +201,7 @@ class TtsNotifier extends Notifier<TtsState> {
     // "What is this?" + saved phrasebook) that want a slower pace so a
     // local listener can catch each syllable. Doesn't persist; the global
     // rate in [state.rate] is untouched.
-    await _tts.setSpeechRate(rate ?? state.rate);
+    await _tts.setSpeechRate((rate ?? state.rate) * _engineRateFactor);
 
     final voiceName = state.voiceByLang[lang];
     if (voiceName != null && voiceName.isNotEmpty) {
@@ -228,7 +239,7 @@ class TtsNotifier extends Notifier<TtsState> {
   }
 
   Future<void> setRate(double rate) async {
-    await _tts.setSpeechRate(rate);
+    await _tts.setSpeechRate(rate * _engineRateFactor);
     state = state.copyWith(rate: rate);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_kRateKey, rate);
@@ -241,7 +252,7 @@ class TtsNotifier extends Notifier<TtsState> {
   Future<void> reload() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final rate = prefs.getDouble(_kRateKey) ?? 0.75;
+    final rate = prefs.getDouble(_kRateKey) ?? 1.0;
     if (rate != state.rate) {
       state = state.copyWith(rate: rate);
     }
