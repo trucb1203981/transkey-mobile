@@ -114,7 +114,12 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
             r.suggestions.map((s) => s.source).toList(growable: false),
         'suggestionTargets':
             r.suggestions.map((s) => s.target).toList(growable: false),
-        if (r.scamRisk != null) 'scamRisk': r.scamRisk!.toMap(),
+        // Flat scam keys, matching main.dart's bubble/IME entries — a nested
+        // 'scamRisk' map here is invisible to the IME cache-hit path (it reads
+        // 'scamLevel'), silently dropping the warning on replayed texts.
+        if (r.scamRisk != null) 'scamLevel': r.scamRisk!.level,
+        if (r.scamRisk?.type != null) 'scamType': r.scamRisk!.type,
+        if (r.scamRisk?.reason != null) 'scamReason': r.scamRisk!.reason,
       };
 
   TranslateResult _resultFromCacheMap(Map<String, dynamic> m) {
@@ -129,8 +134,16 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
         for (var i = 0; i < n; i++)
           SuggestionEntry(source: sources[i], target: targets[i]),
       ],
+      // Flat keys are the canonical shape; the nested 'scamRisk' fallback
+      // reads entries persisted by builds prior to this fix.
       scamRisk: ScamRisk.fromMap(
-        (m['scamRisk'] as Map?)?.cast<String, dynamic>(),
+        m['scamLevel'] != null
+            ? {
+                'level': m['scamLevel'],
+                'type': m['scamType'],
+                'reason': m['scamReason'],
+              }
+            : (m['scamRisk'] as Map?)?.cast<String, dynamic>(),
       ),
     );
   }
