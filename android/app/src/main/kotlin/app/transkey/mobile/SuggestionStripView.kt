@@ -36,13 +36,20 @@ class SuggestionStripView : View {
     // tap opens the language picker. Empty label hides it.
     var onLangTap: (() -> Unit)? = null
     private var langLabel: String = ""
-    private var langPillRight = 0f
 
     // Undo chip at the right of the action chips: revert the last whole-field
     // replace (translate / refine / reply). Shown only when undoVisible.
     var onUndoTap: (() -> Unit)? = null
     private var undoVisible = false
-    private var undoZoneLeft = Float.MAX_VALUE
+
+    // Actual pill bounds recorded at draw time, hit-tested with a small slop.
+    // The strip is taller than the pills and the old x-only hit test snapped
+    // every middle-zone tap to the nearest chip, so undershoot taps aimed at
+    // the host app just above the strip kept firing actions - a tap outside
+    // the drawn pills must be ignored, not coerced onto a chip.
+    private val langRect = RectF()
+    private val undoRect = RectF()
+    private val chipRects = ArrayList<RectF>()
 
     /** Show/hide the undo chip next to the action chips. */
     fun setUndoVisible(on: Boolean) {
@@ -333,47 +340,52 @@ class SuggestionStripView : View {
     /** Draw the optional language pill, then the feature chips in what's left. */
     private fun drawActions(c: Canvas, l: Float, r: Float, cy: Float) {
         val padH = dp(6f)
-        val pillH = dp(34f)
+        val pillH = dp(28f)
+        langRect.setEmpty()
+        undoRect.setEmpty()
+        chipRects.clear()
         var start = l
         if (langLabel.isNotEmpty()) {
             val pillW = textLang.measureText(langLabel) + dp(24f)
             val left = start + padH
             val right = start + pillW - padH
             rectF.set(left, cy - pillH / 2, right, cy + pillH / 2)
+            langRect.set(rectF)
             c.drawRoundRect(rectF, pillH / 2, pillH / 2, langPillFill)
             val base = cy - (textLang.descent() + textLang.ascent()) / 2f
             c.drawText(langLabel, (left + right) / 2f, base, textLang)
-            langPillRight = start + pillW
             start += pillW
-        } else {
-            langPillRight = l
         }
         // Reserve a fixed zone on the right for the undo chip (next to the last
         // action chip), so the action chips shrink to fit instead of overlapping.
         var actionsRight = r
         if (undoVisible) {
             val undoW = dp(48f)
-            undoZoneLeft = r - undoW
-            actionsRight = undoZoneLeft
-            val left = undoZoneLeft + padH
+            actionsRight = r - undoW
+            val left = actionsRight + padH
             val right = r - padH
-            val top = cy - pillH / 2
-            val bottom = cy + pillH / 2
-            rectF.set(left, top, right, bottom)
+            rectF.set(left, cy - pillH / 2, right, cy + pillH / 2)
+            undoRect.set(rectF)
             c.drawRoundRect(rectF, pillH / 2, pillH / 2, undoPillFill)
             drawUndoIcon(c, (left + right) / 2f, cy, dp(8f))
-        } else {
-            undoZoneLeft = Float.MAX_VALUE
         }
         if (actions.isEmpty()) return
         val slot = (actionsRight - start) / actions.size
-        val baseSize = sp(15f)
+        val baseSize = sp(14f)
         for (i in actions.indices) {
-            val left = start + slot * i + padH
-            val right = start + slot * (i + 1) - padH
+            val label = actions[i]
+            textAction.textSize = baseSize
+            // Fit the pill to its label instead of filling the slot: slot-wide
+            // pills read oversized and turn the whole strip into tap targets.
+            val pillW = (textAction.measureText(label) + dp(24f))
+                .coerceAtMost(slot - padH * 2)
+            val centerX = start + slot * i + slot / 2
+            val left = centerX - pillW / 2
+            val right = centerX + pillW / 2
             val top = cy - pillH / 2
             val bottom = cy + pillH / 2
             rectF.set(left, top, right, bottom)
+            chipRects.add(RectF(rectF))
             chipGradient.shader = android.graphics.LinearGradient(
                 left, top, right, bottom, gradStart, gradEnd,
                 android.graphics.Shader.TileMode.CLAMP,
@@ -382,9 +394,7 @@ class SuggestionStripView : View {
             // Shrink the label to fit its slot (chips get narrower with 3 actions:
             // Dịch / Trả lời / Trau chuốt) so a long label never overflows into
             // its neighbour - the iOS chip's shrinkTitleToFit, ported across.
-            val label = actions[i]
             val avail = (right - left) - dp(8f)
-            textAction.textSize = baseSize
             val w = textAction.measureText(label)
             if (w > avail && avail > 0) {
                 textAction.textSize = (baseSize * avail / w).coerceAtLeast(sp(10f))
@@ -527,13 +537,13 @@ class SuggestionStripView : View {
             MotionEvent.ACTION_UP -> {
                 removeCallbacks(micLongPressRunnable)
                 if (micLongPressFired) { micLongPressFired = false; return true }
-                handleTap(x)
+                handleTap(x, e.y)
             }
         }
         return true
     }
 
-    private fun handleTap(x: Float) {
+    private fun handleTap(x: Float, y: Float) {
         when {
             x < sideZone -> onGridTap?.invoke()
             x > width - sideZone -> onMicTap?.invoke()
@@ -550,20 +560,21 @@ class SuggestionStripView : View {
                 onSuggestionTap?.invoke(suggestions.getOrElse(i) { suggestions.first() })
             }
             actions.isNotEmpty() || langLabel.isNotEmpty() -> {
-                val l = sideZone
-                val r = width - sideZone
-                if (langLabel.isNotEmpty() && x < langPillRight) {
-                    onLangTap?.invoke()
-                } else if (undoVisible && x >= undoZoneLeft) {
-                    onUndoTap?.invoke()
-                } else if (actions.isNotEmpty()) {
-                    val start = if (langLabel.isNotEmpty()) langPillRight else l
-                    val actionsRight = if (undoVisible) undoZoneLeft else r
-                    val slot = (actionsRight - start) / actions.size
-                    val i = ((x - start) / slot).toInt().coerceIn(0, actions.size - 1)
-                    onActionTap?.invoke(i)
+                val slop = dp(4f)
+                when {
+                    hitPill(langRect, x, y, slop) -> onLangTap?.invoke()
+                    undoVisible && hitPill(undoRect, x, y, slop) -> onUndoTap?.invoke()
+                    else -> {
+                        val i = chipRects.indexOfFirst { hitPill(it, x, y, slop) }
+                        if (i >= 0) onActionTap?.invoke(i)
+                    }
                 }
             }
         }
     }
+
+    /** Tap counts only inside the drawn pill (+slop); dead space is a no-op. */
+    private fun hitPill(rect: RectF, x: Float, y: Float, slop: Float) =
+        !rect.isEmpty && x >= rect.left - slop && x <= rect.right + slop &&
+            y >= rect.top - slop && y <= rect.bottom + slop
 }
