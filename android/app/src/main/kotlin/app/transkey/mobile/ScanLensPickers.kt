@@ -1,6 +1,9 @@
 package app.transkey.mobile
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -16,6 +19,7 @@ import android.widget.ScrollView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import app.transkey.mobile.BubbleService.Companion.KEY_SCAN_DISCLOSED
 import app.transkey.mobile.BubbleService.Companion.MODE_SUMMARIZE
 import app.transkey.mobile.BubbleService.Companion.MODE_TRANSLATE
@@ -314,6 +318,24 @@ internal fun BubbleService.showLensOverlay(bitmap: Bitmap, items: List<LensOverl
                 retranslateLens(newSource)
             })
         },
+        copyAllLabel = localized(R.string.bubble_panel_copy),
+        // Copies every block's ORIGINAL text — screen-text extraction for
+        // content the source app won't let the user select (mirrors the
+        // desktop overlay's copy-all).
+        onCopyAllTap = {
+            val all = lensOverlayView?.snapshotItems()
+                ?.joinToString("\n") { it.original }
+                .orEmpty()
+            if (all.isNotBlank()) {
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("TransKey", all))
+                Toast.makeText(
+                    this,
+                    localized(R.string.bubble_panel_copied),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        },
     )
     lensOverlayView = overlay
     windowManager?.addView(overlay, buildPickerLayoutParams())
@@ -365,6 +387,48 @@ internal fun BubbleService.showLensDetailPopup(original: String, translation: St
             setPadding(0, (12 * dp).toInt(), 0, 0)
         })
     }
+    // Copy buttons. The overlay window is FLAG_NOT_FOCUSABLE, so the
+    // selectable-text handles above never actually engage (text selection
+    // needs window focus) — explicit buttons are the only reliable copy
+    // path from an overlay.
+    val copyRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(0, (14 * dp).toInt(), 0, 0)
+    }
+    fun addCopyButton(label: String, value: String) {
+        if (value.isBlank()) return
+        val btn = TextView(this).apply {
+            text = label
+            setTextColor(style.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable().apply {
+                setColor((style.text and 0x00FFFFFF) or 0x16000000)
+                cornerRadius = 18 * dp
+            }
+            setPadding((14 * dp).toInt(), (8 * dp).toInt(), (14 * dp).toInt(), (8 * dp).toInt())
+            isClickable = true
+        }
+        btn.setOnClickListener {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText("TransKey", value))
+            // In-button feedback instead of a Toast: some OEMs suppress
+            // Toasts from overlay services (see bugs.md), and Android 13+
+            // already shows its own clipboard confirmation.
+            btn.text = localized(R.string.bubble_panel_copied)
+            btn.postDelayed({ btn.text = label }, 1_400)
+        }
+        btn.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { if (copyRow.childCount > 0) marginStart = (8 * dp).toInt() }
+        copyRow.addView(btn)
+    }
+    addCopyButton(localized(R.string.bubble_panel_copy), translation.ifBlank { original })
+    if (original.isNotBlank() && original.trim() != translation.trim()) {
+        addCopyButton(localized(R.string.lens_copy_original), original)
+    }
+    card.addView(copyRow)
     scroll.addView(card)
     // WRAP_CONTENT height lets a short translation show a compact card while
     // a long one grows up to the screen and scrolls inside the ScrollView.

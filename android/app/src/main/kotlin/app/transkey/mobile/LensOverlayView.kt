@@ -57,6 +57,11 @@ class LensOverlayView(
     sourceLabel: String = "",
     private val targetLabel: String = "",
     private val onLangChipTap: (() -> Unit)? = null,
+    /// "Copy" pill next to the language chip — copies every block's
+    /// ORIGINAL text in one tap (screen-text extraction, mirrors the
+    /// desktop overlay's copy-all). Hidden when the label is empty.
+    private val copyAllLabel: String = "",
+    private val onCopyAllTap: (() -> Unit)? = null,
 ) : View(context) {
 
     /// Mutable so an in-place re-translate (lang chip → pick new source)
@@ -146,6 +151,8 @@ class LensOverlayView(
         textAlign = Paint.Align.LEFT
         textSize = context.resources.displayMetrics.density * 12f
     }
+    // Copy-all pill, painted right of the lang chip with the same style.
+    private val copyChipRect = RectF()
 
     // Per-item "translation arrived from the server" flag. Starts false
     // (every chip begins as a placeholder showing its source text). Set
@@ -446,6 +453,7 @@ class LensOverlayView(
         drawProgressPill(canvas, viewW)
         drawMismatchBanner(canvas, viewW)
         drawLangChip(canvas)
+        drawCopyChip(canvas)
     }
 
     /**
@@ -473,6 +481,32 @@ class LensOverlayView(
         langChipRect.set(left, top, left + w, top + h)
         canvas.drawRoundRect(langChipRect, r, r, langChipBgPaint)
         canvas.drawText(label, left + padH, top + padV - fm.ascent, langChipTextPaint)
+    }
+
+    /**
+     * "Copy" pill right of the language chip. One tap copies every block's
+     * ORIGINAL text — the screen-text extraction path for content that
+     * can't be selected in the source app.
+     */
+    private fun drawCopyChip(canvas: Canvas) {
+        if (copyAllLabel.isEmpty() || onCopyAllTap == null) {
+            copyChipRect.setEmpty()
+            return
+        }
+        val density = resources.displayMetrics.density
+        val padH = 12f * density
+        val padV = 7f * density
+        val fm = langChipTextPaint.fontMetrics
+        val textH = -fm.ascent + fm.descent
+        val textW = langChipTextPaint.measureText(copyAllLabel)
+        val left = if (langChipRect.isEmpty) 12f * density else langChipRect.right + 8f * density
+        val top = 14f * density
+        val w = textW + padH * 2
+        val h = textH + padV * 2
+        val r = h / 2f
+        copyChipRect.set(left, top, left + w, top + h)
+        canvas.drawRoundRect(copyChipRect, r, r, langChipBgPaint)
+        canvas.drawText(copyAllLabel, left + padH, top + padV - fm.ascent, langChipTextPaint)
     }
 
     /**
@@ -637,6 +671,14 @@ class LensOverlayView(
             event.y in langChipRect.top..langChipRect.bottom
         ) {
             onLangChipTap.invoke()
+            return true
+        }
+        // Copy-all pill (right of the lang chip) → copy every original text.
+        if (onCopyAllTap != null && !copyChipRect.isEmpty &&
+            event.x in copyChipRect.left..copyChipRect.right &&
+            event.y in copyChipRect.top..copyChipRect.bottom
+        ) {
+            onCopyAllTap.invoke()
             return true
         }
         val idx = findItemIndexAt(event.x, event.y)

@@ -15,6 +15,7 @@
     <string name="bubble_panel_target_lang">لغة الهدف</string>
     <string name="bubble_panel_copy">نسخ</string>
     <string name="bubble_panel_copied">تم النسخ</string>
+    <string name="lens_copy_original">نسخ النص الأصلي</string>
     <string name="bubble_panel_clipboard_empty">الحافظة فارغة</string>
     <string name="bubble_panel_tts_not_ready">قراءة النص الصوتية ليست جاهزة</string>
     <string name="bubble_panel_translation_failed">فشلت الترجمة</string>

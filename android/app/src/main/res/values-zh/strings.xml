@@ -70,6 +70,7 @@
     <string name="bubble_panel_target_lang">目标语言</string>
     <string name="bubble_panel_copy">复制</string>
     <string name="bubble_panel_copied">已复制</string>
+    <string name="lens_copy_original">复制原文</string>
     <string name="bubble_panel_clipboard_empty">剪贴板为空</string>
     <string name="bubble_panel_tts_not_ready">TTS 未就绪</string>
     <string name="bubble_panel_translation_failed">翻译失败</string>

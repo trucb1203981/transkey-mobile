@@ -15,6 +15,7 @@
     <string name="bubble_panel_target_lang">Язык перевода</string>
     <string name="bubble_panel_copy">Копировать</string>
     <string name="bubble_panel_copied">Скопировано</string>
+    <string name="lens_copy_original">Скопировать оригинал</string>
     <string name="bubble_panel_clipboard_empty">Буфер обмена пуст</string>
     <string name="bubble_panel_tts_not_ready">TTS не готов</string>
     <string name="bubble_panel_translation_failed">Не удалось перевести</string>

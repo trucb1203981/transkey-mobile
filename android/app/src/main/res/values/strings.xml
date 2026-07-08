@@ -14,6 +14,7 @@
     <string name="bubble_panel_target_lang">Target language</string>
     <string name="bubble_panel_copy">Copy</string>
     <string name="bubble_panel_copied">Copied</string>
+    <string name="lens_copy_original">Copy original</string>
     <string name="bubble_panel_clipboard_empty">Clipboard is empty</string>
     <string name="bubble_panel_tts_not_ready">TTS not ready</string>
     <string name="bubble_panel_translation_failed">Translation failed</string>

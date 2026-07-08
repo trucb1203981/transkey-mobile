@@ -70,6 +70,7 @@
     <string name="bubble_panel_target_lang">翻訳先の言語</string>
     <string name="bubble_panel_copy">コピー</string>
     <string name="bubble_panel_copied">コピーしました</string>
+    <string name="lens_copy_original">原文をコピー</string>
     <string name="bubble_panel_clipboard_empty">クリップボードは空です</string>
     <string name="bubble_panel_tts_not_ready">TTS の準備ができていません</string>
     <string name="bubble_panel_translation_failed">翻訳に失敗しました</string>

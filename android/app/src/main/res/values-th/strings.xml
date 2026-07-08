@@ -15,6 +15,7 @@
     <string name="bubble_panel_target_lang">ภาษาปลายทาง</string>
     <string name="bubble_panel_copy">คัดลอก</string>
     <string name="bubble_panel_copied">คัดลอกแล้ว</string>
+    <string name="lens_copy_original">คัดลอกต้นฉบับ</string>
     <string name="bubble_panel_clipboard_empty">คลิปบอร์ดว่าง</string>
     <string name="bubble_panel_tts_not_ready">TTS ยังไม่พร้อม</string>
     <string name="bubble_panel_translation_failed">แปลไม่สำเร็จ</string>

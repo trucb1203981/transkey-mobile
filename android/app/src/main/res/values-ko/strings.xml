@@ -70,6 +70,7 @@
     <string name="bubble_panel_target_lang">번역 언어</string>
     <string name="bubble_panel_copy">복사</string>
     <string name="bubble_panel_copied">복사됨</string>
+    <string name="lens_copy_original">원문 복사</string>
     <string name="bubble_panel_clipboard_empty">클립보드가 비어 있습니다</string>
     <string name="bubble_panel_tts_not_ready">TTS 준비되지 않음</string>
     <string name="bubble_panel_translation_failed">번역 실패</string>

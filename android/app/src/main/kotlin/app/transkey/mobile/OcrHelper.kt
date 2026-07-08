@@ -101,7 +101,15 @@ object OcrHelper {
             // User picked a specific source lang — trust the hint, use a
             // single recognizer to keep memory + latency low.
             runRecognize(bitmap, hintLang) { blocks ->
-                callback(blocks?.filter { looksLikeContent(it.text) })
+                // Filtered-to-empty ≠ empty: when the content heuristic drops
+                // EVERY block (a region of short labels / codes), showing what
+                // OCR actually read beats a false "no text found" — the chips
+                // render the source text and stay copyable.
+                callback(
+                    blocks?.let { raw ->
+                        raw.filter { looksLikeContent(it.text) }.ifEmpty { raw }
+                    },
+                )
             }
             return
         }
@@ -124,16 +132,30 @@ object OcrHelper {
     ) {
         val scripts = listOf<String?>(null, "ja", "ko", "zh")
         val results = arrayOfNulls<List<Block>>(scripts.size)
+        // Unfiltered twins of [results]: when the content heuristic filters
+        // EVERY script down to nothing, the richest raw result is still shown
+        // (untranslated chips beat a false "no text found").
+        val rawResults = arrayOfNulls<List<Block>>(scripts.size)
         val remaining = AtomicInteger(scripts.size)
         val lock = Any()
 
         fun finishIfDone() {
             if (remaining.decrementAndGet() != 0) return
             val best = synchronized(lock) {
-                results
+                val bestFiltered = results
                     .filterNotNull()
                     .maxByOrNull { list -> list.sumOf { b -> b.text.length } }
-                    ?: emptyList()
+                if (!bestFiltered.isNullOrEmpty()) {
+                    bestFiltered
+                } else {
+                    // Every script filtered down to nothing — fall back to the
+                    // richest RAW result so a screen of short labels still
+                    // shows (and can copy) what OCR read.
+                    rawResults
+                        .filterNotNull()
+                        .maxByOrNull { list -> list.sumOf { b -> b.text.length } }
+                        ?: emptyList()
+                }
             }
             Log.d(
                 TAG,
@@ -148,7 +170,10 @@ object OcrHelper {
         scripts.forEachIndexed { idx, hint ->
             runRecognize(bitmap, hint) { blocks ->
                 val filtered = blocks?.filter { looksLikeContent(it.text) } ?: emptyList()
-                synchronized(lock) { results[idx] = filtered }
+                synchronized(lock) {
+                    results[idx] = filtered
+                    rawResults[idx] = blocks ?: emptyList()
+                }
                 finishIfDone()
             }
         }

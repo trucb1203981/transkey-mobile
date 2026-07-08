@@ -13,6 +13,7 @@
     <string name="bubble_panel_target_lang">Ngôn ngữ đích</string>
     <string name="bubble_panel_copy">Copy</string>
     <string name="bubble_panel_copied">Đã copy</string>
+    <string name="lens_copy_original">Sao chép chữ gốc</string>
     <string name="bubble_panel_clipboard_empty">Clipboard rỗng</string>
     <string name="bubble_panel_tts_not_ready">TTS chưa sẵn sàng</string>
     <string name="bubble_panel_translation_failed">Dịch thất bại</string>

@@ -70,6 +70,7 @@
     <string name="bubble_panel_target_lang">Langue cible</string>
     <string name="bubble_panel_copy">Copier</string>
     <string name="bubble_panel_copied">Copié</string>
+    <string name="lens_copy_original">Copier l\'original</string>
     <string name="bubble_panel_clipboard_empty">Presse-papiers vide</string>
     <string name="bubble_panel_tts_not_ready">TTS pas prêt</string>
     <string name="bubble_panel_translation_failed">Échec de la traduction</string>
