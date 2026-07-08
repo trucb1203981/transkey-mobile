@@ -12,6 +12,8 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/api/api_errors.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/theme/app_glass.dart';
+import '../../../shared/widgets/glass/aurora_background.dart';
 import '../../../shared/widgets/plan_status_banner.dart';
 import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
@@ -472,29 +474,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(
-          index: _currentTab,
-          children: [
-            // The translate tab is always built — it's the cold-start surface.
-            _buildTranslateTabWithQuota(),
-            // History / Glossary / Settings are lazily built on first visit so
-            // cold-start doesn't pay for SharedPreferences reads + provider
-            // builds + ListView layout of pages the user may never open.
-            _LazyTab(
-              isVisited: _visitedTabs.contains(1),
-              builder: () => const HistoryScreen(),
-            ),
-            _LazyTab(
-              isVisited: _visitedTabs.contains(2),
-              builder: () => const GlossaryScreen(),
-            ),
-            _LazyTab(
-              isVisited: _visitedTabs.contains(3),
-              builder: () => const SettingsScreen(),
-            ),
-          ],
+      // Aurora is the base layer behind everything; the tab bar's own glass
+      // floats over this same near-black base.
+      backgroundColor: GlassPalette.forDark(isDark).auroraBase,
+      // Let the body (and its aurora) draw BEHIND the floating glass tab bar
+      // on every tab, so the aurora stays continuous — otherwise the
+      // transparent lift region above the bar reads as a flat black band. The
+      // tab screens (History/Glossary/Settings) are aurora Scaffolds too and
+      // pad their scroll content to clear the bar.
+      extendBody: true,
+      body: AuroraBackground(
+        isDark: isDark,
+        child: SafeArea(
+          child: IndexedStack(
+            index: _currentTab,
+            children: [
+              // The translate tab is always built — it's the cold-start surface.
+              _buildTranslateTabWithQuota(),
+              // History / Glossary / Settings are lazily built on first visit so
+              // cold-start doesn't pay for SharedPreferences reads + provider
+              // builds + ListView layout of pages the user may never open.
+              _LazyTab(
+                isVisited: _visitedTabs.contains(1),
+                builder: () => const HistoryScreen(),
+              ),
+              _LazyTab(
+                isVisited: _visitedTabs.contains(2),
+                builder: () => const GlossaryScreen(),
+              ),
+              _LazyTab(
+                isVisited: _visitedTabs.contains(3),
+                builder: () => const SettingsScreen(),
+              ),
+            ],
+          ),
         ),
       ),
       // Floating camera button + 4 standard tabs around it.
@@ -559,7 +574,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
             e.response?.data is Map
-                ? (e.response?.data['message']?.toString() ?? l.paywallCreditFailed)
+                ? (e.response?.data['message']?.toString() ??
+                    l.paywallCreditFailed)
                 : l.paywallCreditFailed,
           ),
         ));
@@ -585,7 +601,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       final prevResult = prev?.valueOrNull?.result;
       final nextState = next.valueOrNull;
       final nextResult = nextState?.result;
-      if (nextResult != null && nextResult != prevResult &&
+      if (nextResult != null &&
+          nextResult != prevResult &&
           (nextState?.mode == TranslateMode.reply ||
               nextState?.mode == TranslateMode.refine)) {
         _onAutoReplace(nextResult.translation, l);
@@ -611,7 +628,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ref.listen<AsyncValue<UsageInfo?>>(usageProvider, (prev, next) {
       final usagePlan = next.valueOrNull?.plan;
       if (usagePlan == null) return;
-      final sessionPlan = ref.read(authStateProvider).valueOrNull?.session?.plan;
+      final sessionPlan =
+          ref.read(authStateProvider).valueOrNull?.session?.plan;
       if (sessionPlan != null && sessionPlan != usagePlan) {
         ref.read(authStateProvider.notifier).refreshUser();
       }
@@ -623,7 +641,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     });
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      // Extra bottom padding clears the floating glass tab bar (bar height +
+      // camera FAB lift) now that the body draws behind it (extendBody).
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        100,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -665,7 +690,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // is "auto" we surface a muted mic + a tooltip that explains
             // the next step instead of letting the user wonder why the
             // button "doesn't work" (tap still works — it opens the picker).
-            final src = ref.watch(languageSettingsProvider).valueOrNull?.sourceLang ?? 'auto';
+            final src =
+                ref.watch(languageSettingsProvider).valueOrNull?.sourceLang ??
+                    'auto';
             final ready = src != 'auto';
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -713,7 +740,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           const SizedBox(height: AppSpacing.md),
           Consumer(builder: (_, ref, __) {
             final usage = ref.watch(usageProvider).valueOrNull;
-            final plan = ref.watch(authStateProvider).valueOrNull?.session?.plan ?? 'free';
+            final plan =
+                ref.watch(authStateProvider).valueOrNull?.session?.plan ??
+                    'free';
             if (plan != 'free' || usage == null) {
               return const SizedBox.shrink();
             }
@@ -766,7 +795,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
-
 }
 
 class _HomeHeader extends ConsumerStatefulWidget {
@@ -914,7 +942,7 @@ class _HomeHeaderState extends ConsumerState<_HomeHeader>
                 Text(
                   widget.tagline,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: GlassPalette.forDark(widget.isDark).textSecondary,
                   ),
                 ),
               ],
@@ -959,12 +987,10 @@ class _GradientIconButton extends StatelessWidget {
   final VoidCallback onTap;
   final String tooltip;
 
-  static const _g1 = Color(0xFF6366F1);
-  static const _g2 = Color(0xFFA855F7);
-
   @override
   Widget build(BuildContext context) {
-    const muted = AppColors.textSecondary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final p = GlassPalette.forDark(isDark);
     return Tooltip(
       message: tooltip,
       child: Material(
@@ -977,28 +1003,16 @@ class _GradientIconButton extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              gradient: active
-                  ? const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [_g1, _g2],
-                    )
-                  : null,
-              color: active ? null : muted.withValues(alpha: 0.12),
-              boxShadow: active
-                  ? [
-                      BoxShadow(
-                        color: _g1.withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
+              gradient: active ? AppGlass.brand : null,
+              // Off = a frosted glass chip; on = the lit brand gradient.
+              color: active ? null : p.fill,
+              border: active ? null : Border.all(color: p.border),
+              boxShadow: active ? AppGlass.brandGlow() : null,
             ),
             child: Icon(
               icon,
               size: 20,
-              color: active ? Colors.white : muted,
+              color: active ? Colors.white : p.textSecondary,
             ),
           ),
         ),
@@ -1060,13 +1074,17 @@ class _BottomBarWithCamera extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    // Background + shadow + border go on the INNER bar (only _kBarHeight
-    // tall), NOT the outer wrapper. If they sat on the wrapper, the wrapper's
-    // full height (bar + lift) would be painted in surface colour — making
-    // the lift region above the bar look like an extension of the bar and
-    // the FAB appear "stuck on top of a tall bar" instead of half-floating.
-    // Keeping the lift region transparent is what gives the FAB the real
-    // half-in / half-out look the user asked for.
+    final p = GlassPalette.forDark(isDark);
+    // Liquid Glass tab bar: a frosted, translucent surface that lets the
+    // aurora glow softly through and blurs the content scrolling behind it.
+    // The lift shadow lives on the OUTER box (outside the clip) so it can cast
+    // above the bar; the blur + glass fill live INSIDE the rounded clip. The
+    // lift region above the bar stays transparent so the camera FAB reads as
+    // half-floating, not stuck on a taller bar.
+    const topCorners = BorderRadius.only(
+      topLeft: Radius.circular(_kTopRadius),
+      topRight: Radius.circular(_kTopRadius),
+    );
     return SafeArea(
       top: false,
       child: SizedBox(
@@ -1081,93 +1099,95 @@ class _BottomBarWithCamera extends StatelessWidget {
               bottom: 0,
               height: _kBarHeight,
               child: DecoratedBox(
+                // Shadow layer only (kept outside the clip so it lifts the bar).
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(_kTopRadius),
-                    topRight: Radius.circular(_kTopRadius),
-                  ),
-                  // Soft lift shadow + subtle top hairline for definition.
+                  borderRadius: topCorners,
                   boxShadow: [
                     BoxShadow(
-                      color: isDark
-                          ? Colors.black.withValues(alpha: 0.45)
-                          : Colors.black.withValues(alpha: 0.07),
+                      color: p.shadow,
                       blurRadius: 24,
                       offset: const Offset(0, -4),
                     ),
                   ],
-                  border: Border(
-                    top: BorderSide(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.08),
-                      width: 0.5,
+                ),
+                child: ClipRRect(
+                  borderRadius: topCorners,
+                  child: BackdropFilter(
+                    filter: AppGlass.frost(),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: p.fillStrong,
+                        border: Border(
+                          top: BorderSide(color: p.border, width: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _TabButton(
+                              label: l.translate,
+                              icon: Icons.translate_outlined,
+                              selectedIcon: Icons.translate,
+                              isSelected: currentTab == 0,
+                              onTap: () => onTabChanged(0),
+                            ),
+                          ),
+                          Expanded(
+                            child: _TabButton(
+                              label: l.history,
+                              icon: Icons.history_outlined,
+                              selectedIcon: Icons.history,
+                              isSelected: currentTab == 1,
+                              onTap: () => onTabChanged(1),
+                            ),
+                          ),
+                          // Gap reserved for the floating camera button.
+                          // Slightly wider than the FAB so tab pills don't
+                          // sit too close to the circle.
+                          const SizedBox(width: 72),
+                          Expanded(
+                            child: _TabButton(
+                              label: l.glossary,
+                              icon: Icons.menu_book_outlined,
+                              selectedIcon: Icons.menu_book,
+                              isSelected: currentTab == 2,
+                              onTap: () => onTabChanged(2),
+                            ),
+                          ),
+                          Expanded(
+                            child: _TabButton(
+                              label: l.settings,
+                              icon: Icons.settings_outlined,
+                              selectedIcon: Icons.settings,
+                              isSelected: currentTab == 3,
+                              onTap: () => onTabChanged(3),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                child: Row(
-                  children: [
-                      Expanded(
-                        child: _TabButton(
-                          label: l.translate,
-                          icon: Icons.translate_outlined,
-                          selectedIcon: Icons.translate,
-                          isSelected: currentTab == 0,
-                          onTap: () => onTabChanged(0),
-                        ),
-                      ),
-                      Expanded(
-                        child: _TabButton(
-                          label: l.history,
-                          icon: Icons.history_outlined,
-                          selectedIcon: Icons.history,
-                          isSelected: currentTab == 1,
-                          onTap: () => onTabChanged(1),
-                        ),
-                      ),
-                      // Gap reserved for the floating camera button.
-                      // Slightly wider than the FAB so tab pills don't
-                      // sit too close to the circle.
-                      const SizedBox(width: 72),
-                      Expanded(
-                        child: _TabButton(
-                          label: l.glossary,
-                          icon: Icons.menu_book_outlined,
-                          selectedIcon: Icons.menu_book,
-                          isSelected: currentTab == 2,
-                          onTap: () => onTabChanged(2),
-                        ),
-                      ),
-                      Expanded(
-                        child: _TabButton(
-                          label: l.settings,
-                          icon: Icons.settings_outlined,
-                          selectedIcon: Icons.settings,
-                          isSelected: currentTab == 3,
-                          onTap: () => onTabChanged(3),
-                        ),
-                      ),
-                    ],
-                  ),
+              ),
+            ),
+            // Floating Camera button — centered horizontally, raised
+            // by [_kCameraLift] above the bar's top edge.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _CameraFab(
+                  onTap: onCameraTap,
+                  tooltip: l.cameraTitle,
+                  size: _kCameraSize,
                 ),
               ),
-              // Floating Camera button — centered horizontally, raised
-              // by [_kCameraLift] above the bar's top edge.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: _CameraFab(
-                    onTap: onCameraTap,
-                    tooltip: l.cameraTitle,
-                    size: _kCameraSize,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -1194,8 +1214,7 @@ class _TabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
-    final mutedColor =
-        theme.colorScheme.onSurface.withValues(alpha: 0.62);
+    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.62);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -1205,8 +1224,7 @@ class _TabButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
             color: isSelected
                 ? primary.withValues(alpha: 0.12)
@@ -1228,8 +1246,7 @@ class _TabButton extends StatelessWidget {
                   fontSize: 10.5,
                   height: 1.2,
                   color: isSelected ? primary : mutedColor,
-                  fontWeight:
-                      isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   letterSpacing: 0.1,
                 ),
                 child: Text(label, overflow: TextOverflow.ellipsis),
@@ -1263,8 +1280,8 @@ class _CameraFab extends StatelessWidget {
     // Tertiary may equal primary in plain ColorScheme — blend toward
     // a slightly cooler shade for a visible gradient even on minimalist
     // themes.
-    final gradientEnd = Color.lerp(primary, theme.colorScheme.tertiary, 0.6) ??
-        primary;
+    final gradientEnd =
+        Color.lerp(primary, theme.colorScheme.tertiary, 0.6) ?? primary;
     return Tooltip(
       message: tooltip,
       child: Container(

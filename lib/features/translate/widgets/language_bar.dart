@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../models/language.dart';
 
@@ -24,12 +25,14 @@ class LanguageBar extends StatelessWidget {
 
   final String sourceLang;
   final String targetLang;
+
   /// Code from a successful translation when source is "auto"; null
   /// otherwise. Drives the "Auto" subtitle + detected-name label.
   final String? detectedLang;
   final bool isDark;
   final VoidCallback onPickSource;
   final VoidCallback onPickTarget;
+
   /// Disabled (greyed-out swap icon) when source is "auto" — there's no
   /// concrete language to swap into the target slot.
   final VoidCallback onSwap;
@@ -52,13 +55,12 @@ class LanguageBar extends StatelessWidget {
             onTap: onPickSource,
           ),
         ),
-        IconButton(
-          onPressed: swapEnabled ? onSwap : null,
-          icon: Icon(
-            Icons.swap_horiz,
-            color: swapEnabled
-                ? AppColors.primary
-                : AppColors.textSecondary,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: _SwapButton(
+            enabled: swapEnabled,
+            isDark: isDark,
+            onTap: swapEnabled ? onSwap : null,
           ),
         ),
         Expanded(
@@ -88,8 +90,9 @@ class _LangChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = GlassPalette.forDark(isDark);
     return Material(
-      color: isDark ? AppColors.surface : const Color(0xFFF0EDE8),
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
       child: InkWell(
         onTap: onTap,
@@ -98,6 +101,11 @@ class _LangChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm + 2,
+          ),
+          decoration: AppGlass.card(
+            isDark: isDark,
+            radius: AppSpacing.buttonRadius,
+            shadow: false,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -109,11 +117,14 @@ class _LangChip extends StatelessWidget {
                     child: Text(
                       label,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: p.textPrimary,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.arrow_drop_down, size: 20),
+                  Icon(Icons.arrow_drop_down, size: 20, color: p.textSecondary),
                 ],
               ),
               if (subtitle != null)
@@ -121,10 +132,54 @@ class _LangChip extends StatelessWidget {
                   subtitle!,
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.primary.withValues(alpha: 0.7),
+                    color: p.accent,
                   ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Circular swap button between the two language pills — the brand gradient
+/// (lit, with a glow) when a concrete source language can be swapped, a muted
+/// glass disc when the source is "Auto" (nothing to swap into the target slot).
+class _SwapButton extends StatelessWidget {
+  const _SwapButton({
+    required this.enabled,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final bool enabled;
+  final bool isDark;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = GlassPalette.forDark(isDark);
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: enabled ? AppGlass.brand : null,
+            color: enabled ? null : p.fill,
+            border: enabled ? null : Border.all(color: p.border),
+            boxShadow: enabled ? AppGlass.brandGlow() : null,
+          ),
+          child: Icon(
+            Icons.swap_horiz,
+            size: 20,
+            color: enabled ? Colors.white : p.textTertiary,
           ),
         ),
       ),

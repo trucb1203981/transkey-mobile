@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/empty_states.dart';
 import '../models/glossary_entry.dart';
@@ -53,7 +54,10 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
     final l = AppLocalizations.of(context)!;
     final glossary = ref.watch(glossaryProvider);
 
+    // Transparent Scaffold — hosted inside Home's IndexedStack, which already
+    // paints the aurora (own aurora here = double backdrop + seam at tab bar).
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(l.glossaryTitle(glossary.count, 50)),
         actions: [
@@ -108,9 +112,13 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
           ),
         Expanded(
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
+            // Bottom padding clears the floating glass tab bar (shared from
+            // HomeScreen, drawn over this aurora via extendBody).
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              MediaQuery.of(context).padding.bottom + 100,
             ),
             itemCount: glossary.entries.length,
             separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
@@ -222,13 +230,7 @@ class _GlossaryTile extends StatelessWidget {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm + 4,
           ),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surface : AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(
-              color: isDark ? AppColors.border : AppColors.borderLight,
-            ),
-          ),
+          decoration: AppGlass.card(isDark: isDark, shadow: false),
           child: Row(
             children: [
               Expanded(

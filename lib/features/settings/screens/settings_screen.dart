@@ -147,11 +147,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     // remember to poll isRunning() after navigation.
     final bubbleRunning = ref.watch(bubbleManagerProvider);
 
+    // Transparent Scaffold — hosted inside Home's IndexedStack, which already
+    // paints the aurora (own aurora here = double backdrop + seam at tab bar).
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(t.settingsTitle)),
       body: settings == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(
+              // Clear the floating glass tab bar (shared from HomeScreen).
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom + 100,
+              ),
               children: [
                 if (session != null) ...[
                   const Padding(

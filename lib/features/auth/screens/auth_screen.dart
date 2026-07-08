@@ -12,7 +12,9 @@ import '../../../core/api/api_errors.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/glass/aurora_scaffold.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -378,7 +380,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     final authState = ref.watch(authStateProvider);
     final isLoading = authState.isLoading || authState.isRefreshing;
 
-    return Scaffold(
+    return AuroraScaffold(
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -435,10 +437,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                     const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 child: Container(
                   height: 48,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surface : const Color(0xFFF0EDE8),
-                    borderRadius:
-                        BorderRadius.circular(AppSpacing.buttonRadius),
+                  decoration: AppGlass.card(
+                    isDark: isDark,
+                    radius: AppSpacing.buttonRadius,
+                    shadow: false,
                   ),
                   child: TabBar(
                     controller: _tabController,

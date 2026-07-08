@@ -4566,7 +4566,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         expand: false,
         builder: (context, scrollController) => Container(
           decoration: const BoxDecoration(
-            color: AppColors.surface,
+            // Near-opaque dark-violet glass (matches bottomSheetTheme) so the
+            // list stays legible over the camera feed while reading as part
+            // of the Liquid Glass world.
+            color: Color(0xF216131F),
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SafeArea(

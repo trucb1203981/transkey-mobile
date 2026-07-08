@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/glass/glass_card.dart';
 import '../../../shared/widgets/selectable_with_actions.dart';
 import '../../history/providers/history_provider.dart';
 import '../models/language.dart';
@@ -29,6 +31,7 @@ class ResultCard extends ConsumerWidget {
 
   final TranslateResult result;
   final bool isDark;
+
   /// Invoked when the user taps anywhere on the result text OR the
   /// explicit copy icon. Host snackbar / haptic is its responsibility.
   final void Function(String text) onCopy;
@@ -37,45 +40,18 @@ class ResultCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
+    final p = GlassPalette.forDark(isDark);
     final langs = ref.watch(languageSettingsProvider).valueOrNull;
     final sourceLang = langs?.sourceLang ?? 'auto';
     final targetLang = langs?.targetLang ?? 'en';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(
-            color: isDark ? AppColors.border : AppColors.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6366F1).withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 3,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
+    return GlassCard(
+      isDark: isDark,
+      variant: GlassVariant.tint,
+      blur: true,
+      accentStrip: true,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Fraud warning above everything else (only when the server flags it).
@@ -89,7 +65,7 @@ class ResultCard extends ConsumerWidget {
             Text(
               l.detectedLang(languageByCode(result.detectedLang!).nativeName),
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.primary.withValues(alpha: 0.75),
+                color: p.accent,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -106,6 +82,7 @@ class ResultCard extends ConsumerWidget {
               style: theme.textTheme.bodyLarge?.copyWith(
                 fontSize: 16,
                 height: 1.5,
+                color: p.textPrimary,
               ),
               targetLang: targetLang,
             ),
@@ -116,7 +93,7 @@ class ResultCard extends ConsumerWidget {
             Text(
               result.romanization!,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+                color: p.textSecondary,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -139,13 +116,19 @@ class ResultCard extends ConsumerWidget {
                 onTap: () => onCopy(result.translation),
               ),
               const SizedBox(width: AppSpacing.sm),
-              TtsButton(text: result.translation, lang: targetLang),
+              _GlassCircle(
+                isDark: isDark,
+                child: TtsButton(
+                  text: result.translation,
+                  lang: targetLang,
+                  size: 20,
+                  showOptions: false,
+                  color: p.textSecondary,
+                ),
+              ),
               const SizedBox(width: AppSpacing.sm),
               const _SaveIcon(),
             ],
-          ),
-        ],
-      ),
           ),
         ],
       ),
@@ -168,11 +151,12 @@ class _SuggestionList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
+    final p = GlassPalette.forDark(isDark);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: AppSpacing.md),
-        const Divider(),
+        Divider(color: p.border),
         const SizedBox(height: AppSpacing.sm),
         Text(l.suggestions, style: theme.textTheme.labelLarge),
         const SizedBox(height: AppSpacing.sm),
@@ -193,13 +177,10 @@ class _SuggestionList extends StatelessWidget {
                   horizontal: AppSpacing.md,
                   vertical: AppSpacing.sm,
                 ),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: isDark
-                        ? AppColors.border
-                        : AppColors.borderLight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                decoration: AppGlass.card(
+                  isDark: isDark,
+                  radius: 12,
+                  shadow: false,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +197,7 @@ class _SuggestionList extends StatelessWidget {
                       Text(
                         target,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: p.textSecondary,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -276,12 +257,55 @@ class _ActionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      icon: Icon(icon, size: 20),
-      tooltip: tooltip,
-      onPressed: onTap,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      padding: EdgeInsets.zero,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final p = GlassPalette.forDark(isDark);
+    return Tooltip(
+      message: tooltip,
+      child: _GlassCircle(
+        isDark: isDark,
+        onTap: onTap,
+        child: Icon(icon, size: 20, color: p.textSecondary),
+      ),
+    );
+  }
+}
+
+/// A 40px frosted glass disc for a result-card action (copy / TTS / favorite).
+/// [onTap] optional so it can wrap a child that handles its own taps (TTS).
+class _GlassCircle extends StatelessWidget {
+  const _GlassCircle({
+    required this.isDark,
+    required this.child,
+    this.onTap,
+  });
+
+  final bool isDark;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = GlassPalette.forDark(isDark);
+    final circle = Container(
+      width: 40,
+      height: 40,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: p.fillStrong,
+        border: Border.all(color: p.border),
+      ),
+      child: child,
+    );
+    if (onTap == null) return circle;
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: circle,
+      ),
     );
   }
 }

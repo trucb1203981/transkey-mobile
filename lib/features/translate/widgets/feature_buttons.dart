@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../models/translate_models.dart';
 import '../providers/features_provider.dart';
@@ -25,12 +26,14 @@ class FeatureButtons extends StatelessWidget {
   });
 
   final bool isDark;
+
   /// Per-feature enable map from server (`/features` endpoint). Drives
   /// the per-button padlock so the lock state matches admin config —
   /// NOT a hardcoded `isPro` check (admin can flip individual flags via
   /// /admin/features without redeploy).
   final FeatureFlags features;
   final void Function(TranslateMode mode) onAction;
+
   /// Currently-active mode whose button should render as primary
   /// (gradient + glow). Null means no result yet — Translate stays
   /// highlighted as the default action so cold-start users still see
@@ -114,21 +117,21 @@ class _CameraBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final fg = isDark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+    final p = GlassPalette.forDark(isDark);
+    final fg = p.textSecondary;
     return Expanded(
       child: Material(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-              border: Border.all(
-                color: isDark ? AppColors.border : AppColors.borderLight,
-              ),
+            decoration: AppGlass.card(
+              isDark: isDark,
+              radius: AppSpacing.buttonRadius,
+              shadow: false,
             ),
             child: Column(
               children: [
@@ -183,67 +186,57 @@ class _FeatureBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF6366F1);
+    final p = GlassPalette.forDark(isDark);
+    // Locked chips sit on brand-tinted glass — indigo text there is
+    // purple-on-purple and unreadable; the bright accent keeps the "Pro"
+    // colour cue while staying legible.
     final fg = isPrimary
         ? Colors.white
         : locked
-            ? purple
-            : (isDark
-                ? AppColors.textSecondary
-                : AppColors.textSecondaryLight);
+            ? p.accentStrong
+            : p.textSecondary;
+
+    // Decoration by state: primary = lit brand gradient + glow; locked = a
+    // faint brand-tinted glass with a brand hairline (Pro affordance visible
+    // before tap); normal = a plain frosted glass chip.
+    final BoxDecoration decoration;
+    if (isPrimary) {
+      decoration = BoxDecoration(
+        gradient: AppGlass.brand,
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        boxShadow: AppGlass.brandGlow(),
+      );
+    } else if (locked) {
+      decoration = BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppGlass.gradStart.withValues(alpha: 0.16),
+            AppGlass.gradEnd.withValues(alpha: 0.12),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        border: Border.all(color: AppGlass.gradStart.withValues(alpha: 0.4)),
+      );
+    } else {
+      decoration = AppGlass.card(
+        isDark: isDark,
+        radius: AppSpacing.buttonRadius,
+        shadow: false,
+      );
+    }
 
     return Expanded(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: isPrimary
-              ? const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                )
-              : locked
-                  ? LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFF6366F1).withValues(alpha: 0.10),
-                        const Color(0xFFA855F7).withValues(alpha: 0.10),
-                      ],
-                    )
-                  : null,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          boxShadow: isPrimary
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.32),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Material(
-          color: isPrimary || locked
-              ? Colors.transparent
-              : (isDark ? AppColors.surface : AppColors.surfaceLight),
-          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-                border: isPrimary
-                    ? null
-                    : Border.all(
-                        color: locked
-                            ? purple.withValues(alpha: 0.4)
-                            : (isDark
-                                ? AppColors.border
-                                : AppColors.borderLight),
-                      ),
-              ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
+            decoration: decoration,
             child: Column(
               children: [
                 Stack(
@@ -251,11 +244,11 @@ class _FeatureBtn extends StatelessWidget {
                   children: [
                     Icon(icon, size: 18, color: fg),
                     if (locked)
-                      const Positioned(
+                      Positioned(
                         right: -6,
                         bottom: -4,
-                        child: Icon(Icons.lock,
-                            size: 11, color: purple),
+                        child:
+                            Icon(Icons.lock, size: 11, color: p.accentStrong),
                       ),
                   ],
                 ),
@@ -270,7 +263,6 @@ class _FeatureBtn extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ),
             ),
           ),
         ),

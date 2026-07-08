@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_glass.dart';
+
 class AppColors {
   const AppColors._();
 
@@ -8,7 +10,10 @@ class AppColors {
   static const primaryDark = Color(0xFF5A52E0);
 
   // Backgrounds
-  static const bgDark = Color(0xFF0E0E11);
+  // Liquid Glass aurora base — the near-black the aurora glows float over
+  // (matches GlassPalette.dark.auroraBase). Kept in sync so the tabs that
+  // paint their own Scaffold background blend seamlessly with the glass frame.
+  static const bgDark = Color(0xFF0A0A12);
   static const bgLight = Color(0xFFF5F2EE);
   static const surface = Color(0xFF16161A);
   static const surfaceLight = Color(0xFFFFFFFF);
@@ -76,19 +81,24 @@ class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
       cardTheme: CardThemeData(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
+        // Frosted glass fill so stock Card() reads as Liquid Glass over aurora.
+        color: (isDark ? GlassPalette.dark : GlassPalette.light).fillStrong,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
           side: BorderSide(
-            color: isDark ? AppColors.border : AppColors.borderLight,
+            color: (isDark ? GlassPalette.dark : GlassPalette.light).border,
           ),
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+        // Transparent so it floats over the aurora backdrop (Liquid Glass).
+        // On non-aurora screens it simply reveals the scaffold background,
+        // which reads the same as the old opaque bar.
+        backgroundColor: Colors.transparent,
         foregroundColor: isDark ? AppColors.textPrimary : AppColors.textPrimaryLight,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -121,7 +131,8 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? AppColors.surface : const Color(0xFFF0EDE8),
+        // Frosted glass field fill over the aurora.
+        fillColor: (isDark ? GlassPalette.dark : GlassPalette.light).fillStrong,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
           borderSide: BorderSide.none,
@@ -147,7 +158,11 @@ class AppTheme {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: isDark ? AppColors.surface : AppColors.surfaceLight,
+        // Mostly-opaque dark-violet (light: pale) glass so sheet content stays
+        // legible while still reading as part of the aurora world.
+        backgroundColor:
+            isDark ? const Color(0xF216131F) : const Color(0xF5F3F2FD),
+        surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppSpacing.sheetRadius),

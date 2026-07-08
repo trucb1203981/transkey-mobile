@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/tracking/tracking_provider.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/theme/app_theme.dart';
+import '../../../../shared/widgets/glass/aurora_scaffold.dart';
 
 class KeyboardSetupScreen extends ConsumerStatefulWidget {
   final bool showSkip;
@@ -135,7 +136,7 @@ class _KeyboardSetupScreenState extends ConsumerState<KeyboardSetupScreen>
     final isDark = theme.brightness == Brightness.dark;
     final l = AppLocalizations.of(context)!;
 
-    return Scaffold(
+    return AuroraScaffold(
       appBar: AppBar(
         title: Text(Platform.isIOS ? l.setupTitle : l.setupTitleAndroid),
         leading: widget.showSkip

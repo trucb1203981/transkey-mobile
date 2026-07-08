@@ -51,7 +51,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final historyState = ref.watch(historyProvider);
     final filtered = historyState.filtered;
 
+    // Transparent Scaffold — this screen lives inside Home's IndexedStack,
+    // which already paints the aurora. Painting our own here doubled the
+    // backdrop with mismatched glow positions (visible seam above the tab bar).
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(l.historyTitle),
         actions: [
@@ -146,9 +150,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             child: filtered.isEmpty
                 ? const HistoryEmptyState()
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
+                    // Bottom padding clears the floating glass tab bar (shared
+                    // from HomeScreen, drawn over this aurora via extendBody).
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.sm,
+                      AppSpacing.md,
+                      MediaQuery.of(context).padding.bottom + 100,
                     ),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) =>

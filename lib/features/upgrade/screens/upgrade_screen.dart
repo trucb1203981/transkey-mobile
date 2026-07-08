@@ -6,7 +6,9 @@ import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/glass/aurora_scaffold.dart';
 import '../checkout_flow.dart';
 import '../providers/plans_provider.dart';
 import '../providers/usage_provider.dart';
@@ -92,7 +94,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
       return sp != null ? '$sp/mo' : _formatPrice(serverPrice);
     }
 
-    return Scaffold(
+    return AuroraScaffold(
       appBar: AppBar(title: Text(l.upgradeScreenTitle)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -333,15 +335,11 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(
-          color: isCurrent
-              ? accentColor
-              : (isDark ? AppColors.border : AppColors.borderLight),
-          width: isCurrent ? 2 : 1,
-        ),
+      decoration: AppGlass.card(
+        isDark: isDark,
+        variant: isGold ? GlassVariant.tint : GlassVariant.normal,
+        borderColor: isCurrent ? accentColor : null,
+        shadow: false,
       ),
       child: Column(
         children: [
@@ -440,11 +438,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     ];
 
     return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: isDark ? AppColors.border : AppColors.borderLight),
-      ),
+      decoration: AppGlass.card(isDark: isDark, shadow: false),
       child: Column(
         children: [
           _tableHeader(isDark, l),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../models/history_entry.dart';
 import 'history_detail_sheet.dart';
@@ -20,6 +21,7 @@ class HistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final p = GlassPalette.forDark(isDark);
 
     return Dismissible(
       key: ValueKey(entry.id),
@@ -60,13 +62,7 @@ class HistoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surface : AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(
-              color: isDark ? AppColors.border : AppColors.borderLight,
-            ),
-          ),
+          decoration: AppGlass.card(isDark: isDark, shadow: false),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -86,15 +82,13 @@ class HistoryCard extends StatelessWidget {
                   ],
                   if (entry.isLocked) ...[
                     const SizedBox(width: AppSpacing.xs),
-                    const Icon(Icons.lock, size: 12, color: AppColors.textSecondary),
+                    Icon(Icons.lock, size: 12, color: p.textTertiary),
                   ],
                   const Spacer(),
                   Text(
                     _formatDate(entry.createdAt),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark
-                          ? AppColors.textSecondary
-                          : AppColors.textSecondaryLight,
+                      color: p.textTertiary,
                       fontSize: 11,
                     ),
                   ),
@@ -102,27 +96,26 @@ class HistoryCard extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
 
-              // Source text (2 lines)
+              // Source text (2 lines) — the "before"; dimmer than the result.
               Text(
                 entry.sourceText,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark
-                      ? AppColors.textSecondary
-                      : AppColors.textSecondaryLight,
+                  color: p.textSecondary,
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
 
-              // Translation (2 lines, primary color)
+              // Translation (2 lines) — the result; bright so it reads clearly
+              // over the glass (indigo-on-violet-tint was too low-contrast).
               Text(
                 entry.translation,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
+                  color: p.textPrimary,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -134,12 +127,13 @@ class HistoryCard extends StatelessWidget {
 
   Widget _badge(BuildContext context, String label, bool isDark,
       {bool isPrimary = false}) {
+    final p = GlassPalette.forDark(isDark);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: isPrimary
-            ? AppColors.primary.withValues(alpha: 0.15)
-            : (isDark ? AppColors.border : AppColors.borderLight),
+            ? AppGlass.gradStart.withValues(alpha: 0.22)
+            : p.fillStrong,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -147,7 +141,7 @@ class HistoryCard extends StatelessWidget {
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w600,
-          color: isPrimary ? AppColors.primary : null,
+          color: isPrimary ? p.accentStrong : p.textSecondary,
         ),
       ),
     );

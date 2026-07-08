@@ -6,6 +6,7 @@ import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/session_store.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/quota_bar.dart';
 import '../../upgrade/providers/usage_provider.dart';
@@ -43,12 +44,7 @@ class AccountSection extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.all(AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border:
-            Border.all(color: isDark ? AppColors.border : AppColors.borderLight),
-      ),
+      decoration: AppGlass.card(isDark: isDark, variant: GlassVariant.tint),
       child: Column(
         children: [
           Row(
@@ -120,12 +116,7 @@ class AccountSection extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.all(AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border:
-            Border.all(color: isDark ? AppColors.border : AppColors.borderLight),
-      ),
+      decoration: AppGlass.card(isDark: isDark, variant: GlassVariant.tint),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

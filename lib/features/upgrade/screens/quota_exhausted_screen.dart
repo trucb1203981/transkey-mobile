@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/glass/aurora_scaffold.dart';
 import '../../translate/providers/features_provider.dart';
 import '../providers/usage_provider.dart';
 import '../services/rewarded_ad_service.dart';
@@ -164,7 +166,7 @@ class _QuotaExhaustedScreenState extends ConsumerState<QuotaExhaustedScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final usage = ref.watch(usageProvider).valueOrNull;
 
-    return Scaffold(
+    return AuroraScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -249,16 +251,10 @@ class _QuotaExhaustedScreenState extends ConsumerState<QuotaExhaustedScreen> {
                     if (usage != null)
                       Container(
                         padding: const EdgeInsets.all(AppSpacing.md),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.surface
-                              : const Color(0xFF6366F1).withValues(alpha: 0.04),
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.cardRadius),
-                          border: Border.all(
-                            color: const Color(0xFF6366F1)
-                                .withValues(alpha: 0.18),
-                          ),
+                        decoration: AppGlass.card(
+                          isDark: isDark,
+                          variant: GlassVariant.tint,
+                          shadow: false,
                         ),
                         child: Column(
                           children: [

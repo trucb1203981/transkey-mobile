@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/theme/app_glass.dart';
 import '../../shared/theme/app_theme.dart';
+import 'glass/glass_card.dart';
 
 class QuotaBar extends StatelessWidget {
   const QuotaBar({
@@ -19,10 +21,12 @@ class QuotaBar extends StatelessWidget {
   final int limit;
   final int? charsUsed;
   final int? charsLimit;
+
   /// When non-null, render a "+Ad" affordance the user can tap to
   /// proactively top up their daily quota without first hitting the
   /// 429 wall. Parent supplies the actual rewarded-ad flow.
   final VoidCallback? onWatchAd;
+
   /// Disable the "+Ad" affordance while an ad is loading / playing so
   /// rapid taps don't queue multiple grants.
   final bool isWatchingAd;
@@ -41,28 +45,23 @@ class QuotaBar extends StatelessWidget {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
     final isDark = theme.brightness == Brightness.dark;
+    final p = GlassPalette.forDark(isDark);
     final ratio = limit > 0 ? used / limit : 0.0;
-    final charsRatio = (charsLimit != null && charsLimit! > 0 && charsUsed != null)
-        ? (charsUsed! / charsLimit!).clamp(0.0, 1.0)
-        : null;
+    final charsRatio =
+        (charsLimit != null && charsLimit! > 0 && charsUsed != null)
+            ? (charsUsed! / charsLimit!).clamp(0.0, 1.0)
+            : null;
 
     return GestureDetector(
       onTap: _isWarning ? () => context.push('/upgrade') : null,
-      child: Container(
+      child: GlassCard(
+        isDark: isDark,
+        blur: true,
+        shadow: false,
+        borderColor: _isWarning ? _barColor.withValues(alpha: 0.5) : null,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm + 2,
-        ),
-        decoration: BoxDecoration(
-          color: isDark
-              ? AppColors.surface
-              : const Color(0xFF6366F1).withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-          border: Border.all(
-            color: _isWarning
-                ? _barColor.withValues(alpha: 0.4)
-                : const Color(0xFF6366F1).withValues(alpha: 0.18),
-          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,39 +75,46 @@ class QuotaBar extends StatelessWidget {
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
-                    color: isDark
-                        ? AppColors.textPrimary
-                        : AppColors.textPrimaryLight,
+                    color: p.textPrimary,
                   ),
                 ),
                 const Spacer(),
                 if (onWatchAd != null)
-                  InkWell(
-                    onTap: isWatchingAd ? null : onWatchAd,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isWatchingAd
-                                ? Icons.hourglass_top
-                                : Icons.play_circle_outline,
-                            size: 14,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            l.quotaWatchAd,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.primary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                  Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppGlass.rPill),
+                    child: InkWell(
+                      onTap: isWatchingAd ? null : onWatchAd,
+                      borderRadius: BorderRadius.circular(AppGlass.rPill),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: p.fillStrong,
+                          borderRadius: BorderRadius.circular(AppGlass.rPill),
+                          border: Border.all(color: p.border),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isWatchingAd
+                                  ? Icons.hourglass_top
+                                  : Icons.play_circle_outline,
+                              size: 14,
+                              color: p.accentStrong,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              l.quotaWatchAd,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: p.accentStrong,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -165,20 +171,17 @@ class _MetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final p = GlassPalette.forDark(isDark);
     return Row(
       children: [
-        Icon(icon, size: 12,
-            color: isDark
-                ? AppColors.textSecondary
-                : AppColors.textSecondaryLight),
+        Icon(icon, size: 12, color: p.textSecondary),
         const SizedBox(width: 6),
         Expanded(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: value,
-              backgroundColor:
-                  isDark ? AppColors.border : AppColors.borderLight,
+              backgroundColor: p.border,
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 6,
             ),
@@ -188,11 +191,7 @@ class _MetricRow extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: warning
-                ? color
-                : (isDark
-                    ? AppColors.textSecondary
-                    : AppColors.textSecondaryLight),
+            color: warning ? color : p.textSecondary,
             fontSize: 11,
             fontWeight: warning ? FontWeight.w600 : FontWeight.w500,
           ),
