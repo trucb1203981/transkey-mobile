@@ -51,13 +51,16 @@ class GboardKeyboardView : KeyboardView {
     private val hintDx = dp(8f)   // number hint nearer the top-RIGHT corner
     private val hintDy = dp(12f)  // (was 12/15, sat too close to the letter)
 
-    private val colLetter = 0xFF38393F.toInt()
-    private val colLetterPressed = 0xFF5A5B62.toInt()
-    private val colAction = 0xFF404659.toInt()
-    private val colActionPressed = 0xFF5C6286.toInt()
-    private val colText = 0xFFE2E2E9.toInt()
-    private val colHint = 0xFF9AA0A6.toInt()
-    private val colSpace = 0xFFBFC2C9.toInt()
+    // Liquid Glass key caps - violet-tinted (was a flat Gboard-gray clone),
+    // tuned to sit ~18 luma above the Glass.PANEL_DARK (#14121F) panel behind
+    // them so caps stay clearly separated from the inter-key gaps.
+    private val colLetter = 0xFF262435.toInt()
+    private val colLetterPressed = 0xFF3A3654.toInt()
+    private val colAction = 0xFF2E2C48.toInt()
+    private val colActionPressed = 0xFF46427A.toInt()
+    private val colText = 0xFFF3F2FF.toInt()
+    private val colHint = 0xFF9A97B5.toInt()
+    private val colSpace = 0xFFC9C6DE.toInt()
 
     private val capPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -226,7 +229,7 @@ class GboardKeyboardView : KeyboardView {
     private val flickTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER; textSize = sp(20f)
     }
-    private val colFlickCell = 0xFF2A2B31.toInt()
+    private val colFlickCell = 0xFF2E2C48.toInt() // matches colAction, glass-tinted
     private val colFlickActive = 0xFF6366F1.toInt() // brand indigo
 
     init { isPreviewEnabled = false }

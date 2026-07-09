@@ -1542,18 +1542,15 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private fun isPaid() = replyEnabled() || refineEnabled()
 
     /**
-     * Paid accounts get a brand-gradient hairline border + lightly rounded top
-     * corners on the keyboard panel; free accounts keep the flat dark panel.
-     * Called on each onStartInput so an entitlement change is reflected live.
+     * The Liquid Glass panel (transkey_kb_panel_premium: rounded top corners +
+     * opaque glass fill) is now the baseline for ALL users. The brand-gradient
+     * top-edge accent bar (drawn by the strip, clipped to the panel's rounded
+     * corners) stays the one paid-only differentiator. Called on each
+     * onStartInput so an entitlement change is reflected live.
      */
     private fun applyPremiumChrome() {
         val paid = isPaid()
-        rootView?.setBackgroundResource(
-            if (paid) R.drawable.transkey_kb_panel_premium
-            else R.drawable.transkey_kb_panel,
-        )
-        // The gradient top-edge bar is drawn by the strip (clipped to the panel's
-        // rounded corners); the rounded dark fill above is the panel background.
+        rootView?.setBackgroundResource(R.drawable.transkey_kb_panel_premium)
         suggestionStrip?.setTopBar(paid)
     }
 

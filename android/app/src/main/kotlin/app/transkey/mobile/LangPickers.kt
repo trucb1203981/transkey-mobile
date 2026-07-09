@@ -37,7 +37,6 @@ internal fun BubbleService.showLangPicker(onPicked: ((String) -> Unit)? = null) 
     val style = BubbleStyle.of(this)
     val dp = style.dp
     val isDark = style.isDark
-    val bg = style.bg
     val textCol = style.text
     val accent = style.accent
     val selBg = style.accent
@@ -49,7 +48,7 @@ internal fun BubbleService.showLangPicker(onPicked: ((String) -> Unit)? = null) 
 
     val card = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+        background = Glass.panel(dp, 18f, isDark)
         elevation = 22 * dp
         setPadding((14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
         isClickable = true
@@ -87,7 +86,7 @@ internal fun BubbleService.showLangPicker(onPicked: ((String) -> Unit)? = null) 
             setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
             background = GradientDrawable().apply {
                 setColor(if (isSelected) selBg else Color.TRANSPARENT)
-                setStroke(1, if (isSelected) selBg else Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0"))
+                setStroke(1, if (isSelected) selBg else if (isDark) Glass.BORDER_DARK else Glass.BORDER_LIGHT)
                 cornerRadius = 10 * dp
             }
             setOnClickListener {
@@ -141,7 +140,6 @@ internal fun BubbleService.showSourceLangPicker(onPicked: ((String) -> Unit)? = 
     val style = BubbleStyle.of(this)
     val dp = style.dp
     val isDark = style.isDark
-    val bg = style.bg
     val textCol = style.text
     val accent = style.accent
     val selBg = style.accent
@@ -152,7 +150,7 @@ internal fun BubbleService.showSourceLangPicker(onPicked: ((String) -> Unit)? = 
     }
     val card = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+        background = Glass.panel(dp, 18f, isDark)
         elevation = 22 * dp
         setPadding((14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
         isClickable = true
@@ -188,7 +186,7 @@ internal fun BubbleService.showSourceLangPicker(onPicked: ((String) -> Unit)? = 
             setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
             background = GradientDrawable().apply {
                 setColor(if (isSelected) selBg else Color.TRANSPARENT)
-                setStroke(1, if (isSelected) selBg else Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0"))
+                setStroke(1, if (isSelected) selBg else if (isDark) Glass.BORDER_DARK else Glass.BORDER_LIGHT)
                 cornerRadius = 10 * dp
             }
             setOnClickListener {

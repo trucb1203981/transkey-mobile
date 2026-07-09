@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Gboard-matched IME view: suggestion strip + keyboard.
+<!-- Liquid Glass IME view: suggestion strip + keyboard.
      paddingBottom=10dp reproduces Gboard's bottom gap (measured 27px @440dpi)
-     below the last row; the panel background fills it so the dark keyboard
-     panel extends to the screen edge, like Gboard. -->
+     below the last row; the panel background fills it so the glass keyboard
+     panel extends to the screen edge. transkey_kb_panel_premium is now the
+     baseline for ALL users (TransKeyIME.applyPremiumChrome re-applies it on
+     each onStartInput; this is just the pre-first-call default so there's no
+     flash of the old flat panel before that runs). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/transkey_kb_panel"
+    android:background="@drawable/transkey_kb_panel_premium"
     android:paddingLeft="0dp"
     android:paddingRight="0dp"
     android:paddingTop="0dp"

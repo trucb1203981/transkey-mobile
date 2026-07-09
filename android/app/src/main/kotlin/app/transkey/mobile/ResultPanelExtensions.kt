@@ -255,14 +255,20 @@ internal fun BubbleService.showResultPanel(
                 orientation = GradientDrawable.Orientation.LEFT_RIGHT
                 cornerRadius = cornerR
             }
-            val bgLayer = GradientDrawable().apply {
-                setColor(bg)
+            val bgLayer = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    if (isDark) Glass.PANEL_DARK_SPECULAR else Glass.PANEL_LIGHT_SPECULAR,
+                    bg,
+                ),
+            ).apply {
                 cornerRadii = floatArrayOf(
                     0f, 0f,            // top-left
                     0f, 0f,            // top-right
                     cornerR, cornerR,  // bottom-right
                     cornerR, cornerR,  // bottom-left
                 )
+                setStroke((1f * dp).toInt().coerceAtLeast(1), if (isDark) Glass.BORDER_DARK else Glass.BORDER_LIGHT)
             }
             background = android.graphics.drawable.LayerDrawable(
                 arrayOf(gradientLayer, bgLayer)
@@ -787,7 +793,7 @@ internal fun BubbleService.showResultPanel(
         panel.suggestionsContainer?.apply {
             removeAllViews()
             visibility = View.VISIBLE
-            val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
+            val borderCol = if (isDark) Glass.BORDER_DARK else Glass.BORDER_LIGHT
             val accentCol = Palette.ACCENT
             suggestions.forEachIndexed { idx, pair ->
                 val (sourceText, targetText) = pair
@@ -930,7 +936,7 @@ internal fun BubbleService.updateLangChip() {
 internal fun BubbleService.updateModeTabs(accent: Int, mutedCol: Int) {
     val style = BubbleStyle.of(this)
     val dp = style.dp
-    val subduedBg = Color.parseColor(if (style.isDark) "#2A2A40" else "#F0EFFF")
+    val subduedBg = if (style.isDark) Glass.CHIP_DARK else Glass.CHIP_LIGHT
     for ((mode, tab) in panel.modeButtons) {
         val isActive = mode == currentMode
         val fg = if (isActive) Color.WHITE else accent

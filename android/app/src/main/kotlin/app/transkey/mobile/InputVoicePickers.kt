@@ -69,12 +69,10 @@ internal fun BubbleService.showInputPicker(initialMode: String, prefillText: Str
     val style = BubbleStyle.of(this)
     val dp = style.dp
     val isDark = style.isDark
-    val bg = style.bg
     val textCol = style.text
     val mutedCol = style.muted
     val accent = style.accent
-    val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
-    val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
+    val borderCol = if (isDark) Glass.BORDER_DARK else Glass.BORDER_LIGHT
 
     // Selected mode reference — closure-captured by tabs + Translate button.
     val typeableModes = ALL_MODES
@@ -89,7 +87,7 @@ internal fun BubbleService.showInputPicker(initialMode: String, prefillText: Str
 
     val card = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+        background = Glass.panel(dp, 18f, isDark)
         elevation = 22 * dp
         setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
         isClickable = true
@@ -354,7 +352,7 @@ internal fun BubbleService.showInputPicker(initialMode: String, prefillText: Str
         for ((mode, tab) in tabRefs) {
             val selected = mode == selectedMode[0]
             tab.background = GradientDrawable().apply {
-                setColor(Color.parseColor(if (selected) "#7C6EFA" else subduedBg))
+                setColor(if (selected) Color.parseColor("#7C6EFA") else if (isDark) Glass.CHIP_DARK else Glass.CHIP_LIGHT)
                 cornerRadius = 12 * dp
             }
             tab.setTextColor(if (selected) Color.WHITE else accent)
@@ -476,11 +474,10 @@ internal fun BubbleService.showVoicePicker(initialMode: String) {
     val style = BubbleStyle.of(this)
     val dp = style.dp
     val isDark = style.isDark
-    val bg = style.bg
     val textCol = style.text
     val mutedCol = style.muted
     val accent = style.accent
-    val borderCol = Color.parseColor(if (isDark) "#3A3A52" else "#DDDDF0")
+    val borderCol = if (isDark) Glass.BORDER_DARK else Glass.BORDER_LIGHT
 
     val backdrop = FrameLayout(this).apply {
         setBackgroundColor(Palette.BACKDROP_DIM)
@@ -488,7 +485,7 @@ internal fun BubbleService.showVoicePicker(initialMode: String) {
     }
     val card = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = GradientDrawable().apply { setColor(bg); cornerRadius = 18 * dp }
+        background = Glass.panel(dp, 18f, isDark)
         elevation = 22 * dp
         setPadding((20 * dp).toInt(), (20 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt())
         isClickable = true

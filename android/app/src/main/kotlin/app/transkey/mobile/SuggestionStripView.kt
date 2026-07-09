@@ -165,7 +165,7 @@ class SuggestionStripView : View {
     private fun dp(v: Float) = v * d
     private fun sp(v: Float) = v * resources.displayMetrics.scaledDensity
 
-    private val colIcon = 0xFFC4C7CE.toInt()
+    private val colIcon = Glass.MUTED_DARK // was flat grey #C4C7CE; now matches the glass text-on-glass tokens
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = colIcon; style = Paint.Style.STROKE; strokeWidth = dp(2f)
         strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
@@ -177,11 +177,11 @@ class SuggestionStripView : View {
         color = 0x1AFFFFFF; strokeWidth = dp(1f)
     }
     private val textBest = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFECECF1.toInt(); textAlign = Paint.Align.CENTER; textSize = sp(16f)
+        color = Glass.TEXT_DARK; textAlign = Paint.Align.CENTER; textSize = sp(16f)
         isFakeBoldText = true
     }
     private val textAlt = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFB9BCC4.toInt(); textAlign = Paint.Align.CENTER; textSize = sp(16f)
+        color = Glass.MUTED_DARK; textAlign = Paint.Align.CENTER; textSize = sp(16f)
     }
     // Feature chips (Dịch / Trau chuốt) use the home screen's brand gradient
     // (#6366F1 -> #A855F7, diagonal). The shader is rebuilt per chip from its
@@ -232,7 +232,8 @@ class SuggestionStripView : View {
     }
     // Small 1-based index drawn at each candidate's top-left (Chinese mode).
     private val textNum = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF7E828C.toInt(); textAlign = Paint.Align.LEFT; textSize = sp(10f)
+        color = 0xFF807E9C.toInt() // matches GlassPalette.dark.textTertiary (app_glass.dart)
+        textAlign = Paint.Align.LEFT; textSize = sp(10f)
     }
     // ▼ expand-all chevron (own paint so the mic's gradient shader can't bleed).
     private val chevron = Paint(Paint.ANTI_ALIAS_FLAG).apply {

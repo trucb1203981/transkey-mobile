@@ -73,7 +73,6 @@ internal fun BubbleService.showModePicker() {
     val style = BubbleStyle.of(this)
     val dp = style.dp
     val isDark = style.isDark
-    val bg = style.bg
     val textCol = style.text
     val mutedCol = style.muted
     val accent = style.accent
@@ -86,7 +85,7 @@ internal fun BubbleService.showModePicker() {
 
     val card = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = GradientDrawable().apply { setColor(bg); cornerRadius = 20 * dp }
+        background = Glass.panel(dp, 20f, isDark)
         elevation = 20 * dp
         setPadding((18 * dp).toInt(), (16 * dp).toInt(), (18 * dp).toInt(), (18 * dp).toInt())
         isClickable = true
@@ -139,7 +138,7 @@ internal fun BubbleService.showModePicker() {
     val sourceLabel = if (pickedSource == "auto") "Auto"
         else (labels[pickedSource] ?: pickedSource.uppercase())
     val targetLabel = labels[pickedTarget] ?: pickedTarget.uppercase()
-    val chipBgColor = Color.parseColor(if (isDark) "#2A2A40" else "#F0EFFF")
+    val chipBgColor = if (isDark) Glass.CHIP_DARK else Glass.CHIP_LIGHT
     fun langChip(label: String, onTap: () -> Unit): TextView = TextView(this).apply {
         text = label
         setTextColor(accent)
@@ -188,7 +187,7 @@ internal fun BubbleService.showModePicker() {
     }
     ALL_MODES.forEachIndexed { index, mode ->
         val isPrimary = mode == MODE_TRANSLATE
-        val subduedBg = if (isDark) "#2A2A40" else "#F0EFFF"
+        val subduedBg = if (isDark) Glass.CHIP_DARK else Glass.CHIP_LIGHT
         // Plan gate per mode: TRANSLATE is always free; the other 4
         // (SUMMARIZE / EXPLAIN / REFINE / REPLY) are mirrored from
         // /features into SharedPreferences. Locked → dimmed column +
@@ -221,7 +220,7 @@ internal fun BubbleService.showModePicker() {
                         setStroke((1 * dp).toInt(),
                             Color.argb(102, 0x63, 0x66, 0xF1))       // ~40% indigo
                     }
-                    else -> setColor(Color.parseColor(subduedBg))
+                    else -> setColor(subduedBg)
                 }
                 cornerRadius = 14 * dp
             }
@@ -286,12 +285,12 @@ internal fun BubbleService.showModePicker() {
     card.addView(modesRow)
 
     // Divider + secondary actions row ("Type text" / "Show last result")
-    val dividerBg = if (isDark) "#3A3A50" else "#E0DFF8"
+    val dividerBg = if (isDark) Glass.BORDER_DARK else Glass.BORDER_LIGHT
     card.addView(View(this).apply {
         layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, (1 * dp).toInt(),
         ).apply { topMargin = (12 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
-        setBackgroundColor(Color.parseColor(dividerBg))
+        setBackgroundColor(dividerBg)
     })
 
     // Always-available "Type your own text" entry — for when the user
