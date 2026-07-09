@@ -89,8 +89,7 @@ object OcrHelper {
      * script the user is pointing the lens at, so the Latin-only fallback
      * would mangle Japanese / Korean / Chinese pages into Latin garbage
      * ("返信が遅く" → "Xyt-6ɔ2t"). Run all four recognizers in parallel
-     * and keep the result with the most meaningful captured characters
-     * — Google Lens uses the same heuristic.
+     * and keep the result with the best script-aware [scriptScore].
      */
     private fun recognizeFiltered(
         bitmap: Bitmap,
@@ -118,10 +117,10 @@ object OcrHelper {
 
     /**
      * Auto-detect script by running Latin + Japanese + Korean + Chinese
-     * recognizers in parallel and picking whichever returned the most
-     * "meaningful" text (post content-heuristic, char count). ML Kit
-     * recognizers are async + thread-safe so this fans out without any
-     * scheduling — slowest-of-four wallclock is roughly 200-500 ms.
+     * recognizers in parallel and picking whichever returned the best
+     * script-aware score (post content-heuristic — see [scriptScore]).
+     * ML Kit recognizers are async + thread-safe so this fans out without
+     * any scheduling — slowest-of-four wallclock is roughly 200-500 ms.
      *
      * Tradeoff: ~12 MB peak memory across the four loaded models.
      * Acceptable for one-shot scans; recognizers close after each run.
@@ -144,7 +143,7 @@ object OcrHelper {
             val best = synchronized(lock) {
                 val bestFiltered = results
                     .filterNotNull()
-                    .maxByOrNull { list -> list.sumOf { b -> b.text.length } }
+                    .maxByOrNull { list -> scriptScore(list) }
                 if (!bestFiltered.isNullOrEmpty()) {
                     bestFiltered
                 } else {
@@ -153,14 +152,14 @@ object OcrHelper {
                     // shows (and can copy) what OCR read.
                     rawResults
                         .filterNotNull()
-                        .maxByOrNull { list -> list.sumOf { b -> b.text.length } }
+                        .maxByOrNull { list -> scriptScore(list) }
                         ?: emptyList()
                 }
             }
             Log.d(
                 TAG,
                 "auto-OCR picked: ${scripts.zip(results.toList())
-                    .map { (s, r) -> "${s ?: "latin"}=${r?.sumOf { it.text.length } ?: 0}" }
+                    .map { (s, r) -> "${s ?: "latin"}=${r?.let { scriptScore(it) } ?: 0}" }
                     .joinToString(",")
                 }",
             )
@@ -327,6 +326,33 @@ object OcrHelper {
             (code in 0x3400..0x4DBF) ||      // CJK Ext A
             (code in 0xFF66..0xFF9F)         // Halfwidth Katakana
     }
+
+    /** Latin letters carrying diacritics (Vietnamese "ệ/ưở", French "é", …):
+     *  Latin-1 Supplement letters (minus × ÷) + Latin Extended-A/B + Latin
+     *  Extended Additional — the chars a wrong-script recognizer strips to
+     *  plain ASCII. */
+    private fun hasDiacritic(ch: Char): Boolean {
+        val code = ch.code
+        return (code in 0x00C0..0x024F && code != 0x00D7 && code != 0x00F7) ||
+            (code in 0x1E00..0x1EFF)
+    }
+
+    /**
+     * Script-aware quality score for picking between the parallel
+     * recognizers in [recognizeAuto]. Baseline = total char count (more
+     * captured text still wins), but script-distinctive chars — CJK and
+     * diacritic-carrying Latin — count DOUBLE: the right-script recognizer
+     * keeps them while a wrong-script one strips them to plain ASCII of
+     * ~equal LENGTH, so plain char count could not tell "Nhiệm vụ mới"
+     * (correct) from "Nhiem vu mol" (ja recognizer, 1 char longer) and
+     * silently mangled Vietnamese screens in auto mode. Keep in sync with
+     * ocrScriptScore in the desktop's block-merge.ts, where the failure
+     * was measured with real engine output.
+     */
+    private fun scriptScore(blocks: List<Block>): Int =
+        blocks.sumOf { b ->
+            b.text.length + b.text.count { isCjk(it) || hasDiacritic(it) }
+        }
 
     private val PUNCT_CHARS = setOf(
         '.', '!', '?', '…', '。', '！', '？', '،', ';', '；', ':', '：',
