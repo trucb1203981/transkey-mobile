@@ -1177,6 +1177,23 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Eigenen Text eingeben';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Die Bubble tippen → Eigenen Text eingeben, dann die gewünschte Aktion wählen.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'Über die TransKey Tastatur → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'In einer beliebigen App zur TransKey Tastatur wechseln, die Nachricht eingeben, dann auf den Chip $feature über den Tasten tippen.';
+  }
+
+  @override
   String get voiceTooltip => 'Zum Tippen sprechen';
 
   @override

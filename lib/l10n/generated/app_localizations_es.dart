@@ -1175,6 +1175,23 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Escribe tu propio texto';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Toca la burbuja → Escribe tu propio texto, luego elige la acción que quieras.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'Desde el Teclado TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'Cambia al Teclado TransKey en cualquier app, escribe tu mensaje, luego toca el chip $feature sobre las teclas.';
+  }
+
+  @override
   String get voiceTooltip => 'Hablar para escribir';
 
   @override

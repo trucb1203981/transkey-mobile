@@ -1177,6 +1177,23 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Saisir votre propre texte';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Tapez la bulle → Saisir votre propre texte, puis choisissez l\'action voulue.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'Depuis le Clavier TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'Passez au Clavier TransKey dans n\'importe quelle app, tapez votre message, puis appuyez sur la puce $feature au-dessus des touches.';
+  }
+
+  @override
   String get voiceTooltip => 'Parler pour saisir';
 
   @override

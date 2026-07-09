@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Scrivi un testo tuo",
+  "guideInputTypeDesc": "Tocca il pulsante mobile → Scrivi un testo tuo, poi scegli l'azione desiderata.",
+  "guideInputKeyboardTitle": "Dalla Tastiera TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Passa alla Tastiera TransKey in qualsiasi app, scrivi il tuo messaggio, poi tocca il chip {feature} sopra i tasti.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Parla per scrivere",
   "voiceListening": "In ascolto…",
   "voiceNeedsLang": "Imposta una lingua di origine specifica per usare la voce",

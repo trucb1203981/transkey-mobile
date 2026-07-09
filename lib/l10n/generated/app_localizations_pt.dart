@@ -1177,6 +1177,23 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Digite seu próprio texto';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Toque no botão flutuante → Digite seu próprio texto, depois escolha a ação desejada.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'Pelo Teclado TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'Mude para o Teclado TransKey em qualquer app, digite sua mensagem, depois toque no chip $feature acima das teclas.';
+  }
+
+  @override
   String get voiceTooltip => 'Falar para digitar';
 
   @override

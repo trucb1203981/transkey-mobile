@@ -1111,6 +1111,22 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => '自行输入文本';
+
+  @override
+  String get guideInputTypeDesc => '点击悬浮气泡 → 自行输入文本,然后选择想要的操作。';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return '从 TransKey 键盘 → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return '在任意应用切换到 TransKey 键盘,输入你的内容,然后点击按键上方的 $feature 按钮。';
+  }
+
+  @override
   String get voiceTooltip => '语音输入';
 
   @override

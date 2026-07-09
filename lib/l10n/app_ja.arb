@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "自分でテキストを入力",
+  "guideInputTypeDesc": "フローティングバブルをタップ → 自分でテキストを入力を選び、実行したい操作を選択。",
+  "guideInputKeyboardTitle": "TransKey キーボードから → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "任意のアプリで TransKey キーボードに切り替えてメッセージを入力し、キー上部の{feature}チップをタップ。",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "音声入力",
   "voiceListening": "聞き取り中…",
   "voiceNeedsLang": "音声入力には元の言語を指定してください",

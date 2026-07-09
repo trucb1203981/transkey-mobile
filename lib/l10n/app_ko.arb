@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "직접 텍스트 입력",
+  "guideInputTypeDesc": "플로팅 버블을 탭 → 직접 텍스트 입력을 선택한 후 원하는 동작을 고르세요.",
+  "guideInputKeyboardTitle": "TransKey 키보드에서 → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "아무 앱에서나 TransKey 키보드로 전환해 메시지를 입력한 후, 키 위에 있는 {feature} 칩을 탭하세요.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "음성 입력",
   "voiceListening": "듣는 중…",
   "voiceNeedsLang": "음성 입력을 사용하려면 원본 언어를 지정하세요",

@@ -1174,6 +1174,23 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Ввести свой текст';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Нажмите плавающую кнопку → Ввести свой текст, затем выберите нужное действие.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'С клавиатуры TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'Переключитесь на клавиатуру TransKey в любом приложении, введите сообщение, затем нажмите чип $feature над клавишами.';
+  }
+
+  @override
   String get voiceTooltip => 'Говорите, чтобы ввести';
 
   @override

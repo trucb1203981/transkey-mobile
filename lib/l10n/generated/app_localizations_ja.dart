@@ -1126,6 +1126,22 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => '自分でテキストを入力';
+
+  @override
+  String get guideInputTypeDesc => 'フローティングバブルをタップ → 自分でテキストを入力を選び、実行したい操作を選択。';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'TransKey キーボードから → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return '任意のアプリで TransKey キーボードに切り替えてメッセージを入力し、キー上部の$featureチップをタップ。';
+  }
+
+  @override
   String get voiceTooltip => '音声入力';
 
   @override

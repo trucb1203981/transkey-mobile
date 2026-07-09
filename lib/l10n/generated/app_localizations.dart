@@ -2246,6 +2246,30 @@ abstract class AppLocalizations {
   /// **'Select text in any app — the popup with Copy/Share appears. Tap ⋮ for more options, then pick TransKey: {feature}.'**
   String guideInputMenuDesc(String feature);
 
+  /// No description provided for @guideInputTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your own text'**
+  String get guideInputTypeTitle;
+
+  /// No description provided for @guideInputTypeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the TransKey button → Type your own text, then pick what you want to do.'**
+  String get guideInputTypeDesc;
+
+  /// No description provided for @guideInputKeyboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'From the TransKey Keyboard → {feature}'**
+  String guideInputKeyboardTitle(String feature);
+
+  /// No description provided for @guideInputKeyboardDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to the TransKey Keyboard in any app, type your message, then tap the {feature} chip above the keys.'**
+  String guideInputKeyboardDesc(String feature);
+
   /// No description provided for @voiceTooltip.
   ///
   /// In en, this message translates to:

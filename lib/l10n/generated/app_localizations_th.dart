@@ -1160,6 +1160,23 @@ class AppLocalizationsTh extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'พิมพ์ข้อความเอง';
+
+  @override
+  String get guideInputTypeDesc =>
+      'แตะปุ่มลอย → พิมพ์ข้อความเอง แล้วเลือกการกระทำที่ต้องการ';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'จากแป้นพิมพ์ TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'สลับไปใช้แป้นพิมพ์ TransKey ในแอปใด ๆ พิมพ์ข้อความของคุณ แล้วแตะชิป $feature เหนือแป้นพิมพ์';
+  }
+
+  @override
   String get voiceTooltip => 'พูดเพื่อพิมพ์';
 
   @override

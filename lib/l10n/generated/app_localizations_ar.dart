@@ -1168,6 +1168,23 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'اكتب نصك الخاص';
+
+  @override
+  String get guideInputTypeDesc =>
+      'اضغط على الزر العائم → اكتب نصك الخاص، ثم اختر الإجراء الذي تريده.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'من لوحة مفاتيح TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'بدّل إلى لوحة مفاتيح TransKey في أي تطبيق، اكتب رسالتك، ثم اضغط على شريحة $feature فوق المفاتيح.';
+  }
+
+  @override
   String get voiceTooltip => 'تحدّث للكتابة';
 
   @override

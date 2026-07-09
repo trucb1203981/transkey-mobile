@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Digite seu próprio texto",
+  "guideInputTypeDesc": "Toque no botão flutuante → Digite seu próprio texto, depois escolha a ação desejada.",
+  "guideInputKeyboardTitle": "Pelo Teclado TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Mude para o Teclado TransKey em qualquer app, digite sua mensagem, depois toque no chip {feature} acima das teclas.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Falar para digitar",
   "voiceListening": "Ouvindo…",
   "voiceNeedsLang": "Defina um idioma de origem específico para usar a voz",

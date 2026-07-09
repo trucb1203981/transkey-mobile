@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Saisir votre propre texte",
+  "guideInputTypeDesc": "Tapez la bulle → Saisir votre propre texte, puis choisissez l'action voulue.",
+  "guideInputKeyboardTitle": "Depuis le Clavier TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Passez au Clavier TransKey dans n'importe quelle app, tapez votre message, puis appuyez sur la puce {feature} au-dessus des touches.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Parler pour saisir",
   "voiceListening": "Écoute…",
   "voiceNeedsLang": "Définissez une langue source précise pour utiliser la voix",

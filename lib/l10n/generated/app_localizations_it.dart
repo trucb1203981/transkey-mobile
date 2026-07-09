@@ -1175,6 +1175,23 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Scrivi un testo tuo';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Tocca il pulsante mobile → Scrivi un testo tuo, poi scegli l\'azione desiderata.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'Dalla Tastiera TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'Passa alla Tastiera TransKey in qualsiasi app, scrivi il tuo messaggio, poi tocca il chip $feature sopra i tasti.';
+  }
+
+  @override
   String get voiceTooltip => 'Parla per scrivere';
 
   @override

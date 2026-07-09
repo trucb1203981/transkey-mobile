@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Nhập văn bản riêng",
+  "guideInputTypeDesc": "Chạm Nút TransKey → Nhập văn bản riêng, rồi chọn hành động bạn muốn.",
+  "guideInputKeyboardTitle": "Từ Bàn phím TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Chuyển sang Bàn phím TransKey trong ứng dụng bất kỳ, gõ nội dung, rồi chạm chip {feature} phía trên các phím.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Nói để nhập",
   "voiceListening": "Đang nghe…",
   "voiceNeedsLang": "Đặt ngôn ngữ nguồn cụ thể để dùng giọng nói",

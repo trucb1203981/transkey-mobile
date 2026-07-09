@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Escribe tu propio texto",
+  "guideInputTypeDesc": "Toca la burbuja → Escribe tu propio texto, luego elige la acción que quieras.",
+  "guideInputKeyboardTitle": "Desde el Teclado TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Cambia al Teclado TransKey en cualquier app, escribe tu mensaje, luego toca el chip {feature} sobre las teclas.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Hablar para escribir",
   "voiceListening": "Escuchando…",
   "voiceNeedsLang": "Establece un idioma de origen específico para usar la voz",

@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "اكتب نصك الخاص",
+  "guideInputTypeDesc": "اضغط على الزر العائم → اكتب نصك الخاص، ثم اختر الإجراء الذي تريده.",
+  "guideInputKeyboardTitle": "من لوحة مفاتيح TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "بدّل إلى لوحة مفاتيح TransKey في أي تطبيق، اكتب رسالتك، ثم اضغط على شريحة {feature} فوق المفاتيح.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "تحدّث للكتابة",
   "voiceListening": "جارٍ الاستماع…",
   "voiceNeedsLang": "حدد لغة مصدر معينة لاستخدام الصوت",

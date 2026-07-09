@@ -1126,6 +1126,22 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => '직접 텍스트 입력';
+
+  @override
+  String get guideInputTypeDesc => '플로팅 버블을 탭 → 직접 텍스트 입력을 선택한 후 원하는 동작을 고르세요.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'TransKey 키보드에서 → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return '아무 앱에서나 TransKey 키보드로 전환해 메시지를 입력한 후, 키 위에 있는 $feature 칩을 탭하세요.';
+  }
+
+  @override
   String get voiceTooltip => '음성 입력';
 
   @override

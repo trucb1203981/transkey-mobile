@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Ввести свой текст",
+  "guideInputTypeDesc": "Нажмите плавающую кнопку → Ввести свой текст, затем выберите нужное действие.",
+  "guideInputKeyboardTitle": "С клавиатуры TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Переключитесь на клавиатуру TransKey в любом приложении, введите сообщение, затем нажмите чип {feature} над клавишами.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Говорите, чтобы ввести",
   "voiceListening": "Слушаю…",
   "voiceNeedsLang": "Чтобы пользоваться голосом, задайте конкретный исходный язык",

@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "พิมพ์ข้อความเอง",
+  "guideInputTypeDesc": "แตะปุ่มลอย → พิมพ์ข้อความเอง แล้วเลือกการกระทำที่ต้องการ",
+  "guideInputKeyboardTitle": "จากแป้นพิมพ์ TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "สลับไปใช้แป้นพิมพ์ TransKey ในแอปใด ๆ พิมพ์ข้อความของคุณ แล้วแตะชิป {feature} เหนือแป้นพิมพ์",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "พูดเพื่อพิมพ์",
   "voiceListening": "กำลังฟัง…",
   "voiceNeedsLang": "ตั้งภาษาต้นทางที่ชัดเจนเพื่อใช้เสียง",

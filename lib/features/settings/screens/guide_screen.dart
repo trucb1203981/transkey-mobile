@@ -28,12 +28,17 @@ class GuideScreen extends ConsumerWidget {
         subtitle: t.guideFeatureTranslateSubtitle,
         available: true,
         inputs: [
+          _Input(
+            t.guideInputKeyboardTitle(t.guideFeatureTranslate),
+            t.guideInputKeyboardDesc(t.guideFeatureTranslate),
+          ),
           _Input(t.guideInputCopyTitle, t.guideInputCopyDesc),
           _Input(t.guideInputShareTitle, t.guideInputShareDesc),
           _Input(
             t.guideInputMenuTitle(t.guideFeatureTranslate),
             t.guideInputMenuDesc(t.guideFeatureTranslate),
           ),
+          _Input(t.guideInputTypeTitle, t.guideInputTypeDesc),
           _Input(t.guideInputVoiceTitle, t.guideInputVoiceDesc),
           _Input(t.guideInputOcrTitle, t.guideInputOcrDesc,
               isPaid: !hasLens, paidLabel: !hasLens ? paidLabel : null),
@@ -71,6 +76,7 @@ class GuideScreen extends ConsumerWidget {
             t.guideInputMenuTitle(t.guideFeatureSummary),
             t.guideInputMenuDesc(t.guideFeatureSummary),
           ),
+          _Input(t.guideInputTypeTitle, t.guideInputTypeDesc),
           _Input(t.guideInputOcrTitle, t.guideInputOcrDesc,
               isPaid: !hasLens, paidLabel: !hasLens ? paidLabel : null),
           _Input(t.guideInputRegionTitle, t.guideInputRegionDesc,
@@ -89,6 +95,7 @@ class GuideScreen extends ConsumerWidget {
             t.guideInputMenuTitle(t.guideFeatureExplain),
             t.guideInputMenuDesc(t.guideFeatureExplain),
           ),
+          _Input(t.guideInputTypeTitle, t.guideInputTypeDesc),
         ],
       ),
       _FeatureDef(
@@ -97,12 +104,17 @@ class GuideScreen extends ConsumerWidget {
         subtitle: t.guideFeatureRefineSubtitle,
         available: flags.refine,
         inputs: [
+          _Input(
+            t.guideInputKeyboardTitle(t.guideFeatureRefine),
+            t.guideInputKeyboardDesc(t.guideFeatureRefine),
+          ),
           _Input(t.guideInputCopyTitle, t.guideInputCopyDesc),
           _Input(t.guideInputShareTitle, t.guideInputShareDesc),
           _Input(
             t.guideInputMenuTitle(t.guideFeatureRefine),
             t.guideInputMenuDesc(t.guideFeatureRefine),
           ),
+          _Input(t.guideInputTypeTitle, t.guideInputTypeDesc),
         ],
       ),
       _FeatureDef(
@@ -111,6 +123,10 @@ class GuideScreen extends ConsumerWidget {
         subtitle: t.guideFeatureReplySubtitle,
         available: flags.replyTranslate,
         inputs: [
+          _Input(
+            t.guideInputKeyboardTitle(t.guideFeatureReply),
+            t.guideInputKeyboardDesc(t.guideFeatureReply),
+          ),
           _Input(t.guideInputCopyTitle, t.guideInputCopyDesc),
           _Input(t.guideInputShareTitle, t.guideInputShareDesc),
           _Input(

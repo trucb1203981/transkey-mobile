@@ -1161,6 +1161,23 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Nhập văn bản riêng';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Chạm Nút TransKey → Nhập văn bản riêng, rồi chọn hành động bạn muốn.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'Từ Bàn phím TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'Chuyển sang Bàn phím TransKey trong ứng dụng bất kỳ, gõ nội dung, rồi chạm chip $feature phía trên các phím.';
+  }
+
+  @override
   String get voiceTooltip => 'Nói để nhập';
 
   @override

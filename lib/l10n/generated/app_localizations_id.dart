@@ -1171,6 +1171,23 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get guideInputTypeTitle => 'Ketik teks Anda sendiri';
+
+  @override
+  String get guideInputTypeDesc =>
+      'Ketuk tombol melayang → Ketik teks Anda sendiri, lalu pilih tindakan yang diinginkan.';
+
+  @override
+  String guideInputKeyboardTitle(String feature) {
+    return 'Dari Keyboard TransKey → $feature';
+  }
+
+  @override
+  String guideInputKeyboardDesc(String feature) {
+    return 'Beralih ke Keyboard TransKey di aplikasi mana pun, ketik pesan Anda, lalu ketuk chip $feature di atas tombol keyboard.';
+  }
+
+  @override
   String get voiceTooltip => 'Bicara untuk mengetik';
 
   @override

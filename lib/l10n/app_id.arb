@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Ketik teks Anda sendiri",
+  "guideInputTypeDesc": "Ketuk tombol melayang → Ketik teks Anda sendiri, lalu pilih tindakan yang diinginkan.",
+  "guideInputKeyboardTitle": "Dari Keyboard TransKey → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Beralih ke Keyboard TransKey di aplikasi mana pun, ketik pesan Anda, lalu ketuk chip {feature} di atas tombol keyboard.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Bicara untuk mengetik",
   "voiceListening": "Mendengarkan…",
   "voiceNeedsLang": "Atur bahasa sumber yang spesifik untuk memakai suara",

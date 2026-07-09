@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "自行输入文本",
+  "guideInputTypeDesc": "点击悬浮气泡 → 自行输入文本,然后选择想要的操作。",
+  "guideInputKeyboardTitle": "从 TransKey 键盘 → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "在任意应用切换到 TransKey 键盘,输入你的内容,然后点击按键上方的 {feature} 按钮。",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "语音输入",
   "voiceListening": "正在聆听…",
   "voiceNeedsLang": "请先设置具体的源语言以使用语音输入",

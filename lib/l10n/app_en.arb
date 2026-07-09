@@ -482,6 +482,24 @@
       }
     }
   },
+  "guideInputTypeTitle": "Type your own text",
+  "guideInputTypeDesc": "Tap the TransKey button → Type your own text, then pick what you want to do.",
+  "guideInputKeyboardTitle": "From the TransKey Keyboard → {feature}",
+  "@guideInputKeyboardTitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
+  "guideInputKeyboardDesc": "Switch to the TransKey Keyboard in any app, type your message, then tap the {feature} chip above the keys.",
+  "@guideInputKeyboardDesc": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "voiceTooltip": "Speak to type",
   "voiceListening": "Listening…",
   "voiceNeedsLang": "Set a specific source language to use voice",
