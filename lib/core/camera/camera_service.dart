@@ -3859,20 +3859,41 @@ class CameraService {
     return merged;
   }
 
-  /// Count "meaningful" characters in [s] — Latin letters, digits, and
-  /// CJK / kana / hangul codepoints. Punctuation, whitespace, and
-  /// symbols don't count. Used to pick the better OCR result when
-  /// running multiple ML Kit script recognizers on the same crop.
+  /// Count "meaningful" characters in [s] — Latin letters (incl. diacritic
+  /// forms), digits, and CJK / kana / hangul codepoints. Punctuation,
+  /// whitespace, and symbols don't count. Used to pick the better OCR
+  /// result when running multiple ML Kit script recognizers on the same
+  /// crop. Diacritic Latin ranges are REQUIRED here: without them a
+  /// diacritic-stripped misread ("Nhiem vu moi") counted MORE meaningful
+  /// chars than the correct read ("Nhiệm vụ mới", whose ệ/ụ/ớ were
+  /// excluded) and won the pick — the same bug class fixed in
+  /// OcrHelper.recognizeAuto and desktop block-merge.ts (2026-07-09).
   static int _meaningfulCharCount(String s) {
     var count = 0;
     for (final rune in s.runes) {
       if ((rune >= 0x30 && rune <= 0x39) ||              // 0-9
           (rune >= 0x41 && rune <= 0x5A) ||              // A-Z
           (rune >= 0x61 && rune <= 0x7A) ||              // a-z
+          (rune >= 0xC0 && rune <= 0x24F &&
+              rune != 0xD7 && rune != 0xF7) ||           // Latin-1/Ext-A/B letters (not × ÷)
+          (rune >= 0x1E00 && rune <= 0x1EFF) ||          // Latin Ext Additional (Vietnamese)
           (rune >= 0x3040 && rune <= 0x309F) ||          // hiragana
           (rune >= 0x30A0 && rune <= 0x30FF) ||          // katakana
           (rune >= 0x4E00 && rune <= 0x9FFF) ||          // CJK unified
           (rune >= 0xAC00 && rune <= 0xD7AF)) {          // hangul syllables
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// Count of diacritic-carrying Latin letters (Vietnamese "ệ/ưở", French
+  /// "é", …) — the chars a wrong-script recognizer strips to plain ASCII.
+  static int _diacriticLatinCount(String s) {
+    var count = 0;
+    for (final rune in s.runes) {
+      if ((rune >= 0xC0 && rune <= 0x24F && rune != 0xD7 && rune != 0xF7) ||
+          (rune >= 0x1E00 && rune <= 0x1EFF)) {
         count++;
       }
     }
@@ -3904,11 +3925,16 @@ class CameraService {
   /// candidate, and a CJK recognizer's garbage on Latin text is not
   /// CJK-dominant, so both fall through to the plain count - the Latin read
   /// still wins there (no regression to horizontal comics).
+  ///
+  /// Diacritic Latin counts DOUBLE (base count + bonus): the correct
+  /// Vietnamese read and its diacritic-stripped twin have ~equal char
+  /// counts, so without the bonus the winner was a coin toss. Mirrors
+  /// scriptScore in OcrHelper.kt / ocrScriptScore in desktop block-merge.ts.
   static int _ocrPickScore(String s) {
     final meaningful = _meaningfulCharCount(s);
     final cjk = _cjkCharCount(s);
     if (cjk >= 2 && cjk * 2 >= meaningful) return meaningful + 1000;
-    return meaningful;
+    return meaningful + _diacriticLatinCount(s);
   }
 
   /// Count of ASCII Latin letters (A-Z, a-z). Used to spot a Latin-only

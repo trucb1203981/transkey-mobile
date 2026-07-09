@@ -100,6 +100,7 @@ int _meaningfulChars(String s) {
         (rune >= 0x41 && rune <= 0x5A) || // A-Z
         (rune >= 0x61 && rune <= 0x7A) || // a-z
         (rune >= 0xC0 && rune <= 0x24F) || // Latin-1 + extended (accents)
+        (rune >= 0x1E00 && rune <= 0x1EFF) || // Latin Ext Additional (Vietnamese)
         (rune >= 0x3040 && rune <= 0x30FF) || // hiragana + katakana
         (rune >= 0x4E00 && rune <= 0x9FFF) || // CJK unified
         (rune >= 0xAC00 && rune <= 0xD7AF)) { // hangul syllables
