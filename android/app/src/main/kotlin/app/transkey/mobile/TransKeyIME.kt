@@ -705,6 +705,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacksAndMessages(null)
         voiceHelper?.destroy()
         voiceHelper = null
         runCatching { suggestExecutor.shutdownNow() }
