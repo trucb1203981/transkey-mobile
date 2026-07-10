@@ -178,7 +178,9 @@ class KeyboardViewController: UIInputViewController {
 
     private let telex = TelexProcessor()
     private let hangul = HangulComposer()
-    private lazy var corrector = VietWordCorrector()
+    /// Built asynchronously in viewDidLoad (word-list parsing off-main); nil
+    /// while still loading - suggestion/autocorrect paths skip gracefully.
+    private var corrector: VietWordCorrector?
 
     // Japanese romaji->kana composer + kana->kanji converter, and the Chinese
     // pinyin buffer with live hanzi candidates - ports of the Android engines.
@@ -223,11 +225,13 @@ class KeyboardViewController: UIInputViewController {
     // must reset the composing word (otherwise stale state corrupts input).
     private var lastInternalEdit = Date.distantPast
 
-    private var isPro = false
     private var resultPanelVisible = false
     // Pre-action field snapshot; non-nil = the red undo chip is armed on the
     // bar. Any manual edit or field switch invalidates it (Android parity).
     private var undoSnapshot: String?
+    // The text the action inserted, kept in lockstep with undoSnapshot: undo
+    // deletes exactly this many characters before re-inserting the snapshot.
+    private var undoReplacement: String?
     // True while we replace the field with an action result / undo, so the
     // replacement's own proxy edits don't invalidate the fresh snapshot.
     private var actionReplaceInProgress = false
@@ -338,8 +342,17 @@ class KeyboardViewController: UIInputViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        isPro = AppGroupStore.shared.plan != "free"
         setupUI()
+        // Build the Vietnamese corrector off-main: its init parses two bundled
+        // word lists (~7k lines) and used to run lazily on the FIRST Vietnamese
+        // keystroke, janking it. Suggestions simply stay off until it lands.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let built = VietWordCorrector()
+            DispatchQueue.main.async {
+                self?.corrector = built
+                self?.updateSuggestionBar()
+            }
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -406,6 +419,7 @@ class KeyboardViewController: UIInputViewController {
             pinyin = ""
             zhCandidates = []
             undoSnapshot = nil   // field switch / external edit drops the undo
+            undoReplacement = nil
             maybeAutoShift()
             updateSuggestionBar()
         }
@@ -418,6 +432,7 @@ class KeyboardViewController: UIInputViewController {
         // like Android: the red chip disappears once the user types again.
         if undoSnapshot != nil {
             undoSnapshot = nil
+            undoReplacement = nil
             showActionBar()
         }
         // The error banner also clears on the next keypress (Android parity).
@@ -548,7 +563,14 @@ class KeyboardViewController: UIInputViewController {
         openHostApp("transkey://")
     }
 
+    /// Non-nil only while the bar currently shows the idle action chips;
+    /// encodes every input showActionBar renders from, so an unchanged bar
+    /// is not rebuilt on every keystroke. Any other bar mode goes through
+    /// clearBarContent, which resets it and forces the next rebuild.
+    private var actionBarSignature: String?
+
     private func clearBarContent() {
+        actionBarSignature = nil
         barContentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         // Suggestion/candidate modes need full-height stretching; action-bar
         // mode overrides to .center so the pills hug their content.
@@ -562,6 +584,20 @@ class KeyboardViewController: UIInputViewController {
     /// Reply REPLACES Translate for entitled users; Refine is paid-only
     /// and hidden (not greyed) for free users.
     private func showActionBar() {
+        let store = AppGroupStore.shared
+        // Skip the rebuild when the bar already shows exactly these chips -
+        // updateSuggestionBar lands here after EVERY keystroke while idle,
+        // and recreating 4-6 buttons per key press is pointless churn.
+        let signature = [
+            hasFullAccess ? "1" : "0",
+            store.sourceLang, store.targetLang,
+            store.featureReply ? "1" : "0",
+            store.featureRefine ? "1" : "0",
+            inputLangChipLabel,
+            undoSnapshot != nil ? "1" : "0",
+            KB.lang,   // chip titles are localized; app UI-language change must rebuild
+        ].joined(separator: "|")
+        if actionBarSignature == signature { return }
         clearBarContent()
         // .equalSpacing keeps every chip at its intrinsic size (the lang pills stay
         // visibly smaller than the action chips, unlike .fillProportionally which
@@ -574,7 +610,6 @@ class KeyboardViewController: UIInputViewController {
         barContentStack.distribution = .equalSpacing
         barContentStack.alignment = .center
         barContentStack.spacing = 5
-        let store = AppGroupStore.shared
         let pairTitle = "\(Self.shortLang(store.sourceLang))→\(Self.shortLang(store.targetLang))"
         // App Store Guideline 4.4.1: Translate / Reply / Refine all hit the
         // network (and the clipboard), which a keyboard extension can only do
@@ -613,6 +648,9 @@ class KeyboardViewController: UIInputViewController {
         if undoSnapshot != nil {
             barContentStack.addArrangedSubview(undoChip())
         }
+        // Mark the bar as up to date ONLY after the chips are in place;
+        // clearBarContent (any other bar mode) resets this to force a rebuild.
+        actionBarSignature = signature
     }
 
     /// Solid red undo pill at the far right of the chips, same as the Android
@@ -701,7 +739,14 @@ class KeyboardViewController: UIInputViewController {
             dismissLangPicker()
             return
         }
-        let picker = LanguagePairPickerView(mode: .pair)
+        // Entitled accounts get the [Dịch | Trả lời] scope segment so the
+        // reply pair can be set independently of the read/translate pair. The
+        // chip label keeps showing the TRANSLATE pair only, so the reply pair
+        // deliberately stays out of actionBarSignature.
+        let picker = LanguagePairPickerView(
+            mode: .pair,
+            showsReplyOption: AppGroupStore.shared.featureReply
+        )
         picker.translatesAutoresizingMaskIntoConstraints = false
         picker.onDone = { [weak self] in self?.dismissLangPicker() }
         picker.onChanged = { [weak self] in self?.showActionBar() }
@@ -1042,7 +1087,7 @@ class KeyboardViewController: UIInputViewController {
 
         var items: [(String, Bool)] = [("\"\(word)\"", true)]   // (insert text, verbatim)
         if !telex.literalIntent {
-            for s in corrector.suggest(word, max: 2) {
+            for s in corrector?.suggest(word, max: 2) ?? [] {
                 items.append((s, false))
             }
         }
@@ -2103,7 +2148,7 @@ class KeyboardViewController: UIInputViewController {
         let literal = telex.literalIntent
         commitComposing()
         guard autocorrectEnabled, !literal, word.count >= 2 else { return }
-        guard !corrector.isValid(word), !corrector.isEnglish(word) else { return }
+        guard let corrector, !corrector.isValid(word), !corrector.isEnglish(word) else { return }
         if let fixed = corrector.fix(word) {
             noteInternalEdit()
             for _ in 0..<word.count {
@@ -2225,9 +2270,13 @@ class KeyboardViewController: UIInputViewController {
     @objc private func translateTapped() {
         guard !actionInFlight else { return }
         commitComposing()
-        let fullText = (textDocumentProxy.documentContextBeforeInput ?? "")
-            + (textDocumentProxy.documentContextAfterInput ?? "")
-        let trimmed = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The proxy exposes a WINDOW around the caret, not necessarily the
+        // whole document. Capture both halves separately: the replace/undo
+        // math only ever touches exactly this captured window, so text the
+        // proxy never showed us can't be destroyed (long notes stay intact).
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        let trimmed = (before + after).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             showResultError("No text in input field.")
             return
@@ -2245,7 +2294,7 @@ class KeyboardViewController: UIInputViewController {
                     sourceLang: store.sourceLang
                 )
                 actionInFlight = false
-                applyActionResult(original: fullText, replacement: extractTranslation(json))
+                applyActionResult(before: before, after: after, replacement: extractTranslation(json))
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2313,9 +2362,10 @@ class KeyboardViewController: UIInputViewController {
     @objc private func replyTapped() {
         guard !actionInFlight else { return }
         commitComposing()
-        let fullText = (textDocumentProxy.documentContextBeforeInput ?? "")
-            + (textDocumentProxy.documentContextAfterInput ?? "")
-        let trimmed = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Window capture, same as translateTapped (see comment there).
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        let trimmed = (before + after).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             showResultError("No text in input field.")
             return
@@ -2326,14 +2376,20 @@ class KeyboardViewController: UIInputViewController {
 
         Task { @MainActor in
             do {
+                // Reply composes in the OTHER party's language: the keyboard-
+                // local reply pair (picker's Trả lời scope), NOT the shared
+                // read/translate pair the Dịch chips use - with Auto->VI set
+                // for reading, the old code answered people in Vietnamese.
+                // APIClient treats "auto" the same as nil (omits sourceLang).
+                let store = AppGroupStore.shared
                 let json = try await api.translate(
                     text: trimmed,
-                    targetLang: AppGroupStore.shared.targetLang,
-                    sourceLang: nil,
+                    targetLang: store.replyTargetLang,
+                    sourceLang: store.replySourceLang,
                     isReply: true
                 )
                 actionInFlight = false
-                applyActionResult(original: fullText, replacement: extractTranslation(json))
+                applyActionResult(before: before, after: after, replacement: extractTranslation(json))
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2342,42 +2398,58 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
-    /// Replace the field's entire content. UITextDocumentProxy has no
-    /// select-all; walk the caret to the end, then delete backwards chunk by
-    /// chunk (the proxy exposes the document in windows around the caret).
-    private func replaceAllText(with text: String) {
-        noteInternalEdit()
-        while let after = textDocumentProxy.documentContextAfterInput, !after.isEmpty {
-            textDocumentProxy.adjustTextPosition(byCharacterOffset: after.count)
-        }
-        while let before = textDocumentProxy.documentContextBeforeInput, !before.isEmpty {
-            for _ in 0..<before.count { textDocumentProxy.deleteBackward() }
-            noteInternalEdit()
-        }
-        textDocumentProxy.insertText(text)
-    }
-
-    /// Success path shared by translate/reply/refine: swap the field content
-    /// for the result and arm the undo chip. The chip stays until the user
-    /// edits the field or switches fields (Android parity, no timer).
-    private func applyActionResult(original: String, replacement: String) {
+    /// Success path shared by translate/reply/refine: swap the CAPTURED
+    /// window for the result and arm the undo chip. The chip stays until the
+    /// user edits the field or switches fields (Android parity, no timer).
+    ///
+    /// Deliberately never walks the whole document: the proxy exposes only a
+    /// window, so a walk-and-wipe would destroy text the request never saw
+    /// (and its unbounded read-back loops could spin forever on a proxy that
+    /// reports context asynchronously). Every operation below is bounded by
+    /// the captured strings. adjustTextPosition counts UTF-16 code units
+    /// while deleteBackward removes grapheme clusters - hence the different
+    /// units for the forward move vs the delete count (emoji-safe).
+    private func applyActionResult(before: String, after: String, replacement: String) {
         guard !replacement.isEmpty else {
             showActionBar()
             return
         }
         actionReplaceInProgress = true
-        replaceAllText(with: replacement)
+        noteInternalEdit()
+        let forward = after.utf16.count
+        if forward > 0 {
+            textDocumentProxy.adjustTextPosition(byCharacterOffset: forward)
+        }
+        for _ in 0..<(before.count + after.count) {
+            textDocumentProxy.deleteBackward()
+        }
+        textDocumentProxy.insertText(replacement)
+        // Re-stamp AFTER the edits: the deletes above arrive as late async
+        // textDidChange callbacks, which must not read as "external" and wipe
+        // the undo snapshot we are about to arm.
+        lastInternalEdit = Date()
         actionReplaceInProgress = false
-        undoSnapshot = original
+        undoSnapshot = before + after
+        undoReplacement = replacement
         showActionBar()
     }
 
-    /// Restore the field to its pre-action text, then drop the chip.
+    /// Restore the field to its pre-action text, then drop the chip. The
+    /// caret still sits at the end of the inserted replacement (any caret
+    /// move or edit since would have cleared the snapshot via textDidChange /
+    /// noteInternalEdit), so deleting replacement.count graphemes removes
+    /// exactly what the action inserted.
     @objc private func undoTapped() {
-        guard let snapshot = undoSnapshot else { return }
+        guard let snapshot = undoSnapshot, let inserted = undoReplacement else { return }
         undoSnapshot = nil
+        undoReplacement = nil
         actionReplaceInProgress = true
-        replaceAllText(with: snapshot)
+        noteInternalEdit()
+        for _ in 0..<inserted.count {
+            textDocumentProxy.deleteBackward()
+        }
+        textDocumentProxy.insertText(snapshot)
+        lastInternalEdit = Date()
         actionReplaceInProgress = false
         showActionBar()
     }
@@ -2386,9 +2458,10 @@ class KeyboardViewController: UIInputViewController {
         guard AppGroupStore.shared.featureRefine else { return }
         guard !actionInFlight else { return }
         commitComposing()
-        let fullText = (textDocumentProxy.documentContextBeforeInput ?? "")
-            + (textDocumentProxy.documentContextAfterInput ?? "")
-        let trimmed = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Window capture, same as translateTapped (see comment there).
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        let trimmed = (before + after).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             showResultError("No text in input field.")
             return
@@ -2401,7 +2474,7 @@ class KeyboardViewController: UIInputViewController {
             do {
                 let json = try await api.refine(text: trimmed)
                 actionInFlight = false
-                applyActionResult(original: fullText, replacement: extractTranslation(json))
+                applyActionResult(before: before, after: after, replacement: extractTranslation(json))
             } catch {
                 actionInFlight = false
                 showActionBar()

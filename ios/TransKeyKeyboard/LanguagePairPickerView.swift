@@ -15,6 +15,13 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
         case typing(current: String)
     }
 
+    /// Which pair the .pair columns edit: the SHARED translate pair (mirrored
+    /// to/from the app) or the KEYBOARD-LOCAL reply pair. Switched by the
+    /// [Dịch | Trả lời] segment; reply-pair writes never raise langsDirty.
+    private enum PairScope {
+        case translate, reply
+    }
+
     /// Built-in fallback, same as the app's Language model. Used only until
     /// the app has mirrored the server catalog (pre-login first run).
     static let fallbackLanguages: [(code: String, name: String)] = [
@@ -60,6 +67,8 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
 
     private let mode: Mode
     private var typingSelection: String
+    private var pairScope: PairScope = .translate
+    private let store = AppGroupStore.shared
     private let languages = LanguagePairPickerView.loadLanguages()
     // .typing uses the single table; .pair uses the two column tables.
     private let table = UITableView(frame: .zero, style: .insetGrouped)
@@ -67,7 +76,33 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
     private let tgtTable = UITableView(frame: .zero, style: .insetGrouped)
     private var didAutoScroll = false
 
-    init(mode: Mode) {
+    /// The source/target the columns currently read/write, per scope. Every
+    /// .pair path goes through these so both scopes share the same UI.
+    private var pairSource: String {
+        get { pairScope == .reply ? store.replySourceLang : store.sourceLang }
+        set {
+            if pairScope == .reply { store.replySourceLang = newValue }
+            else { store.sourceLang = newValue }
+        }
+    }
+    private var pairTarget: String {
+        get { pairScope == .reply ? store.replyTargetLang : store.targetLang }
+        set {
+            if pairScope == .reply { store.replyTargetLang = newValue }
+            else { store.targetLang = newValue }
+        }
+    }
+
+    /// Raise the app-sync dirty flag ONLY for the shared translate pair; the
+    /// reply pair is keyboard-local and the app must never adopt it.
+    private func markDirty() {
+        if pairScope == .translate { store.langsDirty = true }
+    }
+
+    /// `showsReplyOption` adds the [Dịch | Trả lời] scope segment to the .pair
+    /// panel - passed true only for entitled accounts (featureReply), since a
+    /// free account's Reply chip runs the plain translate flow anyway.
+    init(mode: Mode, showsReplyOption: Bool = false) {
         self.mode = mode
         if case .typing(let current) = mode {
             typingSelection = current
@@ -139,21 +174,49 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
             addSubview(srcTable)
             addSubview(tgtTable)
             addSubview(divider)
+
+            // Scope segment row between the header and the columns. Reuses the
+            // existing chip strings so no new localization rows are needed.
+            var tablesTop = header.bottomAnchor
+            if showsReplyOption {
+                let segment = UISegmentedControl(items: [KB.t("translate"), KB.t("reply")])
+                segment.selectedSegmentIndex = 0
+                segment.addTarget(self, action: #selector(scopeChanged(_:)), for: .valueChanged)
+                segment.translatesAutoresizingMaskIntoConstraints = false
+                addSubview(segment)
+                NSLayoutConstraint.activate([
+                    segment.topAnchor.constraint(equalTo: header.bottomAnchor),
+                    segment.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+                    segment.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+                    segment.heightAnchor.constraint(equalToConstant: 28),
+                ])
+                tablesTop = segment.bottomAnchor
+            }
+
             NSLayoutConstraint.activate([
-                srcTable.topAnchor.constraint(equalTo: header.bottomAnchor),
+                srcTable.topAnchor.constraint(equalTo: tablesTop),
                 srcTable.leadingAnchor.constraint(equalTo: leadingAnchor),
                 srcTable.bottomAnchor.constraint(equalTo: bottomAnchor),
-                tgtTable.topAnchor.constraint(equalTo: header.bottomAnchor),
+                tgtTable.topAnchor.constraint(equalTo: tablesTop),
                 tgtTable.trailingAnchor.constraint(equalTo: trailingAnchor),
                 tgtTable.bottomAnchor.constraint(equalTo: bottomAnchor),
                 srcTable.widthAnchor.constraint(equalTo: tgtTable.widthAnchor),
                 tgtTable.leadingAnchor.constraint(equalTo: srcTable.trailingAnchor),
-                divider.topAnchor.constraint(equalTo: header.bottomAnchor),
+                divider.topAnchor.constraint(equalTo: tablesTop),
                 divider.bottomAnchor.constraint(equalTo: bottomAnchor),
                 divider.centerXAnchor.constraint(equalTo: centerXAnchor),
                 divider.widthAnchor.constraint(equalToConstant: 1.0 / UIScreen.main.scale),
             ])
         }
+    }
+
+    /// Switch which pair the columns edit; nothing is written until a row or
+    /// swap is tapped, so no onChanged/markDirty here.
+    @objc private func scopeChanged(_ sender: UISegmentedControl) {
+        pairScope = sender.selectedSegmentIndex == 1 ? .reply : .translate
+        srcTable.reloadData()
+        tgtTable.reloadData()
+        scrollToSelections()
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
@@ -180,12 +243,11 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
             }
             return
         }
-        let store = AppGroupStore.shared
-        let srcRow = store.sourceLang == "auto"
+        let srcRow = pairSource == "auto"
             ? 0
-            : (languages.firstIndex { $0.code == store.sourceLang }.map { $0 + 1 } ?? 0)
+            : (languages.firstIndex { $0.code == pairSource }.map { $0 + 1 } ?? 0)
         srcTable.scrollToRow(at: IndexPath(row: srcRow, section: 0), at: .middle, animated: false)
-        if let t = languages.firstIndex(where: { $0.code == store.targetLang }) {
+        if let t = languages.firstIndex(where: { $0.code == pairTarget }) {
             tgtTable.scrollToRow(at: IndexPath(row: t, section: 0), at: .middle, animated: false)
         }
     }
@@ -196,12 +258,11 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
 
     /// Swap source and target; a no-op while the source is Auto (Android parity).
     @objc private func swapTapped() {
-        let store = AppGroupStore.shared
-        guard store.sourceLang != "auto" else { return }
-        let src = store.sourceLang
-        store.sourceLang = store.targetLang
-        store.targetLang = src
-        store.langsDirty = true
+        guard pairSource != "auto" else { return }
+        let src = pairSource
+        pairSource = pairTarget
+        pairTarget = src
+        markDirty()
         srcTable.reloadData()
         tgtTable.reloadData()
         scrollToSelections()
@@ -245,10 +306,9 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
         if case .typing = mode {
             selected = typingSelection == entry.code
         } else {
-            let store = AppGroupStore.shared
             selected = tableView === srcTable
-                ? store.sourceLang == entry.code
-                : store.targetLang == entry.code
+                ? pairSource == entry.code
+                : pairTarget == entry.code
         }
         cell.accessoryType = selected ? .checkmark : .none
         return cell
@@ -263,13 +323,12 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
             onTypingPicked?(entry.code)
             return
         }
-        let store = AppGroupStore.shared
         if tableView === srcTable {
-            store.sourceLang = entry.code
+            pairSource = entry.code
         } else {
-            store.targetLang = entry.code
+            pairTarget = entry.code
         }
-        store.langsDirty = true
+        markDirty()
         srcTable.reloadData()
         tgtTable.reloadData()
         onChanged?()

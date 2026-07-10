@@ -473,14 +473,47 @@ class ShareViewController: UIViewController {
         }
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-        if #available(iOS 16.0, *) {
+        // Explicit languages, NOT auto-detect: Vision's auto-detect biases to
+        // Latin and reliably MISSES CJK (same lesson as the main app's camera
+        // path, lib/core/camera/camera_service.dart _visionLangsForHint - keep
+        // the two lists in sync). Pin the user's chosen source language first,
+        // and keep only codes this OS supports (an unsupported code makes
+        // perform() throw). supportedRecognitionLanguages() depends on the
+        // recognitionLevel set above. Auto-detect remains only as the fallback
+        // if filtering left nothing.
+        let supported = Set((try? request.supportedRecognitionLanguages()) ?? [])
+        let langs = Self.visionLangs(for: AppGroupStore.shared.sourceLang)
+            .filter { supported.contains($0) }
+        if !langs.isEmpty {
+            request.recognitionLanguages = langs
+        } else if #available(iOS 16.0, *) {
             request.automaticallyDetectsLanguage = true
-        } else {
-            request.recognitionLanguages = ["vi-VT", "en-US"]
         }
         DispatchQueue.global(qos: .userInitiated).async {
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             try? handler.perform([request])
+        }
+    }
+
+    /// App source language -> Vision recognition codes, priority order.
+    /// Mirrors camera_service.dart _visionLangsForHint. "auto"/unknown gets
+    /// the broad set that turns the CJK recognizers on (auto-detect misses
+    /// them), plus vi-VT so Vietnamese diacritics survive language correction.
+    private static func visionLangs(for source: String) -> [String] {
+        switch source {
+        case "zh": return ["zh-Hans", "zh-Hant", "en-US"]
+        case "ja": return ["ja-JP", "en-US"]
+        case "ko": return ["ko-KR", "en-US"]
+        case "ru": return ["ru-RU", "en-US"]
+        case "uk": return ["uk-UA", "en-US"]
+        case "fr": return ["fr-FR", "en-US"]
+        case "de": return ["de-DE", "en-US"]
+        case "es": return ["es-ES", "en-US"]
+        case "it": return ["it-IT", "en-US"]
+        case "pt": return ["pt-BR", "en-US"]
+        case "en": return ["en-US"]
+        case "vi": return ["vi-VT", "en-US"]
+        default: return ["ja-JP", "zh-Hans", "zh-Hant", "ko-KR", "vi-VT", "en-US"]
         }
     }
 

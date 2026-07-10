@@ -12,21 +12,12 @@ import ImageIO
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // Handle deep link when app is already running (iOS 13+ Scene-based)
-  override func application(
-    _ app: UIApplication,
-    open url: URL,
-    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-  ) -> Bool {
-    return handleDeepLink(url) || super.application(app, open: url, options: options)
-  }
-
-  private func handleDeepLink(_ url: URL) -> Bool {
-    guard url.scheme == "transkey" else { return false }
-    // Forward to Flutter via the app_links plugin
-    // The plugin listens for URL events automatically
-    return true
-  }
+  // NOTE deliberately NO application(_:open:options:) override here. The app
+  // is scene-based (SceneDelegate: FlutterSceneDelegate + the Info.plist scene
+  // manifest), so URL opens arrive via the scene path, which forwards them to
+  // the Flutter plugins (app_links). A previous override here short-circuited
+  // `handleDeepLink(url) || super…`, which would have EATEN transkey:// links
+  // before the plugins ever saw them had it been on the delivery path.
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)

@@ -102,6 +102,28 @@ class AppGroupStore {
         set { defaults?.set(newValue, forKey: kTargetLang) }
     }
 
+    // MARK: - Reply-compose language pair (KEYBOARD-LOCAL)
+    //
+    // The reply is written in the OTHER party's language, so it needs its own
+    // pair distinct from the read/translate pair above (with Auto->VI set for
+    // reading, a reply would come out Vietnamese instead of the partner's
+    // language). Writes here deliberately never raise langsDirty - that flag
+    // mirrors the SHARED translate pair back to the Flutter app via
+    // readLanguages, and the app must not adopt the reply pair. Android keeps
+    // the same split via its tk_reply_lang pref (TransKeyIME).
+    private let kReplySourceLang = "tk_kb_reply_source_lang"
+    private let kReplyTargetLang = "tk_kb_reply_target_lang"
+
+    var replySourceLang: String {
+        get { defaults?.string(forKey: kReplySourceLang) ?? "auto" }
+        set { defaults?.set(newValue, forKey: kReplySourceLang) }
+    }
+
+    var replyTargetLang: String {
+        get { defaults?.string(forKey: kReplyTargetLang) ?? "en" }
+        set { defaults?.set(newValue, forKey: kReplyTargetLang) }
+    }
+
     /// The app's UI language (the locale the user picked INSIDE the app),
     /// mirrored from Flutter so the keyboard extension can localize its own
     /// chips/labels to match the app instead of always showing Vietnamese.
@@ -195,7 +217,15 @@ class AppGroupStore {
     // single JSON blob `{ "order": [key...], "entries": { key: responseJSON } }`;
     // the order array gives cheap LRU since Swift dictionaries are unordered.
     private static let kTranslateCache = "tk_ext_translate_cache_v1"
-    private static let translateCacheMax = 300
+    // Keep the blob SMALL: the whole thing is one UserDefaults value that the
+    // keyboard extension loads into RAM at first access (jetsam cap ~60MB)
+    // and re-serializes on every store. 50 entries of chat-sized text is
+    // plenty of hit rate; an old oversized blob still reads fine and shrinks
+    // to the cap on the next store.
+    private static let translateCacheMax = 50
+    // Keys embed the full source text; skip pathological entries (a 3000-char
+    // clipboard) instead of letting one paste balloon the blob.
+    private static let translateCacheMaxKeyLength = 1500
 
     /// Composite key from the normalized request, kept byte-identical to
     /// BubbleTranslateCache.keyFor so the format stays in lockstep if the two
@@ -228,9 +258,12 @@ class AppGroupStore {
 
     /// Stores `value` (the raw API response JSON) under `key`, evicting the
     /// least-recently-used entries past the cap. Best-effort: any failure must
-    /// never break translation.
+    /// never break translation. Recency is refreshed on WRITE only - a read
+    /// hit deliberately does not rewrite the blob (that would cost a full
+    /// re-serialize per lookup for a marginal hit-rate gain).
     func storeTranslation(_ value: [String: Any], forKey key: String) {
         guard let defaults else { return }
+        guard key.count <= Self.translateCacheMaxKeyLength else { return }
         var order: [String] = []
         var entries: [String: Any] = [:]
         if let data = defaults.data(forKey: Self.kTranslateCache),

@@ -39,6 +39,10 @@ class APIClient {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        // Default is 60s: a hung connection would pin the keyboard's
+        // actionInFlight spinner for a full minute. Server p95 is a few
+        // seconds, so fail fast and let the user retry.
+        request.timeoutInterval = 15
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(deviceID, forHTTPHeaderField: "X-Device-ID")
         request.setValue("mobile", forHTTPHeaderField: "X-Platform")
