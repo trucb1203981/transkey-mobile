@@ -1971,26 +1971,43 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private fun readSourceLang() = flutterPrefs().getString("flutter.tk_source_lang", "auto") ?: "auto"
     private fun readTargetLang() = flutterPrefs().getString("flutter.tk_target_lang", "en") ?: "en"
     private fun readReplyLang() = flutterPrefs().getString("flutter.tk_reply_lang", "") ?: ""
+    private fun readReplySourceLang() = flutterPrefs().getString("flutter.tk_reply_source_lang", "auto") ?: "auto"
     private fun writeSourceLang(code: String) =
         flutterPrefs().edit().putString("flutter.tk_source_lang", code).apply()
     private fun writeTargetLang(code: String) =
         flutterPrefs().edit().putString("flutter.tk_target_lang", code).apply()
     private fun writeReplyLang(code: String) =
         flutterPrefs().edit().putString("flutter.tk_reply_lang", code).apply()
+    private fun writeReplySourceLang(code: String) =
+        flutterPrefs().edit().putString("flutter.tk_reply_source_lang", code).apply()
 
-    // The strip's "→ X" half is the TARGET for translate but the REPLY language
-    // for the Reply chip (paid users). Reply lang can be empty ("from
-    // conversation") - fall back to the general target for display, mirroring
-    // BubbleService.showLangPicker. The picker/swap edit whichever pref is live.
-    private fun readPillTarget(): String =
-        if (replyEnabled()) readReplyLang().ifEmpty { readTargetLang() } else readTargetLang()
-    private fun writePillTarget(code: String) =
-        if (replyEnabled()) writeReplyLang(code) else writeTargetLang(code)
+    // The picker's "Dịch | Trả lời" scope (paid users only - mirrors iOS
+    // LanguagePairPickerView.PairScope). Reset to "translate" on every open so
+    // the picker always starts on the Dịch pair, matching the strip pill.
+    private var langPickerScope: String = "translate"
 
-    /** Update the compact "src→tgt" pill on the strip from the current prefs. */
+    private fun readScopedSource(scope: String): String =
+        if (scope == "reply") readReplySourceLang() else readSourceLang()
+    private fun writeScopedSource(scope: String, code: String) {
+        if (scope == "reply") writeReplySourceLang(code) else writeSourceLang(code)
+    }
+
+    // Reply target can be empty ("from conversation") - fall back to the
+    // general target for display, mirroring BubbleService.showLangPicker.
+    // Reply source has no such fallback (independent, defaults to "auto"
+    // like iOS's replySourceLang) since the reply is composed in the OTHER
+    // party's language, not the reader's.
+    private fun readScopedTarget(scope: String): String =
+        if (scope == "reply") readReplyLang().ifEmpty { readTargetLang() } else readTargetLang()
+    private fun writeScopedTarget(scope: String, code: String) {
+        if (scope == "reply") writeReplyLang(code) else writeTargetLang(code)
+    }
+
+    /** Update the compact "src→tgt" pill on the strip - always the Dịch pair,
+     *  never the reply pair, matching iOS's showActionBar pairTitle. */
     private fun refreshLangPill() {
         val src = readSourceLang()
-        val tgt = readPillTarget()
+        val tgt = readTargetLang()
         val srcShort = if (src == "auto") "Auto" else src.uppercase()
         suggestionStrip?.setLang("$srcShort→${tgt.uppercase()}")
     }
@@ -2009,24 +2026,40 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         val targets = BubbleService.effectiveTargetLangs(prefs).map { code -> code to (labels[code] ?: code) }
         val h = kv.height + (suggestionStrip?.height ?: 0)
 
+        langPickerScope = "translate"
+
         // Drop any stale instance from a previous open, then build fresh.
         langPickerView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         val picker = LanguagePickerView(this)
         langPickerView = picker
         picker.onSourcePick = { code ->
-            writeSourceLang(code); picker.setSelection(readSourceLang(), readPillTarget()); refreshLangPill()
+            writeScopedSource(langPickerScope, code)
+            picker.setSelection(readScopedSource(langPickerScope), readScopedTarget(langPickerScope))
+            refreshLangPill()
         }
         picker.onTargetPick = { code ->
-            writePillTarget(code); picker.setSelection(readSourceLang(), readPillTarget()); refreshLangPill()
+            writeScopedTarget(langPickerScope, code)
+            picker.setSelection(readScopedSource(langPickerScope), readScopedTarget(langPickerScope))
+            refreshLangPill()
         }
         picker.onSwap = { swapLangs() }
         picker.onClose = { closeLangPicker() }
+        // Switching which pair the picker edits never touches prefs, so no
+        // refreshLangPill() here (mirrors iOS scopeChanged - "nothing is
+        // written until a row or swap is tapped").
+        picker.onScopeChange = { scope ->
+            langPickerScope = scope
+            picker.setSelection(readScopedSource(scope), readScopedTarget(scope))
+        }
         picker.backLabel = localized(R.string.ime_back_keyboard)
         picker.configure(
-            sources, targets, readSourceLang(), readPillTarget(),
+            sources, targets, readScopedSource(langPickerScope), readScopedTarget(langPickerScope),
             localized(R.string.ime_lang_from),
             localized(R.string.ime_lang_to),
             localized(R.string.ime_lang_swap),
+            showsReply = replyEnabled(),
+            translateLabel = localized(R.string.ime_action_translate),
+            replyLabel = localized(R.string.bubble_mode_reply),
         )
         root.addView(picker)
         picker.setPanelHeight(if (h > 0) h else kv.height)
@@ -2043,14 +2076,16 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         keyboardView?.visibility = View.VISIBLE
     }
 
-    /** Swap source<->target (no-op while source is Auto - it can't be a target). */
+    /** Swap source<->target within the picker's active scope (no-op while
+     *  source is Auto - it can't be a target). */
     private fun swapLangs() {
-        val src = readSourceLang()
+        val scope = langPickerScope
+        val src = readScopedSource(scope)
         if (src == "auto") return
-        val tgt = readPillTarget()
-        writeSourceLang(tgt)
-        writePillTarget(src)
-        langPickerView?.setSelection(readSourceLang(), readPillTarget())
+        val tgt = readScopedTarget(scope)
+        writeScopedSource(scope, tgt)
+        writeScopedTarget(scope, src)
+        langPickerView?.setSelection(readScopedSource(scope), readScopedTarget(scope))
         refreshLangPill()
     }
 

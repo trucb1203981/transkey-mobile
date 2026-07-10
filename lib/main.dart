@@ -916,15 +916,21 @@ Future<void> _translateForBubble(
     final toneValue = prefs.getString('tk_tone_override') ?? '';
     final replyToneOverride = prefs.getString('tk_reply_tone_override') ?? '';
     final replyLang = prefs.getString('tk_reply_lang') ?? '';
+    final replySourceLang = prefs.getString('tk_reply_source_lang') ?? 'auto';
     final replySuggestions = prefs.getBool('tk_reply_suggestions') ?? false;
 
-    // Reply mode honours user's reply-specific preferences. Falls back to the
-    // general translate tone/lang when the reply-specific value is empty.
+    // Reply mode honours user's reply-specific preferences. Tone/target fall
+    // back to the general translate value when the reply-specific one is
+    // empty. Source does NOT fall back: the reply is composed in the OTHER
+    // party's language, independent from the read/translate pair (matches
+    // iOS's AppGroupStore.replySourceLang, which also defaults to "auto"
+    // rather than mirroring sourceLang).
     final isReply = mode == 'reply';
     final effectiveTone =
         isReply && replyToneOverride.isNotEmpty ? replyToneOverride : toneValue;
     final effectiveTargetLang =
         isReply && replyLang.isNotEmpty ? replyLang : targetLang;
+    final effectiveSourceLang = isReply ? replySourceLang : sourceLang;
 
     final endpoint = switch (mode) {
       'summarize' => '/summarize',
@@ -943,7 +949,7 @@ Future<void> _translateForBubble(
           'targetLang': effectiveTargetLang,
           'isReply': true,
           if (replyToOriginal != null) 'replyToOriginal': replyToOriginal,
-          if (sourceLang != 'auto') 'sourceLang': sourceLang,
+          if (effectiveSourceLang != 'auto') 'sourceLang': effectiveSourceLang,
           if (romanizationEnabled) 'withRomanization': true,
           if (effectiveTone.isNotEmpty) 'toneOverride': effectiveTone,
           // Reply mode produces a single targeted reply that the user pastes
@@ -982,7 +988,7 @@ Future<void> _translateForBubble(
       text: text,
       mode: mode,
       targetLang: effectiveTargetLang,
-      sourceLang: sourceLang,
+      sourceLang: effectiveSourceLang,
       tone: effectiveTone,
       romanization: romanizationEnabled,
       suggestReplies: replySuggestions,
@@ -1082,7 +1088,7 @@ Future<void> _translateForBubble(
         _rootContainer.read(historyProvider.notifier).addFromTranslate(
               sourceText: text,
               translation: output,
-              sourceLang: detectedLang ?? sourceLang,
+              sourceLang: detectedLang ?? effectiveSourceLang,
               targetLang: effectiveTargetLang,
               romanization: romanization,
               mode: modeEnum,

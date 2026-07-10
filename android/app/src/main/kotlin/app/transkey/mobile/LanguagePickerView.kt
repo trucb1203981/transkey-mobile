@@ -21,6 +21,9 @@ class LanguagePickerView(context: Context) : LinearLayout(context) {
     var onTargetPick: ((String) -> Unit)? = null
     var onSwap: (() -> Unit)? = null
     var onClose: (() -> Unit)? = null
+    // Fires when the user taps the Dịch/Trả lời segment; the host owns which
+    // pref pair is "active" and pushes the new selection back via setSelection.
+    var onScopeChange: ((String) -> Unit)? = null
     // "Back to keyboard" label (host sets it localized; defaults to Gboard's "ABC").
     var backLabel: String = "ABC"
 
@@ -41,6 +44,11 @@ class LanguagePickerView(context: Context) : LinearLayout(context) {
 
     private var curSource = "auto"
     private var curTarget = "en"
+
+    // "Dịch"/"Trả lời" scope tabs (paid users only - mirrors iOS's
+    // [Dịch|Trả lời] UISegmentedControl). "translate" tab is index 0.
+    private val scopeTabs = HashMap<String, TextView>()
+    private var curScope = "translate"
 
     init {
         orientation = VERTICAL
@@ -64,26 +72,75 @@ class LanguagePickerView(context: Context) : LinearLayout(context) {
         fromLabel: String,
         toLabel: String,
         swapLabel: String,
+        showsReply: Boolean = false,
+        translateLabel: String = "",
+        replyLabel: String = "",
     ) {
         curSource = source
         curTarget = target
+        curScope = "translate"
         removeAllViews()
         srcRows.clear()
         tgtRows.clear()
+        scopeTabs.clear()
         srcColumn.removeAllViews()
         tgtColumn.removeAllViews()
 
+        if (showsReply) {
+            addView(buildScopeTabs(translateLabel, replyLabel))
+        }
         addView(buildHeader(fromLabel, toLabel))
         addView(buildBody(sources, targets), LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
         addView(buildBottomBar(swapLabel))
         applyHighlight()
     }
 
-    /** Host pushes the current selection back (e.g. after a swap). */
+    /** Host pushes the current selection back (e.g. after a swap or a scope change). */
     fun setSelection(source: String, target: String) {
         curSource = source
         curTarget = target
         applyHighlight()
+    }
+
+    /** Two-tab "Dịch | Trả lời" scope switch, above the from/to header. */
+    private fun buildScopeTabs(translateLabel: String, replyLabel: String): View {
+        val row = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            setBackgroundColor(barBg)
+        }
+        val translateTab = scopeTab(translateLabel) { selectScope("translate") }
+        val replyTab = scopeTab(replyLabel) { selectScope("reply") }
+        row.addView(translateTab, LayoutParams(0, dp(38), 1f))
+        row.addView(replyTab, LayoutParams(0, dp(38), 1f))
+        scopeTabs["translate"] = translateTab
+        scopeTabs["reply"] = replyTab
+        styleScopeTabs()
+        return row
+    }
+
+    private fun scopeTab(label: String, onClick: () -> Unit): TextView =
+        TextView(context).apply {
+            text = label
+            textSize = 13f
+            gravity = Gravity.CENTER
+            isClickable = true
+            setOnClickListener { onClick() }
+        }
+
+    private fun selectScope(scope: String) {
+        if (curScope == scope) return
+        curScope = scope
+        styleScopeTabs()
+        onScopeChange?.invoke(scope)
+    }
+
+    private fun styleScopeTabs() {
+        for ((scope, tv) in scopeTabs) {
+            val selected = scope == curScope
+            tv.setTextColor(if (selected) selText else headerText)
+            tv.setTypeface(null, if (selected) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+            tv.setBackgroundColor(if (selected) selBg else 0x00000000)
+        }
     }
 
     private fun buildHeader(fromLabel: String, toLabel: String): View =
