@@ -159,6 +159,19 @@ class _HeadersInterceptor extends Interceptor {
     if (osVersion != null && osVersion.isNotEmpty) {
       options.headers['X-OS-Version'] = osVersion;
     }
+    // Only login/register endpoints read this server-side (checkAndBind on
+    // the translate hot path always passes deviceName=undefined by design) -
+    // sending it on every request is harmless and simplest, since dio_client
+    // has no per-endpoint routing here. HTTP header values must be ASCII;
+    // an iOS device nickname or Android model name can contain accented
+    // Vietnamese characters (e.g. "iPhone của Trúc"), which would otherwise
+    // either throw inside dio's header validation (breaking EVERY request,
+    // not just this header) or get silently mangled by an intermediate
+    // proxy - percent-encode it and have the server decode it back.
+    final deviceName = await deviceId.getDeviceName();
+    if (deviceName.isNotEmpty) {
+      options.headers['X-Device-Name'] = Uri.encodeComponent(deviceName);
+    }
 
     handler.next(options);
   }

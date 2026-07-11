@@ -21,6 +21,39 @@ class DeviceIdService {
   final DeviceInfoPlugin _deviceInfo;
 
   String? _cachedFingerprint;
+  String? _cachedName;
+
+  /// Human-readable device name for the admin panel (e.g. "Samsung SM-G991B",
+  /// "iPhone15,2") - never fed into the fingerprint hash, so it can't affect
+  /// device identity. Returns '' on any failure so callers can just skip the
+  /// header rather than send a placeholder.
+  Future<String> getDeviceName() async {
+    if (_cachedName != null) return _cachedName!;
+    try {
+      final info = await _deviceInfo.deviceInfo.timeout(_kDeviceInfoTimeout);
+      final data = info.data;
+      String name;
+      if (data.containsKey('identifierForVendor')) {
+        // iOS: data['name'] is the user's own nickname (e.g. "Trúc's iPhone")
+        // but is redacted to the generic model on iOS 16+ for apps without a
+        // special entitlement - utsname.machine (e.g. "iPhone15,2") is the
+        // reliable fallback either way.
+        final deviceName = data['name'] as String?;
+        final machine = data['utsname']?['machine'] as String?;
+        name = (deviceName != null && deviceName.isNotEmpty) ? deviceName : (machine ?? '');
+      } else {
+        final manufacturer = data['manufacturer'] as String?;
+        final model = data['model'] as String?;
+        name = [manufacturer, model].where((p) => p != null && p.isNotEmpty).join(' ');
+      }
+      _cachedName = name;
+      return name;
+    } catch (e) {
+      debugPrint('[DeviceId] Failed to get device name: $e');
+      _cachedName = '';
+      return '';
+    }
+  }
 
   Future<String> getFingerprint() async {
     if (_cachedFingerprint != null) return _cachedFingerprint!;
