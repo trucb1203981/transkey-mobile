@@ -2729,7 +2729,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             'imageHeight': compSize.height.round(),
           },
           // Manga vision (OCR + translate + boxes in one call) runs on the
-          // server's groq llama-4-scout and legitimately takes ~30-35s,
+          // server's groq gpt-oss-120b and legitimately takes ~30-35s,
           // worse when an LLM key is mid rate-limit. Dio's global 30s
           // receiveTimeout aborts it first (nginx logs a 499) and the user
           // sees a DioException card instead of any translation. Bump per

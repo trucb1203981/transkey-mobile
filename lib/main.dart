@@ -803,7 +803,7 @@ Future<List<String>> _lensBatchChunk(
   }
   try {
     final api = _rootContainer.read(apiClientProvider);
-    // Lens batch can hit the slow path on the server (Llama-4 Scout fails →
+    // Lens batch can hit the slow path on the server (cheap tier fails →
     // retry Llama-3.3 70b → Gemini → Claude). Each hop takes 2-5s, so a
     // single chunk on the deep fallback chain can blow past the global 30s
     // Dio receiveTimeout. Bump per-request to 90s for batch translation.
