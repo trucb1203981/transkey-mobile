@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../onboarding/widgets/setup_reminder_banner.dart';
 import '../../translate/providers/features_provider.dart';
 
 class GuideScreen extends ConsumerWidget {
@@ -148,6 +149,11 @@ class GuideScreen extends ConsumerWidget {
           vertical: AppSpacing.sm,
         ),
         children: [
+          // Every instruction below assumes the button and the keyboard are
+          // already on. Reading "tap the TransKey button" with no such button
+          // on screen is a dead end, so the way to get one is offered here,
+          // and disappears once there is nothing left to turn on.
+          const SetupReminderBanner(),
           _planCard(theme, t, freeFeatures, lockedFeatures),
           const SizedBox(height: AppSpacing.lg),
 

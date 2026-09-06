@@ -12,7 +12,8 @@ import '../tracking/tracking_router_observer.dart';
 import '../../features/auth/screens/auth_screen.dart';
 import '../../features/auth/screens/banned_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
-import '../../features/onboarding/screens/keyboard_setup_screen.dart';
+import '../../features/onboarding/screens/setup_hub_screen.dart';
+import '../../features/onboarding/screens/setup_task_screen.dart';
 import '../../features/settings/screens/change_password_screen.dart';
 import '../../features/settings/screens/devices_screen.dart';
 import '../../features/settings/screens/guide_screen.dart';
@@ -103,10 +104,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const UpgradeScreen(),
       ),
       GoRoute(
+        path: '/setup',
+        builder: (context, state) => const SetupHubScreen(),
+      ),
+      GoRoute(
+        path: '/setup/button',
+        builder: (context, state) =>
+            const SetupTaskScreen(task: SetupTask.button),
+      ),
+      GoRoute(
+        path: '/setup/keyboard',
+        builder: (context, state) =>
+            const SetupTaskScreen(task: SetupTask.keyboard),
+      ),
+      // The old one-shot wizard lived here and is linked from released builds
+      // (the keyboard's own settings panel, saved deep links). Keep the path
+      // working rather than dead-ending those users.
+      GoRoute(
         path: '/keyboard-setup',
-        builder: (context, state) => KeyboardSetupScreen(
-          showSkip: state.uri.queryParameters['skip'] != 'false',
-        ),
+        redirect: (context, state) => '/setup',
       ),
       GoRoute(
         path: '/settings/devices',

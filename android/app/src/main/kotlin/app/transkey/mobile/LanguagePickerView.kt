@@ -1,6 +1,7 @@
 package app.transkey.mobile
 
 import android.content.Context
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -106,12 +107,13 @@ class LanguagePickerView(context: Context) : LinearLayout(context) {
     private fun buildScopeTabs(translateLabel: String, replyLabel: String): View {
         val row = LinearLayout(context).apply {
             orientation = HORIZONTAL
-            setBackgroundColor(barBg)
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            background = roundedBackground(0xFF23242A.toInt(), dp(10).toFloat())
         }
         val translateTab = scopeTab(translateLabel) { selectScope("translate") }
         val replyTab = scopeTab(replyLabel) { selectScope("reply") }
-        row.addView(translateTab, LayoutParams(0, dp(38), 1f))
-        row.addView(replyTab, LayoutParams(0, dp(38), 1f))
+        row.addView(translateTab, LayoutParams(0, dp(36), 1f).apply { marginEnd = dp(3) })
+        row.addView(replyTab, LayoutParams(0, dp(36), 1f).apply { marginStart = dp(3) })
         scopeTabs["translate"] = translateTab
         scopeTabs["reply"] = replyTab
         styleScopeTabs()
@@ -137,10 +139,19 @@ class LanguagePickerView(context: Context) : LinearLayout(context) {
     private fun styleScopeTabs() {
         for ((scope, tv) in scopeTabs) {
             val selected = scope == curScope
-            tv.setTextColor(if (selected) selText else headerText)
+            tv.setTextColor(if (selected) 0xFFFFFFFF.toInt() else headerText)
             tv.setTypeface(null, if (selected) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
-            tv.setBackgroundColor(if (selected) selBg else 0x00000000)
+            tv.background = roundedBackground(
+                if (selected) 0xFF7C6EFA.toInt() else 0x00000000,
+                dp(8).toFloat(),
+            )
         }
+    }
+
+    private fun roundedBackground(color: Int, radius: Float) = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = radius
+        setColor(color)
     }
 
     private fun buildHeader(fromLabel: String, toLabel: String): View =

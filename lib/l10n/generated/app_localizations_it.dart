@@ -221,16 +221,16 @@ class AppLocalizationsIt extends AppLocalizations {
   String get tabRefine => 'Migliora';
 
   @override
-  String get keyboardSetup => 'Configurazione tastiera';
+  String get keyboardSetup => 'Configurazione della tastiera';
 
   @override
   String get keyboardSettingsTitle => 'Bolla e tastiera';
 
   @override
-  String get keyboardSettingsSectionStatus => 'Bubble e autorizzazioni';
+  String get keyboardSettingsSectionStatus => 'Pulsante TransKey';
 
   @override
-  String get keyboardSettingsSectionBehavior => 'Comportamento del bubble';
+  String get keyboardSettingsSectionBehavior => 'Come funziona il pulsante';
 
   @override
   String get imeSectionTitle => 'Tastiera';
@@ -250,20 +250,16 @@ class AppLocalizationsIt extends AppLocalizations {
       'Non abilitata. Tocca per attivarla nelle Impostazioni.';
 
   @override
-  String get bubbleSetup => 'Configurazione pulsante mobile';
+  String get bubbleSetup => 'Configurazione del pulsante TransKey';
 
   @override
-  String get floatingBubble => 'Pulsante mobile';
+  String get floatingBubble => 'Pulsante TransKey';
 
   @override
   String get bubbleActive => 'Attivo';
 
   @override
   String get bubbleInactive => 'Inattivo';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Tocca per concedere le autorizzazioni richieste';
 
   @override
   String get sendFeedback => 'Invia feedback';
@@ -950,75 +946,6 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get onboardGetStarted => 'Inizia';
-
-  @override
-  String get setupTitle => 'Configura tastiera';
-
-  @override
-  String get setupTitleAndroid => 'Configura TransKey';
-
-  @override
-  String get setupOpenSettings => 'Apri impostazioni';
-
-  @override
-  String get setupOpenPermissions => 'Apri autorizzazioni';
-
-  @override
-  String get setupStep1TitleIOS => 'Aggiungi la tastiera TransKey';
-
-  @override
-  String get setupStep1TitleAndroid => 'Abilita pulsante mobile';
-
-  @override
-  String get setupStep1DescIOS =>
-      'Vai in Impostazioni e aggiungi TransKey come tastiera personalizzata per tradurre direttamente mentre scrivi.';
-
-  @override
-  String get setupStep1DescAndroid =>
-      'Consenti a TransKey di essere visualizzato sopra le altre app affinché il pulsante mobile possa apparire quando ti serve.';
-
-  @override
-  String get setupStep2Title => 'Consenti accesso completo';
-
-  @override
-  String get setupStep2TitleAndroid => 'Pulsante attivato';
-
-  @override
-  String get setupStep2DescIOS =>
-      'Tocca TransKey nell\'elenco delle tastiere e attiva \"Consenti accesso completo\". È necessario per la connessione a Internet per le traduzioni.';
-
-  @override
-  String get setupStep2DescAndroid =>
-      'L\'autorizzazione di sovrapposizione consente a TransKey di mostrare un pulsante mobile sopra le altre app per traduzioni rapide.';
-
-  @override
-  String get setupStep3Title => 'Tutto pronto!';
-
-  @override
-  String get setupStep3DescIOS =>
-      'Quando scrivi in qualsiasi app, tieni premuto il tasto globo 🌐 per passare a TransKey. Tocca \"Rispondi\" per tradurre il tuo messaggio all\'istante.';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'Il pulsante TransKey è ora visibile sullo schermo. Copia un testo, tocca il pulsante, scegli un\'azione - il risultato appare subito senza uscire dalla tua app.';
-
-  @override
-  String get setupStep4Title => 'Traduci da qualsiasi app';
-
-  @override
-  String get setupStep4DescIOS =>
-      'Seleziona qualsiasi testo → tocca \"Condividi\" → scegli TransKey. Oppure copia il testo e apri TransKey — leggerà automaticamente gli appunti.';
-
-  @override
-  String get setupStep4DescAndroid =>
-      'Copia il testo in qualsiasi app → tocca il pulsante TransKey → scegli Traduci, Rispondi o un\'altra funzione → tocca ovunque per chiudere quando hai finito.';
-
-  @override
-  String get setupStep5Title => 'Funzioni intelligenti';
-
-  @override
-  String get setupStep5Desc =>
-      'Traduci, Rispondi, Riassumi, Spiega e Migliora. Le funzioni Pro sono contrassegnate con un\'icona a lucchetto.';
 
   @override
   String get guideTitle => 'Come usare';
@@ -1758,4 +1685,155 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get pasteTranslate => 'Incolla e traduci';
+
+  @override
+  String get setupHubTitle => 'Configurazione di TransKey';
+
+  @override
+  String get setupHubSubtitle =>
+      'Attivi queste due cose e TransKey funzionerà in tutte le app.';
+
+  @override
+  String get setupHubAllDoneBody =>
+      'È tutto attivo. Può usare TransKey in qualsiasi app.';
+
+  @override
+  String get setupTaskButtonTitle => 'Pulsante TransKey';
+
+  @override
+  String get setupTaskButtonBody =>
+      'Un piccolo pulsante che resta sullo schermo, per tradurre senza uscire dall\'app che sta usando.';
+
+  @override
+  String get setupTaskKeyboardTitle => 'Tastiera TransKey';
+
+  @override
+  String get setupTaskKeyboardBody =>
+      'Traduca mentre scrive, direttamente nei suoi messaggi.';
+
+  @override
+  String get setupStateDone => 'Pronto';
+
+  @override
+  String get setupStateOff => 'Non ancora attivo';
+
+  @override
+  String get setupStateButtonPaused => 'Consentito, ma non visibile';
+
+  @override
+  String get setupStateKeyboardNotUsed => 'Attiva, ma non in uso';
+
+  @override
+  String get setupStateUnknown => 'Non ancora verificato';
+
+  @override
+  String get setupOpenSystemSettings => 'Apra le impostazioni del telefono';
+
+  @override
+  String get setupNoWorries =>
+      'Se si ferma qui non succede nulla. Può comunque tradurre dentro l\'app.';
+
+  @override
+  String get setupButtonWhy =>
+      'Il pulsante TransKey resta sopra le altre app. Così può tradurre un messaggio senza chiudere l\'app. Prima il telefono deve consentirlo.';
+
+  @override
+  String get setupMockAppsTitle => 'Mostra sopra le altre app';
+
+  @override
+  String get setupButtonListHint =>
+      'L\'elenco contiene tutte le app del telefono, in ordine alfabetico. Scorra fino alla lettera T, oppure usi la casella di ricerca in alto.';
+
+  @override
+  String get setupButtonStep1 => 'Trovi TransKey nell\'elenco';
+
+  @override
+  String get setupButtonStep2 => 'Tocchi TransKey';
+
+  @override
+  String get setupButtonStep3 => 'Attivi l\'interruttore, poi torni qui';
+
+  @override
+  String get setupKeyboardWhy =>
+      'Con la tastiera TransKey può tradurre un messaggio mentre lo scrive, senza cambiare app.';
+
+  @override
+  String get setupMockKeyboardsTitle => 'Tastiere sullo schermo';
+
+  @override
+  String get setupKeyboardListHint =>
+      'Sul telefono il nome appare come TransKey Keyboard.';
+
+  @override
+  String get setupKeyboardStep1 => 'Trovi la riga TransKey Keyboard';
+
+  @override
+  String get setupKeyboardStep2 => 'Attivi l\'interruttore, poi torni qui';
+
+  @override
+  String get setupKeyboardWarning =>
+      'Prima il telefono mostra un avviso. Tocchi OK per continuare. Tutti i telefoni lo chiedono per ogni tastiera.';
+
+  @override
+  String get setupKeyboardPickTitle => 'Ci siamo quasi';
+
+  @override
+  String get setupKeyboardPickBody =>
+      'La tastiera è attiva. Ancora un tocco e potrà usarla.';
+
+  @override
+  String get setupKeyboardPickAction => 'Scelga TransKey';
+
+  @override
+  String get setupKeyboardPickFallback =>
+      'La finestra di scelta non si è aperta. Può cambiare tastiera anche dalla piccola icona della tastiera che compare mentre scrive.';
+
+  @override
+  String get setupNotYetTitle => 'Non ancora attivo';
+
+  @override
+  String get setupNotYetButtonBody =>
+      'Probabilmente TransKey non è stato trovato nell\'elenco. Questa volta usi la casella di ricerca in alto e scriva TransKey.';
+
+  @override
+  String get setupNotYetKeyboardBody =>
+      'Sembra che sull\'avviso del telefono sia stato toccato Annulla. Quell\'avviso è normale. Questa volta tocchi OK.';
+
+  @override
+  String get setupDoneTitle => 'Tutto pronto';
+
+  @override
+  String get setupDoneButtonBody =>
+      'Ora il pulsante TransKey è sullo schermo. Copi un testo, tocchi il pulsante e scelga cosa fare.';
+
+  @override
+  String get setupDoneKeyboardBody =>
+      'Ora può tradurre mentre scrive, in qualsiasi app.';
+
+  @override
+  String get setupDoneAction => 'Fatto';
+
+  @override
+  String get setupIosStep1 => 'Apra Impostazioni, poi Generali';
+
+  @override
+  String get setupIosStep2 => 'Tocchi Tastiera, poi Tastiere';
+
+  @override
+  String get setupIosStep3 =>
+      'Tocchi Aggiungi nuova tastiera e scelga TransKey';
+
+  @override
+  String get setupIosStep4 =>
+      'Tocchi ancora una volta TransKey e attivi Consenti accesso completo';
+
+  @override
+  String get setupIosFullAccessNote =>
+      'Consenti accesso completo serve alla tastiera per collegarsi a internet e tradurre. Senza, la tastiera scrive comunque normalmente.';
+
+  @override
+  String get setupBannerTitle => 'TransKey non è ancora configurato';
+
+  @override
+  String get setupBannerAction => 'Completi la configurazione';
 }

@@ -48,6 +48,9 @@ class ResultPanel {
     var scamBannerTitle: TextView? = null
     var scamBannerDetail: TextView? = null
     var source: TextView? = null
+    // Speaker for the ORIGINAL text (the actions-row ttsBtn reads the
+    // output). Visible only when a concrete source lang is known.
+    var sourceSpeakBtn: TextView? = null
     var output: TextView? = null
     var romanization: TextView? = null
     var suggestionsLabel: TextView? = null

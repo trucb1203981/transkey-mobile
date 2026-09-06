@@ -17,32 +17,32 @@ import kotlin.math.abs
  * A common English word list (assets/en_words.txt) lets English mixed into
  * Vietnamese pass through untouched ("email", "code", "class").
  */
-class VietWordCorrector(context: Context) {
+class VietWordCorrector internal constructor(
+    vietnameseWords: Iterable<String>,
+    englishWords: Iterable<String>,
+) {
 
     private val rank = HashMap<String, Int>()               // syllable -> freq rank (0 = top)
     private val byLen = HashMap<Int, MutableList<String>>()  // length -> syllables
     private val english = HashSet<String>()                  // common English words
 
+    constructor(context: Context) : this(
+        loadAsset(context, "vn_syllables.txt"),
+        loadAsset(context, "en_words.txt"),
+    )
+
     init {
-        runCatching {
-            context.assets.open("vn_syllables.txt").bufferedReader().useLines { lines ->
-                var i = 0
-                for (line in lines) {
-                    val s = line.trim()
-                    if (s.isNotEmpty() && rank.putIfAbsent(s, i) == null) {
-                        byLen.getOrPut(s.length) { ArrayList() }.add(s)
-                    }
-                    i++
-                }
+        var i = 0
+        for (line in vietnameseWords) {
+            val s = line.trim()
+            if (s.isNotEmpty() && rank.putIfAbsent(s, i) == null) {
+                byLen.getOrPut(s.length) { ArrayList() }.add(s)
             }
+            i++
         }
-        runCatching {
-            context.assets.open("en_words.txt").bufferedReader().useLines { lines ->
-                for (line in lines) {
-                    val s = line.trim()
-                    if (s.length >= 2) english.add(s)
-                }
-            }
+        for (line in englishWords) {
+            val s = line.trim()
+            if (s.length >= 2) english.add(s)
         }
     }
 
@@ -53,8 +53,9 @@ class VietWordCorrector(context: Context) {
 
     /** Best-first suggestions for a (possibly mistyped) syllable. */
     fun suggest(typed: String, max: Int = 3): List<String> {
-        if (typed.length < 2) return emptyList()
+        if (!isCorrectionCandidate(typed) || max <= 0) return emptyList()
         val w = typed.lowercase()
+        if (rank.containsKey(w) || english.contains(w)) return emptyList()
         val scored = ArrayList<Pair<String, Double>>()
         for (len in (w.length - 1)..(w.length + 1)) {
             val pool = byLen[len] ?: continue
@@ -83,9 +84,9 @@ class VietWordCorrector(context: Context) {
      * valid syllable, with a per-syllable [JOIN_PENALTY] to avoid over-splitting.
      */
     fun fix(typed: String): String? {
-        if (typed.length < 2) return null
+        if (!isCorrectionCandidate(typed)) return null
         val w = typed.lowercase()
-        if (rank.containsKey(w)) return null
+        if (rank.containsKey(w) || english.contains(w)) return null
         val n = w.length
         if (n > MAX_TOKEN) return null
         val dp = DoubleArray(n + 1) { Double.MAX_VALUE }
@@ -151,6 +152,13 @@ class VietWordCorrector(context: Context) {
     private fun matchCase(src: String, out: String): String =
         if (src.isNotEmpty() && src[0].isUpperCase()) out.replaceFirstChar { it.uppercaseChar() } else out
 
+    /**
+     * Conservative by design: capitalized tokens may be names, while URL,
+     * email and code punctuation must never enter Vietnamese correction.
+     */
+    private fun isCorrectionCandidate(word: String): Boolean =
+        word.length in 2..MAX_TOKEN && word.all { it.isLetter() && !it.isUpperCase() }
+
     /** Keyboard-proximity-weighted edit distance, with early exit above [cap]. */
     private fun distance(a: String, b: String, cap: Double): Double {
         val n = a.length
@@ -188,6 +196,11 @@ class VietWordCorrector(context: Context) {
     }
 
     companion object {
+        private fun loadAsset(context: Context, name: String): List<String> =
+            runCatching {
+                context.assets.open(name).bufferedReader().use { it.readLines() }
+            }.getOrDefault(emptyList())
+
         private const val INDEL = 1.0
         private const val SAME_BASE = 0.3
         private const val ADJ = 0.7

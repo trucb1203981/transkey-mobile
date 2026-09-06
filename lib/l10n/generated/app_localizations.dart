@@ -539,7 +539,7 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardSetup.
   ///
   /// In en, this message translates to:
-  /// **'Keyboard Setup'**
+  /// **'Set up the keyboard'**
   String get keyboardSetup;
 
   /// No description provided for @keyboardSettingsTitle.
@@ -551,13 +551,13 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardSettingsSectionStatus.
   ///
   /// In en, this message translates to:
-  /// **'Bubble & Permissions'**
+  /// **'TransKey button'**
   String get keyboardSettingsSectionStatus;
 
   /// No description provided for @keyboardSettingsSectionBehavior.
   ///
   /// In en, this message translates to:
-  /// **'Bubble Behavior'**
+  /// **'How the button behaves'**
   String get keyboardSettingsSectionBehavior;
 
   /// No description provided for @imeSectionTitle.
@@ -593,13 +593,13 @@ abstract class AppLocalizations {
   /// No description provided for @bubbleSetup.
   ///
   /// In en, this message translates to:
-  /// **'Bubble Setup'**
+  /// **'Set up the TransKey button'**
   String get bubbleSetup;
 
   /// No description provided for @floatingBubble.
   ///
   /// In en, this message translates to:
-  /// **'Floating Bubble'**
+  /// **'TransKey button'**
   String get floatingBubble;
 
   /// No description provided for @bubbleActive.
@@ -613,12 +613,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Inactive'**
   String get bubbleInactive;
-
-  /// No description provided for @permissionsNeedSetup.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap to grant required permissions'**
-  String get permissionsNeedSetup;
 
   /// No description provided for @sendFeedback.
   ///
@@ -1861,126 +1855,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Get Started'**
   String get onboardGetStarted;
-
-  /// No description provided for @setupTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Setup Keyboard'**
-  String get setupTitle;
-
-  /// No description provided for @setupTitleAndroid.
-  ///
-  /// In en, this message translates to:
-  /// **'Set up TransKey'**
-  String get setupTitleAndroid;
-
-  /// No description provided for @setupOpenSettings.
-  ///
-  /// In en, this message translates to:
-  /// **'Open Settings'**
-  String get setupOpenSettings;
-
-  /// No description provided for @setupOpenPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Open Permissions'**
-  String get setupOpenPermissions;
-
-  /// No description provided for @setupStep1TitleIOS.
-  ///
-  /// In en, this message translates to:
-  /// **'Add TransKey Keyboard'**
-  String get setupStep1TitleIOS;
-
-  /// No description provided for @setupStep1TitleAndroid.
-  ///
-  /// In en, this message translates to:
-  /// **'Enable Floating Bubble'**
-  String get setupStep1TitleAndroid;
-
-  /// No description provided for @setupStep1DescIOS.
-  ///
-  /// In en, this message translates to:
-  /// **'Go to Settings and add TransKey as a custom keyboard so you can translate directly while typing.'**
-  String get setupStep1DescIOS;
-
-  /// No description provided for @setupStep1DescAndroid.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow TransKey to display over other apps so the floating bubble can appear when you need it.'**
-  String get setupStep1DescAndroid;
-
-  /// No description provided for @setupStep2Title.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow Full Access'**
-  String get setupStep2Title;
-
-  /// No description provided for @setupStep2TitleAndroid.
-  ///
-  /// In en, this message translates to:
-  /// **'Bubble enabled'**
-  String get setupStep2TitleAndroid;
-
-  /// No description provided for @setupStep2DescIOS.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap TransKey in the keyboard list and enable \"Allow Full Access\". This is needed to connect to the internet for translations.'**
-  String get setupStep2DescIOS;
-
-  /// No description provided for @setupStep2DescAndroid.
-  ///
-  /// In en, this message translates to:
-  /// **'The overlay permission lets TransKey show a floating bubble on top of other apps for quick translations.'**
-  String get setupStep2DescAndroid;
-
-  /// No description provided for @setupStep3Title.
-  ///
-  /// In en, this message translates to:
-  /// **'You\'re All Set!'**
-  String get setupStep3Title;
-
-  /// No description provided for @setupStep3DescIOS.
-  ///
-  /// In en, this message translates to:
-  /// **'When typing in any app, long-press the globe key 🌐 to switch to TransKey. Tap \"Reply\" to translate your message instantly.'**
-  String get setupStep3DescIOS;
-
-  /// No description provided for @setupStep3DescAndroid.
-  ///
-  /// In en, this message translates to:
-  /// **'The TransKey button is now on your screen. Copy any text, tap the button, pick an action - you\'ll see the result right there without leaving your app.'**
-  String get setupStep3DescAndroid;
-
-  /// No description provided for @setupStep4Title.
-  ///
-  /// In en, this message translates to:
-  /// **'Translate from Any App'**
-  String get setupStep4Title;
-
-  /// No description provided for @setupStep4DescIOS.
-  ///
-  /// In en, this message translates to:
-  /// **'Select any text → tap \"Share\" → choose TransKey. Or copy text and open TransKey — it reads your clipboard automatically.'**
-  String get setupStep4DescIOS;
-
-  /// No description provided for @setupStep4DescAndroid.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy text in any app → tap the TransKey button → choose Translate, Reply, or another action → tap anywhere to close when done.'**
-  String get setupStep4DescAndroid;
-
-  /// No description provided for @setupStep5Title.
-  ///
-  /// In en, this message translates to:
-  /// **'Smart Features'**
-  String get setupStep5Title;
-
-  /// No description provided for @setupStep5Desc.
-  ///
-  /// In en, this message translates to:
-  /// **'Translate, Reply, Summarize, Explain & Refine. Pro features are marked with a lock icon.'**
-  String get setupStep5Desc;
 
   /// No description provided for @guideTitle.
   ///
@@ -3295,6 +3169,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paste & translate'**
   String get pasteTranslate;
+
+  /// No description provided for @setupHubTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up TransKey'**
+  String get setupHubTitle;
+
+  /// No description provided for @setupHubSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on these two and TransKey works in every app.'**
+  String get setupHubSubtitle;
+
+  /// No description provided for @setupHubAllDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is on. TransKey is ready to use in any app.'**
+  String get setupHubAllDoneBody;
+
+  /// No description provided for @setupTaskButtonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TransKey button'**
+  String get setupTaskButtonTitle;
+
+  /// No description provided for @setupTaskButtonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A small button that floats on screen, so you can translate without leaving the app you are in.'**
+  String get setupTaskButtonBody;
+
+  /// No description provided for @setupTaskKeyboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TransKey keyboard'**
+  String get setupTaskKeyboardTitle;
+
+  /// No description provided for @setupTaskKeyboardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate while you type, right inside your messages.'**
+  String get setupTaskKeyboardBody;
+
+  /// No description provided for @setupStateDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get setupStateDone;
+
+  /// No description provided for @setupStateOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on yet'**
+  String get setupStateOff;
+
+  /// No description provided for @setupStateButtonPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed, but not showing'**
+  String get setupStateButtonPaused;
+
+  /// No description provided for @setupStateKeyboardNotUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'On, but not in use'**
+  String get setupStateKeyboardNotUsed;
+
+  /// No description provided for @setupStateUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get setupStateUnknown;
+
+  /// No description provided for @setupOpenSystemSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open phone settings'**
+  String get setupOpenSystemSettings;
+
+  /// No description provided for @setupNoWorries.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is broken if you stop here. You can still translate inside the app.'**
+  String get setupNoWorries;
+
+  /// No description provided for @setupButtonWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'The TransKey button floats above other apps, so you can translate a message without closing it. Your phone has to allow that first.'**
+  String get setupButtonWhy;
+
+  /// No description provided for @setupMockAppsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show over other apps'**
+  String get setupMockAppsTitle;
+
+  /// No description provided for @setupButtonListHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The list holds every app on your phone, in alphabetical order. Scroll down to the letter T, or use the search box at the top.'**
+  String get setupButtonListHint;
+
+  /// No description provided for @setupButtonStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Find TransKey in the list'**
+  String get setupButtonStep1;
+
+  /// No description provided for @setupButtonStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap TransKey'**
+  String get setupButtonStep2;
+
+  /// No description provided for @setupButtonStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the switch on, then come back here'**
+  String get setupButtonStep3;
+
+  /// No description provided for @setupKeyboardWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'With the TransKey keyboard you can translate a message while you are writing it, without switching apps.'**
+  String get setupKeyboardWhy;
+
+  /// No description provided for @setupMockKeyboardsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On-screen keyboards'**
+  String get setupMockKeyboardsTitle;
+
+  /// No description provided for @setupKeyboardListHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On your phone the name shows as TransKey Keyboard.'**
+  String get setupKeyboardListHint;
+
+  /// No description provided for @setupKeyboardStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the TransKey Keyboard row'**
+  String get setupKeyboardStep1;
+
+  /// No description provided for @setupKeyboardStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the switch on, then come back here'**
+  String get setupKeyboardStep2;
+
+  /// No description provided for @setupKeyboardWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone will show a warning first. Tap OK to continue. Every phone asks this about every keyboard.'**
+  String get setupKeyboardWarning;
+
+  /// No description provided for @setupKeyboardPickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost there'**
+  String get setupKeyboardPickTitle;
+
+  /// No description provided for @setupKeyboardPickBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The keyboard is on. One more tap and you can start using it.'**
+  String get setupKeyboardPickBody;
+
+  /// No description provided for @setupKeyboardPickAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose TransKey'**
+  String get setupKeyboardPickAction;
+
+  /// No description provided for @setupKeyboardPickFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'The chooser did not open. You can also switch keyboards from the small keyboard icon that appears while you type.'**
+  String get setupKeyboardPickFallback;
+
+  /// No description provided for @setupNotYetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on yet'**
+  String get setupNotYetTitle;
+
+  /// No description provided for @setupNotYetButtonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'TransKey was probably not found in the list. This time use the search box at the top and type TransKey.'**
+  String get setupNotYetButtonBody;
+
+  /// No description provided for @setupNotYetKeyboardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It looks like Cancel was tapped on your phone\'s warning. That warning is normal. Tap OK this time.'**
+  String get setupNotYetKeyboardBody;
+
+  /// No description provided for @setupDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All set'**
+  String get setupDoneTitle;
+
+  /// No description provided for @setupDoneButtonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The TransKey button is on your screen now. Copy any text, tap the button, and pick what you want to do.'**
+  String get setupDoneButtonBody;
+
+  /// No description provided for @setupDoneKeyboardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can now translate while typing in any app.'**
+  String get setupDoneKeyboardBody;
+
+  /// No description provided for @setupDoneAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get setupDoneAction;
+
+  /// No description provided for @setupIosStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings, then General'**
+  String get setupIosStep1;
+
+  /// No description provided for @setupIosStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Keyboard, then Keyboards'**
+  String get setupIosStep2;
+
+  /// No description provided for @setupIosStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Add New Keyboard and choose TransKey'**
+  String get setupIosStep3;
+
+  /// No description provided for @setupIosStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap TransKey once more and turn on Allow Full Access'**
+  String get setupIosStep4;
+
+  /// No description provided for @setupIosFullAccessNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Full Access is what lets the keyboard reach the internet to translate. Without it the keyboard still types normally.'**
+  String get setupIosFullAccessNote;
+
+  /// No description provided for @setupBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TransKey is not set up yet'**
+  String get setupBannerTitle;
+
+  /// No description provided for @setupBannerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish setup'**
+  String get setupBannerAction;
 }
 
 class _AppLocalizationsDelegate

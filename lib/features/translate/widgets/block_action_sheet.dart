@@ -126,9 +126,26 @@ class BlockActionSheet extends ConsumerWidget {
             if (hasTranslation)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: SelectableText(
-                  translation,
-                  style: const TextStyle(fontSize: 16, height: 1.4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        translation,
+                        style: const TextStyle(fontSize: 16, height: 1.4),
+                      ),
+                    ),
+                    // Speaker for the TRANSLATED text - the source speaker
+                    // below already covers the original, so together the
+                    // user chooses which language to hear.
+                    const SizedBox(width: 8),
+                    TtsButton(
+                      text: translation,
+                      lang: targetLang,
+                      size: 18,
+                      showOptions: false,
+                    ),
+                  ],
                 ),
               ),
             // Source / original — italic + dimmed so it reads as

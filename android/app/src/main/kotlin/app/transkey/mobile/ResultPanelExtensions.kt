@@ -177,6 +177,7 @@ internal fun BubbleService.removeResultPanel() {
     }
     panel.view = null
     panel.source = null
+    panel.sourceSpeakBtn = null
     panel.output = null
     panel.romanization = null
     panel.status = null
@@ -492,6 +493,22 @@ internal fun BubbleService.showResultPanel(
             isFocusable = true
             setOnClickListener { togglePanelSourceExpanded() }
         }
+        // Speaker for the ORIGINAL text - mirrors the desktop popup and the
+        // in-app source TTS so the user chooses which language to hear.
+        // Same glyph as the actions-row TTS button but muted, so it reads
+        // as secondary. Hidden until a result carries a concrete source lang.
+        panel.sourceSpeakBtn = TextView(this).apply {
+            text = "▶"
+            setTextColor(mutedCol)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            typeface = Typeface.DEFAULT_BOLD
+            visibility = View.GONE
+            isClickable = true
+            isFocusable = true
+            setPadding((10 * dp).toInt(), (4 * dp).toInt(), (2 * dp).toInt(), (4 * dp).toInt())
+            setOnClickListener { speakSource() }
+        }
+
         // Tiny "Show more / Show less" affordance under the source —
         // makes the tap target discoverable without crowding the
         // header chip row. Hidden when source text fits in 3 lines.
@@ -582,7 +599,19 @@ internal fun BubbleService.showResultPanel(
         }
         contentInner.addView(panel.scamBannerBox)
         contentInner.addView(panel.detectedLangTv)
-        contentInner.addView(panel.source)
+        // Source + its speaker share a row; the text keeps all remaining
+        // width so long originals still wrap/ellipsize as before.
+        val sourceRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        panel.source?.let {
+            sourceRow.addView(
+                it,
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+        }
+        panel.sourceSpeakBtn?.let { sourceRow.addView(it) }
+        contentInner.addView(sourceRow)
         panel.sourceToggle?.let { contentInner.addView(it) }
         contentInner.addView(panel.loadingSpinner)
         contentInner.addView(panel.output)
@@ -751,6 +780,19 @@ internal fun BubbleService.showResultPanel(
     } else {
         panel.detectedLangTv?.visibility = View.GONE
     }
+
+    // Source-side speaker: needs a concrete lang for the original text -
+    // server detection wins, else the user's pinned non-auto source pick.
+    // The server's script heuristic returns the literal "auto" for all
+    // Latin-script langs, so filter it on BOTH sides.
+    val speakableSrcLang = currentDetectedLang?.takeIf { it != "auto" }
+        ?: currentSourceLang.takeIf { it != "auto" }
+    panel.sourceSpeakBtn?.visibility =
+        if (!loading && speakableSrcLang != null && !currentSourceText.isNullOrEmpty()) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
 
     // Romanization shown only when output is shown and value present
     val rom = currentRomanization

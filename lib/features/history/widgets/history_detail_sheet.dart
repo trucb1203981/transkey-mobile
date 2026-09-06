@@ -79,9 +79,25 @@ class HistoryDetailSheet extends StatelessWidget {
                     const SizedBox(height: AppSpacing.lg),
 
                     // Source text
-                    Text(
-                      l.historyDetailSourceLabel,
-                      style: theme.textTheme.labelLarge,
+                    Row(
+                      children: [
+                        Text(
+                          l.historyDetailSourceLabel,
+                          style: theme.textTheme.labelLarge,
+                        ),
+                        const Spacer(),
+                        // Speak the ORIGINAL text. Entries saved before the
+                        // detected lang was persisted carry ''/'auto' - hide
+                        // the button then instead of guessing a voice.
+                        if (entry.sourceLang.isNotEmpty &&
+                            entry.sourceLang != 'auto')
+                          TtsButton(
+                            text: entry.sourceText,
+                            lang: entry.sourceLang,
+                            size: 20,
+                            showOptions: false,
+                          ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Container(

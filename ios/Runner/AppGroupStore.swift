@@ -26,6 +26,8 @@ class AppGroupStore {
     private let kFeatureExplain = "tk_feature_explain"
     private let kLangCatalog = "tk_lang_catalog"
     private let kKbGuideSeen = "tk_kb_guide_seen_v1"
+    private let kKbHeartbeatAt = "tk_kb_heartbeat_at"
+    private let kKbFullAccess = "tk_kb_full_access"
 
     private init() {
         defaults = UserDefaults(suiteName: appGroupIdentifier)
@@ -195,6 +197,39 @@ class AppGroupStore {
     var keyboardGuideSeen: Bool {
         get { defaults?.bool(forKey: kKbGuideSeen) ?? false }
         set { defaults?.set(newValue, forKey: kKbGuideSeen) }
+    }
+
+    /// Proof-of-life from the keyboard extension: the Unix timestamp of the
+    /// last time it appeared, plus whether it had Full Access at that moment.
+    ///
+    /// This is the ONLY way the app can tell that the iOS keyboard is set up.
+    /// iOS exposes no API for "is my keyboard enabled", so the app used to show
+    /// "not enabled" forever, even to a user who had finished setup correctly.
+    ///
+    /// Read it as a one-way signal: a timestamp PROVES the keyboard ran, and
+    /// (since an extension can only reach the shared container with Full Access
+    /// granted) that it ran with Full Access. Its ABSENCE proves nothing - the
+    /// keyboard may be added but never used, or added without Full Access. So
+    /// the app says "not checked yet", never "not enabled".
+    var keyboardHeartbeatAt: Double? {
+        get {
+            let v = defaults?.double(forKey: kKbHeartbeatAt) ?? 0
+            return v > 0 ? v : nil
+        }
+        set { defaults?.set(newValue ?? 0, forKey: kKbHeartbeatAt) }
+    }
+
+    var keyboardHadFullAccess: Bool {
+        get { defaults?.bool(forKey: kKbFullAccess) ?? false }
+        set { defaults?.set(newValue, forKey: kKbFullAccess) }
+    }
+
+    /// Stamp the heartbeat. Called by the keyboard extension every time it
+    /// becomes visible; a no-op without Full Access, because the shared
+    /// defaults are simply unreachable then.
+    func markKeyboardAlive(fullAccess: Bool) {
+        keyboardHeartbeatAt = Date().timeIntervalSince1970
+        keyboardHadFullAccess = fullAccess
     }
 
     /// Server-driven language catalog, JSON `[{code,label}, ...]`, mirrored

@@ -222,16 +222,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tabRefine => 'Улучшить';
 
   @override
-  String get keyboardSetup => 'Настройка клавиатуры';
+  String get keyboardSetup => 'Настроить клавиатуру';
 
   @override
   String get keyboardSettingsTitle => 'Пузырь и клавиатура';
 
   @override
-  String get keyboardSettingsSectionStatus => 'Bubble и разрешения';
+  String get keyboardSettingsSectionStatus => 'Кнопка TransKey';
 
   @override
-  String get keyboardSettingsSectionBehavior => 'Поведение Bubble';
+  String get keyboardSettingsSectionBehavior => 'Как ведёт себя кнопка';
 
   @override
   String get imeSectionTitle => 'Клавиатура';
@@ -251,20 +251,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не включена. Нажмите, чтобы включить в системных настройках.';
 
   @override
-  String get bubbleSetup => 'Настройка плавающей кнопки';
+  String get bubbleSetup => 'Настроить кнопку TransKey';
 
   @override
-  String get floatingBubble => 'Плавающая кнопка';
+  String get floatingBubble => 'Кнопка TransKey';
 
   @override
   String get bubbleActive => 'Активна';
 
   @override
   String get bubbleInactive => 'Неактивна';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Нажмите, чтобы предоставить нужные разрешения';
 
   @override
   String get sendFeedback => 'Отправить отзыв';
@@ -951,75 +947,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get onboardGetStarted => 'Начать';
-
-  @override
-  String get setupTitle => 'Настройка клавиатуры';
-
-  @override
-  String get setupTitleAndroid => 'Настроить TransKey';
-
-  @override
-  String get setupOpenSettings => 'Открыть настройки';
-
-  @override
-  String get setupOpenPermissions => 'Открыть разрешения';
-
-  @override
-  String get setupStep1TitleIOS => 'Добавьте клавиатуру TransKey';
-
-  @override
-  String get setupStep1TitleAndroid => 'Включите плавающую кнопку';
-
-  @override
-  String get setupStep1DescIOS =>
-      'Перейдите в Настройки и добавьте TransKey как пользовательскую клавиатуру, чтобы переводить прямо во время набора.';
-
-  @override
-  String get setupStep1DescAndroid =>
-      'Разрешите TransKey отображаться поверх других приложений, чтобы плавающая кнопка появлялась при необходимости.';
-
-  @override
-  String get setupStep2Title => 'Разрешите полный доступ';
-
-  @override
-  String get setupStep2TitleAndroid => 'Кнопка включена';
-
-  @override
-  String get setupStep2DescIOS =>
-      'Нажмите TransKey в списке клавиатур и включите «Разрешить полный доступ». Это необходимо для подключения к интернету для переводов.';
-
-  @override
-  String get setupStep2DescAndroid =>
-      'Разрешение «Поверх других приложений» позволяет TransKey показывать плавающую кнопку для быстрых переводов.';
-
-  @override
-  String get setupStep3Title => 'Всё готово!';
-
-  @override
-  String get setupStep3DescIOS =>
-      'При наборе в любом приложении нажмите и удерживайте клавишу глобуса 🌐, чтобы переключиться на TransKey. Нажмите «Ответить», чтобы мгновенно перевести своё сообщение.';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'Кнопка TransKey теперь на вашем экране. Скопируйте текст, нажмите кнопку, выберите действие - результат появится сразу, не выходя из приложения.';
-
-  @override
-  String get setupStep4Title => 'Переводите из любого приложения';
-
-  @override
-  String get setupStep4DescIOS =>
-      'Выделите любой текст → нажмите «Поделиться» → выберите TransKey. Или скопируйте текст и откройте TransKey — он автоматически прочитает буфер обмена.';
-
-  @override
-  String get setupStep4DescAndroid =>
-      'Скопируйте текст в любом приложении → нажмите кнопку TransKey → выберите Перевести, Ответить или другую функцию → нажмите в любом месте для закрытия.';
-
-  @override
-  String get setupStep5Title => 'Умные функции';
-
-  @override
-  String get setupStep5Desc =>
-      'Перевод, Ответ, Резюме, Объяснение и Улучшение. Функции Pro отмечены значком замка.';
 
   @override
   String get guideTitle => 'Как использовать';
@@ -1756,4 +1683,154 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pasteTranslate => 'Вставить и перевести';
+
+  @override
+  String get setupHubTitle => 'Настройка TransKey';
+
+  @override
+  String get setupHubSubtitle =>
+      'Включите эти две вещи, и TransKey будет работать в любом приложении.';
+
+  @override
+  String get setupHubAllDoneBody =>
+      'Всё включено. TransKey готов к работе в любом приложении.';
+
+  @override
+  String get setupTaskButtonTitle => 'Кнопка TransKey';
+
+  @override
+  String get setupTaskButtonBody =>
+      'Маленькая кнопка, которая держится поверх экрана. Вы переводите, не выходя из открытого приложения.';
+
+  @override
+  String get setupTaskKeyboardTitle => 'Клавиатура TransKey';
+
+  @override
+  String get setupTaskKeyboardBody =>
+      'Переводите прямо в сообщении, пока его пишете.';
+
+  @override
+  String get setupStateDone => 'Готово';
+
+  @override
+  String get setupStateOff => 'Пока не включено';
+
+  @override
+  String get setupStateButtonPaused => 'Разрешено, но не показывается';
+
+  @override
+  String get setupStateKeyboardNotUsed => 'Включена, но не используется';
+
+  @override
+  String get setupStateUnknown => 'Пока не удалось проверить';
+
+  @override
+  String get setupOpenSystemSettings => 'Открыть настройки телефона';
+
+  @override
+  String get setupNoWorries =>
+      'Если остановиться сейчас, ничего не сломается. Переводить внутри приложения по-прежнему можно.';
+
+  @override
+  String get setupButtonWhy =>
+      'Кнопка TransKey держится поверх других приложений. Вы переводите сообщение, не закрывая его. Сначала телефон должен это разрешить.';
+
+  @override
+  String get setupMockAppsTitle => 'Показывать поверх других приложений';
+
+  @override
+  String get setupButtonListHint =>
+      'В списке все приложения телефона по алфавиту. Прокрутите до буквы T или воспользуйтесь строкой поиска сверху.';
+
+  @override
+  String get setupButtonStep1 => 'Найдите TransKey в списке';
+
+  @override
+  String get setupButtonStep2 => 'Нажмите на TransKey';
+
+  @override
+  String get setupButtonStep3 => 'Включите переключатель и вернитесь сюда';
+
+  @override
+  String get setupKeyboardWhy =>
+      'С клавиатурой TransKey вы переводите сообщение прямо во время написания, не переключаясь между приложениями.';
+
+  @override
+  String get setupMockKeyboardsTitle => 'Экранные клавиатуры';
+
+  @override
+  String get setupKeyboardListHint =>
+      'На телефоне название показывается как TransKey Keyboard.';
+
+  @override
+  String get setupKeyboardStep1 => 'Найдите строку TransKey Keyboard';
+
+  @override
+  String get setupKeyboardStep2 => 'Включите переключатель и вернитесь сюда';
+
+  @override
+  String get setupKeyboardWarning =>
+      'Сначала телефон покажет предупреждение. Нажмите OK, чтобы продолжить. Такой вопрос телефон задаёт про любую клавиатуру.';
+
+  @override
+  String get setupKeyboardPickTitle => 'Почти всё';
+
+  @override
+  String get setupKeyboardPickBody =>
+      'Клавиатура включена. Ещё одно нажатие, и можно пользоваться.';
+
+  @override
+  String get setupKeyboardPickAction => 'Выбрать TransKey';
+
+  @override
+  String get setupKeyboardPickFallback =>
+      'Окно выбора не открылось. Клавиатуру можно сменить и через маленький значок клавиатуры, который появляется во время набора.';
+
+  @override
+  String get setupNotYetTitle => 'Пока не включено';
+
+  @override
+  String get setupNotYetButtonBody =>
+      'Скорее всего, TransKey не нашёлся в списке. В этот раз воспользуйтесь строкой поиска сверху и наберите TransKey.';
+
+  @override
+  String get setupNotYetKeyboardBody =>
+      'Похоже, в предупреждении телефона была нажата Отмена. Это предупреждение обычное. В этот раз нажмите OK.';
+
+  @override
+  String get setupDoneTitle => 'Всё готово';
+
+  @override
+  String get setupDoneButtonBody =>
+      'Кнопка TransKey теперь на экране. Скопируйте любой текст, нажмите на кнопку и выберите, что сделать.';
+
+  @override
+  String get setupDoneKeyboardBody =>
+      'Теперь можно переводить прямо во время набора в любом приложении.';
+
+  @override
+  String get setupDoneAction => 'Готово';
+
+  @override
+  String get setupIosStep1 => 'Откройте Настройки, затем Основные';
+
+  @override
+  String get setupIosStep2 => 'Нажмите Клавиатура, затем Клавиатуры';
+
+  @override
+  String get setupIosStep3 => 'Нажмите Новые клавиатуры и выберите TransKey';
+
+  @override
+  String get setupIosStep4 =>
+      'Нажмите на TransKey ещё раз и включите Полный доступ';
+
+  @override
+  String get setupIosFullAccessNote =>
+      'Полный доступ нужен, чтобы клавиатура выходила в интернет и переводила. Без него клавиатура всё равно печатает как обычно.';
+
+  @override
+  String get setupBannerTitle => 'TransKey ещё не настроен';
+
+  @override
+  String get setupBannerAction => 'Завершить настройку';
 }

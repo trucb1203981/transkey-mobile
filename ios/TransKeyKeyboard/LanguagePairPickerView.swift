@@ -54,7 +54,7 @@ final class LanguagePairPickerView: UIView, UITableViewDataSource, UITableViewDe
     /// languages share the QWERTY layout with the long-press accent popup,
     /// exactly like Android's DE/ES/FR/ID/IT/PT modes.
     static let typingLanguages: [(code: String, name: String)] = [
-        ("vi", "Tiếng Việt"), ("en", "English"),
+        ("vi", "Tiếng Việt (Telex)"), ("vi_vni", "Tiếng Việt (VNI)"), ("en", "English"),
         ("ar", "العربية"), ("zh", "中文 (拼音)"), ("fr", "Français"), ("de", "Deutsch"),
         ("id", "Bahasa Indonesia"), ("it", "Italiano"), ("ja", "日本語 (ローマ字)"),
         ("ja_flick", "日本語 (フリック)"),

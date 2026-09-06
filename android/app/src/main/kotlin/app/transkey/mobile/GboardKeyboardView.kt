@@ -9,6 +9,7 @@ import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.util.AttributeSet
 import android.util.SparseArray
+import android.util.SparseBooleanArray
 import android.view.MotionEvent
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -92,21 +93,105 @@ class GboardKeyboardView : KeyboardView {
     private val tiled = Collections.newSetFromMap(IdentityHashMap<Keyboard, Boolean>())
     private var layoutHeight = 0
 
+    /**
+     * QWERTY-profile calibration, also used by the VNI layout (same letter
+     * rows, one digit row on top). Complex, RTL and flick layouts stay neutral.
+     */
+    var useQwertyTouchBias = false
+
+    /**
+     * Top of the letter rows per keyboard (px), the origin the thumb bias is
+     * measured from. Cached alongside the touch rects because a layout with an
+     * extra row above the letters (VNI digits) would otherwise report every
+     * letter row as sitting deeper than it does on plain QWERTY.
+     */
+    private val letterTops = IdentityHashMap<Keyboard, Float>()
+
     // Custom multi-touch dispatch. Each finger tracks the key under it
     // (updated as it slides), and commits on lift - so a fast typist who lands
     // a hair off and rolls onto the key gets the key they settled on, like
     // Gboard. Repeatable keys (backspace) fire on hold.
     private var actionListener: OnKeyboardActionListener? = null
     private val pointerKeys = SparseArray<Keyboard.Key>()
+    /**
+     * Pointers whose character was already emitted by the roll-over commit in
+     * [pointerDown] (or by a held repeat), so their lift must not emit it again.
+     */
+    private val consumedPointers = SparseBooleanArray()
     private var repeatKey: Keyboard.Key? = null
+    /**
+     * The finger that owns the running key-repeat. Repeat MUST be cancelled by
+     * owner, not by "is the current key still the repeat key": sliding off
+     * backspace onto a letter changed the pointer's key, so the lift no longer
+     * matched [repeatKey] and left the repeat runnable posted - backspace then
+     * kept deleting after the finger was gone.
+     */
+    private var repeatPointerId = -1
+    /**
+     * Bumped by [cancelAllGestures]. A commit made from inside [pointerDown]
+     * can re-enter the IME and tear the gesture state down underneath us, so
+     * anything that resumes after such a commit must check this first.
+     */
+    private var gestureGen = 0
     private var repeated = false
+    /** Repeats emitted for the current hold, used to accelerate a long hold. */
+    private var repeatTicks = 0
     private val repeatRunnable = object : Runnable {
         override fun run() {
             val k = repeatKey ?: return
             actionListener?.onKey(k.codes.firstOrNull() ?: 0, k.codes)
             repeated = true
-            postDelayed(this, REPEAT_INTERVAL)
+            repeatTicks++
+            // Hold-to-delete accelerates, like the system keyboards: a steady
+            // 100 ms is right for trimming a word but far too slow to clear a
+            // sentence, and speeding up beats the old flat 55 ms, which
+            // overshot on a short hold.
+            postDelayed(
+                this,
+                if (repeatTicks >= REPEAT_ACCEL_AFTER) REPEAT_INTERVAL_FAST else REPEAT_INTERVAL,
+            )
         }
+    }
+
+    /**
+     * Emit the character still held under any other finger. Called when a new
+     * finger lands so overlapping presses ("roll-over") come out in the order
+     * they were PRESSED. Only plain character keys chord this way - space,
+     * enter and the function keys keep their press-and-lift semantics, and a
+     * finger mid-flick / mid-accent / mid-space-swipe is left alone.
+     */
+    private fun commitHeldChars() {
+        // Snapshot the ids first: `onKey` runs the IME's commit path, which can
+        // reach `onFinishInput` (the host moves focus on commit) -> our own
+        // `cancelAllGestures()` -> `pointerKeys.clear()`. Indexing a SparseArray
+        // whose size shrank mid-loop throws on API 30+ and kills the IME.
+        val ids = IntArray(pointerKeys.size()) { pointerKeys.keyAt(it) }
+        for (id in ids) {
+            if (consumedPointers.get(id)) continue
+            if (id == accentPointerId || id == spacePointerId) continue
+            if (flickStates.get(id) != null) continue
+            val k = pointerKeys.get(id) ?: continue
+            if (k === repeatKey) continue
+            val code = k.codes.firstOrNull() ?: 0
+            if (!isCharCode(code)) continue
+            if (id == longPressId) {
+                removeCallbacks(longPressRunnable)
+                longPressId = -1
+            }
+            consumedPointers.put(id, true)
+            actionListener?.onKey(code, k.codes)
+        }
+    }
+
+    /** A printable character key: not space, not one of the function keys. */
+    private fun isCharCode(code: Int) = code > 0 && code != TransKeyIME.KEYCODE_SPACE
+
+    /** End the running key-repeat, whoever owned it. */
+    private fun stopRepeat() {
+        removeCallbacks(repeatRunnable)
+        repeatKey = null
+        repeatPointerId = -1
+        repeatTicks = 0
     }
 
     /**
@@ -130,12 +215,21 @@ class GboardKeyboardView : KeyboardView {
      */
     var flickProvider: ((Int) -> Array<String>?)? = null
     var onFlick: ((Int, Int) -> Unit)? = null
-    private var flickPointerId = -1
-    private var flickKey: Keyboard.Key? = null
-    private var flickDownX = 0f
-    private var flickDownY = 0f
-    private var flickDir = 0
-    private var flickLabels: Array<String>? = null
+    /**
+     * Flick gesture state, tracked PER FINGER: Japanese flick typing is a
+     * two-thumb input method, and a single shared slot let the second thumb
+     * overwrite the first one's key/direction (the first flick then fell through
+     * to the plain-key path and emitted the wrong kana).
+     */
+    private class FlickState(
+        val key: Keyboard.Key,
+        val downX: Float,
+        val downY: Float,
+        val labels: Array<String>,
+    ) {
+        var dir = 0
+    }
+    private val flickStates = SparseArray<FlickState>()
     /**
      * Long-press accent popup (European Latin modes). [accentProvider] returns the
      * popup labels [base, accent…, number?] for (keyCode, shifted), or null for a
@@ -172,10 +266,21 @@ class GboardKeyboardView : KeyboardView {
         }
     }
 
-    private val numberHints = mapOf(
-        'q' to "1", 'w' to "2", 'e' to "3", 'r' to "4", 't' to "5",
-        'y' to "6", 'u' to "7", 'i' to "8", 'o' to "9", 'p' to "0",
-    )
+    // Keyed by the key's lowercase char CODE, not by Char: a Map<Char, _>
+    // lookup boxes the key on every hint draw, i.e. once per top-row key per
+    // frame, and the strip redraws on every press.
+    private val numberHints = SparseArray<String>().apply {
+        put('q'.code, "1"); put('w'.code, "2"); put('e'.code, "3")
+        put('r'.code, "4"); put('t'.code, "5"); put('y'.code, "6")
+        put('u'.code, "7"); put('i'.code, "8"); put('o'.code, "9")
+        put('p'.code, "0")
+    }
+
+    /**
+     * Shifted labels, cached. `label.uppercase()` allocated a fresh String for
+     * every letter key on every frame, and a drag repaints continuously.
+     */
+    private val upperLabels = HashMap<String, String>()
 
     private val actionCodes = setOf(
         TransKeyIME.KEYCODE_SHIFT, TransKeyIME.KEYCODE_DELETE,
@@ -185,9 +290,23 @@ class GboardKeyboardView : KeyboardView {
     )
 
     companion object {
-        private const val REPEAT_DELAY = 400L
-        private const val REPEAT_INTERVAL = 55L
-        private const val LONGPRESS_DELAY = 300L
+        // Hold-to-repeat, matched to the iOS keyboard so backspace feels the
+        // same on both platforms: pause, then a steady rate, then accelerate.
+        // The first press already fired on touch-down, so this delay only gates
+        // the SECOND delete.
+        private const val REPEAT_DELAY = 500L
+        private const val REPEAT_INTERVAL = 100L
+        private const val REPEAT_INTERVAL_FAST = 45L
+        private const val REPEAT_ACCEL_AFTER = 12
+        // 300 ms was short enough that merely pausing a thumb on the top letter
+        // row committed the key's corner digit instead of the letter. 500 ms is
+        // the iOS long-press timing and roughly the platform default.
+        private const val LONGPRESS_DELAY = 500L
+        // Flick cell offsets by direction (center, left, up, right, down).
+        // Hoisted out of the draw loop: rebuilding them per frame allocated an
+        // array plus 5 boxed Pairs on every drag frame.
+        private val FLICK_COL_OFF = intArrayOf(0, -1, 0, 1, 0)
+        private val FLICK_ROW_OFF = intArrayOf(0, 0, -1, 0, 1)
     }
 
     // Right-shift of the leftmost letter column's touch boundary (px), to catch
@@ -225,6 +344,10 @@ class GboardKeyboardView : KeyboardView {
     // JA flick: travel past this (px) from the down point picks a direction;
     // a shorter move stays on the center kana.
     private val FLICK_SLOP = dp(20f)
+
+    // How far outside the view a touch may stray and still hit-test to a key.
+    // Past this the gesture counts as "dragged off to cancel".
+    private val OFF_KEYBOARD_SLOP = dp(28f)
     private val flickBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val flickTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER; textSize = sp(20f)
@@ -246,6 +369,14 @@ class GboardKeyboardView : KeyboardView {
             MeasureSpec.getSize(widthMeasureSpec),
             h + paddingTop + paddingBottom,
         )
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w != oldw) keyboard?.let {
+            tiled.remove(it)
+            tileTouchTargets(it)
+        }
     }
 
     override fun setKeyboard(keyboard: Keyboard?) {
@@ -281,7 +412,9 @@ class GboardKeyboardView : KeyboardView {
      */
     private fun tileTouchTargets(kb: Keyboard) {
         if (!tiled.add(kb)) return
-        val screenW = resources.displayMetrics.widthPixels.toFloat()
+        val viewW = width.takeIf { it > 0 }?.toFloat()
+            ?: measuredWidth.takeIf { it > 0 }?.toFloat()
+            ?: resources.displayMetrics.widthPixels.toFloat()
         val kbHeight = kb.height
         layoutHeight = kbHeight
         val rowsByY = kb.keys.groupBy { it.y }.toSortedMap()
@@ -303,21 +436,20 @@ class GboardKeyboardView : KeyboardView {
                     ox[ki].toFloat(), visTop, (ox[ki] + ow[ki]).toFloat(), visBottom,
                 )
                 var tLeft = if (ki == 0) 0f else (ox[ki - 1] + ow[ki - 1] + ox[ki]) / 2f
-                var tRight = if (ki == row.size - 1) screenW else (ox[ki] + ow[ki] + ox[ki + 1]) / 2f
-                // Edge-key widening: a thumb reaching the leftmost letter column
-                // (q, a) lands ~+23px right of centre (measured), so a fast tap
-                // spills into the 2nd key. Grow the first letter column's right
-                // boundary (and pull the 2nd key's left to match) so q/a keep
-                // that overshoot. Only when col 0 is an actual letter (skips the
-                // shift row), and only letter rows.
+                var tRight = if (ki == row.size - 1) viewW else (ox[ki] + ow[ki] + ox[ki + 1]) / 2f
                 val firstIsLetter = (row[0].codes.firstOrNull() ?: 0) in 'a'.code..'z'.code
-                if (firstIsLetter) {
-                    if (ki == 0) tRight += EDGE_GROW
-                    if (ki == 1) tLeft += EDGE_GROW
-                }
+                val lastIsLetter = (row.last().codes.firstOrNull() ?: 0) in 'a'.code..'z'.code
+                val adjusted = TouchBiasModel.growLetterEdges(
+                    ki, row.size, tLeft, tRight, EDGE_GROW, firstIsLetter, lastIsLetter,
+                )
+                tLeft = adjusted.first
+                tRight = adjusted.second
                 touchRects[key] = RectF(tLeft, tTop, tRight, tBottom)
             }
         }
+        letterTops[kb] = kb.keys
+            .filter { (it.codes.firstOrNull() ?: 0) in 'a'.code..'z'.code }
+            .minOfOrNull { touchRects[it]?.top ?: 0f } ?: 0f
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -334,9 +466,10 @@ class GboardKeyboardView : KeyboardView {
                     val px = event.getX(idx)
                     // Flick drag: handle BEFORE the in-bounds guard - the finger
                     // slides across key boundaries but stays bound to its key.
-                    if (id == flickPointerId) {
-                        val dir = flickDirection(px - flickDownX, event.getY(p) - flickDownY)
-                        if (dir != flickDir) { flickDir = dir; invalidate() }
+                    val fs = flickStates.get(id)
+                    if (fs != null) {
+                        val dir = flickDirection(px - fs.downX, event.getY(p) - fs.downY)
+                        if (dir != fs.dir) { fs.dir = dir; invalidate() }
                         continue
                     }
                     // Accent popup drag: slide horizontally to pick a variant.
@@ -368,42 +501,46 @@ class GboardKeyboardView : KeyboardView {
                         }
                     }
                     if (pointerKeys.indexOfKey(id) < 0) continue
+                    // A finger holding a repeatable key (backspace) does not
+                    // retarget: it keeps deleting until it lifts, like the
+                    // system keyboards. Letting it adopt the key underneath
+                    // both ended the repeat early and typed a stray character.
+                    if (id == repeatPointerId) continue
                     val k = keyAt(px, event.getY(p))
                     if (k !== pointerKeys.get(id)) setPointerKey(id, k)
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP ->
                 pointerUp(event.getPointerId(event.actionIndex))
-            MotionEvent.ACTION_CANCEL -> {
-                removeCallbacks(repeatRunnable)
-                removeCallbacks(longPressRunnable)
-                repeatKey = null
-                spacePointerId = -1
-                spaceSwiping = false
-                clearFlick()
-                clearAccent()
-                for (i in 0 until pointerKeys.size()) pointerKeys.valueAt(i)?.pressed = false
-                pointerKeys.clear()
-                invalidate()
-            }
+            MotionEvent.ACTION_CANCEL -> cancelAllGestures()
         }
         return true
     }
 
     private fun pointerDown(id: Int, x: Float, y: Float) {
         val k = keyAt(x, y) ?: return
+        // Roll-over commit, like Gboard and the iOS keyboard: a character used
+        // to be emitted only on LIFT, so output order followed the order the
+        // fingers were RAISED, not the order they landed - a fast typist who
+        // pressed 'a' then 'b' but released 'b' first got "ba". Chord the
+        // still-held character out now, before the new finger is registered.
+        //
+        // That commit re-enters the IME, and in a field that closes after one
+        // character it can reach onFinishInput -> cancelAllGestures(). Snapshot
+        // the gesture generation so we do NOT re-register this pointer on top
+        // of a cleanup that just happened - it would survive into the next
+        // input session and type a stray character there.
+        val gen = gestureGen
+        commitHeldChars()
+        if (gen != gestureGen) return
         setPointerKey(id, k)
         val code = k.codes.firstOrNull() ?: 0
-        actionListener?.onPress(code) // haptic on touch
+        actionListener?.onPress(code) // haptic + click on touch
         // Japanese flick key: track the drag direction ourselves and emit a
         // flick on lift. Skip space-swipe / repeat / long-press for these.
         val labels = flickProvider?.invoke(code)
         if (labels != null) {
-            flickPointerId = id
-            flickKey = k
-            flickDownX = x; flickDownY = y
-            flickDir = 0
-            flickLabels = labels
+            flickStates.put(id, FlickState(k, x, y, labels))
             invalidate()
             return
         }
@@ -415,8 +552,18 @@ class GboardKeyboardView : KeyboardView {
             spaceSwiping = false
         }
         if (k.repeatable) {
+            // A second finger landing on delete must not stack a second
+            // runnable on top of the first, which doubled the delete rate.
+            if (repeatPointerId != -1) stopRepeat()
             repeatKey = k
-            repeated = false
+            // Act on touch DOWN (backspace deletes immediately, like iOS and the
+            // system keyboards). It used to fire only on lift or after the
+            // REPEAT_DELAY, so a quick tap felt like the key was dead. `repeated`
+            // is set now so the lift does not delete a second time.
+            actionListener?.onKey(code, k.codes)
+            repeated = true
+            repeatTicks = 0
+            repeatPointerId = id
             postDelayed(repeatRunnable, REPEAT_DELAY)
         } else {
             // Arm the long-press hook (space -> language, comma -> emoji). Only
@@ -431,6 +578,19 @@ class GboardKeyboardView : KeyboardView {
 
     /** Move a pointer onto a new key, updating the pressed highlight. */
     private fun setPointerKey(id: Int, k: Keyboard.Key?) {
+        // Sliding onto a different key cancels this finger's long-press. The
+        // timer resolved against whatever key the finger had moved TO, so
+        // sliding across the top row and pausing popped a digit from a key the
+        // user never pressed. Jitter inside one key never reaches here - the
+        // caller only calls us when the key actually changed - so this doubles
+        // as the movement slop.
+        if (id == longPressId) {
+            removeCallbacks(longPressRunnable)
+            longPressId = -1
+        }
+        // Same for the key-repeat: sliding off backspace ends the repeat, it
+        // does not hand it to the key underneath.
+        if (id == repeatPointerId) stopRepeat()
         pointerKeys.get(id)?.pressed = false
         if (k != null) {
             pointerKeys.put(id, k)
@@ -449,6 +609,7 @@ class GboardKeyboardView : KeyboardView {
             val code = k?.codes?.firstOrNull() ?: 0
             k?.pressed = false
             pointerKeys.remove(id)
+            consumedPointers.delete(id)
             clearAccent()
             if (!sel.isNullOrEmpty()) onAccent?.invoke(sel)
             actionListener?.onRelease(code)
@@ -456,15 +617,15 @@ class GboardKeyboardView : KeyboardView {
             return
         }
         // A flick finger lifts: emit the chosen direction's kana, type no key.
-        if (id == flickPointerId) {
-            val k = flickKey
-            val code = k?.codes?.firstOrNull() ?: 0
-            val dir = flickDir
-            k?.pressed = false
+        val fs = flickStates.get(id)
+        if (fs != null) {
+            val code = fs.key.codes.firstOrNull() ?: 0
+            fs.key.pressed = false
             pointerKeys.remove(id)
-            clearFlick()
+            consumedPointers.delete(id)
+            flickStates.remove(id)
             if (code != 0) {
-                onFlick?.invoke(code, dir)
+                onFlick?.invoke(code, fs.dir)
                 actionListener?.onRelease(code)
             }
             invalidate()
@@ -477,28 +638,54 @@ class GboardKeyboardView : KeyboardView {
             if (spaceSwiping) {
                 spaceSwiping = false
                 pointerKeys.remove(id)
+                consumedPointers.delete(id)
                 invalidate()
                 return
             }
         }
         val k = pointerKeys.get(id)
+        val alreadyEmitted = consumedPointers.get(id)
         pointerKeys.remove(id)
+        consumedPointers.delete(id)
         if (k != null) {
             k.pressed = false
             val code = k.codes.firstOrNull() ?: 0
-            // Commit on lift (the settled key). Skip if a held repeat already fired it.
-            if (!(k === repeatKey && repeated)) actionListener?.onKey(code, k.codes)
-            actionListener?.onRelease(code)
-            if (k === repeatKey) {
-                removeCallbacks(repeatRunnable)
-                repeatKey = null
+            // Commit on lift (the settled key). Skip when this finger's key was
+            // already emitted - either by the roll-over commit in [pointerDown]
+            // or by a held repeat.
+            if (!alreadyEmitted && !(k === repeatKey && repeated)) {
+                actionListener?.onKey(code, k.codes)
             }
+            actionListener?.onRelease(code)
         }
+        // Cancel by OWNER, not by "the key under this finger is still the
+        // repeat key" - a finger that slid off backspace no longer matches it
+        // and used to leave the repeat running after the lift.
+        if (id == repeatPointerId) stopRepeat()
         invalidate()
     }
 
-    private fun clearFlick() {
-        flickPointerId = -1; flickKey = null; flickLabels = null; flickDir = 0
+    /**
+     * Drop every in-flight gesture and pressed state. Called on ACTION_CANCEL
+     * and from the IME when the keyboard window goes away (app switch, IME
+     * switch, field closed) - without that lifecycle call a held backspace kept
+     * its repeat runnable posted and a popup could stay stuck on screen.
+     */
+    fun cancelAllGestures() {
+        gestureGen++
+        stopRepeat()
+        removeCallbacks(longPressRunnable)
+        repeated = false
+        longPressId = -1
+        longPressFired = false
+        spacePointerId = -1
+        spaceSwiping = false
+        flickStates.clear()
+        clearAccent()
+        for (i in 0 until pointerKeys.size()) pointerKeys.valueAt(i)?.pressed = false
+        pointerKeys.clear()
+        consumedPointers.clear()
+        invalidate()
     }
 
     private fun clearAccent() {
@@ -551,6 +738,20 @@ class GboardKeyboardView : KeyboardView {
     private fun keyAt(rawX: Float, rawY: Float): Keyboard.Key? {
         val kb = keyboard ?: return null
 
+        // A finger dragged well clear of the keyboard is a CANCEL gesture, not
+        // a key. The nearest-center fallback at the end never returns null, so
+        // sliding a finger off the side or up into the text field and lifting
+        // still typed the closest edge key. The margin is generous enough that
+        // the fallback still rescues the legitimate near-edge cases (the
+        // upward thumb bias can push a top-row touch above every rect).
+        val vw = width.toFloat()
+        val vh = height.toFloat()
+        if (rawX < -OFF_KEYBOARD_SLOP || rawX > vw + OFF_KEYBOARD_SLOP ||
+            rawY < -OFF_KEYBOARD_SLOP || rawY > vh + OFF_KEYBOARD_SLOP
+        ) {
+            return null
+        }
+
         // Space-bar high-tap catch (runs on RAW coords, before the upward bias).
         // The thumb rests ABOVE the space bar, so taps land in the gap just
         // above it - the opposite of the finger-lands-low bias used elsewhere.
@@ -573,17 +774,13 @@ class GboardKeyboardView : KeyboardView {
         // So bias = rowBias * (1 + REACH_GAIN * distanceFromNearestThumbHome).
         val w = width.toFloat()
         val h = if (layoutHeight > 0) layoutHeight.toFloat() else height.toFloat()
-        val frac = if (h > 0) (rawY / h).coerceIn(0f, 1f) else 0f
-        val rowBias = biasTop + (biasBottom - biasTop) * frac
-        // Assign the touch to a thumb. The LEFT thumb is more mobile and covers
-        // past the centre (up to ~u/j/n), so the split sits right of centre, not
-        // at the midpoint between the two home columns. Reach = distance from
-        // that thumb's home; the farther the reach the more the pad undershoots,
-        // so we bias upward proportionally (vertical only for now).
-        val home = if (rawX < thumbSplit * w) leftThumbHome * w else rightThumbHome * w
-        val homeDist = kotlin.math.abs(rawX - home) / w
-        val y = rawY - rowBias * (1f + REACH_GAIN * homeDist)
-        val x = rawX
+        val corrected = TouchBiasModel.correct(
+            rawX, rawY, w, h, useQwertyTouchBias,
+            biasTop, biasBottom, leftThumbHome, rightThumbHome, thumbSplit, REACH_GAIN,
+            letterTop = letterTops[kb] ?: 0f,
+        )
+        val x = corrected.x
+        val y = corrected.y
         var nearest: Keyboard.Key? = null
         var best = Float.MAX_VALUE
         for (k in kb.keys) {
@@ -629,14 +826,14 @@ class GboardKeyboardView : KeyboardView {
                     val raw = key.label?.toString()
                     if (!raw.isNullOrEmpty()) {
                         val letter = raw.length == 1 && raw[0].isLetter()
-                        val text = if (shifted && letter) raw.uppercase() else raw
+                        val text = if (shifted && letter) upperOf(raw) else raw
                         // Single glyphs (letters, digits, single symbols) use the
                         // full label size for Gboard-level readability; only the
                         // multi-char toggles (=\<, ?123, ABC) shrink to fit.
                         val p = if (text.length == 1) labelPaint else symbolPaint
                         canvas.drawText(text, cx, baseline(cy, p), p)
                     }
-                    numberHints[code.toChar().lowercaseChar()]?.let { hint ->
+                    numberHints.get(code.toChar().lowercaseChar().code)?.let { hint ->
                         canvas.drawText(hint, rectF.right - hintDx, rectF.top + hintDy, hintPaint)
                     }
                     // Only the bottom-row comma doubles as the emoji key (long-
@@ -677,8 +874,12 @@ class GboardKeyboardView : KeyboardView {
      * the top row's "up" cell and the edge columns aren't cut off.
      */
     private fun drawFlickPreview(canvas: Canvas) {
-        val key = flickKey ?: return
-        val labels = flickLabels ?: return
+        for (i in 0 until flickStates.size()) drawOneFlick(canvas, flickStates.valueAt(i))
+    }
+
+    private fun drawOneFlick(canvas: Canvas, fs: FlickState) {
+        val key = fs.key
+        val labels = fs.labels
         val r = visualRects[key] ?: return
         val cw = r.width(); val ch = r.height()
         // Center the plus on the key, then clamp so all 5 cells stay on-screen.
@@ -687,17 +888,13 @@ class GboardKeyboardView : KeyboardView {
         cx = cx.coerceIn(1.5f * cw, width - 1.5f * cw)
         val hh = if (layoutHeight > 0) layoutHeight.toFloat() else height.toFloat()
         cy = cy.coerceIn(1.5f * ch, hh - 1.5f * ch)
-        // dir -> (col offset, row offset): center,left,up,right,down
-        val offs = arrayOf(
-            0 to 0, -1 to 0, 0 to -1, 1 to 0, 0 to 1,
-        )
         for (i in 0..4) {
             val label = labels.getOrNull(i) ?: continue
             if (label.isEmpty()) continue
-            val ox = cx + offs[i].first * cw
-            val oy = cy + offs[i].second * ch
+            val ox = cx + FLICK_COL_OFF[i] * cw
+            val oy = cy + FLICK_ROW_OFF[i] * ch
             rectF.set(ox - cw / 2 + dp(1f), oy - ch / 2 + dp(1f), ox + cw / 2 - dp(1f), oy + ch / 2 - dp(1f))
-            flickBgPaint.color = if (i == flickDir) colFlickActive else colFlickCell
+            flickBgPaint.color = if (i == fs.dir) colFlickActive else colFlickCell
             canvas.drawRoundRect(rectF, radius, radius, flickBgPaint)
             flickTextPaint.color = colText
             canvas.drawText(label, ox, baseline(oy, flickTextPaint), flickTextPaint)
@@ -705,6 +902,18 @@ class GboardKeyboardView : KeyboardView {
     }
 
     private fun baseline(cy: Float, p: Paint) = cy - (p.descent() + p.ascent()) / 2f
+
+    /** Cached uppercase of a key label - see [upperLabels]. */
+    private fun upperOf(raw: String): String =
+        upperLabels.getOrPut(raw) { raw.uppercase() }
+
+    override fun onDetachedFromWindow() {
+        // The keyboard window can go away mid-gesture (app switch, IME switch,
+        // the field closing). Without this a held backspace kept its repeat
+        // runnable posted against a detached view.
+        cancelAllGestures()
+        super.onDetachedFromWindow()
+    }
 
     // ---- Gboard-style line icons, drawn with canvas primitives ----
 

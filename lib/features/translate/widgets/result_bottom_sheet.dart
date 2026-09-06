@@ -176,7 +176,7 @@ class _ResultBottomSheetState extends ConsumerState<ResultBottomSheet>
 
               if (showLangChip) _buildLangRow(l),
 
-              _buildSourceText(theme),
+              _buildSourceText(theme, result?.detectedLang),
 
               TabBar(
                 controller: _tabController,
@@ -285,7 +285,7 @@ class _ResultBottomSheetState extends ConsumerState<ResultBottomSheet>
     );
   }
 
-  Widget _buildSourceText(ThemeData theme) {
+  Widget _buildSourceText(ThemeData theme, String? sourceLang) {
     return InkWell(
       onTap: () => setState(() => _sourceExpanded = !_sourceExpanded),
       child: Padding(
@@ -307,6 +307,22 @@ class _ResultBottomSheetState extends ConsumerState<ResultBottomSheet>
                 ),
               ),
             ),
+            // Speaker for the ORIGINAL text - pairs with the target-lang
+            // speaker in the action bar so the user picks which side to
+            // hear. Lang comes from server detection; null hides the
+            // button rather than guessing a voice. The server's heuristic
+            // returns the literal 'auto' for Latin-script langs - equally
+            // unknown, so hide then too.
+            if (sourceLang != null && sourceLang != 'auto') ...[
+              TtsButton(
+                text: widget.sourceText,
+                lang: sourceLang,
+                size: 20,
+                showOptions: false,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+            ],
             Icon(
               _sourceExpanded ? Icons.expand_less : Icons.expand_more,
               size: 20,

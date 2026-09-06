@@ -108,6 +108,15 @@ class AppGroupPlugin: NSObject, FlutterPlugin {
                 "dirty": dirty,
             ])
 
+        // Proof-of-life from the keyboard extension. `seenAt` is null until the
+        // keyboard has actually been used once with Full Access; see the note on
+        // AppGroupStore.keyboardHeartbeatAt for why absence is not a negative.
+        case "readKeyboardHeartbeat":
+            result([
+                "seenAt": store.keyboardHeartbeatAt as Any,
+                "fullAccess": store.keyboardHadFullAccess,
+            ])
+
         case "openKeyboardSettings":
             // Open the app's own page in Settings. Apple rejects private
             // App-prefs deep links, so openSettingsURLString is the only

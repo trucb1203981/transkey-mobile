@@ -85,6 +85,19 @@ class KeyboardViewController: UIInputViewController {
     /// Dubeolsik) so users keep their habits; row splits match the Android
     /// TransKey layouts.
     private static let langLayouts: [String: LangLayout] = [
+        // VNI is QWERTY plus a permanent digits row: in this mode the digits ARE
+        // the tone/shape modifiers, so they must be one tap away. Android does
+        // the same in res/xml/keyboard_vietnamese_vni.xml.
+        "vi_vni": LangLayout(
+            rows: [
+                ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+                ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+                ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
+                ["z", "x", "c", "v", "b", "n", "m"],
+            ],
+            shiftRows: nil,
+            hasShift: true
+        ),
         "ru": LangLayout(
             rows: [
                 ["й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"],
@@ -163,7 +176,8 @@ class KeyboardViewController: UIInputViewController {
 
     /// Space-bar label, like the system keyboard naming its language.
     private static let autonyms: [String: String] = [
-        "auto": "Auto", "vi": "Tiếng Việt", "en": "English", "ja": "日本語",
+        "auto": "Auto", "vi": "Tiếng Việt", "vi_vni": "Tiếng Việt (VNI)",
+        "en": "English", "ja": "日本語",
         "ja_flick": "日本語", "zh": "中文", "ko": "한국어", "fr": "Français", "es": "Español",
         "de": "Deutsch", "ru": "Русский", "th": "ไทย", "id": "Bahasa Indonesia",
         "pt": "Português", "it": "Italiano", "ar": "العربية", "hi": "हिन्दी",
@@ -177,6 +191,7 @@ class KeyboardViewController: UIInputViewController {
     private var lastSpaceTap = Date.distantPast
 
     private let telex = TelexProcessor()
+    private let vni = VniProcessor()
     private let hangul = HangulComposer()
     /// Built asynchronously in viewDidLoad (word-list parsing off-main); nil
     /// while still loading - suggestion/autocorrect paths skip gracefully.
@@ -190,6 +205,13 @@ class KeyboardViewController: UIInputViewController {
     /// Raw pinyin run shown in the field; candidates update on each letter.
     private var pinyin = ""
     private var zhCandidates: [String] = []
+    /// The pinyin buffer `zhCandidates` was computed for. Candidate lookup is
+    /// asynchronous now, so anything that COMMITS a candidate must first check
+    /// the candidates belong to the buffer on screen (Android parity: see
+    /// `zhCandidatesQuery` in TransKeyIME).
+    private var zhCandidatesQuery = ""
+    /// Same guard for the Japanese kana-to-kanji candidates.
+    private var jaCandidatesQuery = ""
     /// Japanese conversion (space on a kana run): the field shows the
     /// highlighted candidate; space cycles, a new key / return finalizes,
     /// backspace cancels back to kana editing.
@@ -206,14 +228,58 @@ class KeyboardViewController: UIInputViewController {
     private var inputLang = AppGroupStore.shared.keyboardInputLang
 
     /// Telex runs only when typing Vietnamese (and the master switch is on).
-    private var telexActive: Bool {
-        inputLang == "vi" && AppGroupStore.shared.keyboardTelexEnabled
+    /// The master switch is CACHED (refreshed in viewWillAppear alongside
+    /// `inputLang` / `autocorrectEnabled`): as a computed property it hit the
+    /// shared App Group UserDefaults on every keystroke, several times per key.
+    private var telexEnabled = AppGroupStore.shared.keyboardTelexEnabled
+    private var vietActive: Bool { (inputLang == "vi" || inputLang == "vi_vni") && telexEnabled }
+
+    /// The Vietnamese engine for the active typing language: Telex (letters as
+    /// modifiers) or VNI (digits). Every composing call site goes through this,
+    /// so a second engine costs no extra branch per keystroke.
+    private var viet: VietnameseComposer { inputLang == "vi_vni" ? vni : telex }
+
+    /// Serial queue for every dictionary lookup (VI corrector, pinyin, kanji).
+    /// Serial and NOT `.global` on purpose: the CJK converters open their
+    /// SQLite database lazily, and two concurrent lookups would race that.
+    private let lookupQueue = DispatchQueue(label: "app.transkey.keyboard.lookup")
+    /// Bumped on every keystroke; a lookup answering an older keystroke is
+    /// dropped rather than allowed to overwrite the bar out of order.
+    private var lookupSeq = 0
+    /// The queued lookup, kept so a superseded one can be CANCELLED rather
+    /// than merely ignored on completion. Holding backspace fires 10 updates a
+    /// second, and every one of those used to run a full dictionary scan on the
+    /// serial queue before the only result anybody wanted got its turn.
+    private var pendingLookup: DispatchWorkItem?
+
+    /// Open the CJK dictionary ahead of time, on the lookup queue, when the
+    /// typing language needs it. `handleSpace` and `startJaConversion` commit
+    /// through `lookupQueue.sync` (they must not race the background lookups),
+    /// and on a cold extension that sync would otherwise wait for a SQLite open
+    /// plus a full syllable table read - a visible freeze if the user hits
+    /// space before the first candidate appears. Mirrors Android's `prewarmJa`.
+    private func prewarmCJK() {
+        if inputLang == "zh" {
+            let conv = pinyinConv
+            lookupQueue.async { conv.ensureLoaded() }
+        } else if isJa {
+            let conv = kanjiConv
+            lookupQueue.async { conv.ensureLoaded() }
+        }
+    }
+
+    /// Run `work` on the lookup queue, replacing any lookup still waiting.
+    private func scheduleLookup(_ work: @escaping () -> Void) {
+        pendingLookup?.cancel()
+        let item = DispatchWorkItem(block: work)
+        pendingLookup = item
+        lookupQueue.async(execute: item)
     }
 
     /// Every language the keyboard can type, offered in the typing picker.
     /// Latin languages (de/es/fr/id/it/pt) share QWERTY + the accent popup,
     /// mirroring the Android typing modes.
-    static let typingLangs = ["vi", "en", "ar", "zh", "fr", "de", "id", "it", "ja", "ja_flick", "ko", "pt", "ru", "es", "th"]
+    static let typingLangs = ["vi", "vi_vni", "en", "ar", "zh", "fr", "de", "id", "it", "ja", "ja_flick", "ko", "pt", "ru", "es", "th"]
 
     /// Both Japanese modes (romaji qwerty + 12-key flick) drive the SAME kana
     /// buffer + henkan, so every conversion check uses this instead of a bare
@@ -237,7 +303,26 @@ class KeyboardViewController: UIInputViewController {
     private var actionReplaceInProgress = false
     // One request at a time, mirroring Android's actionInFlight guard.
     private var actionInFlight = false
+    /// Input-session identity for the field actions. Bumped on any external
+    /// text change, field switch or keyboard dismissal, and captured when a
+    /// request goes out: without it, a result could land in a DIFFERENT field
+    /// that merely happened to hold the same text as the one it was sent from.
+    private var actionSeq = 0
     private var backspaceTimer: Timer?
+    /// The finger that owns the delete repeat. Cancelling by OWNER instead of
+    /// by "is this touch's key still delete" is load-bearing: sliding off the
+    /// delete key reassigns `TouchState.key` to the key underneath, so the lift
+    /// no longer matched the delete branch and the repeat ran forever, escalating
+    /// to word-deletes. Same bug and same fix as Android's `repeatPointerId`.
+    private var backspaceTouch: UITouch?
+    /// Hold-to-delete cadence, kept identical to Android's REPEAT_DELAY /
+    /// REPEAT_INTERVAL / REPEAT_ACCEL_AFTER in GboardKeyboardView. Shared with
+    /// FlickInputView so all three keyboards delete at the same rate - they
+    /// used to differ (Android accelerated, QWERTY word-jumped, flick never
+    /// changed), so the same 2 second hold removed wildly different amounts.
+    static let backspaceFirstDelay: TimeInterval = 0.5
+    static let backspaceInterval: TimeInterval = 0.1
+    static let backspaceAccelAfter = 12
 
     private let api = APIClient()
 
@@ -365,6 +450,8 @@ class KeyboardViewController: UIInputViewController {
         // The app (or a previous keyboard session) may have changed languages
         // or settings while we were away; re-read and rebuild.
         autocorrectEnabled = AppGroupStore.shared.keyboardAutocorrectEnabled
+        telexEnabled = AppGroupStore.shared.keyboardTelexEnabled
+        prewarmCJK()
         // Strict Telex by default (Android parity): the ie/ye/ue auto-rime is
         // the ONLY no-trigger-key transform and must stay opt-in behind the
         // autocorrect setting — unwired it defaults true and rewrites plain
@@ -389,6 +476,42 @@ class KeyboardViewController: UIInputViewController {
         // Refine) require Full Access; showActionBar() swaps them for an inline
         // "Enable Full Access" hint when it is off.
         maybeShowGuide()
+        // Tell the host app the keyboard is alive. iOS gives the app no way to
+        // ask whether its keyboard is enabled, so without this the setup screen
+        // can only ever say "not checked". Writing to the shared container is
+        // itself the proof: it only succeeds with Full Access granted.
+        AppGroupStore.shared.markKeyboardAlive(fullAccess: hasFullAccess)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        cancelAllGestures()
+        actionSeq &+= 1 // any in-flight action result is no longer applicable
+    }
+
+    deinit {
+        backspaceTimer?.invalidate()
+        touchStates.values.forEach { $0.longPressTimer?.invalidate() }
+    }
+
+    /// Drop every in-flight touch gesture. The system does not reliably send
+    /// touchesCancelled when the keyboard is dismissed or the user switches
+    /// keyboards mid-press, which left a held backspace repeating, a variant
+    /// popup stuck on screen, and UITouch objects retained in `touchStates`.
+    private func cancelAllGestures() {
+        backspaceTimer?.invalidate()
+        backspaceTimer = nil
+        backspaceTicks = 0
+        // The JA flick grid owns a separate delete-repeat timer and survives
+        // keyboard dismissal (we keep the view), so it needs cancelling too.
+        flickView?.cancelAllGestures()
+        for st in touchStates.values {
+            st.longPressTimer?.invalidate()
+            if st.mode == .variants { dismissVariantPopup() }
+        }
+        touchStates.removeAll()
+        keyArea.alpha = 1.0
+        hideKeyPreview()
     }
 
     override func viewDidLayoutSubviews() {
@@ -413,13 +536,15 @@ class KeyboardViewController: UIInputViewController {
         // move, app rewrote the field) may reset the composing word.
         if Date().timeIntervalSince(lastInternalEdit) > 0.15 {
             telex.reset()
+            vni.reset()
             hangul.reset()
             romaji.reset()
             endJaConversion()
             pinyin = ""
-            zhCandidates = []
+            zhCandidates = []; zhCandidatesQuery = ""; jaCandidatesQuery = ""
             undoSnapshot = nil   // field switch / external edit drops the undo
             undoReplacement = nil
+            actionSeq &+= 1      // and invalidates any in-flight action result
             maybeAutoShift()
             updateSuggestionBar()
         }
@@ -571,10 +696,71 @@ class KeyboardViewController: UIInputViewController {
 
     private func clearBarContent() {
         actionBarSignature = nil
+        barItemsSignature = nil
         barContentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         // Suggestion/candidate modes need full-height stretching; action-bar
         // mode overrides to .center so the pills hug their content.
         barContentStack.alignment = .fill
+    }
+
+    /// What tapping a bar item means right now.
+    private enum BarItemAction { case suggestion, candidate }
+
+    /// Pooled bar buttons. The bar used to allocate a fresh UIButton per item
+    /// on EVERY keystroke and throw the previous ones away; inside a keyboard
+    /// extension (jetsam around 40-60 MB) that churn is both an allocation
+    /// stream and a layout pass on the typing hot path.
+    private var barItemButtons: [UIButton] = []
+    private var barItemAction: BarItemAction = .suggestion
+    /// Signature of the rendered items, so an identical refresh is a no-op -
+    /// the same guard `showActionBar` already had for the idle chips.
+    private var barItemsSignature: String?
+
+    /// Render the suggestion / candidate bar, reusing the pooled buttons.
+    private func renderBarItems(
+        _ titles: [String],
+        action: BarItemAction,
+        highlight: Int = -1,
+        verbatimFirst: Bool = false,
+        distribution: UIStackView.Distribution
+    ) {
+        let signature = "\(action)|\(highlight)|\(verbatimFirst)|"
+            + titles.joined(separator: "\u{1}")
+        if barItemsSignature == signature { return }
+        barItemsSignature = signature
+        actionBarSignature = nil
+        barItemAction = action
+        barContentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        barContentStack.alignment = .fill
+        barContentStack.distribution = distribution
+        barContentStack.spacing = 1
+        while barItemButtons.count < titles.count {
+            let b = UIButton(type: .system)
+            b.addTarget(self, action: #selector(barItemTapped(_:)), for: .touchUpInside)
+            barItemButtons.append(b)
+        }
+        for (i, title) in titles.enumerated() {
+            let b = barItemButtons[i]
+            b.tag = i
+            b.setTitle(title, for: .normal)
+            switch action {
+            case .suggestion:
+                let verbatim = verbatimFirst && i == 0
+                b.titleLabel?.font = .systemFont(ofSize: 15, weight: verbatim ? .regular : .medium)
+                b.setTitleColor(.label, for: .normal)
+            case .candidate:
+                b.titleLabel?.font = .systemFont(ofSize: 17, weight: i == highlight ? .semibold : .regular)
+                b.setTitleColor(i == highlight ? primaryColor : .label, for: .normal)
+            }
+            barContentStack.addArrangedSubview(b)
+        }
+    }
+
+    @objc private func barItemTapped(_ sender: UIButton) {
+        switch barItemAction {
+        case .suggestion: suggestionTapped(sender)
+        case .candidate: candidateTapped(sender)
+        }
     }
 
     /// Feature chips shown whenever the bar is idle - gradient pills up
@@ -1037,6 +1223,7 @@ class KeyboardViewController: UIInputViewController {
             guard let self else { return }
             self.inputLang = code
             AppGroupStore.shared.keyboardInputLang = code
+            self.prewarmCJK()
             self.shiftState = .off
             self.layer = .letters
             self.dismissLangPicker()
@@ -1057,9 +1244,37 @@ class KeyboardViewController: UIInputViewController {
     /// CJK candidates while a pinyin/kana run is open; feature chips whenever
     /// idle, like the Android strip.
     private func updateSuggestionBar() {
+        // Every dictionary lookup below is asynchronous, so each keystroke
+        // takes a token; a result whose token is stale (the user typed on) is
+        // dropped instead of overwriting the bar with an older word's answer.
+        lookupSeq &+= 1
+        let seq = lookupSeq
+
         if inputLang == "zh", !pinyin.isEmpty {
-            zhCandidates = pinyinConv.convert(pinyin)
-            showCandidates(zhCandidates.isEmpty ? [pinyin] : zhCandidates)
+            let query = pinyin
+            // Show the RAW pinyin, never the previous keystroke's candidates.
+            // Those belong to a shorter buffer, and leaving them on the bar
+            // made them tappable (and `handleSpace`-committable) against the
+            // new buffer: typing "shi", then "j", then space committed the
+            // hanzi for "shi". Android guards the same way via
+            // `zhCandidatesQuery` in TransKeyIME.
+            if zhCandidatesQuery != query {
+                zhCandidates = []; zhCandidatesQuery = ""; jaCandidatesQuery = ""
+                showCandidates([query])
+            }
+            // Touch the lazy var HERE, on the main thread: initialising it from
+            // the lookup queue would race the main thread doing the same.
+            let conv = pinyinConv
+            scheduleLookup { [weak self] in
+                let cands = conv.convert(query)
+                DispatchQueue.main.async {
+                    guard let self, seq == self.lookupSeq,
+                          self.inputLang == "zh", self.pinyin == query else { return }
+                    self.zhCandidates = cands
+                    self.zhCandidatesQuery = query
+                    self.showCandidates(cands.isEmpty ? [query] : cands)
+                }
+            }
             return
         }
         if isJa {
@@ -1071,43 +1286,54 @@ class KeyboardViewController: UIInputViewController {
                 // Live candidates for the current kana run (Apple QuickType
                 // style); space still drives the classic henkan cycle.
                 let reading = romaji.composingText
-                let cands = kanjiConv.convert(reading)
-                showCandidates(cands.isEmpty ? [reading] : cands)
+                // Only fall back to the bare reading when the candidates on
+                // screen belong to a DIFFERENT reading; otherwise every JA
+                // keystroke repainted reading-only and then swapped to
+                // candidates a queue hop later, a visible flicker.
+                if jaCandidatesQuery != reading {
+                    jaCandidatesQuery = ""
+                    showCandidates([reading])
+                }
+                let conv = kanjiConv
+                scheduleLookup { [weak self] in
+                    let cands = conv.convert(reading)
+                    DispatchQueue.main.async {
+                        guard let self, seq == self.lookupSeq, self.isJa, !self.jaConverting,
+                              self.romaji.composingText == reading else { return }
+                        self.jaCandidatesQuery = reading
+                        self.showCandidates(cands.isEmpty ? [reading] : cands)
+                    }
+                }
                 return
             }
         }
-        let word = telex.composingText
-        guard telexActive, !word.isEmpty else {
+        let word = viet.composingText
+        guard vietActive, !word.isEmpty else {
             showActionBar()
             return
         }
-        clearBarContent()
-        barContentStack.distribution = .fillEqually
-        barContentStack.spacing = 1
-
-        var items: [(String, Bool)] = [("\"\(word)\"", true)]   // (insert text, verbatim)
-        if !telex.literalIntent {
-            for s in corrector?.suggest(word, max: 2) ?? [] {
-                items.append((s, false))
+        // The verbatim chip is free, so paint it right away; corrections join
+        // it when the corrector (an edit-distance scan over every syllable of
+        // length +/-1) comes back off-thread.
+        renderBarItems(["\"\(word)\""], action: .suggestion,
+                       verbatimFirst: true, distribution: .fillEqually)
+        guard !viet.literalIntent, let corrector else { return }
+        scheduleLookup { [weak self] in
+            let sugg = corrector.suggest(word, max: 2)
+            guard !sugg.isEmpty else { return }
+            DispatchQueue.main.async {
+                guard let self, seq == self.lookupSeq,
+                      self.vietActive, self.viet.composingText == word else { return }
+                self.renderBarItems(["\"\(word)\""] + sugg, action: .suggestion,
+                                    verbatimFirst: true, distribution: .fillEqually)
             }
-        }
-        for (i, item) in items.enumerated() {
-            let btn = UIButton(type: .system)
-            btn.setTitle(item.0, for: .normal)
-            btn.titleLabel?.font = item.1
-                ? .systemFont(ofSize: 15)
-                : .systemFont(ofSize: 15, weight: .medium)
-            btn.setTitleColor(.label, for: .normal)
-            btn.tag = i
-            btn.addTarget(self, action: #selector(suggestionTapped(_:)), for: .touchUpInside)
-            barContentStack.addArrangedSubview(btn)
         }
     }
 
     @objc private func suggestionTapped(_ sender: UIButton) {
-        guard telex.hasComposingText else { return }
+        guard viet.hasComposingText else { return }
         let raw = sender.title(for: .normal) ?? ""
-        let replacement = raw.hasPrefix("\"") ? telex.composingText : raw
+        let replacement = raw.hasPrefix("\"") ? viet.composingText : raw
         replaceComposing(with: replacement + " ")
         playClick()
         maybeAutoShift()
@@ -1117,18 +1343,8 @@ class KeyboardViewController: UIInputViewController {
     /// kana run / active conversion.
     private func showCandidates(_ cands: [String], highlight: Int = -1) {
         barCandidates = cands
-        clearBarContent()
-        barContentStack.distribution = .fillProportionally
-        barContentStack.spacing = 1
-        for (i, word) in cands.prefix(6).enumerated() {
-            let btn = UIButton(type: .system)
-            btn.setTitle(word, for: .normal)
-            btn.titleLabel?.font = .systemFont(ofSize: 17, weight: i == highlight ? .semibold : .regular)
-            btn.setTitleColor(i == highlight ? primaryColor : .label, for: .normal)
-            btn.tag = i
-            btn.addTarget(self, action: #selector(candidateTapped(_:)), for: .touchUpInside)
-            barContentStack.addArrangedSubview(btn)
-        }
+        renderBarItems(Array(cands.prefix(6)), action: .candidate,
+                       highlight: highlight, distribution: .fillProportionally)
     }
 
     @objc private func candidateTapped(_ sender: UIButton) {
@@ -1272,6 +1488,10 @@ class KeyboardViewController: UIInputViewController {
                 btn.setTitle(spaceLabel, for: .normal)
                 btn.setTitleColor(.secondaryLabel, for: .normal)
                 btn.titleLabel?.font = .systemFont(ofSize: 15)
+                // "Tiếng Việt (VNI)" is the longest autonym; shrink it rather
+                // than let the space bar truncate it to an ellipsis.
+                btn.titleLabel?.adjustsFontSizeToFitWidth = true
+                btn.titleLabel?.minimumScaleFactor = 0.75
             case .ret:
                 // Action return types (go/search/send/done) get the blue fill
                 // like the system keyboard.
@@ -1305,7 +1525,11 @@ class KeyboardViewController: UIInputViewController {
     /// The action-bar typing-language chip: short language code, except the
     /// flick mode which shows かな so the two Japanese modes are distinct.
     private var inputLangChipLabel: String {
-        inputLang == "ja_flick" ? "かな" : inputLang.uppercased()
+        switch inputLang {
+        case "ja_flick": return "かな"
+        case "vi_vni": return "VNI"
+        default: return inputLang.uppercased()
+        }
     }
 
     private var returnLabel: String {
@@ -1493,6 +1717,11 @@ class KeyboardViewController: UIInputViewController {
             case .variants:
                 updateVariantSelection(x: touch.location(in: view).x)
             case .normal:
+                // A finger holding delete never retargets - control keys "act
+                // on touch-down and never retarget", and letting it adopt the
+                // key underneath is what made the lift both stop matching the
+                // delete branch and type a stray character.
+                if touch === backspaceTouch { continue }
                 let newKey = keyAt(p)
                 guard newKey !== st.key else { continue }
                 st.longPressTimer?.invalidate()
@@ -1527,9 +1756,8 @@ class KeyboardViewController: UIInputViewController {
                 keyArea.alpha = 1.0
                 continue
             }
-            if let k = st.key, case .backspace = k.keyType {
-                backspaceTimer?.invalidate()
-                backspaceTimer = nil
+            if touch === backspaceTouch {
+                stopBackspaceRepeat()
                 maybeAutoShift()
                 continue
             }
@@ -1562,9 +1790,8 @@ class KeyboardViewController: UIInputViewController {
             st.longPressTimer?.invalidate()
             if st.mode == .variants { dismissVariantPopup() }
             if st.mode == .spaceCursor { keyArea.alpha = 1.0 }
-            if let k = st.key, case .backspace = k.keyType {
-                backspaceTimer?.invalidate()
-                backspaceTimer = nil
+            if touch === backspaceTouch {
+                stopBackspaceRepeat()
             }
             hideKeyPreview()
         }
@@ -1572,24 +1799,48 @@ class KeyboardViewController: UIInputViewController {
 
     // MARK: - Long-press timers
 
+    /// End the delete repeat, whichever finger owned it.
+    private func stopBackspaceRepeat() {
+        backspaceTimer?.invalidate()
+        backspaceTimer = nil
+        backspaceTicks = 0
+        backspaceTouch = nil
+    }
+
     private func scheduleBackspaceRepeat(_ touch: UITouch) {
         backspaceTicks = 0
+        backspaceTouch = touch
         backspaceTimer?.invalidate()
-        backspaceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+        backspaceTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.backspaceFirstDelay, repeats: false
+        ) { [weak self] _ in
             guard let self, self.touchStates[touch] != nil else { return }
-            self.backspaceTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            self.backspaceTimer = Timer.scheduledTimer(
+                withTimeInterval: Self.backspaceInterval, repeats: true
+            ) { [weak self] _ in
                 guard let self else { return }
-                self.telex.reset()
-                self.hangul.reset()
-                self.noteInternalEdit()
                 self.backspaceTicks += 1
                 // Characters first; a sustained press accelerates to words.
-                if self.backspaceTicks <= 15 {
-                    self.textDocumentProxy.deleteBackward()
-                } else if self.backspaceTicks % 2 == 0 {
-                    self.deleteWordBackward()
+                // The 12-tick mark matches Android's REPEAT_ACCEL_AFTER so a
+                // hold of the same length removes a comparable amount of text
+                // on both platforms.
+                if self.backspaceTicks <= KeyboardViewController.backspaceAccelAfter {
+                    // Route through handleBackspace, NOT a raw deleteBackward:
+                    // the old path reset only Telex and Hangul and then deleted
+                    // straight from the field, so holding backspace over a
+                    // pinyin / romaji / kana run left those buffers intact and
+                    // the next keystroke resurrected a word already erased.
+                    self.handleBackspace()
+                } else {
+                    // Word-jump phase: finish every composer first so the words
+                    // being removed are real field text, not composing state.
+                    self.commitComposing()
+                    if self.backspaceTicks % 2 == 0 {
+                        self.noteInternalEdit()
+                        self.deleteWordBackward()
+                        self.updateSuggestionBar()
+                    }
                 }
-                self.updateSuggestionBar()
             }
         }
     }
@@ -1738,10 +1989,13 @@ class KeyboardViewController: UIInputViewController {
             out = ch.uppercased()
         }
 
-        if isLetter && telexActive, let c = out.first {
-            let prev = telex.composingText
-            telex.input(c)
-            applyComposingDiff(from: prev, to: telex.composingText)
+        if isLetter && vietActive, let c = out.first {
+            // In VNI the digits row lives on the letters layer, so `isLetter`
+            // (which means "the letters layer") already routes the modifiers
+            // here. Digits reached through ?123 stay literal, matching Android.
+            let prev = viet.composingText
+            viet.input(c)
+            applyComposingDiff(from: prev, to: viet.composingText)
         } else if isLetter && inputLang == "ko", let c = out.first {
             let prev = hangul.composingText
             hangul.input(c)
@@ -1809,10 +2063,10 @@ class KeyboardViewController: UIInputViewController {
             let prev = pinyin
             pinyin = String(pinyin.dropLast())
             applyComposingDiff(from: prev, to: pinyin)
-        } else if telex.hasComposingText {
-            let prev = telex.composingText
-            telex.backspace()
-            applyComposingDiff(from: prev, to: telex.composingText)
+        } else if viet.hasComposingText {
+            let prev = viet.composingText
+            viet.backspace()
+            applyComposingDiff(from: prev, to: viet.composingText)
         } else if hangul.hasComposingText {
             let prev = hangul.composingText
             hangul.backspace()
@@ -1851,14 +2105,31 @@ class KeyboardViewController: UIInputViewController {
         }
         // Chinese: space commits the top hanzi candidate (no space typed).
         if inputLang == "zh", !pinyin.isEmpty {
-            commitZh(zhCandidates.first ?? pinyin)
+            // Only trust cached candidates that belong to THIS buffer. Lookup
+            // is asynchronous, so a fast typist can hit space while the answer
+            // for a shorter pinyin is still on screen; fall back to a direct
+            // (synchronous) convert for that one commit, exactly like Android's
+            // `zhTopCandidate`.
+            let top: String
+            if zhCandidatesQuery == pinyin, let first = zhCandidates.first {
+                top = first
+            } else {
+                // Through `lookupQueue`, never straight on main: `convert`
+                // lazily runs `ensureLoaded`, which writes both `dict` and the
+                // `syllables` Set. A background lookup can be running right
+                // now, and `pendingLookup.cancel()` does not stop one already
+                // in flight, so an unsynchronised main-thread call here is a
+                // real data race (and could open the database twice).
+                top = lookupQueue.sync { pinyinConv.convert(pinyin).first } ?? pinyin
+            }
+            commitZh(top)
             return
         }
         let now = Date()
         // Double-space period, the iOS habit: "word  " -> "word. "
         // (ideographic 。 on the CJK layouts, like the system keyboards).
         if now.timeIntervalSince(lastSpaceTap) < 0.4,
-           !telex.hasComposingText, !hangul.hasComposingText,
+           !viet.hasComposingText, !hangul.hasComposingText,
            let before = textDocumentProxy.documentContextBeforeInput,
            before.hasSuffix(" "),
            before.count >= 2 {
@@ -1919,7 +2190,11 @@ class KeyboardViewController: UIInputViewController {
     /// End the current composing word, leaving its text as-is in the field.
     private func commitComposing() {
         _ = telex.commitWord()
+        _ = vni.commitWord()
         _ = hangul.commit()
+        // Nothing is composing after this, so no cached candidate set belongs
+        // to the bar any more (see [endJaConversion]).
+        jaCandidatesQuery = ""
         if jaConverting {
             finalizeJaConversion()   // the displayed candidate stays
         } else if romaji.hasComposingText {
@@ -1930,7 +2205,7 @@ class KeyboardViewController: UIInputViewController {
         }
         if !pinyin.isEmpty {
             pinyin = ""              // the raw pinyin stays in the field
-            zhCandidates = []
+            zhCandidates = []; zhCandidatesQuery = ""; jaCandidatesQuery = ""
         }
     }
 
@@ -1943,7 +2218,10 @@ class KeyboardViewController: UIInputViewController {
         let reading = romaji.commit()
         guard !reading.isEmpty else { return false }
         jaReading = reading
-        var cands = Array(kanjiConv.convert(reading).prefix(12))
+        // Serialised with the background candidate lookups for the same reason
+        // as the pinyin commit above: `convert` lazily initialises the shared
+        // dictionary, so a concurrent main-thread call is a data race.
+        var cands = lookupQueue.sync { Array(kanjiConv.convert(reading).prefix(12)) }
         if cands.isEmpty { cands = [reading] }
         jaCandidates = cands
         jaCandIdx = 0
@@ -1980,6 +2258,11 @@ class KeyboardViewController: UIInputViewController {
         jaCandidates = []
         jaCandIdx = 0
         jaReading = ""
+        // The bar no longer belongs to any reading. Without this the guard in
+        // `updateSuggestionBar` still thinks the visible bar matches the next
+        // identical reading and skips the placeholder, so typing the same kana
+        // a second time left the idle action chips up until the lookup landed.
+        jaCandidatesQuery = ""
     }
 
     // MARK: - Japanese flick (12-key) input
@@ -1994,6 +2277,15 @@ class KeyboardViewController: UIInputViewController {
             fv.onKana = { [weak self] in self?.flickInputKana($0) }
             fv.onSymbol = { [weak self] in self?.flickInputSymbol($0) }
             fv.onBackspace = { [weak self] in self?.handleBackspace() }
+            fv.onBackspaceWord = { [weak self] in
+                guard let self else { return }
+                // Finish every composer first, so the words being removed are
+                // real field text rather than composing state.
+                self.commitComposing()
+                self.noteInternalEdit()
+                self.deleteWordBackward()
+                self.updateSuggestionBar()
+            }
             fv.onSpace = { [weak self] in self?.handleSpace() }
             fv.onReturn = { [weak self] in self?.handleReturn() }
             fv.onDakuten = { [weak self] in self?.flickDakuten() }
@@ -2103,6 +2395,7 @@ class KeyboardViewController: UIInputViewController {
         commitComposing()
         inputLang = "ja"
         AppGroupStore.shared.keyboardInputLang = "ja"
+        prewarmCJK()
         shiftState = .off
         layer = .letters
         rebuildKeys()
@@ -2132,7 +2425,7 @@ class KeyboardViewController: UIInputViewController {
     private func commitZh(_ text: String) {
         applyComposingDiff(from: pinyin, to: text)
         pinyin = ""
-        zhCandidates = []
+        zhCandidates = []; zhCandidatesQuery = ""; jaCandidatesQuery = ""
         updateSuggestionBar()
     }
 
@@ -2144,8 +2437,8 @@ class KeyboardViewController: UIInputViewController {
             commitComposing()
             return
         }
-        let word = telex.composingText
-        let literal = telex.literalIntent
+        let word = viet.composingText
+        let literal = viet.literalIntent
         commitComposing()
         guard autocorrectEnabled, !literal, word.count >= 2 else { return }
         guard let corrector, !corrector.isValid(word), !corrector.isEnglish(word) else { return }
@@ -2160,7 +2453,7 @@ class KeyboardViewController: UIInputViewController {
 
     /// Replace the current composing word with `replacement` (suggestion tap).
     private func replaceComposing(with replacement: String) {
-        let word = telex.composingText
+        let word = viet.composingText
         commitComposing()
         noteInternalEdit()
         for _ in 0..<word.count {
@@ -2194,8 +2487,22 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
+    /// Key-tap haptic. Android has had one since the beginning; iOS only ever
+    /// played the click sound, which is why the same keyboard felt flatter
+    /// here. A keyboard extension can only vibrate with Full Access granted,
+    /// so this is best-effort and silently absent otherwise.
+    /// Gated at the CALL site, not captured once at creation: as a lazy that
+    /// resolved `hasFullAccess` on first use, granting Full Access mid-session
+    /// left haptics dead until the keyboard was rebuilt. Re-preparing after
+    /// each tap also keeps the Taptic engine warm, so the first key after a
+    /// pause is not silently dropped.
+    private let tapHaptic = UIImpactFeedbackGenerator(style: .light)
+
     private func playClick() {
         UIDevice.current.playInputClick()
+        guard hasFullAccess else { return }
+        tapHaptic.impactOccurred(intensity: 0.5)
+        tapHaptic.prepare()
     }
 
     // MARK: - Result panel (translate / reply / refine results)
@@ -2283,6 +2590,7 @@ class KeyboardViewController: UIInputViewController {
         }
 
         actionInFlight = true
+        let token = actionSeq
         showBarProcessing()
 
         Task { @MainActor in
@@ -2294,7 +2602,7 @@ class KeyboardViewController: UIInputViewController {
                     sourceLang: store.sourceLang
                 )
                 actionInFlight = false
-                applyActionResult(before: before, after: after, replacement: extractTranslation(json))
+                applyActionResult(before: before, after: after, replacement: extractTranslation(json), token: token)
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2319,6 +2627,8 @@ class KeyboardViewController: UIInputViewController {
         }
         let text = String(raw.prefix(3000))
 
+        // No token needed here: the clipboard flow shows a read-only panel and
+        // never writes to the field, so a late result cannot corrupt anything.
         actionInFlight = true
         showBarProcessing()
 
@@ -2372,6 +2682,7 @@ class KeyboardViewController: UIInputViewController {
         }
 
         actionInFlight = true
+        let token = actionSeq
         showBarProcessing()
 
         Task { @MainActor in
@@ -2389,7 +2700,7 @@ class KeyboardViewController: UIInputViewController {
                     isReply: true
                 )
                 actionInFlight = false
-                applyActionResult(before: before, after: after, replacement: extractTranslation(json))
+                applyActionResult(before: before, after: after, replacement: extractTranslation(json), token: token)
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2409,8 +2720,22 @@ class KeyboardViewController: UIInputViewController {
     /// the captured strings. adjustTextPosition counts UTF-16 code units
     /// while deleteBackward removes grapheme clusters - hence the different
     /// units for the forward move vs the delete count (emoji-safe).
-    private func applyActionResult(before: String, after: String, replacement: String) {
+    private func applyActionResult(before: String, after: String, replacement: String, token: Int) {
         guard !replacement.isEmpty else {
+            showActionBar()
+            return
+        }
+        // Two things must still hold. First the SESSION: `actionSeq` is bumped
+        // by any external text change, field switch or dismissal, so a result
+        // can never land in a different field that happens to contain the same
+        // text. Second the CONTENT: the delete count below is derived from the
+        // captured window, so if the user kept typing meanwhile, applying now
+        // would delete the wrong number of characters and destroy what they
+        // wrote after tapping.
+        guard token == actionSeq,
+              (textDocumentProxy.documentContextBeforeInput ?? "") == before,
+              (textDocumentProxy.documentContextAfterInput ?? "") == after
+        else {
             showActionBar()
             return
         }
@@ -2468,13 +2793,14 @@ class KeyboardViewController: UIInputViewController {
         }
 
         actionInFlight = true
+        let token = actionSeq
         showBarProcessing()
 
         Task { @MainActor in
             do {
                 let json = try await api.refine(text: trimmed)
                 actionInFlight = false
-                applyActionResult(before: before, after: after, replacement: extractTranslation(json))
+                applyActionResult(before: before, after: after, replacement: extractTranslation(json), token: token)
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2670,6 +2996,17 @@ final class FlickInputView: UIView {
     private let spaceButton = UIButton(type: .system)
     private let returnButton = UIButton(type: .system)
 
+    /// Hold-to-repeat for the delete key (see [backspaceDown]).
+    private var backspaceRepeatTimer: Timer?
+    private var backspaceTicks = 0
+
+    /// Delete a whole word. Wired to the controller so a sustained hold on this
+    /// layout escalates exactly like the QWERTY one instead of creeping along
+    /// one character at a time forever.
+    var onBackspaceWord: (() -> Void)?
+
+    deinit { backspaceRepeatTimer?.invalidate() }
+
     /// (kana flick key, column 0-4, row 0-3).
     private var kanaKeys: [(view: FlickKeyView, col: Int, row: Int)] = []
 
@@ -2724,7 +3061,15 @@ final class FlickInputView: UIView {
         backspaceButton.setImage(UIImage(systemName: "delete.left"), for: .normal)
         backspaceButton.tintColor = .label
         styleFnButton(backspaceButton)
-        backspaceButton.addTarget(self, action: #selector(backspaceTapped), for: .touchUpInside)
+        // Delete on touch DOWN and repeat while held, like the QWERTY layout
+        // and every system keyboard. On .touchUpInside alone this key did
+        // nothing until the finger lifted, and holding it deleted exactly one
+        // character - the flick keyboard's single worst piece of feel.
+        backspaceButton.addTarget(self, action: #selector(backspaceDown), for: .touchDown)
+        backspaceButton.addTarget(
+            self, action: #selector(backspaceUp),
+            for: [.touchUpInside, .touchUpOutside, .touchCancel],
+        )
         addSubview(backspaceButton)
 
         globeButton.setImage(UIImage(systemName: "globe"), for: .normal)
@@ -2780,7 +3125,42 @@ final class FlickInputView: UIView {
     @objc private func abcTapped() { onTapSound?(); onSwitchToRomaji?() }
     @objc private func emojiTapped() { onTapSound?(); onEmoji?() }
     @objc private func dakutenTapped() { onTapSound?(); onDakuten?() }
-    @objc private func backspaceTapped() { onTapSound?(); onBackspace?() }
+    @objc private func backspaceDown() {
+        onTapSound?()
+        onBackspace?()
+        backspaceRepeatTimer?.invalidate()
+        backspaceTicks = 0
+        // Same cadence AND the same acceleration as the QWERTY backspace and
+        // Android, so a hold of a given length removes the same amount of text
+        // on every keyboard. This layout used to sit at a flat 0.1 s forever.
+        backspaceRepeatTimer = Timer.scheduledTimer(
+            withTimeInterval: KeyboardViewController.backspaceFirstDelay, repeats: false
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.backspaceRepeatTimer = Timer.scheduledTimer(
+                withTimeInterval: KeyboardViewController.backspaceInterval, repeats: true
+            ) { [weak self] _ in
+                guard let self else { return }
+                self.backspaceTicks += 1
+                if self.backspaceTicks <= KeyboardViewController.backspaceAccelAfter {
+                    self.onBackspace?()
+                } else if self.backspaceTicks % 2 == 0 {
+                    self.onBackspaceWord?()
+                }
+            }
+        }
+    }
+
+    @objc private func backspaceUp() {
+        backspaceRepeatTimer?.invalidate()
+        backspaceRepeatTimer = nil
+    }
+
+    /// Stop the delete repeat from outside a touch. The controller keeps this
+    /// view alive across keyboard dismissals, so without an external cancel a
+    /// held delete kept firing after the keyboard was gone.
+    func cancelAllGestures() { backspaceUp() }
+
     @objc private func spaceTapped() { onTapSound?(); onSpace?() }
     @objc private func returnTapped() { onTapSound?(); onReturn?() }
 

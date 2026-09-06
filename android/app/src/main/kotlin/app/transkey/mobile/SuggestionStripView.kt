@@ -242,12 +242,23 @@ class SuggestionStripView : View {
     }
     private val rectF = RectF()
 
-    private val sideZone get() = dp(56f)
+    private val leftZone get() = dp(56f)
+    private val micZone get() = dp(56f)
+    private var pasteVisible = false
+    private val pasteZone get() = if (pasteVisible) dp(48f) else 0f
+    private val rightZone get() = micZone + pasteZone
     private val expandZone get() = dp(40f)
     private val minSlot get() = dp(58f)
     private var expandLeft = 0f    // left edge of the ▼ zone (for hit-testing)
     private var visibleCount = 0   // candidates drawn on the strip (rest in grid)
     private var hasExpandZone = false
+
+    /** Reserve toolbar space only while the real Paste button is visible. */
+    fun setPasteVisible(visible: Boolean) {
+        if (pasteVisible == visible) return
+        pasteVisible = visible
+        invalidate()
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), dp(48f).toInt())
@@ -259,8 +270,8 @@ class SuggestionStripView : View {
         drawGrid(c, dp(30f), cy)
         drawMic(c, width - dp(30f), cy, dp(9.5f))
 
-        val l = sideZone
-        val r = width - sideZone
+        val l = leftZone
+        val r = width - rightZone
 
         // Priority: in-flight status > word suggestions > alert banner > chips.
         if (processing) {
@@ -340,19 +351,21 @@ class SuggestionStripView : View {
 
     /** Draw the optional language pill, then the feature chips in what's left. */
     private fun drawActions(c: Canvas, l: Float, r: Float, cy: Float) {
-        val padH = dp(6f)
+        val padH = dp(4f)
         val pillH = dp(28f)
         langRect.setEmpty()
         undoRect.setEmpty()
         chipRects.clear()
         var start = l
         if (langLabel.isNotEmpty()) {
-            val pillW = textLang.measureText(langLabel) + dp(24f)
+            val langPillH = dp(22f)
+            textLang.textSize = sp(10f)
+            val pillW = textLang.measureText(langLabel) + dp(10f)
             val left = start + padH
             val right = start + pillW - padH
-            rectF.set(left, cy - pillH / 2, right, cy + pillH / 2)
+            rectF.set(left, cy - langPillH / 2, right, cy + langPillH / 2)
             langRect.set(rectF)
-            c.drawRoundRect(rectF, pillH / 2, pillH / 2, langPillFill)
+            c.drawRoundRect(rectF, langPillH / 2, langPillH / 2, langPillFill)
             val base = cy - (textLang.descent() + textLang.ascent()) / 2f
             c.drawText(langLabel, (left + right) / 2f, base, textLang)
             start += pillW
@@ -376,10 +389,8 @@ class SuggestionStripView : View {
         for (i in actions.indices) {
             val label = actions[i]
             textAction.textSize = baseSize
-            // Fit the pill to its label instead of filling the slot: slot-wide
-            // pills read oversized and turn the whole strip into tap targets.
-            val pillW = (textAction.measureText(label) + dp(24f))
-                .coerceAtMost(slot - padH * 2)
+            // Equal-width pills keep the three primary actions balanced.
+            val pillW = (slot - padH * 2).coerceAtLeast(dp(24f))
             val centerX = start + slot * i + slot / 2
             val left = centerX - pillW / 2
             val right = centerX + pillW / 2
@@ -524,7 +535,7 @@ class SuggestionStripView : View {
         when (e.action) {
             MotionEvent.ACTION_DOWN -> {
                 micLongPressFired = false
-                if (x > width - sideZone && onMicLongPress != null) {
+                if (x > width - micZone && onMicLongPress != null) {
                     postDelayed(
                         micLongPressRunnable,
                         android.view.ViewConfiguration.getLongPressTimeout().toLong(),
@@ -532,7 +543,7 @@ class SuggestionStripView : View {
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (x <= width - sideZone) removeCallbacks(micLongPressRunnable)
+                if (x <= width - micZone) removeCallbacks(micLongPressRunnable)
             }
             MotionEvent.ACTION_CANCEL -> removeCallbacks(micLongPressRunnable)
             MotionEvent.ACTION_UP -> {
@@ -546,15 +557,16 @@ class SuggestionStripView : View {
 
     private fun handleTap(x: Float, y: Float) {
         when {
-            x < sideZone -> onGridTap?.invoke()
-            x > width - sideZone -> onMicTap?.invoke()
+            x < leftZone -> onGridTap?.invoke()
+            x > width - micZone -> onMicTap?.invoke()
+            pasteVisible && x > width - rightZone -> { /* Paste button owns this zone. */ }
             processing -> { /* locked while a request is in flight */ }
             // Alert banner owns the middle zone only when no suggestions show
             // (matches onDraw's priority), so this can't swallow candidate taps.
             notice.isNotEmpty() && suggestions.isEmpty() -> onNoticeTap?.invoke()
             suggestions.isNotEmpty() -> {
                 if (hasExpandZone && x >= expandLeft) { onExpandTap?.invoke(); return }
-                val l = sideZone
+                val l = leftZone
                 val vis = visibleCount.coerceAtLeast(1)
                 val slot = (expandLeft - l) / vis
                 val i = ((x - l) / slot).toInt().coerceIn(0, vis - 1)

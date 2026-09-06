@@ -221,16 +221,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get tabRefine => 'Perbaiki';
 
   @override
-  String get keyboardSetup => 'Pengaturan keyboard';
+  String get keyboardSetup => 'Siapkan keyboard';
 
   @override
   String get keyboardSettingsTitle => 'Gelembung & Keyboard';
 
   @override
-  String get keyboardSettingsSectionStatus => 'Bubble & Izin';
+  String get keyboardSettingsSectionStatus => 'Tombol TransKey';
 
   @override
-  String get keyboardSettingsSectionBehavior => 'Perilaku bubble';
+  String get keyboardSettingsSectionBehavior => 'Cara kerja tombol';
 
   @override
   String get imeSectionTitle => 'Keyboard';
@@ -250,20 +250,16 @@ class AppLocalizationsId extends AppLocalizations {
       'Belum aktif. Ketuk untuk mengaktifkan di Pengaturan.';
 
   @override
-  String get bubbleSetup => 'Pengaturan tombol melayang';
+  String get bubbleSetup => 'Siapkan tombol TransKey';
 
   @override
-  String get floatingBubble => 'Tombol melayang';
+  String get floatingBubble => 'Tombol TransKey';
 
   @override
   String get bubbleActive => 'Aktif';
 
   @override
   String get bubbleInactive => 'Nonaktif';
-
-  @override
-  String get permissionsNeedSetup =>
-      'Ketuk untuk memberikan izin yang diperlukan';
 
   @override
   String get sendFeedback => 'Kirim masukan';
@@ -949,75 +945,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get onboardGetStarted => 'Mulai';
-
-  @override
-  String get setupTitle => 'Atur keyboard';
-
-  @override
-  String get setupTitleAndroid => 'Atur TransKey';
-
-  @override
-  String get setupOpenSettings => 'Buka pengaturan';
-
-  @override
-  String get setupOpenPermissions => 'Buka izin';
-
-  @override
-  String get setupStep1TitleIOS => 'Tambahkan keyboard TransKey';
-
-  @override
-  String get setupStep1TitleAndroid => 'Aktifkan tombol melayang';
-
-  @override
-  String get setupStep1DescIOS =>
-      'Buka Pengaturan dan tambahkan TransKey sebagai keyboard kustom agar Anda dapat menerjemahkan langsung saat mengetik.';
-
-  @override
-  String get setupStep1DescAndroid =>
-      'Izinkan TransKey ditampilkan di atas aplikasi lain agar tombol melayang dapat muncul saat dibutuhkan.';
-
-  @override
-  String get setupStep2Title => 'Izinkan akses penuh';
-
-  @override
-  String get setupStep2TitleAndroid => 'Tombol diaktifkan';
-
-  @override
-  String get setupStep2DescIOS =>
-      'Ketuk TransKey di daftar keyboard dan aktifkan \"Izinkan Akses Penuh\". Ini diperlukan untuk koneksi internet untuk terjemahan.';
-
-  @override
-  String get setupStep2DescAndroid =>
-      'Izin tampil di atas aplikasi lain memungkinkan TransKey menampilkan tombol melayang untuk terjemahan cepat.';
-
-  @override
-  String get setupStep3Title => 'Semua siap!';
-
-  @override
-  String get setupStep3DescIOS =>
-      'Saat mengetik di aplikasi mana pun, tekan lama tombol globe 🌐 untuk beralih ke TransKey. Ketuk \"Balas\" untuk menerjemahkan pesan Anda secara instan.';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'Tombol TransKey kini ada di layar Anda. Salin teks apa pun, ketuk tombol, pilih tindakan - hasilnya langsung muncul tanpa meninggalkan aplikasi.';
-
-  @override
-  String get setupStep4Title => 'Terjemahkan dari aplikasi mana pun';
-
-  @override
-  String get setupStep4DescIOS =>
-      'Pilih teks apa pun → ketuk \"Bagikan\" → pilih TransKey. Atau salin teks dan buka TransKey — ia akan membaca papan klip Anda secara otomatis.';
-
-  @override
-  String get setupStep4DescAndroid =>
-      'Salin teks di app mana pun → ketuk tombol TransKey → pilih Terjemahkan, Balas, atau fungsi lain → ketuk di mana saja untuk menutup setelah selesai.';
-
-  @override
-  String get setupStep5Title => 'Fitur cerdas';
-
-  @override
-  String get setupStep5Desc =>
-      'Terjemahkan, Balas, Ringkas, Jelaskan & Perbaiki. Fitur Pro ditandai dengan ikon gembok.';
 
   @override
   String get guideTitle => 'Cara menggunakan';
@@ -1751,4 +1678,155 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get pasteTranslate => 'Tempel & terjemahkan';
+
+  @override
+  String get setupHubTitle => 'Siapkan TransKey';
+
+  @override
+  String get setupHubSubtitle =>
+      'Aktifkan dua hal ini, lalu TransKey bisa dipakai di semua aplikasi.';
+
+  @override
+  String get setupHubAllDoneBody =>
+      'Semuanya sudah aktif. TransKey siap dipakai di aplikasi mana pun.';
+
+  @override
+  String get setupTaskButtonTitle => 'Tombol TransKey';
+
+  @override
+  String get setupTaskButtonBody =>
+      'Tombol kecil yang mengambang di layar. Anda bisa menerjemahkan tanpa keluar dari aplikasi yang sedang dibuka.';
+
+  @override
+  String get setupTaskKeyboardTitle => 'Keyboard TransKey';
+
+  @override
+  String get setupTaskKeyboardBody =>
+      'Terjemahkan sambil mengetik, langsung di dalam pesan Anda.';
+
+  @override
+  String get setupStateDone => 'Siap';
+
+  @override
+  String get setupStateOff => 'Belum aktif';
+
+  @override
+  String get setupStateButtonPaused => 'Sudah diizinkan, belum tampil';
+
+  @override
+  String get setupStateKeyboardNotUsed => 'Sudah aktif, belum dipakai';
+
+  @override
+  String get setupStateUnknown => 'Belum bisa diperiksa';
+
+  @override
+  String get setupOpenSystemSettings => 'Buka pengaturan HP';
+
+  @override
+  String get setupNoWorries =>
+      'Berhenti di sini juga tidak apa-apa. Anda tetap bisa menerjemahkan di dalam aplikasi.';
+
+  @override
+  String get setupButtonWhy =>
+      'Tombol TransKey tampil di atas aplikasi lain. Jadi Anda bisa menerjemahkan pesan tanpa menutup aplikasinya. HP perlu mengizinkan ini dulu.';
+
+  @override
+  String get setupMockAppsTitle => 'Tampil di atas aplikasi lain';
+
+  @override
+  String get setupButtonListHint =>
+      'Daftar ini berisi semua aplikasi di HP, berurutan sesuai abjad. Geser ke bawah sampai huruf T, atau pakai kotak pencarian di bagian atas.';
+
+  @override
+  String get setupButtonStep1 => 'Cari TransKey di daftar';
+
+  @override
+  String get setupButtonStep2 => 'Ketuk TransKey';
+
+  @override
+  String get setupButtonStep3 => 'Nyalakan sakelarnya, lalu kembali ke sini';
+
+  @override
+  String get setupKeyboardWhy =>
+      'Dengan keyboard TransKey, Anda bisa menerjemahkan pesan sambil menulisnya, tanpa berpindah aplikasi.';
+
+  @override
+  String get setupMockKeyboardsTitle => 'Keyboard di layar';
+
+  @override
+  String get setupKeyboardListHint =>
+      'Di HP, namanya tertulis TransKey Keyboard.';
+
+  @override
+  String get setupKeyboardStep1 => 'Cari baris TransKey Keyboard';
+
+  @override
+  String get setupKeyboardStep2 => 'Nyalakan sakelarnya, lalu kembali ke sini';
+
+  @override
+  String get setupKeyboardWarning =>
+      'HP akan menampilkan peringatan lebih dulu. Ketuk OK untuk melanjutkan. Semua HP menanyakan hal ini untuk setiap keyboard.';
+
+  @override
+  String get setupKeyboardPickTitle => 'Sedikit lagi';
+
+  @override
+  String get setupKeyboardPickBody =>
+      'Keyboard sudah aktif. Satu ketukan lagi, lalu bisa langsung dipakai.';
+
+  @override
+  String get setupKeyboardPickAction => 'Pilih TransKey';
+
+  @override
+  String get setupKeyboardPickFallback =>
+      'Daftar pilihan tidak terbuka. Anda juga bisa mengganti keyboard lewat ikon keyboard kecil yang muncul saat mengetik.';
+
+  @override
+  String get setupNotYetTitle => 'Belum aktif';
+
+  @override
+  String get setupNotYetButtonBody =>
+      'Sepertinya TransKey belum ketemu di daftar. Kali ini pakai kotak pencarian di bagian atas, lalu ketik TransKey.';
+
+  @override
+  String get setupNotYetKeyboardBody =>
+      'Sepertinya tadi peringatan dari HP ditutup dengan tombol Batal. Peringatan itu wajar. Kali ini ketuk OK.';
+
+  @override
+  String get setupDoneTitle => 'Semua sudah siap';
+
+  @override
+  String get setupDoneButtonBody =>
+      'Tombol TransKey sudah ada di layar Anda. Salin teks apa saja, ketuk tombolnya, lalu pilih apa yang ingin dilakukan.';
+
+  @override
+  String get setupDoneKeyboardBody =>
+      'Sekarang Anda bisa menerjemahkan sambil mengetik di aplikasi mana pun.';
+
+  @override
+  String get setupDoneAction => 'Selesai';
+
+  @override
+  String get setupIosStep1 => 'Buka Pengaturan, lalu Umum';
+
+  @override
+  String get setupIosStep2 => 'Ketuk Papan Ketik, lalu Papan Ketik sekali lagi';
+
+  @override
+  String get setupIosStep3 =>
+      'Ketuk Tambahkan Papan Ketik Baru, lalu pilih TransKey';
+
+  @override
+  String get setupIosStep4 =>
+      'Ketuk TransKey sekali lagi, lalu nyalakan Izinkan Akses Penuh';
+
+  @override
+  String get setupIosFullAccessNote =>
+      'Izinkan Akses Penuh membuat keyboard bisa terhubung ke internet untuk menerjemahkan. Tanpa itu, keyboard tetap bisa dipakai mengetik seperti biasa.';
+
+  @override
+  String get setupBannerTitle => 'TransKey belum selesai disiapkan';
+
+  @override
+  String get setupBannerAction => 'Selesaikan penyiapan';
 }

@@ -1139,6 +1139,34 @@ class BubbleService : Service() {
         engine.speak(text, TextToSpeech.QUEUE_FLUSH, null)
     }
 
+    /**
+     * Speak the ORIGINAL text (speakOutput reads the translation) so the
+     * user picks which language to hear. Needs a concrete source lang:
+     * server detection wins, else the pinned non-auto source pick - the
+     * panel hides the button when neither is available, this guard is
+     * just belt-and-suspenders.
+     */
+    internal fun speakSource() {
+        val engine = tts ?: return
+        // Same tap-to-stop toggle as speakOutput - both buttons share the
+        // one engine, so tapping either while ANY speech plays stops it.
+        if (engine.isSpeaking) {
+            engine.stop()
+            return
+        }
+        val text = currentSourceText?.takeIf { it.isNotEmpty() } ?: return
+        // Server detection returns the literal "auto" for Latin-script
+        // langs - filter it like a null on both sides.
+        val lang = currentDetectedLang?.takeIf { it != "auto" }
+            ?: currentSourceLang.takeIf { it != "auto" }
+            ?: return
+        if (!ttsReady) { Toast.makeText(this, localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show(); return }
+        engine.language = langToLocale(lang)
+        engine.setSpeechRate(readTtsRate().toFloat())
+        @Suppress("DEPRECATION")
+        engine.speak(text, TextToSpeech.QUEUE_FLUSH, null)
+    }
+
     internal fun readTtsRate(): Double {
         // shared_preferences's encoding for doubles has changed across
         // plugin versions — sometimes Float, sometimes a String-encoded
@@ -1168,7 +1196,10 @@ class BubbleService : Service() {
         "ru" -> Locale("ru")
         "th" -> Locale("th")
         "id" -> Locale("in")
-        else -> Locale.ENGLISH
+        // Let the OS engine resolve any other code itself instead of
+        // falling back to English - an English voice reading e.g. Arabic
+        // is worse than the engine's own best-effort (or silence).
+        else -> Locale.forLanguageTag(lang)
     }
 
     // ── Prefs helpers ──

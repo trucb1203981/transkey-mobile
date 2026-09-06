@@ -71,4 +71,69 @@ class TelexProcessorTest {
     @Test fun strict_circumflex_stillWorks() = assertEquals("â", typeStrict("aa"))
     @Test fun strict_horn_stillWorks() = assertEquals("thương", typeStrict("thuongw"))
     @Test fun strict_dd_stillWorks() = assertEquals("đ", typeStrict("dd"))
+
+    // ---- bare 'w' = ư (device-reported: "được" could not be typed at all) ----
+
+    @Test fun bareW_givesUHorn() = assertEquals("ư", type("w"))
+    @Test fun bareW_afterDd() = assertEquals("đư", type("ddw"))
+    @Test fun duoc_viaBareW() = assertEquals("được", type("ddwowcj"))
+    @Test fun duoc_viaBareW_progressesPerKey() {
+        val t = TelexProcessor()
+        val expected = listOf("d", "đ", "đư", "đưo", "đươ", "đươc", "được")
+        "ddwowcj".forEachIndexed { index, key ->
+            t.input(key)
+            assertEquals("step $index for key $key", expected[index], t.composingText)
+        }
+    }
+    @Test fun duoc_viaUw_stillWorks() = assertEquals("được", type("dduwowcj"))
+    @Test fun duoc_strictMode() = assertEquals("được", typeStrict("ddwowcj"))
+    @Test fun bareW_afterConsonant() = assertEquals("hư", type("hw"))
+    @Test fun doubleW_escapesToLiteral() = assertEquals("w", type("ww"))
+    /** The escape keeps the case of the FIRST w, not of the escape keystroke. */
+    @Test fun doubleW_keepsUppercase() = assertEquals("W", type("Ww"))
+    /** A vowel that exists but cannot take a horn stays literal (not "ư"). */
+    @Test fun w_afterNonHornableVowel_staysLiteral() = assertEquals("new", type("new"))
+
+    // ---- modern tone placement on open oa / oe / uy clusters ----
+
+    @Test fun hoa_modern() = assertEquals("hòa", type("hoaf"))
+    @Test fun loa_modern() = assertEquals("lòa", type("loaf"))
+    @Test fun khoe_modern() = assertEquals("khỏe", type("khoer"))
+    @Test fun loe_modern() = assertEquals("lóe", type("loes"))
+    @Test fun thuy_modern() = assertEquals("thúy", type("thuys"))
+    @Test fun thuy_hoi_modern() = assertEquals("thủy", type("thuyr"))
+
+    @Test fun legacyToneStyle_stillAvailable() {
+        val t = TelexProcessor()
+        t.modernToneStyle = false
+        for (c in "hoaf") t.input(c)
+        assertEquals("hoà", t.composingText)
+    }
+
+    // ---- a tone typed EARLY must follow the vowel as the cluster changes ----
+
+    @Test fun toneBeforeCircumflex_migrates() = assertEquals("tiếng", type("tiseeng"))
+    @Test fun toneAfterCircumflex_unchanged() = assertEquals("tiếng", type("tieesng"))
+    @Test fun toneAtEnd_unchanged() = assertEquals("tiếng", type("tieengs"))
+    @Test fun toneEarly_thuy() = assertEquals("thủy", type("thury"))
+    @Test fun closedCluster_hoan() = assertEquals("hoàn", type("hoafn"))
+
+    // ---- cases most at risk from the tone-relocation pass ----
+
+    @Test fun toan_toneBeforeFinal() = assertEquals("toán", type("toasn"))
+    @Test fun toan_toneAfterFinal() = assertEquals("toán", type("toans"))
+    @Test fun muon_uoCluster() = assertEquals("muốn", type("muoosn"))
+    @Test fun tuyet_uyeCluster() = assertEquals("tuyệt", type("tuyeejt"))
+    @Test fun nghieng_toneBeforeNg() = assertEquals("nghiếng", type("nghieesng"))
+    @Test fun ngoai_huyen() = assertEquals("ngoài", type("ngoaif"))
+    @Test fun ngoai_sac() = assertEquals("ngoái", type("ngoais"))
+    @Test fun cua_uPriorityWins() = assertEquals("cửa", type("cuwar"))
+    @Test fun thua_uPriorityWins() = assertEquals("thừa", type("thuwaf"))
+    @Test fun quy_quDigraphSkip() = assertEquals("quỷ", type("quyr"))
+    @Test fun gia_giDigraphSkip() = assertEquals("già", type("giaf"))
+    @Test fun viet_toneAfterWholeSyllable() = assertEquals("việt", type("vieetj"))
+    @Test fun khuyen_uyeSac() = assertEquals("khuyến", type("khuyeens"))
+    @Test fun mua_singleTarget() = assertEquals("mùa", type("muaf"))
+    /** Repeating the tone key still escapes to literal text. */
+    @Test fun repeatTone_stillEscapes() = assertEquals("as", type("ass"))
 }

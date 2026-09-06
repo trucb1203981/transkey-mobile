@@ -219,16 +219,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tabRefine => '推敲';
 
   @override
-  String get keyboardSetup => 'キーボード設定';
+  String get keyboardSetup => 'キーボードの設定';
 
   @override
   String get keyboardSettingsTitle => 'バブル＆キーボード';
 
   @override
-  String get keyboardSettingsSectionStatus => 'バブルと権限';
+  String get keyboardSettingsSectionStatus => 'TransKey ボタン';
 
   @override
-  String get keyboardSettingsSectionBehavior => 'バブルの動作';
+  String get keyboardSettingsSectionBehavior => 'ボタンの動き';
 
   @override
   String get imeSectionTitle => 'キーボード';
@@ -246,19 +246,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get imeStatusNotEnabled => '無効。タップしてシステム設定で有効化。';
 
   @override
-  String get bubbleSetup => 'バブル設定';
+  String get bubbleSetup => 'TransKey ボタンの設定';
 
   @override
-  String get floatingBubble => 'フローティングバブル';
+  String get floatingBubble => 'TransKey ボタン';
 
   @override
   String get bubbleActive => '有効';
 
   @override
   String get bubbleInactive => '無効';
-
-  @override
-  String get permissionsNeedSetup => '必要な権限を許可するにはタップ';
 
   @override
   String get sendFeedback => 'フィードバックを送信';
@@ -914,74 +911,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get onboardGetStarted => 'はじめる';
-
-  @override
-  String get setupTitle => 'キーボードを設定';
-
-  @override
-  String get setupTitleAndroid => 'TransKey を設定';
-
-  @override
-  String get setupOpenSettings => '設定を開く';
-
-  @override
-  String get setupOpenPermissions => '権限を開く';
-
-  @override
-  String get setupStep1TitleIOS => 'TransKeyキーボードを追加';
-
-  @override
-  String get setupStep1TitleAndroid => 'フローティングバブルを有効化';
-
-  @override
-  String get setupStep1DescIOS =>
-      '設定を開き、TransKeyをカスタムキーボードとして追加すると、入力しながら直接翻訳できます。';
-
-  @override
-  String get setupStep1DescAndroid =>
-      '他のアプリの上にTransKeyを表示する権限を与えると、必要なときにフローティングバブルが表示されます。';
-
-  @override
-  String get setupStep2Title => 'フルアクセスを許可';
-
-  @override
-  String get setupStep2TitleAndroid => 'バブルが有効です';
-
-  @override
-  String get setupStep2DescIOS =>
-      'キーボード一覧のTransKeyをタップし、「フルアクセスを許可」を有効にしてください。翻訳のためにインターネット接続が必要です。';
-
-  @override
-  String get setupStep2DescAndroid =>
-      'オーバーレイ権限により、TransKeyは他のアプリの上にフローティングバブルを表示してすばやく翻訳できます。';
-
-  @override
-  String get setupStep3Title => '準備完了!';
-
-  @override
-  String get setupStep3DescIOS =>
-      'アプリで入力中に地球儀キー🌐を長押ししてTransKeyに切り替え。「返信」をタップしてメッセージを即翻訳。';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'TransKeyボタンが画面に表示されました。テキストをコピーしてボタンをタップ、操作を選ぶだけ - アプリを離れずに結果が表示されます。';
-
-  @override
-  String get setupStep4Title => 'どのアプリからでも翻訳';
-
-  @override
-  String get setupStep4DescIOS =>
-      'テキストを選択 → 「共有」 → TransKey を選ぶ。またはコピーしてTransKeyを開けば、クリップボードを自動で読み取ります。';
-
-  @override
-  String get setupStep4DescAndroid =>
-      'アプリでテキストをコピー → TransKeyボタンをタップ → 翻訳・返信など操作を選ぶ → 終わったら画面をタップして閉じる';
-
-  @override
-  String get setupStep5Title => 'スマート機能';
-
-  @override
-  String get setupStep5Desc => '翻訳・返信・要約・説明・推敲。Pro限定機能には鍵アイコンがついています。';
 
   @override
   String get guideTitle => '使い方';
@@ -1676,4 +1605,145 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get pasteTranslate => 'ペーストして翻訳';
+
+  @override
+  String get setupHubTitle => 'TransKey の設定';
+
+  @override
+  String get setupHubSubtitle => 'この 2 つをオンにすると、TransKey がどのアプリでも使えます。';
+
+  @override
+  String get setupHubAllDoneBody => 'すべてオンになりました。どのアプリでも TransKey を使えます。';
+
+  @override
+  String get setupTaskButtonTitle => 'TransKey ボタン';
+
+  @override
+  String get setupTaskButtonBody => '画面に浮かぶ小さなボタンです。開いているアプリを閉じずに翻訳できます。';
+
+  @override
+  String get setupTaskKeyboardTitle => 'TransKey キーボード';
+
+  @override
+  String get setupTaskKeyboardBody => 'メッセージを書きながら、その場で翻訳できます。';
+
+  @override
+  String get setupStateDone => '準備できています';
+
+  @override
+  String get setupStateOff => 'まだオンになっていません';
+
+  @override
+  String get setupStateButtonPaused => '許可済みですが、表示されていません';
+
+  @override
+  String get setupStateKeyboardNotUsed => 'オンですが、使われていません';
+
+  @override
+  String get setupStateUnknown => 'まだ確認できていません';
+
+  @override
+  String get setupOpenSystemSettings => 'スマートフォンの設定を開く';
+
+  @override
+  String get setupNoWorries => 'ここでやめても問題ありません。アプリの中では今までどおり翻訳できます。';
+
+  @override
+  String get setupButtonWhy =>
+      'TransKey ボタンはほかのアプリの上に浮かびます。メッセージを閉じずに翻訳できます。そのためにスマートフォンの許可が必要です。';
+
+  @override
+  String get setupMockAppsTitle => 'ほかのアプリの上に表示';
+
+  @override
+  String get setupButtonListHint =>
+      'この一覧にはスマートフォンのすべてのアプリがアルファベット順に並んでいます。T のところまでスクロールするか、上の検索欄を使ってください。';
+
+  @override
+  String get setupButtonStep1 => '一覧から TransKey を探します';
+
+  @override
+  String get setupButtonStep2 => 'TransKey をタップします';
+
+  @override
+  String get setupButtonStep3 => 'スイッチをオンにして、ここに戻ってきてください';
+
+  @override
+  String get setupKeyboardWhy =>
+      'TransKey キーボードがあれば、メッセージを書きながら翻訳できます。アプリを行き来する必要はありません。';
+
+  @override
+  String get setupMockKeyboardsTitle => '画面キーボード';
+
+  @override
+  String get setupKeyboardListHint => 'スマートフォンでは TransKey Keyboard と表示されます。';
+
+  @override
+  String get setupKeyboardStep1 => 'TransKey Keyboard の行を探します';
+
+  @override
+  String get setupKeyboardStep2 => 'スイッチをオンにして、ここに戻ってきてください';
+
+  @override
+  String get setupKeyboardWarning =>
+      '先にスマートフォンから警告が表示されます。OK をタップして進んでください。どのスマートフォンでも、どのキーボードでも同じ確認が出ます。';
+
+  @override
+  String get setupKeyboardPickTitle => 'あと少しです';
+
+  @override
+  String get setupKeyboardPickBody => 'キーボードはオンになりました。もう一度タップすれば使えます。';
+
+  @override
+  String get setupKeyboardPickAction => 'TransKey を選ぶ';
+
+  @override
+  String get setupKeyboardPickFallback =>
+      '選択画面が開きませんでした。文字を入力するときに出る小さなキーボードのアイコンからも切り替えられます。';
+
+  @override
+  String get setupNotYetTitle => 'まだオンになっていません';
+
+  @override
+  String get setupNotYetButtonBody =>
+      '一覧の中で TransKey が見つからなかったようです。今度は上の検索欄に TransKey と入力してみてください。';
+
+  @override
+  String get setupNotYetKeyboardBody =>
+      'スマートフォンの警告でキャンセルをタップされたようです。あの警告は普通のものです。今度は OK をタップしてください。';
+
+  @override
+  String get setupDoneTitle => '設定できました';
+
+  @override
+  String get setupDoneButtonBody =>
+      'TransKey ボタンが画面に出ました。文章をコピーしてボタンをタップし、したいことを選んでください。';
+
+  @override
+  String get setupDoneKeyboardBody => 'これでどのアプリでも、書きながら翻訳できます。';
+
+  @override
+  String get setupDoneAction => '完了';
+
+  @override
+  String get setupIosStep1 => '設定を開き、一般に進みます';
+
+  @override
+  String get setupIosStep2 => 'キーボードをタップし、もう一度キーボードをタップします';
+
+  @override
+  String get setupIosStep3 => '新しいキーボードを追加をタップして TransKey を選びます';
+
+  @override
+  String get setupIosStep4 => 'もう一度 TransKey をタップして、フルアクセスを許可をオンにします';
+
+  @override
+  String get setupIosFullAccessNote =>
+      'フルアクセスを許可すると、キーボードがインターネットにつながって翻訳できます。オンにしなくても、文字入力は普通に使えます。';
+
+  @override
+  String get setupBannerTitle => 'TransKey の設定がまだ終わっていません';
+
+  @override
+  String get setupBannerAction => '設定を終わらせる';
 }

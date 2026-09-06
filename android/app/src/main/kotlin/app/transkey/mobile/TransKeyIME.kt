@@ -41,6 +41,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private var symbols2Keyboard: Keyboard? = null
     private var numberKeyboard: Keyboard? = null
     private val telex = TelexProcessor()
+    private val vni = VniProcessor()
     private val hangul = HangulComposer()
     private val romaji = RomajiKanaConverter()
     private val chunjiin = ChunjiinComposer()
@@ -74,7 +75,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // QWERTY layout and type direct; the European ones add accent input via a
     // long-press popup (see accentLabelsFor / GboardKeyboardView.accentProvider).
     private enum class Mode {
-        EN, VI, DE, ES, FR, ID, IT, PT, RU, RU_PHON, AR, TH, KO, KO_CHUN, JA, JA_FLICK, ZH
+        EN, VI, VI_VNI, DE, ES, FR, ID, IT, PT, RU, RU_PHON, AR, TH, KO, KO_CHUN, JA, JA_FLICK, ZH
     }
     private var mode: Mode = Mode.EN
 
@@ -121,7 +122,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private val isShifted: Boolean get() = shift != Shift.NONE
 
     // Vietnamese auto-correction + suggestions (loaded once; VI mode only).
-    private val corrector by lazy { VietWordCorrector(this) }
+    // Built on [suggestExecutor], NOT lazily on first use: the constructor
+    // parses two asset files into ~17k map entries, and as a `by lazy` that
+    // cost landed on the key-press thread at the SECOND Vietnamese letter of a
+    // fresh keyboard session - a visible hitch exactly when the user starts
+    // typing. Null means "still loading"; every call site degrades gracefully.
+    @Volatile private var corrector: VietWordCorrector? = null
+    private val correctorLoading = java.util.concurrent.atomic.AtomicBoolean(false)
     private var suggestionStrip: SuggestionStripView? = null
 
     // Auto-correct (dictionary spelling-fix + split merged words) is OFF by
@@ -141,6 +148,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private val suggestSeq = java.util.concurrent.atomic.AtomicInteger(0)
 
     private var rootView: View? = null
+    private var toolbarContainer: View? = null
+    private var pasteButton: android.widget.ImageButton? = null
     private var emojiPanel: EmojiPanelView? = null
     private var candidateGrid: CandidateGridView? = null
 
@@ -149,6 +158,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // field through the pre-warmed Flutter engine (same bridge the bubble uses)
     // and replaces the field with the result. Labels follow the app UI language.
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val clipboardManager by lazy {
+        getSystemService(CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+    }
+    private var clipboardListenerRegistered = false
+    private val clipboardListener = android.content.ClipboardManager.OnPrimaryClipChangedListener {
+        refreshPasteVisibility()
+    }
     private var localizedCtx: android.content.Context? = null
     private var lastUiLocale: String? = null
     // One request at a time; the in-flight id lets a field switch cancel it.
@@ -175,6 +191,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // Input-language picker (globe long-press). Reuses VoicePickerView's list UI.
     private var inputLangPickerView: VoicePickerView? = null
     private val hapticEnabled: Boolean get() = prefs.getBoolean("haptic", true)
+    private val soundEnabled: Boolean get() = prefs.getBoolean("key_sound", true)
+    private val audioManager by lazy {
+        getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+    }
     // Auto-capitalize the first letter of a field / sentence (Gboard default ON).
     private val autocapEnabled: Boolean get() = prefs.getBoolean("autocap", true)
     // Double-tap space -> ". " (period + space), Gboard default ON.
@@ -183,6 +203,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     override fun onCreateInputView(): View {
         val root = layoutInflater.inflate(R.layout.transkey_ime_view, null)
         rootView = root
+        toolbarContainer = root.findViewById(R.id.toolbar_container)
         val kv = root.findViewById<KeyboardView>(R.id.keyboard_view)
 
         // Initialize keyboards with Material You styling
@@ -288,6 +309,15 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             onExpandTap = { openCandidateGrid() }
             onNoticeTap = { openUpgradeFromKeyboard() }
         }
+        pasteButton = root.findViewById<android.widget.ImageButton>(R.id.paste_button)?.apply {
+            setOnClickListener { button ->
+                if (hapticEnabled) {
+                    button.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                }
+                pasteClipboardText()
+            }
+        }
+        refreshPasteVisibility()
         refreshActionLabels()
         refreshLangPill()
         applyPremiumChrome() // set here too: onStartInput's first call runs before this view exists
@@ -374,7 +404,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
     /** Native space-bar / toast label for each input language. */
     private fun modeLabel(m: Mode): String = when (m) {
-        Mode.VI -> "Tiếng Việt"
+        Mode.VI -> "Tiếng Việt (Telex)"
+        Mode.VI_VNI -> "Tiếng Việt (VNI)"
         Mode.DE -> "Deutsch"
         Mode.ES -> "Español"
         Mode.FR -> "Français"
@@ -417,6 +448,9 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
     /** The letters keyboard for [m] (Latin qwerty for EN/VI, own layout else). */
     private fun letterKeyboardFor(m: Mode): Keyboard? = when (m) {
+        Mode.VI_VNI -> letterKeyboards.getOrPut(m) {
+            Keyboard(this, R.xml.keyboard_vietnamese_vni).also { centerRows(it) }
+        }
         Mode.RU -> letterKeyboards.getOrPut(m) {
             Keyboard(this, R.xml.keyboard_russian).also { centerRows(it) }
         }
@@ -482,6 +516,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         updateLanguageKeyStyle()
         applyShiftState()
         prewarmJa()
+        prewarmVi()
     }
 
     /**
@@ -532,7 +567,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         // Flush any in-progress Telex word so dictation starts on a clean
         // composing region (partials are streamed AS composing text).
         commitComposed(ic)
-        telex.reset()
+        resetVietnameseComposers()
         val langTag = VoiceRecognitionHelper.resolveLanguageTag(voiceLang) ?: "en-US"
         voiceHelper?.destroy()
         voiceHelper = VoiceRecognitionHelper(this, langTag, VoiceCallbacks())
@@ -593,15 +628,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         view.setPanelHeight(if (h > 0) h else kv.height)
         view.visibility = View.VISIBLE
         emojiPanel?.visibility = View.GONE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     private fun closeVoicePicker() {
         voicePickerView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         voicePickerView = null
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     /**
@@ -614,7 +647,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // input variant in parentheses (kept consistent across JA/KO/RU).
     private fun inputLangOptions(): List<Pair<String, String>> = listOf(
         modeId(Mode.EN) to "English",
-        modeId(Mode.VI) to "Tiếng Việt",
+        modeId(Mode.VI) to "Tiếng Việt (Telex)",
+        modeId(Mode.VI_VNI) to "Tiếng Việt (VNI)",
         modeId(Mode.ZH) to "中文 (拼音)",
         modeId(Mode.ES) to "Español",
         modeId(Mode.FR) to "Français",
@@ -660,15 +694,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         view.setPanelHeight(if (h > 0) h else kv.height)
         view.visibility = View.VISIBLE
         emojiPanel?.visibility = View.GONE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     private fun closeInputLangPicker() {
         inputLangPickerView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         inputLangPickerView = null
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     /**
@@ -705,6 +737,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     }
 
     override fun onDestroy() {
+        unregisterClipboardListener()
         mainHandler.removeCallbacksAndMessages(null)
         voiceHelper?.destroy()
         voiceHelper = null
@@ -714,16 +747,56 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
     override fun onWindowShown() {
         super.onWindowShown()
+        registerClipboardListener()
+        refreshPasteVisibility()
         // First-run only: explain the action chips the very first time the
         // keyboard is shown (parity with the iOS keyboard's first-run guide).
         maybeShowKeyboardGuide()
+    }
+
+    override fun onWindowHidden() {
+        unregisterClipboardListener()
+        super.onWindowHidden()
+    }
+
+    private fun registerClipboardListener() {
+        if (clipboardListenerRegistered) return
+        clipboardManager?.addPrimaryClipChangedListener(clipboardListener)
+        clipboardListenerRegistered = clipboardManager != null
+    }
+
+    private fun unregisterClipboardListener() {
+        if (!clipboardListenerRegistered) return
+        clipboardManager?.removePrimaryClipChangedListener(clipboardListener)
+        clipboardListenerRegistered = false
+    }
+
+    /** Show Paste only for non-empty plain text on the main keyboard surface. */
+    private fun refreshPasteVisibility() {
+        val hasText = runCatching {
+            val clip = clipboardManager?.primaryClip
+            clip != null && clip.itemCount > 0 && clip.description.hasMimeType("text/*") &&
+                !clip.getItemAt(0).text.isNullOrEmpty()
+        }.getOrDefault(false)
+        val visible = hasText && toolbarContainer?.visibility == View.VISIBLE
+        pasteButton?.visibility = if (visible) View.VISIBLE else View.GONE
+        suggestionStrip?.setPasteVisible(visible)
+    }
+
+    private fun setKeyboardSurfaceVisible(visible: Boolean) {
+        toolbarContainer?.visibility = if (visible) View.VISIBLE else View.GONE
+        keyboardView?.visibility = if (visible) View.VISIBLE else View.GONE
+        if (visible) refreshPasteVisibility() else {
+            pasteButton?.visibility = View.GONE
+            suggestionStrip?.setPasteVisible(false)
+        }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         // Cursor jumped to a new field — flush any leftover Telex buffer
         // so the next keypress starts a clean word in the new context.
-        telex.reset()
+        resetVietnameseComposers()
         // Strict Telex unless the user opted into autocorrect: with it OFF
         // (default) typing plain letters never auto-fills the iê/yê rime, so
         // "viet" stays "viet" (no surprise diacritics for no-tone typists).
@@ -771,6 +844,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         updateSpaceBarLabel()
         updateLanguageKeyStyle()
         prewarmJa() // load the kana->kanji dict in the background for JA fields
+        prewarmVi() // and the Vietnamese syllable tables, for the same reason
         // Fresh field: clear any leftover shift, then auto-capitalize if the
         // field/caret position calls for it (start of a text field).
         shift = Shift.NONE
@@ -780,8 +854,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
     override fun onFinishInput() {
         super.onFinishInput()
+        // Drop any half-finished touch gesture with the field. The system does
+        // not always deliver ACTION_CANCEL when a field closes or the user
+        // switches app mid-press, which left a held backspace repeating and an
+        // accent popup stuck on screen.
+        (keyboardView as? GboardKeyboardView)?.cancelAllGestures()
         currentInputConnection?.finishComposingText()
-        telex.reset()
+        resetVietnameseComposers()
         hangul.reset()
         romaji.reset()
         chunjiin.reset()
@@ -819,7 +898,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd,
         )
-        if (!telex.hasComposingText) return
+        if (!vietnameseHasComposingText()) return
         // Our own setComposingText leaves the caret at the end of the composing
         // region (newSelEnd == candidatesEnd, nothing range-selected). Anything
         // else means the user navigated away from the word being composed.
@@ -827,7 +906,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             candidatesStart < 0 ||                  // composing region is gone
             newSelEnd != candidatesEnd              // caret left the region
         if (movedAway) {
-            telex.reset()
+            resetVietnameseComposers()
             currentInputConnection?.finishComposingText()
             clearSuggestions()
             maybeAutoCap() // re-evaluate caps at the new caret position
@@ -971,14 +1050,12 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         root.addView(panel)
         panel.setPanelHeight(if (h > 0) h else kv.height)
         panel.visibility = View.VISIBLE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     private fun closeEmoji() {
         emojiPanel?.visibility = View.GONE
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     /**
@@ -1011,14 +1088,12 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         root.addView(grid)
         grid.setPanelHeight(if (h > 0) h else kv.height)
         grid.visibility = View.VISIBLE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     private fun closeCandidateGrid() {
         candidateGrid?.visibility = View.GONE
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     /** Swap the visible keyboard to match the current [layer]. */
@@ -1031,6 +1106,11 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             Layer.NUMBER -> numberKeyboard.also { matchHeight(it, letterH); gkv?.refreshLayout(it) }
             else -> letterKeyboardFor(mode)
         }
+        // VNI is the same QWERTY letter rows with a digit row bolted on top, so
+        // it earns the same measured thumb correction. The model measures depth
+        // from the LETTER area, so the extra row does not dilute the calibration.
+        gkv?.useQwertyTouchBias = layer == Layer.LETTERS &&
+            (kb === qwertyKeyboard || kb === letterKeyboards[Mode.VI_VNI])
         keyboardView?.keyboard = kb
         keyboardView?.invalidateAllKeys()
     }
@@ -1114,6 +1194,37 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
 
     private fun isJa() = mode == Mode.JA || mode == Mode.JA_FLICK
 
+    private fun isVietnameseMode() = mode == Mode.VI || mode == Mode.VI_VNI
+
+    private fun vietnameseHasComposingText() = when (mode) {
+        Mode.VI -> telex.hasComposingText
+        Mode.VI_VNI -> vni.hasComposingText
+        else -> false
+    }
+
+    private fun vietnameseComposingText() = when (mode) {
+        Mode.VI -> telex.composingText
+        Mode.VI_VNI -> vni.composingText
+        else -> ""
+    }
+
+    private fun vietnameseLiteralIntent() = when (mode) {
+        Mode.VI -> telex.literalIntent
+        Mode.VI_VNI -> vni.literalIntent
+        else -> false
+    }
+
+    private fun commitVietnameseWord() = when (mode) {
+        Mode.VI -> telex.commitWord()
+        Mode.VI_VNI -> vni.commitWord()
+        else -> ""
+    }
+
+    private fun resetVietnameseComposers() {
+        telex.reset()
+        vni.reset()
+    }
+
     /** The current kana run as composing text (without finalizing). */
     private fun jaComposingKana(): String =
         if (mode == Mode.JA_FLICK) kana.composingText else romaji.composingText
@@ -1122,6 +1233,23 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private fun prewarmJa() {
         if (isJa() && !kanjiConv.isReady) Thread { kanjiConv.ensureLoaded() }.start()
         if (isZh() && !pinyinConv.isReady) Thread { pinyinConv.ensureLoaded() }.start()
+    }
+
+    /**
+     * Same idea for Vietnamese: build the syllable/English tables off-thread.
+     * [correctorLoading] is required, not just a null check: this runs from
+     * both `setMode` and `onStartInputView`, so switching field or language a
+     * few times during a cold start queued several constructors, each parsing
+     * the same 118 KB of assets and blocking the ZH candidate lookups that
+     * share this single-threaded executor.
+     */
+    private fun prewarmVi() {
+        if (!isVietnameseMode() || corrector != null) return
+        if (!correctorLoading.compareAndSet(false, true)) return
+        suggestExecutor.execute {
+            runCatching { VietWordCorrector(this) }.getOrNull()?.let { corrector = it }
+            correctorLoading.set(false)
+        }
     }
 
     /** Space on a kana run: start conversion, showing kanji candidates. */
@@ -1297,18 +1425,25 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             }
             return
         }
-        if (mode != Mode.VI || !ch.isLetter()) {
+        // VNI turns digits into tone/shape modifiers, but ONLY the ones typed on
+        // its own letters layout (the dedicated top row). Digits reached through
+        // ?123 or a numeric field stay literal, so a real number is still
+        // typable mid-sentence without fighting the composer.
+        val isVietnameseInput = isVietnameseMode() &&
+            (ch.isLetter() ||
+                (mode == Mode.VI_VNI && layer == Layer.LETTERS && ch in '0'..'9'))
+        if (!isVietnameseInput) {
             // EN mode or non-letter (punctuation/digit): auto-correct + commit
             // any in-progress Vietnamese word first, then the char itself.
             commitComposed(ic)
             ic.commitText(ch.toString(), 1)
             return
         }
-        // VI Telex path: append to the composer + project as composing
-        // text so the user sees the in-progress word with diacritics.
-        rawWord.append(ch)
-        telex.input(ch)
-        ic.setComposingText(telex.composingText, 1)
+        // Vietnamese path: Telex consumes letters; VNI also consumes its
+        // number modifiers from the dedicated top row.
+        if (ch.isLetter()) rawWord.append(ch)
+        if (mode == Mode.VI_VNI) vni.input(ch) else telex.input(ch)
+        ic.setComposingText(vietnameseComposingText(), 1)
         refreshSuggestions()
     }
 
@@ -1347,10 +1482,22 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             } else { ic.setComposingText("", 1); ic.finishComposingText() }
             return
         }
-        if (mode == Mode.VI && telex.backspace()) {
-            if (rawWord.isNotEmpty()) rawWord.deleteCharAt(rawWord.length - 1)
-            ic.setComposingText(telex.composingText, 1)
-            if (telex.composingText.isEmpty()) {
+        val vietnameseBackspace = when (mode) {
+            Mode.VI -> telex.backspace()
+            Mode.VI_VNI -> vni.backspace()
+            else -> false
+        }
+        if (vietnameseBackspace) {
+            // VNI: one keystroke back may or may not have been a letter, so
+            // re-derive the literal letters from the composer's own raw buffer
+            // instead of guessing (clearing it would kill English passthrough
+            // for the rest of the word).
+            if (mode == Mode.VI_VNI) {
+                rawWord.setLength(0)
+                rawWord.append(vni.rawLetters)
+            } else if (rawWord.isNotEmpty()) rawWord.deleteCharAt(rawWord.length - 1)
+            ic.setComposingText(vietnameseComposingText(), 1)
+            if (vietnameseComposingText().isEmpty()) {
                 ic.finishComposingText()
             }
             refreshSuggestions()
@@ -1440,24 +1587,28 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             clearSuggestions()
             return
         }
-        if (!telex.hasComposingText) {
+        if (!vietnameseHasComposingText()) {
             clearSuggestions()
             return
         }
-        val literal = telex.literalIntent
-        val typed = telex.commitWord()
+        val literal = vietnameseLiteralIntent()
+        val typed = commitVietnameseWord()
         val raw = rawWord.toString()
         // We never silently "spell-correct" a word (that would change what the
         // user wrote, like Gboard does NOT). The only substitution is keeping a
         // known English word verbatim when Telex would otherwise mangle it, and
         // only when Telex DIDN'T already change it into valid Vietnamese.
+        val c = corrector
         val out = when {
-            mode != Mode.VI -> typed
+            !isVietnameseMode() -> typed
             literal -> typed // user escaped Telex by repeating a key ("telexx")
-            raw == typed && raw.length >= 2 && corrector.isEnglish(raw) -> raw
+            // Dictionary still loading (first word of a fresh session): commit
+            // what was typed rather than block the key thread waiting for it.
+            c == null -> typed
+            raw == typed && raw.length >= 2 && c.isEnglish(raw) -> raw
             // Opt-in spelling fix / split merged words. Off by default.
-            autocorrectEnabled && !corrector.isValid(typed) ->
-                try { corrector.fix(typed) ?: typed } catch (e: Exception) { typed }
+            autocorrectEnabled && allowsWordSuggestions() && !c.isValid(typed) ->
+                try { c.fix(typed) ?: typed } catch (e: Exception) { typed }
             else -> typed
         }
         ic.commitText(out, 1)
@@ -1465,29 +1616,53 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     }
 
     /**
-     * Light suggestion strip: when Telex turned the keystrokes into something
-     * other than what was typed and the literal keystrokes are a known English
-     * word ("object" -> "ọbect"), offer the English word as a tappable chip.
-     * O(1) dictionary lookups only - no per-keystroke scan, so no typing jank.
+     * English passthrough plus Vietnamese spelling suggestions. Dictionary
+     * scans run off the key thread; [suggestSeq] and captured buffers prevent a
+     * stale result replacing candidates after the user has typed another key.
      */
     private fun refreshSuggestions() {
-        if (mode != Mode.VI || !telex.hasComposingText) {
+        if (!isVietnameseMode() || !vietnameseHasComposingText()) {
             clearSuggestions()
             return
         }
-        val composed = telex.composingText
+        val composed = vietnameseComposingText()
         val raw = rawWord.toString()
-        if (raw.length >= 2 && raw != composed && corrector.isEnglish(raw)) {
-            suggestionStrip?.setSuggestions(listOf(raw))
-        } else {
+        val c = corrector
+        if (c == null || vietnameseLiteralIntent() || !allowsWordSuggestions()) {
+            suggestSeq.incrementAndGet()
             suggestionStrip?.setSuggestions(emptyList())
+            return
         }
+        val englishLiteral = raw.takeIf {
+            it.length >= 2 && it != composed && c.isEnglish(it)
+        }
+        val seq = suggestSeq.incrementAndGet()
+        suggestionStrip?.setSuggestions(listOfNotNull(englishLiteral))
+        suggestExecutor.execute {
+            if (seq != suggestSeq.get()) return@execute
+            val vietnamese = runCatching { c.suggest(composed, 3) }.getOrDefault(emptyList())
+            val candidates = (listOfNotNull(englishLiteral) + vietnamese)
+                .distinctBy { it.lowercase() }.take(3)
+            mainHandler.post {
+                if (seq != suggestSeq.get() || !isVietnameseMode() ||
+                    !allowsWordSuggestions() || rawWord.toString() != raw ||
+                    vietnameseComposingText() != composed
+                ) return@post
+                suggestionStrip?.setSuggestions(candidates)
+            }
+        }
+    }
+
+    /** Suggestions are disabled in fields where spelling changes are unsafe. */
+    private fun allowsWordSuggestions(): Boolean {
+        val info = currentInputEditorInfo ?: return false
+        return allowsVietCorrection(info.inputType)
     }
 
     /** Replace the in-progress word with a tapped suggestion + a space. */
     private fun applySuggestion(word: String) {
         val ic = currentInputConnection ?: return
-        telex.commitWord()
+        commitVietnameseWord()
         rawWord.setLength(0)
         // Replace the active composing region with the chosen word, finalize it,
         // then add a space. (commitText alone doesn't reliably replace the
@@ -1720,6 +1895,16 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             return
         }
+        // The field must still hold exactly what was sent. A translate request
+        // is a network round-trip, and `actionInFlight` alone only proved no
+        // NEWER request had started - the user typing on (or the host app
+        // rewriting the field) went unnoticed, and the replace then wiped
+        // whatever was written after the button was pressed.
+        val ic = currentInputConnection
+        if (ic == null || fullFieldText(ic) != pendingUndoText) {
+            pendingUndoText = null
+            return
+        }
         // The replace succeeded - arm undo with the pre-replace text.
         undoSnapshot = pendingUndoText
         pendingUndoText = null
@@ -1765,6 +1950,41 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         }
         // Plain translate of the copied message (never the reply engine).
         invokeTranslate(engine, text, "translate", targetLang, reqId, attempt = 0)
+    }
+
+    /** Paste plain clipboard text at the caret or over the current selection. */
+    private fun pasteClipboardText() {
+        val ic = currentInputConnection ?: return
+        val clip = (getSystemService(CLIPBOARD_SERVICE) as? android.content.ClipboardManager)
+            ?.primaryClip
+        val text = if (clip != null && clip.itemCount > 0 &&
+            clip.description.hasMimeType("text/*")
+        ) {
+            clip.getItemAt(0).text?.toString()
+        } else {
+            null
+        }
+        if (text.isNullOrEmpty()) {
+            refreshPasteVisibility()
+            Toast.makeText(
+                this,
+                localized(R.string.bubble_panel_clipboard_empty),
+                Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
+
+        clearUndo()
+        clearQuotaNotice()
+        ic.beginBatchEdit()
+        try {
+            commitComposed(ic)
+            ic.finishComposingText()
+            ic.commitText(text, 1)
+        } finally {
+            ic.endBatchEdit()
+        }
+        maybeAutoCap()
     }
 
     /**
@@ -1828,15 +2048,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         root.addView(panel)
         panel.setPanelHeight(if (h > 0) h else kv.height)
         panel.visibility = View.VISIBLE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     private fun closeClipboardPanel() {
         clipboardPanelView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         clipboardPanelView = null
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     // ── First-run guide overlay ──
@@ -1877,8 +2095,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         root.addView(overlay)
         overlay.setPanelHeight(h)
         overlay.visibility = View.VISIBLE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
         // Safety net: even if no strip refresh fires while the guide is up,
         // re-read the entitlement flags shortly after so a paid user's "Trau
         // chuốt" row appears once the app finishes mirroring tk_feature_*.
@@ -1905,8 +2122,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private fun closeKeyboardGuide() {
         guideOverlayView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         guideOverlayView = null
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     /** Hide the quota banner (user resumed typing / switched field). */
@@ -2066,15 +2282,13 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         picker.setPanelHeight(if (h > 0) h else kv.height)
         picker.visibility = View.VISIBLE
         emojiPanel?.visibility = View.GONE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     private fun closeLangPicker() {
         langPickerView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         langPickerView = null
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     /** Swap source<->target within the picker's active scope (no-op while
@@ -2151,8 +2365,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         view.setPanelHeight(if (h > 0) h else kv.height)
         view.visibility = View.VISIBLE
         emojiPanel?.visibility = View.GONE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     /** (Re)build the settings panel content with the current localized strings. */
@@ -2178,8 +2391,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private fun closeSettings() {
         settingsView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         settingsView = null
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     private fun invokeBubble(method: String, args: Any? = null) {
@@ -2297,8 +2509,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         root.addView(panel)
         panel.setPanelHeight(if (h > 0) h else kv.height)
         panel.visibility = View.VISIBLE
-        suggestionStrip?.visibility = View.GONE
-        kv.visibility = View.GONE
+        setKeyboardSurfaceVisible(false)
     }
 
     private fun insertHistory(text: String) {
@@ -2309,8 +2520,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private fun closeHistory() {
         historyPanelView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         historyPanelView = null
-        suggestionStrip?.visibility = View.VISIBLE
-        keyboardView?.visibility = View.VISIBLE
+        setKeyboardSurfaceVisible(true)
     }
 
     /** Explain the current field text via the floating bubble's popup overlay. */
@@ -2475,7 +2685,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     /** Move the caret one step left (dir<0) or right (dir>0) - space-bar swipe. */
     private fun moveCursor(dir: Int) {
         val ic = currentInputConnection ?: return
-        if (telex.hasComposingText) commitComposed(ic)
+        if (vietnameseHasComposingText()) commitComposed(ic)
         ic.finishComposingText()
         val code = if (dir > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
         ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
@@ -2493,7 +2703,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     private fun updateLangKeyLabel() {
         val keys = qwertyKeyboard?.keys ?: return
         val target = keys.firstOrNull { it.codes.firstOrNull() == KEYCODE_LANG_SWITCH }
-        target?.label = if (mode == Mode.VI) "VI" else "EN"
+        target?.label = if (isVietnameseMode()) "VI" else "EN"
         keyboardView?.invalidateAllKeys()
     }
 
@@ -2507,6 +2717,19 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
                 android.view.HapticFeedbackConstants.KEYBOARD_TAP,
                 android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
             )
+        }
+        // Key-click sound, the other half of the press feedback iOS has had all
+        // along. Routed through AudioManager so it follows the system "keyboard
+        // sound" switch: passing no explicit volume plays it only when the user
+        // has that setting on, which is the behaviour every stock keyboard has.
+        if (soundEnabled) {
+            val fx = when (primaryCode) {
+                KEYCODE_DELETE -> android.media.AudioManager.FX_KEYPRESS_DELETE
+                KEYCODE_ENTER -> android.media.AudioManager.FX_KEYPRESS_RETURN
+                KEYCODE_SPACE -> android.media.AudioManager.FX_KEYPRESS_SPACEBAR
+                else -> android.media.AudioManager.FX_KEYPRESS_STANDARD
+            }
+            runCatching { audioManager?.playSoundEffect(fx) }
         }
     }
     override fun onRelease(primaryCode: Int) {}

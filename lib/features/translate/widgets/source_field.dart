@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/theme/app_glass.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/glass/glass_card.dart';
+import 'tts_button.dart';
 
 /// Source-text input field with a top-right action cluster (voice mic +
 /// clear button). The clear button subscribes to the controller via
@@ -25,6 +26,7 @@ class SourceField extends StatelessWidget {
     required this.voiceTooltip,
     required this.onVoicePressed,
     required this.onClear,
+    this.ttsLang,
   });
 
   final TextEditingController controller;
@@ -49,6 +51,11 @@ class SourceField extends StatelessWidget {
   /// controller AND nukes the result panel so the next translate doesn't
   /// flash stale output.
   final VoidCallback onClear;
+
+  /// Lang code driving the speaker button for the typed source text.
+  /// Null (source = auto with no detection yet) hides the button - better
+  /// than guessing a voice and reading the text in the wrong language.
+  final String? ttsLang;
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +123,24 @@ class SourceField extends StatelessWidget {
           // design's layout).
           Row(
             children: [
+              // Speaker for the source text (hear the original language).
+              // Mirrors the target-side TTS on the result card so the user
+              // can choose which side to listen to.
+              ListenableBuilder(
+                listenable: controller,
+                builder: (context, _) {
+                  if (ttsLang == null || controller.text.trim().isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return TtsButton(
+                    text: controller.text,
+                    lang: ttsLang!,
+                    size: 20,
+                    showOptions: false,
+                    color: p.accent,
+                  );
+                },
+              ),
               const Spacer(),
               ListenableBuilder(
                 listenable: controller,

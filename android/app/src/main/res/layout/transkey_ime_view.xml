@@ -16,10 +16,30 @@
     android:paddingTop="0dp"
     android:paddingBottom="10dp">
 
-    <app.transkey.mobile.SuggestionStripView
-        android:id="@+id/suggestion_strip"
+    <FrameLayout
+        android:id="@+id/toolbar_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="48dp"
+        android:layoutDirection="ltr">
+
+        <app.transkey.mobile.SuggestionStripView
+            android:id="@+id/suggestion_strip"
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
+
+        <ImageButton
+            android:id="@+id/paste_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="54dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/bubble_input_paste"
+            android:visibility="gone"
+            android:padding="13dp"
+            android:src="@drawable/ic_keyboard_paste"
+            android:tint="#8B5CF6" />
+    </FrameLayout>
 
     <app.transkey.mobile.GboardKeyboardView
         android:id="@+id/keyboard_view"

@@ -400,10 +400,16 @@ class TranslateNotifier extends AsyncNotifier<TranslateState> {
   }) async {
     final settings = ref.read(appSettingsProvider).valueOrNull;
     if (!(settings?.historySave ?? true)) return null;
+    // Persist the RESOLVED source lang: when the request auto-detected,
+    // store what the server detected so history's source-side TTS knows
+    // which voice to use ('auto' is not speakable).
+    final resolvedSourceLang = (sourceLang.isEmpty || sourceLang == 'auto')
+        ? (result.detectedLang ?? sourceLang)
+        : sourceLang;
     return ref.read(historyProvider.notifier).addFromTranslate(
           sourceText: trimmed,
           translation: result.translation,
-          sourceLang: sourceLang,
+          sourceLang: resolvedSourceLang,
           targetLang: targetLang,
           romanization: result.romanization,
           mode: mode,

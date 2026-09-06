@@ -22,7 +22,7 @@
     <string name="bubble_notification_channel">Nút TransKey</string>
     <string name="bubble_notification_active">Nút TransKey đang hoạt động</string>
     <string name="bubble_notification_turn_off">Tắt</string>
-    <string name="bubble_overlay_perm_needed">Bật \'Hiển thị trên ứng dụng khác\' để Nút TransKey hiện trên các app khác</string>
+    <string name="bubble_overlay_perm_needed">Mở TransKey để bật Nút TransKey</string>
     <string name="bubble_clipboard_empty_error">Clipboard rỗng.\nCopy text trước, rồi chạm Nút TransKey.</string>
     <string name="bubble_voice">Nhập bằng giọng nói</string>
     <string name="bubble_voice_listening">Đang nghe…</string>

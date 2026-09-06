@@ -220,16 +220,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabRefine => 'Refine';
 
   @override
-  String get keyboardSetup => 'Keyboard Setup';
+  String get keyboardSetup => 'Set up the keyboard';
 
   @override
   String get keyboardSettingsTitle => 'Bubble & Keyboard';
 
   @override
-  String get keyboardSettingsSectionStatus => 'Bubble & Permissions';
+  String get keyboardSettingsSectionStatus => 'TransKey button';
 
   @override
-  String get keyboardSettingsSectionBehavior => 'Bubble Behavior';
+  String get keyboardSettingsSectionBehavior => 'How the button behaves';
 
   @override
   String get imeSectionTitle => 'Keyboard';
@@ -249,19 +249,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Not enabled. Tap to turn on in system Settings.';
 
   @override
-  String get bubbleSetup => 'Bubble Setup';
+  String get bubbleSetup => 'Set up the TransKey button';
 
   @override
-  String get floatingBubble => 'Floating Bubble';
+  String get floatingBubble => 'TransKey button';
 
   @override
   String get bubbleActive => 'Active';
 
   @override
   String get bubbleInactive => 'Inactive';
-
-  @override
-  String get permissionsNeedSetup => 'Tap to grant required permissions';
 
   @override
   String get sendFeedback => 'Send feedback';
@@ -946,75 +943,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardGetStarted => 'Get Started';
-
-  @override
-  String get setupTitle => 'Setup Keyboard';
-
-  @override
-  String get setupTitleAndroid => 'Set up TransKey';
-
-  @override
-  String get setupOpenSettings => 'Open Settings';
-
-  @override
-  String get setupOpenPermissions => 'Open Permissions';
-
-  @override
-  String get setupStep1TitleIOS => 'Add TransKey Keyboard';
-
-  @override
-  String get setupStep1TitleAndroid => 'Enable Floating Bubble';
-
-  @override
-  String get setupStep1DescIOS =>
-      'Go to Settings and add TransKey as a custom keyboard so you can translate directly while typing.';
-
-  @override
-  String get setupStep1DescAndroid =>
-      'Allow TransKey to display over other apps so the floating bubble can appear when you need it.';
-
-  @override
-  String get setupStep2Title => 'Allow Full Access';
-
-  @override
-  String get setupStep2TitleAndroid => 'Bubble enabled';
-
-  @override
-  String get setupStep2DescIOS =>
-      'Tap TransKey in the keyboard list and enable \"Allow Full Access\". This is needed to connect to the internet for translations.';
-
-  @override
-  String get setupStep2DescAndroid =>
-      'The overlay permission lets TransKey show a floating bubble on top of other apps for quick translations.';
-
-  @override
-  String get setupStep3Title => 'You\'re All Set!';
-
-  @override
-  String get setupStep3DescIOS =>
-      'When typing in any app, long-press the globe key 🌐 to switch to TransKey. Tap \"Reply\" to translate your message instantly.';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'The TransKey button is now on your screen. Copy any text, tap the button, pick an action - you\'ll see the result right there without leaving your app.';
-
-  @override
-  String get setupStep4Title => 'Translate from Any App';
-
-  @override
-  String get setupStep4DescIOS =>
-      'Select any text → tap \"Share\" → choose TransKey. Or copy text and open TransKey — it reads your clipboard automatically.';
-
-  @override
-  String get setupStep4DescAndroid =>
-      'Copy text in any app → tap the TransKey button → choose Translate, Reply, or another action → tap anywhere to close when done.';
-
-  @override
-  String get setupStep5Title => 'Smart Features';
-
-  @override
-  String get setupStep5Desc =>
-      'Translate, Reply, Summarize, Explain & Refine. Pro features are marked with a lock icon.';
 
   @override
   String get guideTitle => 'How to use';
@@ -1745,4 +1673,154 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pasteTranslate => 'Paste & translate';
+
+  @override
+  String get setupHubTitle => 'Set up TransKey';
+
+  @override
+  String get setupHubSubtitle =>
+      'Turn on these two and TransKey works in every app.';
+
+  @override
+  String get setupHubAllDoneBody =>
+      'Everything is on. TransKey is ready to use in any app.';
+
+  @override
+  String get setupTaskButtonTitle => 'TransKey button';
+
+  @override
+  String get setupTaskButtonBody =>
+      'A small button that floats on screen, so you can translate without leaving the app you are in.';
+
+  @override
+  String get setupTaskKeyboardTitle => 'TransKey keyboard';
+
+  @override
+  String get setupTaskKeyboardBody =>
+      'Translate while you type, right inside your messages.';
+
+  @override
+  String get setupStateDone => 'Ready';
+
+  @override
+  String get setupStateOff => 'Not on yet';
+
+  @override
+  String get setupStateButtonPaused => 'Allowed, but not showing';
+
+  @override
+  String get setupStateKeyboardNotUsed => 'On, but not in use';
+
+  @override
+  String get setupStateUnknown => 'Not checked yet';
+
+  @override
+  String get setupOpenSystemSettings => 'Open phone settings';
+
+  @override
+  String get setupNoWorries =>
+      'Nothing is broken if you stop here. You can still translate inside the app.';
+
+  @override
+  String get setupButtonWhy =>
+      'The TransKey button floats above other apps, so you can translate a message without closing it. Your phone has to allow that first.';
+
+  @override
+  String get setupMockAppsTitle => 'Show over other apps';
+
+  @override
+  String get setupButtonListHint =>
+      'The list holds every app on your phone, in alphabetical order. Scroll down to the letter T, or use the search box at the top.';
+
+  @override
+  String get setupButtonStep1 => 'Find TransKey in the list';
+
+  @override
+  String get setupButtonStep2 => 'Tap TransKey';
+
+  @override
+  String get setupButtonStep3 => 'Turn the switch on, then come back here';
+
+  @override
+  String get setupKeyboardWhy =>
+      'With the TransKey keyboard you can translate a message while you are writing it, without switching apps.';
+
+  @override
+  String get setupMockKeyboardsTitle => 'On-screen keyboards';
+
+  @override
+  String get setupKeyboardListHint =>
+      'On your phone the name shows as TransKey Keyboard.';
+
+  @override
+  String get setupKeyboardStep1 => 'Find the TransKey Keyboard row';
+
+  @override
+  String get setupKeyboardStep2 => 'Turn the switch on, then come back here';
+
+  @override
+  String get setupKeyboardWarning =>
+      'Your phone will show a warning first. Tap OK to continue. Every phone asks this about every keyboard.';
+
+  @override
+  String get setupKeyboardPickTitle => 'Almost there';
+
+  @override
+  String get setupKeyboardPickBody =>
+      'The keyboard is on. One more tap and you can start using it.';
+
+  @override
+  String get setupKeyboardPickAction => 'Choose TransKey';
+
+  @override
+  String get setupKeyboardPickFallback =>
+      'The chooser did not open. You can also switch keyboards from the small keyboard icon that appears while you type.';
+
+  @override
+  String get setupNotYetTitle => 'Not on yet';
+
+  @override
+  String get setupNotYetButtonBody =>
+      'TransKey was probably not found in the list. This time use the search box at the top and type TransKey.';
+
+  @override
+  String get setupNotYetKeyboardBody =>
+      'It looks like Cancel was tapped on your phone\'s warning. That warning is normal. Tap OK this time.';
+
+  @override
+  String get setupDoneTitle => 'All set';
+
+  @override
+  String get setupDoneButtonBody =>
+      'The TransKey button is on your screen now. Copy any text, tap the button, and pick what you want to do.';
+
+  @override
+  String get setupDoneKeyboardBody =>
+      'You can now translate while typing in any app.';
+
+  @override
+  String get setupDoneAction => 'Done';
+
+  @override
+  String get setupIosStep1 => 'Open Settings, then General';
+
+  @override
+  String get setupIosStep2 => 'Tap Keyboard, then Keyboards';
+
+  @override
+  String get setupIosStep3 => 'Tap Add New Keyboard and choose TransKey';
+
+  @override
+  String get setupIosStep4 =>
+      'Tap TransKey once more and turn on Allow Full Access';
+
+  @override
+  String get setupIosFullAccessNote =>
+      'Allow Full Access is what lets the keyboard reach the internet to translate. Without it the keyboard still types normally.';
+
+  @override
+  String get setupBannerTitle => 'TransKey is not set up yet';
+
+  @override
+  String get setupBannerAction => 'Finish setup';
 }

@@ -98,7 +98,9 @@ class _KeyboardSettingsScreenState
     final hasPermission = await manager.checkPermission();
     if (!hasPermission) {
       if (!mounted) return;
-      context.push('/keyboard-setup?skip=false');
+      // Straight to the button's own flow: the user already said what they
+      // want, so do not make them pick it again off the hub.
+      context.push('/setup/button');
       return;
     }
     await manager.startBubble();
@@ -138,14 +140,14 @@ class _KeyboardSettingsScreenState
               leading: const Icon(Icons.bubble_chart_outlined),
               title: Text(t.bubbleSetup),
               trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () => context.push('/keyboard-setup?skip=false'),
+              onTap: () => context.push('/setup/button'),
             ),
           ] else ...[
             ListTile(
               leading: const Icon(Icons.keyboard_outlined),
               title: Text(t.keyboardSetup),
               trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () => context.push('/keyboard-setup?skip=false'),
+              onTap: () => context.push('/setup/keyboard'),
             ),
           ],
           if (Platform.isAndroid) ...[

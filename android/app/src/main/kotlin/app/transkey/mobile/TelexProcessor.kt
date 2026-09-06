@@ -37,6 +37,17 @@ class TelexProcessor {
      */
     var autoRime: Boolean = true
 
+    /**
+     * Tone placement on an OPEN two-vowel cluster (oa / oe / uy).
+     *  - true (default): modern style, tone on the first vowel - hòa, khỏe,
+     *    thúy. This is what schools, Gboard and Unikey's default produce, so it
+     *    is what users read back and expect.
+     *  - false: legacy style - hoà, khoẻ, thuý.
+     * Kept as a field rather than hard-coded so the choice can be surfaced as a
+     * setting later without touching this logic again.
+     */
+    var modernToneStyle: Boolean = true
+
     val hasComposingText: Boolean get() = raw.isNotEmpty()
     val composingText: String get() = composed
     val literalIntent: Boolean get() = literal
@@ -67,6 +78,9 @@ class TelexProcessor {
     private fun recompute() {
         val out = StringBuilder()
         var lit = false
+        // Index of a bare 'ư' this pass inserted for a lone 'w', so a second
+        // 'w' can undo it back to a literal "w" (the "ww" escape).
+        var bareW = -1
         for (c in raw) {
             val lc = c.lowercaseChar()
             var handled = false
@@ -122,15 +136,36 @@ class TelexProcessor {
             } else if (lc == 'd' && out.isNotEmpty() && (out.last() == 'đ' || out.last() == 'Đ')) {
                 out.setCharAt(out.length - 1, if (out.last() == 'Đ') 'D' else 'd')
                 out.append(c); lit = true; handled = true
-            } else if (lc == 'w' && out.isNotEmpty()) {
-                when (applyHorn(out)) {
-                    1 -> handled = true
-                    2 -> { out.append(c); lit = true; handled = true } // undo -> literal
+            } else if (lc == 'w') {
+                // A 'w' with a bare 'ư' immediately before it is the escape:
+                // "ww" gives a literal w, the same shape as the "aa"/"dd" undos.
+                if (bareW >= 0 && bareW == out.length - 1 && toneOf(out[bareW]) < 0) {
+                    // Take the case from the FIRST 'w' (the one that became ư),
+                    // not from this second keystroke: shift-typing "Ww" must
+                    // give "W", and the escape key itself is always lowercase.
+                    val upper = out[bareW].isUpperCase()
+                    out.setCharAt(bareW, if (upper) 'W' else 'w')
+                    lit = true; handled = true; bareW = -1
+                } else {
+                    when (applyHorn(out)) {
+                        1 -> handled = true
+                        2 -> { out.append(c); lit = true; handled = true } // undo -> literal
+                        3 -> {
+                            // No vowel to horn: emit 'ư'. This is the standard
+                            // Telex shortcut every Vietnamese typist expects
+                            // ("dd"+"w" -> "đư" on the way to "được"); without
+                            // it those words simply cannot be typed.
+                            out.append(if (c.isUpperCase()) 'Ư' else 'ư')
+                            bareW = out.length - 1
+                            handled = true
+                        }
+                    }
                 }
             }
 
             if (!handled) out.append(c)
             if (autoRime) normalizeIeYeUe(out)
+            relocateTone(out)
         }
         composed = out.toString()
         literal = lit
@@ -176,7 +211,11 @@ class TelexProcessor {
      * Apply the Telex horn/breve key 'w' to the current word, cluster-aware so
      * "uo" becomes "ươ" in one keystroke ("thuong"+w -> "thương", the way most
      * Vietnamese type). Returns 0 = not applicable, 1 = horn applied,
-     * 2 = horn undone (caller appends the literal 'w' + sets literal-intent).
+     * 2 = horn undone (caller appends the literal 'w' + sets literal-intent),
+     * 3 = there is no vowel at all to horn, so the caller should insert a bare
+     * 'ư' (the standard Telex shortcut - see the 'w' branch in [recompute]).
+     * 0 and 3 are deliberately different: 0 means a vowel cluster EXISTS but
+     * holds nothing hornable ("new", "kiw"), and those must stay literal.
      *
      *  - Special: a "uo" pair in the cluster horns BOTH -> "ươ" (or undoes
      *    both if already "ươ").
@@ -187,7 +226,7 @@ class TelexProcessor {
     private fun applyHorn(out: StringBuilder): Int {
         var ce = out.length - 1
         while (ce >= 0 && !isVowel(out[ce])) ce--
-        if (ce < 0) return 0
+        if (ce < 0) return 3 // nothing to horn -> caller inserts a bare 'ư'
         var cs = ce
         while (cs - 1 >= 0 && isVowel(out[cs - 1])) cs--
 
@@ -230,6 +269,40 @@ class TelexProcessor {
         out.setCharAt(i, if (p.isUpperCase()) ch.uppercaseChar() else ch)
     }
 
+    /**
+     * Re-seat the tone after the vowel cluster changed shape.
+     *
+     * The tone target used to be decided once, when the tone key was pressed,
+     * and never revisited - so a tone typed EARLY was stranded on the wrong
+     * vowel as later keys rewrote the cluster ("tis" + "eeng" gave "tíêng"
+     * instead of "tiếng"). Runs after every key, on the TRAILING vowel run only,
+     * so a tone in an earlier syllable is never disturbed. A cluster carrying
+     * two tones is left completely alone: that is the user escaping Telex, not
+     * a placement we should second-guess.
+     */
+    private fun relocateTone(out: StringBuilder) {
+        var ce = out.length - 1
+        while (ce >= 0 && !isVowel(out[ce])) ce--
+        if (ce < 0) return
+        var cs = ce
+        while (cs - 1 >= 0 && isVowel(out[cs - 1])) cs--
+        var ti = -1
+        for (i in cs..ce) {
+            if (toneOf(out[i]) >= 0) {
+                if (ti >= 0) return // two tones in one cluster: hands off
+                ti = i
+            }
+        }
+        if (ti < 0) return
+        val target = pickToneTarget(out, ce)
+        if (target == ti) return
+        val tone = toneOf(out[ti])
+        val moved = applyTone(stripTone(out[target]), tone) ?: return
+        val dst = out[target]
+        out.setCharAt(ti, if (out[ti].isUpperCase()) stripTone(out[ti]).uppercaseChar() else stripTone(out[ti]))
+        out.setCharAt(target, if (dst.isUpperCase()) moved.uppercaseChar() else moved)
+    }
+
     private fun pickToneTarget(out: StringBuilder, end: Int): Int {
         var start = end
         while (start - 1 >= 0 && isVowel(out[start - 1])) start--
@@ -246,8 +319,14 @@ class TelexProcessor {
         if (n == 1) return start
         if (n >= 3) return start + 1
         if (closed) return end
-        val pair = "" + stripTone(out[start]).lowercaseChar() + stripTone(out[end]).lowercaseChar()
-        return if (pair == "oa" || pair == "oe" || pair == "uy") end else start
+        if (!modernToneStyle) {
+            // Legacy placement: hoà / khoẻ / thuý. Kept switchable rather than
+            // deleted so the behaviour can be offered as a setting later.
+            val pair = "" + stripTone(out[start]).lowercaseChar() +
+                stripTone(out[end]).lowercaseChar()
+            if (pair == "oa" || pair == "oe" || pair == "uy") return end
+        }
+        return start
     }
 
     private fun isVowel(ch: Char): Boolean {

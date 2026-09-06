@@ -34,6 +34,13 @@ final class TelexProcessor {
     /// keeps the convenience for callers/tests that don't set it.
     var autoRime: Bool = true
 
+    /// Tone placement on an OPEN two-vowel cluster (oa / oe / uy).
+    ///  - true (default): modern style, tone on the first vowel - hòa, khỏe,
+    ///    thúy. What schools, Gboard and Unikey's default produce.
+    ///  - false: legacy style - hoà, khoẻ, thuý.
+    /// Kept as a field so the choice can become a setting later.
+    var modernToneStyle: Bool = true
+
     var hasComposingText: Bool { !raw.isEmpty }
     var composingText: String { composed }
     var literalIntent: Bool { literal }
@@ -68,6 +75,9 @@ final class TelexProcessor {
     private func recompute() {
         var out: [Character] = []
         var lit = false
+        // Index of a bare "ư" this pass inserted for a lone "w", so a second
+        // "w" can undo it back to a literal "w" (the "ww" escape).
+        var bareW = -1
         for c in raw {
             let lc = Self.lower(c)
             var handled = false
@@ -117,16 +127,34 @@ final class TelexProcessor {
             } else if lc == "d", let last = out.last, last == "đ" || last == "Đ" {
                 out[out.count - 1] = last == "Đ" ? "D" : "d"
                 out.append(c); lit = true; handled = true
-            } else if lc == "w", !out.isEmpty {
-                switch applyHorn(&out) {
-                case 1: handled = true
-                case 2: out.append(c); lit = true; handled = true // undo -> literal
-                default: break
+            } else if lc == "w" {
+                // A 'w' right after a bare 'ư' we inserted is the escape:
+                // "ww" gives a literal w, mirroring the "aa"/"dd" undos.
+                if bareW >= 0, bareW == out.count - 1, Self.toneOf(out[bareW]) < 0 {
+                    // Take the case from the FIRST "w" (the one that became ư),
+                    // not from this second keystroke: shift-typing "Ww" must
+                    // give "W", and the escape key itself is always lowercase.
+                    out[bareW] = out[bareW].isUppercase ? "W" : "w"
+                    lit = true; handled = true; bareW = -1
+                } else {
+                    switch applyHorn(&out) {
+                    case 1: handled = true
+                    case 2: out.append(c); lit = true; handled = true // undo -> literal
+                    case 3:
+                        // No vowel to horn: emit 'ư'. The standard Telex
+                        // shortcut - without it "được" (dd + w + ...) cannot be
+                        // typed at all.
+                        out.append(c.isUppercase ? "Ư" : "ư")
+                        bareW = out.count - 1
+                        handled = true
+                    default: break
+                    }
                 }
             }
 
             if !handled { out.append(c) }
             if autoRime { normalizeIeYeUe(&out) }
+            relocateTone(&out)
         }
         composed = String(out)
         literal = lit
@@ -179,7 +207,7 @@ final class TelexProcessor {
     private func applyHorn(_ out: inout [Character]) -> Int {
         var ce = out.count - 1
         while ce >= 0 && !Self.isVowel(out[ce]) { ce -= 1 }
-        if ce < 0 { return 0 }
+        if ce < 0 { return 3 } // nothing to horn -> caller inserts a bare "ư"
         var cs = ce
         while cs - 1 >= 0 && Self.isVowel(out[cs - 1]) { cs -= 1 }
 
@@ -246,8 +274,44 @@ final class TelexProcessor {
         if n == 1 { return start }
         if n >= 3 { return start + 1 }
         if closed { return end }
-        let pair = String([Self.lower(Self.stripTone(out[start])), Self.lower(Self.stripTone(out[end]))])
-        return (pair == "oa" || pair == "oe" || pair == "uy") ? end : start
+        if !modernToneStyle {
+            // Legacy placement: hoà / khoẻ / thuý. Switchable rather than
+            // deleted so it can be offered as a setting later.
+            let pair = String([Self.lower(Self.stripTone(out[start])),
+                               Self.lower(Self.stripTone(out[end]))])
+            if pair == "oa" || pair == "oe" || pair == "uy" { return end }
+        }
+        return start
+    }
+
+    /// Re-seat the tone after the vowel cluster changed shape.
+    ///
+    /// The tone target used to be decided once, when the tone key was pressed,
+    /// and never revisited - so a tone typed EARLY was stranded on the wrong
+    /// vowel as later keys rewrote the cluster ("tis" + "eeng" gave "tíêng"
+    /// instead of "tiếng"). Runs after every key, on the TRAILING vowel run
+    /// only, so a tone in an earlier syllable is never disturbed. A cluster
+    /// carrying two tones is left alone: that is the user escaping Telex.
+    private func relocateTone(_ out: inout [Character]) {
+        var ce = out.count - 1
+        while ce >= 0 && !Self.isVowel(out[ce]) { ce -= 1 }
+        if ce < 0 { return }
+        var cs = ce
+        while cs - 1 >= 0 && Self.isVowel(out[cs - 1]) { cs -= 1 }
+        var ti = -1
+        for i in cs...ce where Self.toneOf(out[i]) >= 0 {
+            if ti >= 0 { return } // two tones in one cluster: hands off
+            ti = i
+        }
+        if ti < 0 { return }
+        let target = pickToneTarget(out, end: ce)
+        if target == ti { return }
+        let tone = Self.toneOf(out[ti])
+        guard let moved = Self.applyTone(Self.stripTone(out[target]), tone: tone) else { return }
+        let dst = out[target]
+        let src = out[ti]
+        out[ti] = src.isUppercase ? Self.upper(Self.stripTone(src)) : Self.stripTone(src)
+        out[target] = dst.isUppercase ? Self.upper(moved) : moved
     }
 
     // MARK: - Character tables

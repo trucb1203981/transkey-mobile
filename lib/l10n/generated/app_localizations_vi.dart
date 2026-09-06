@@ -226,10 +226,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get keyboardSettingsTitle => 'Nút & Bàn phím';
 
   @override
-  String get keyboardSettingsSectionStatus => 'Bubble & Quyền';
+  String get keyboardSettingsSectionStatus => 'Nút TransKey';
 
   @override
-  String get keyboardSettingsSectionBehavior => 'Hành vi bubble';
+  String get keyboardSettingsSectionBehavior => 'Cách nút hoạt động';
 
   @override
   String get imeSectionTitle => 'Bàn phím hệ thống';
@@ -259,9 +259,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get bubbleInactive => 'Đang tắt';
-
-  @override
-  String get permissionsNeedSetup => 'Nhấn để cấp quyền cần thiết';
 
   @override
   String get sendFeedback => 'Gửi phản hồi';
@@ -939,75 +936,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get onboardGetStarted => 'Bắt đầu';
-
-  @override
-  String get setupTitle => 'Cài đặt bàn phím';
-
-  @override
-  String get setupTitleAndroid => 'Cài đặt Nút TransKey';
-
-  @override
-  String get setupOpenSettings => 'Mở Cài đặt';
-
-  @override
-  String get setupOpenPermissions => 'Mở Quyền';
-
-  @override
-  String get setupStep1TitleIOS => 'Thêm bàn phím TransKey';
-
-  @override
-  String get setupStep1TitleAndroid => 'Bật bong bóng nổi';
-
-  @override
-  String get setupStep1DescIOS =>
-      'Vào Cài đặt và thêm TransKey làm bàn phím tuỳ chỉnh để dịch trực tiếp khi đang gõ.';
-
-  @override
-  String get setupStep1DescAndroid =>
-      'Cho phép TransKey hiển thị trên các ứng dụng khác để bong bóng nổi xuất hiện khi cần.';
-
-  @override
-  String get setupStep2Title => 'Cho phép truy cập đầy đủ';
-
-  @override
-  String get setupStep2TitleAndroid => 'Nút đã được bật';
-
-  @override
-  String get setupStep2DescIOS =>
-      'Chọn TransKey trong danh sách bàn phím và bật \"Cho phép truy cập đầy đủ\". Cần thiết để kết nối Internet cho việc dịch.';
-
-  @override
-  String get setupStep2DescAndroid =>
-      'Quyền hiển thị trên ứng dụng khác cho phép TransKey nổi bong bóng trên các ứng dụng khác để dịch nhanh.';
-
-  @override
-  String get setupStep3Title => 'Sẵn sàng!';
-
-  @override
-  String get setupStep3DescIOS =>
-      'Khi gõ trong bất kỳ ứng dụng nào, giữ phím quả địa cầu 🌐 để chuyển sang TransKey. Nhấn \"Phản hồi\" để dịch ngay tin nhắn.';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'Nút TransKey đã xuất hiện trên màn hình. Sao chép văn bản bất kỳ, nhấn vào nút, chọn thao tác - kết quả hiện ngay mà không cần rời app.';
-
-  @override
-  String get setupStep4Title => 'Dịch từ mọi app';
-
-  @override
-  String get setupStep4DescIOS =>
-      'Chọn văn bản → nhấn \"Chia sẻ\" → chọn TransKey. Hoặc sao chép văn bản rồi mở TransKey — ứng dụng sẽ tự đọc nội dung vừa sao chép.';
-
-  @override
-  String get setupStep4DescAndroid =>
-      'Sao chép văn bản trong app bất kỳ → nhấn Nút TransKey → chọn Dịch, Trả lời hoặc thao tác khác → nhấn vào màn hình để đóng khi xong.';
-
-  @override
-  String get setupStep5Title => 'Tính năng thông minh';
-
-  @override
-  String get setupStep5Desc =>
-      'Dịch, Phản hồi, Tóm tắt, Giải thích & Tinh chỉnh. Tính năng Pro có biểu tượng khoá.';
 
   @override
   String get guideTitle => 'Cách sử dụng';
@@ -1737,4 +1665,154 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pasteTranslate => 'Dán & dịch';
+
+  @override
+  String get setupHubTitle => 'Cài đặt TransKey';
+
+  @override
+  String get setupHubSubtitle =>
+      'Bật hai thứ này là TransKey dùng được trong mọi ứng dụng.';
+
+  @override
+  String get setupHubAllDoneBody =>
+      'Đã bật xong. TransKey dùng được ở mọi ứng dụng rồi.';
+
+  @override
+  String get setupTaskButtonTitle => 'Nút TransKey';
+
+  @override
+  String get setupTaskButtonBody =>
+      'Nút nhỏ nổi trên màn hình, giúp bạn dịch mà không phải thoát ứng dụng đang mở.';
+
+  @override
+  String get setupTaskKeyboardTitle => 'Bàn phím TransKey';
+
+  @override
+  String get setupTaskKeyboardBody =>
+      'Dịch ngay trong lúc bạn đang gõ tin nhắn.';
+
+  @override
+  String get setupStateDone => 'Đã xong';
+
+  @override
+  String get setupStateOff => 'Chưa bật';
+
+  @override
+  String get setupStateButtonPaused => 'Đã cho phép, chưa hiện';
+
+  @override
+  String get setupStateKeyboardNotUsed => 'Đã bật, chưa dùng';
+
+  @override
+  String get setupStateUnknown => 'Chưa kiểm tra được';
+
+  @override
+  String get setupOpenSystemSettings => 'Mở cài đặt máy';
+
+  @override
+  String get setupNoWorries =>
+      'Chưa bật cũng không sao. Bạn vẫn dịch được ngay trong ứng dụng.';
+
+  @override
+  String get setupButtonWhy =>
+      'Nút TransKey nổi lên trên các ứng dụng khác, để bạn dịch một tin nhắn mà không phải đóng nó. Máy cần cho phép việc này trước.';
+
+  @override
+  String get setupMockAppsTitle => 'Hiện trên các ứng dụng khác';
+
+  @override
+  String get setupButtonListHint =>
+      'Danh sách này có tất cả ứng dụng trong máy, xếp theo bảng chữ cái. Bạn kéo xuống chữ T, hoặc dùng ô tìm kiếm ở trên cùng.';
+
+  @override
+  String get setupButtonStep1 => 'Tìm TransKey trong danh sách';
+
+  @override
+  String get setupButtonStep2 => 'Bấm vào TransKey';
+
+  @override
+  String get setupButtonStep3 => 'Gạt công tắc sang bật, rồi quay lại đây';
+
+  @override
+  String get setupKeyboardWhy =>
+      'Có bàn phím TransKey, bạn dịch được tin nhắn ngay lúc đang viết, không cần chuyển qua lại giữa các ứng dụng.';
+
+  @override
+  String get setupMockKeyboardsTitle => 'Bàn phím trên màn hình';
+
+  @override
+  String get setupKeyboardListHint =>
+      'Trên máy, tên hiện ra là TransKey Keyboard.';
+
+  @override
+  String get setupKeyboardStep1 => 'Tìm dòng TransKey Keyboard';
+
+  @override
+  String get setupKeyboardStep2 => 'Gạt công tắc sang bật, rồi quay lại đây';
+
+  @override
+  String get setupKeyboardWarning =>
+      'Máy sẽ hiện một lời cảnh báo trước. Bạn bấm OK để tiếp tục. Máy nào cũng hỏi câu này với mọi bàn phím.';
+
+  @override
+  String get setupKeyboardPickTitle => 'Sắp xong rồi';
+
+  @override
+  String get setupKeyboardPickBody =>
+      'Bàn phím đã bật. Còn một lần bấm nữa là dùng được.';
+
+  @override
+  String get setupKeyboardPickAction => 'Chọn TransKey';
+
+  @override
+  String get setupKeyboardPickFallback =>
+      'Bảng chọn không mở được. Bạn cũng có thể đổi bàn phím bằng biểu tượng bàn phím nhỏ hiện ra lúc đang gõ.';
+
+  @override
+  String get setupNotYetTitle => 'Chưa thấy bật';
+
+  @override
+  String get setupNotYetButtonBody =>
+      'Có thể bạn chưa tìm thấy TransKey trong danh sách. Lần này bạn dùng ô tìm kiếm ở trên cùng và gõ chữ TransKey nhé.';
+
+  @override
+  String get setupNotYetKeyboardBody =>
+      'Có vẻ lúc nãy bạn bấm Huỷ ở lời cảnh báo của máy. Lời cảnh báo đó là bình thường. Lần này bạn bấm OK nhé.';
+
+  @override
+  String get setupDoneTitle => 'Xong rồi';
+
+  @override
+  String get setupDoneButtonBody =>
+      'Nút TransKey đã hiện trên màn hình. Bạn chép một đoạn chữ, bấm vào nút, rồi chọn việc muốn làm.';
+
+  @override
+  String get setupDoneKeyboardBody =>
+      'Giờ bạn vừa gõ vừa dịch được trong mọi ứng dụng.';
+
+  @override
+  String get setupDoneAction => 'Xong';
+
+  @override
+  String get setupIosStep1 => 'Mở Cài đặt, rồi vào Cài đặt chung';
+
+  @override
+  String get setupIosStep2 => 'Bấm Bàn phím, rồi bấm Các bàn phím';
+
+  @override
+  String get setupIosStep3 => 'Bấm Thêm bàn phím mới và chọn TransKey';
+
+  @override
+  String get setupIosStep4 =>
+      'Bấm vào TransKey một lần nữa rồi bật Cho phép truy cập đầy đủ';
+
+  @override
+  String get setupIosFullAccessNote =>
+      'Mục Cho phép truy cập đầy đủ là để bàn phím kết nối mạng mà dịch. Không bật thì bàn phím vẫn gõ chữ bình thường.';
+
+  @override
+  String get setupBannerTitle => 'TransKey chưa cài đặt xong';
+
+  @override
+  String get setupBannerAction => 'Bật nốt';
 }

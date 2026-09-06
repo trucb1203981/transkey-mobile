@@ -19,7 +19,9 @@ import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../history/screens/history_screen.dart';
 import '../../glossary/screens/glossary_screen.dart';
-import '../../onboarding/screens/keyboard_setup_screen.dart';
+import '../../onboarding/providers/setup_status_provider.dart';
+import '../../onboarding/screens/setup_hub_screen.dart';
+import '../../onboarding/widgets/setup_reminder_banner.dart';
 import '../../../core/bubble/bubble_manager.dart';
 import '../../settings/providers/app_settings_provider.dart';
 import '../../settings/screens/settings_screen.dart';
@@ -99,18 +101,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _bootstrap() async {
     // Sequence cold-start side effects so we don't pop the keyboard up
-    // *behind* the keyboard-setup screen. Order matters:
-    // 1. Decide whether to push keyboard-setup; if pushed, don't focus.
+    // *behind* the setup screen. Order matters:
+    // 1. Decide whether to push setup; if pushed, don't focus.
     // 2. Restore last source text (skips focus when text is restored).
     // 3. Peek clipboard for the suggestion chip.
     // 4. If safe, focus the input so the user can start typing immediately.
-    final keyboardDone = await KeyboardSetupScreen.hasCompleted();
+    //
+    // The prompt is driven by the REAL platform state, not by a "seen it" flag:
+    // the old gate marked itself done when the user tapped Skip, so one stray
+    // tap on the very first screen removed the only guidance they would ever be
+    // offered. Now it stops after a few launches, and the home banner keeps the
+    // door open for as long as something is actually still off.
+    final status = await ref.read(setupStatusProvider.future);
+    final prompts = await SetupHubScreen.promptCount();
     if (!mounted) return;
-    if (!keyboardDone) {
+    if (status.hasWorkLeft && prompts < SetupHubScreen.maxAutoPrompts) {
+      await SetupHubScreen.notePrompted();
+      if (!mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.push('/keyboard-setup');
+        if (mounted) context.push('/setup');
       });
-      // Don't focus — the keyboard-setup screen will be on top.
+      // Don't focus - the setup screen will be on top.
       await _restoreSourceText();
       await _peekClipboard();
       return;
@@ -658,6 +669,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // returns SizedBox.shrink() with no margin when nothing is to
           // be shown, so no awkward spacing on the common case.
           const PlanStatusBanner(),
+          // Persistent, non-modal door back into setup. The automatic prompt
+          // stops after a few launches; this stays for as long as something is
+          // genuinely still off, and removes itself the moment both are on.
+          const SetupReminderBanner(),
           if (_clipboardSuggestion != null || _clipboardChipIOS) ...[
             ClipboardChip(
               // iOS can't preview without triggering the paste banner —
@@ -712,6 +727,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     _textController.clear();
                     ref.read(translateProvider.notifier).clearResult();
                   },
+                  // Source-side TTS: use the pinned lang, or the server's
+                  // detected lang once a translation came back (auto mode).
+                  // The server returns the literal string 'auto' when its
+                  // script heuristic can't tell (all Latin-script langs) -
+                  // not a speakable code, so treat it as unknown.
+                  ttsLang: ready
+                      ? src
+                      : (result?.detectedLang != 'auto'
+                          ? result?.detectedLang
+                          : null),
                 ),
                 // Glossary name chips — tap to insert into the input. Speech
                 // recognizers reliably mangle foreign names ("Shinzato" →
@@ -829,9 +854,13 @@ class _HomeHeaderState extends ConsumerState<_HomeHeader>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // The user may have switched the active keyboard in the system picker /
-    // settings while we were backgrounded; re-poll so the toggle is accurate.
-    if (state == AppLifecycleState.resumed) _refreshIme();
+    // The user may have switched the active keyboard, or granted the button
+    // permission, while we were backgrounded. Re-poll BOTH: re-reading only the
+    // keyboard is why a user who had just granted the permission came back to
+    // an unchanged grey button and assumed nothing had happened.
+    if (state != AppLifecycleState.resumed) return;
+    _refreshIme();
+    ref.read(setupStatusProvider.notifier).refresh();
   }
 
   Future<void> _refreshIme() async {
@@ -878,15 +907,11 @@ class _HomeHeaderState extends ConsumerState<_HomeHeader>
     }
     final has = await mgr.checkPermission();
     if (!has) {
-      // Opens the system "Display over other apps" settings; the user grants
-      // it then taps the toggle again.
-      await mgr.requestPermission();
-      if (mounted) {
-        final l = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.permissionsNeedSetup)),
-        );
-      }
+      // Send the user through the guided flow instead of straight into system
+      // settings. The old path fired a SnackBar right as the system screen
+      // covered the app, so the one explanation on offer was painted behind it
+      // and had timed out before the user came back.
+      if (mounted) context.push('/setup/button');
       return;
     }
     await mgr.startBubble(source: 'home_header');

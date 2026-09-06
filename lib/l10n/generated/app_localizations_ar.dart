@@ -226,10 +226,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get keyboardSettingsTitle => 'الفقاعة ولوحة المفاتيح';
 
   @override
-  String get keyboardSettingsSectionStatus => 'الفقاعة والأذونات';
+  String get keyboardSettingsSectionStatus => 'زر TransKey';
 
   @override
-  String get keyboardSettingsSectionBehavior => 'سلوك الفقاعة';
+  String get keyboardSettingsSectionBehavior => 'كيف يعمل الزر';
 
   @override
   String get imeSectionTitle => 'لوحة المفاتيح';
@@ -249,19 +249,16 @@ class AppLocalizationsAr extends AppLocalizations {
       'غير مفعّلة. اضغط للتفعيل في إعدادات النظام.';
 
   @override
-  String get bubbleSetup => 'إعداد الزر العائم';
+  String get bubbleSetup => 'إعداد زر TransKey';
 
   @override
-  String get floatingBubble => 'الزر العائم';
+  String get floatingBubble => 'زر TransKey';
 
   @override
   String get bubbleActive => 'نشط';
 
   @override
   String get bubbleInactive => 'غير نشط';
-
-  @override
-  String get permissionsNeedSetup => 'اضغط لمنح الأذونات المطلوبة';
 
   @override
   String get sendFeedback => 'إرسال ملاحظات';
@@ -948,75 +945,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get onboardGetStarted => 'ابدأ';
-
-  @override
-  String get setupTitle => 'إعداد لوحة المفاتيح';
-
-  @override
-  String get setupTitleAndroid => 'إعداد TransKey';
-
-  @override
-  String get setupOpenSettings => 'فتح الإعدادات';
-
-  @override
-  String get setupOpenPermissions => 'فتح الأذونات';
-
-  @override
-  String get setupStep1TitleIOS => 'أضف لوحة مفاتيح TransKey';
-
-  @override
-  String get setupStep1TitleAndroid => 'تفعيل الزر العائم';
-
-  @override
-  String get setupStep1DescIOS =>
-      'اذهب إلى الإعدادات وأضف TransKey كلوحة مفاتيح مخصصة لتتمكن من الترجمة مباشرة أثناء الكتابة.';
-
-  @override
-  String get setupStep1DescAndroid =>
-      'اسمح لـ TransKey بالعرض فوق التطبيقات الأخرى ليظهر الزر العائم عندما تحتاج إليه.';
-
-  @override
-  String get setupStep2Title => 'السماح بالوصول الكامل';
-
-  @override
-  String get setupStep2TitleAndroid => 'الزر العائم جاهز';
-
-  @override
-  String get setupStep2DescIOS =>
-      'اضغط على TransKey في قائمة لوحات المفاتيح وفعّل \"السماح بالوصول الكامل\". هذا ضروري للاتصال بالإنترنت من أجل الترجمات.';
-
-  @override
-  String get setupStep2DescAndroid =>
-      'يسمح إذن العرض فوق التطبيقات الأخرى لـ TransKey بعرض زر عائم فوقها لإجراء ترجمات سريعة.';
-
-  @override
-  String get setupStep3Title => 'كل شيء جاهز!';
-
-  @override
-  String get setupStep3DescIOS =>
-      'عند الكتابة في أي تطبيق، اضغط مطولًا على مفتاح الكرة الأرضية 🌐 للتبديل إلى TransKey. اضغط \"رد\" لترجمة رسالتك فورًا.';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'زر TransKey جاهز على شاشتك. انسخ أي نص، اضغط على الزر، اختر ما تريد - تظهر النتيجة فوراً دون مغادرة التطبيق.';
-
-  @override
-  String get setupStep4Title => 'الترجمة من أي تطبيق';
-
-  @override
-  String get setupStep4DescIOS =>
-      'حدد أي نص → اضغط \"مشاركة\" → اختر TransKey. أو انسخ النص وافتح TransKey — سيقرأ الحافظة تلقائيًا.';
-
-  @override
-  String get setupStep4DescAndroid =>
-      'انسخ النص في أي تطبيق → اضغط على زر TransKey → اختر ترجمة أو رد أو ميزة أخرى → انقر في أي مكان للإغلاق عند الانتهاء.';
-
-  @override
-  String get setupStep5Title => 'ميزات ذكية';
-
-  @override
-  String get setupStep5Desc =>
-      'ترجمة ورد وتلخيص وشرح وتحسين النص. ميزات Pro مُعلَّمة برمز قفل.';
 
   @override
   String get guideTitle => 'كيفية الاستخدام';
@@ -1740,4 +1668,153 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pasteTranslate => 'لصق وترجمة';
+
+  @override
+  String get setupHubTitle => 'إعداد TransKey';
+
+  @override
+  String get setupHubSubtitle =>
+      'فعّل هذين الأمرين، وسيعمل TransKey في كل التطبيقات.';
+
+  @override
+  String get setupHubAllDoneBody =>
+      'كل شيء مُفعّل. TransKey جاهز للاستخدام في أي تطبيق.';
+
+  @override
+  String get setupTaskButtonTitle => 'زر TransKey';
+
+  @override
+  String get setupTaskButtonBody =>
+      'زر صغير يطفو على الشاشة، لتترجم دون الخروج من التطبيق الذي تستخدمه.';
+
+  @override
+  String get setupTaskKeyboardTitle => 'لوحة مفاتيح TransKey';
+
+  @override
+  String get setupTaskKeyboardBody => 'ترجم أثناء الكتابة، داخل رسائلك مباشرة.';
+
+  @override
+  String get setupStateDone => 'جاهز';
+
+  @override
+  String get setupStateOff => 'غير مُفعّل بعد';
+
+  @override
+  String get setupStateButtonPaused => 'مسموح، لكنه لا يظهر';
+
+  @override
+  String get setupStateKeyboardNotUsed => 'مُفعّلة، لكنها غير مستخدمة';
+
+  @override
+  String get setupStateUnknown => 'لم يتم التحقق بعد';
+
+  @override
+  String get setupOpenSystemSettings => 'فتح إعدادات الهاتف';
+
+  @override
+  String get setupNoWorries =>
+      'لا شيء يتعطل إذا توقفت هنا. تستطيع الترجمة داخل التطبيق كالمعتاد.';
+
+  @override
+  String get setupButtonWhy =>
+      'زر TransKey يطفو فوق التطبيقات الأخرى، لتترجم رسالة دون إغلاقها. يجب أن يسمح هاتفك بذلك أولًا.';
+
+  @override
+  String get setupMockAppsTitle => 'العرض فوق التطبيقات الأخرى';
+
+  @override
+  String get setupButtonListHint =>
+      'القائمة تضم كل التطبيقات الموجودة في هاتفك، مرتبة أبجديًا. انزل إلى حرف T، أو استخدم مربع البحث في الأعلى.';
+
+  @override
+  String get setupButtonStep1 => 'ابحث عن TransKey في القائمة';
+
+  @override
+  String get setupButtonStep2 => 'اضغط على TransKey';
+
+  @override
+  String get setupButtonStep3 => 'شغّل المفتاح، ثم عُد إلى هنا';
+
+  @override
+  String get setupKeyboardWhy =>
+      'مع لوحة مفاتيح TransKey تترجم الرسالة وأنت تكتبها، دون تبديل التطبيقات.';
+
+  @override
+  String get setupMockKeyboardsTitle => 'لوحات المفاتيح على الشاشة';
+
+  @override
+  String get setupKeyboardListHint =>
+      'في هاتفك يظهر الاسم هكذا: TransKey Keyboard.';
+
+  @override
+  String get setupKeyboardStep1 => 'ابحث عن سطر TransKey Keyboard';
+
+  @override
+  String get setupKeyboardStep2 => 'شغّل المفتاح، ثم عُد إلى هنا';
+
+  @override
+  String get setupKeyboardWarning =>
+      'سيعرض هاتفك تنبيهًا أولًا. اضغط موافق للمتابعة. كل هاتف يسأل هذا السؤال عن كل لوحة مفاتيح.';
+
+  @override
+  String get setupKeyboardPickTitle => 'أوشكت على الانتهاء';
+
+  @override
+  String get setupKeyboardPickBody =>
+      'لوحة المفاتيح مُفعّلة. تبقّت ضغطة واحدة لتبدأ استخدامها.';
+
+  @override
+  String get setupKeyboardPickAction => 'اختر TransKey';
+
+  @override
+  String get setupKeyboardPickFallback =>
+      'قائمة الاختيار لم تُفتح. تستطيع أيضًا تبديل لوحة المفاتيح من أيقونة لوحة المفاتيح الصغيرة التي تظهر أثناء الكتابة.';
+
+  @override
+  String get setupNotYetTitle => 'غير مُفعّل بعد';
+
+  @override
+  String get setupNotYetButtonBody =>
+      'على الأرجح لم يظهر TransKey في القائمة. هذه المرة استخدم مربع البحث في الأعلى واكتب TransKey.';
+
+  @override
+  String get setupNotYetKeyboardBody =>
+      'يبدو أنه تم الضغط على إلغاء في تنبيه الهاتف. هذا التنبيه أمر طبيعي. هذه المرة اضغط موافق.';
+
+  @override
+  String get setupDoneTitle => 'تم كل شيء';
+
+  @override
+  String get setupDoneButtonBody =>
+      'زر TransKey صار على شاشتك الآن. انسخ أي نص، اضغط على الزر، ثم اختر ما تريد فعله.';
+
+  @override
+  String get setupDoneKeyboardBody =>
+      'تستطيع الآن الترجمة أثناء الكتابة في أي تطبيق.';
+
+  @override
+  String get setupDoneAction => 'تم';
+
+  @override
+  String get setupIosStep1 => 'افتح الإعدادات، ثم عام';
+
+  @override
+  String get setupIosStep2 => 'اضغط لوحة المفاتيح، ثم لوحات المفاتيح';
+
+  @override
+  String get setupIosStep3 => 'اضغط إضافة لوحة مفاتيح جديدة واختر TransKey';
+
+  @override
+  String get setupIosStep4 =>
+      'اضغط على TransKey مرة أخرى وفعّل السماح بالوصول الكامل';
+
+  @override
+  String get setupIosFullAccessNote =>
+      'السماح بالوصول الكامل هو ما يتيح للوحة المفاتيح الاتصال بالإنترنت لتترجم. وبدونه تبقى لوحة المفاتيح تكتب كالمعتاد.';
+
+  @override
+  String get setupBannerTitle => 'لم يكتمل إعداد TransKey بعد';
+
+  @override
+  String get setupBannerAction => 'أكمل الإعداد';
 }

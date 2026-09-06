@@ -218,16 +218,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tabRefine => '润色';
 
   @override
-  String get keyboardSetup => '键盘设置';
+  String get keyboardSetup => '设置键盘';
 
   @override
   String get keyboardSettingsTitle => '浮窗与键盘';
 
   @override
-  String get keyboardSettingsSectionStatus => '气泡和权限';
+  String get keyboardSettingsSectionStatus => 'TransKey 按钮';
 
   @override
-  String get keyboardSettingsSectionBehavior => '气泡行为';
+  String get keyboardSettingsSectionBehavior => '按钮的行为';
 
   @override
   String get imeSectionTitle => '键盘';
@@ -245,19 +245,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imeStatusNotEnabled => '未启用。点按在系统设置中启用。';
 
   @override
-  String get bubbleSetup => '气泡设置';
+  String get bubbleSetup => '设置 TransKey 按钮';
 
   @override
-  String get floatingBubble => '悬浮气泡';
+  String get floatingBubble => 'TransKey 按钮';
 
   @override
   String get bubbleActive => '已启用';
 
   @override
   String get bubbleInactive => '未启用';
-
-  @override
-  String get permissionsNeedSetup => '点按以授予所需权限';
 
   @override
   String get sendFeedback => '发送反馈';
@@ -907,70 +904,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get onboardGetStarted => '开始使用';
-
-  @override
-  String get setupTitle => '设置键盘';
-
-  @override
-  String get setupTitleAndroid => '设置 TransKey';
-
-  @override
-  String get setupOpenSettings => '打开设置';
-
-  @override
-  String get setupOpenPermissions => '打开权限';
-
-  @override
-  String get setupStep1TitleIOS => '添加 TransKey 键盘';
-
-  @override
-  String get setupStep1TitleAndroid => '启用悬浮气泡';
-
-  @override
-  String get setupStep1DescIOS => '进入设置,将 TransKey 添加为自定义键盘,即可在输入时直接翻译。';
-
-  @override
-  String get setupStep1DescAndroid => '允许 TransKey 在其他应用上层显示,即可在需要时显示悬浮气泡。';
-
-  @override
-  String get setupStep2Title => '允许完全访问';
-
-  @override
-  String get setupStep2TitleAndroid => '按钮已启用';
-
-  @override
-  String get setupStep2DescIOS => '点击键盘列表中的 TransKey 并启用\"允许完全访问\"。翻译需要网络连接。';
-
-  @override
-  String get setupStep2DescAndroid => '悬浮窗权限让 TransKey 在其他应用之上显示悬浮气泡,实现快速翻译。';
-
-  @override
-  String get setupStep3Title => '全部就绪!';
-
-  @override
-  String get setupStep3DescIOS =>
-      '在任意应用中输入时,长按地球仪键🌐切换到 TransKey。点击\"回复\"立即翻译您的消息。';
-
-  @override
-  String get setupStep3DescAndroid =>
-      'TransKey 按钮现已出现在屏幕上。复制任意文本，点击按钮，选择操作 - 结果立即显示，无需离开当前应用。';
-
-  @override
-  String get setupStep4Title => '从任意应用翻译';
-
-  @override
-  String get setupStep4DescIOS =>
-      '选择文本 → 点击\"分享\" → 选择 TransKey。或复制文本后打开 TransKey — 它会自动读取剪贴板。';
-
-  @override
-  String get setupStep4DescAndroid =>
-      '在任意应用中复制文本 → 点击 TransKey 按钮 → 选择翻译、回复或其他功能 → 完成后点击任意处关闭。';
-
-  @override
-  String get setupStep5Title => '智能功能';
-
-  @override
-  String get setupStep5Desc => '翻译、回复、总结、解释、润色。Pro 功能带有锁形图标。';
 
   @override
   String get guideTitle => '使用方法';
@@ -1657,4 +1590,137 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pasteTranslate => '粘贴并翻译';
+
+  @override
+  String get setupHubTitle => '设置 TransKey';
+
+  @override
+  String get setupHubSubtitle => '打开这两项，TransKey 就能在所有应用里用了。';
+
+  @override
+  String get setupHubAllDoneBody => '都打开了。现在在任何应用里都能用 TransKey。';
+
+  @override
+  String get setupTaskButtonTitle => 'TransKey 按钮';
+
+  @override
+  String get setupTaskButtonBody => '一个浮在屏幕上的小按钮，不用退出正在看的应用就能翻译。';
+
+  @override
+  String get setupTaskKeyboardTitle => 'TransKey 键盘';
+
+  @override
+  String get setupTaskKeyboardBody => '打字的时候直接翻译，就在消息里。';
+
+  @override
+  String get setupStateDone => '已就绪';
+
+  @override
+  String get setupStateOff => '还没打开';
+
+  @override
+  String get setupStateButtonPaused => '已允许，但还没显示';
+
+  @override
+  String get setupStateKeyboardNotUsed => '已打开，但还没在用';
+
+  @override
+  String get setupStateUnknown => '还没能检查';
+
+  @override
+  String get setupOpenSystemSettings => '打开手机设置';
+
+  @override
+  String get setupNoWorries => '现在停下来也没关系，在应用里还是可以翻译。';
+
+  @override
+  String get setupButtonWhy => 'TransKey 按钮会浮在其他应用上面，这样不用关掉消息就能翻译。手机要先允许这件事。';
+
+  @override
+  String get setupMockAppsTitle => '显示在其他应用上层';
+
+  @override
+  String get setupButtonListHint => '这个列表里是手机上所有的应用，按字母顺序排。往下翻到字母 T，或者用上面的搜索框。';
+
+  @override
+  String get setupButtonStep1 => '在列表里找到 TransKey';
+
+  @override
+  String get setupButtonStep2 => '点一下 TransKey';
+
+  @override
+  String get setupButtonStep3 => '把开关打开，然后回到这里';
+
+  @override
+  String get setupKeyboardWhy => '有了 TransKey 键盘，写消息的时候就能顺手翻译，不用在应用之间来回切换。';
+
+  @override
+  String get setupMockKeyboardsTitle => '屏幕键盘';
+
+  @override
+  String get setupKeyboardListHint => '在手机上显示的名字是 TransKey Keyboard。';
+
+  @override
+  String get setupKeyboardStep1 => '找到 TransKey Keyboard 这一行';
+
+  @override
+  String get setupKeyboardStep2 => '把开关打开，然后回到这里';
+
+  @override
+  String get setupKeyboardWarning => '手机会先弹出一个提醒，点 OK 继续就行。任何手机对任何键盘都会问这一句。';
+
+  @override
+  String get setupKeyboardPickTitle => '快好了';
+
+  @override
+  String get setupKeyboardPickBody => '键盘已经打开了，再点一下就能用。';
+
+  @override
+  String get setupKeyboardPickAction => '选择 TransKey';
+
+  @override
+  String get setupKeyboardPickFallback => '选择窗口没有打开。打字时会出现一个小键盘图标，从那里也能换键盘。';
+
+  @override
+  String get setupNotYetTitle => '还没打开';
+
+  @override
+  String get setupNotYetButtonBody =>
+      '多半是在列表里没找到 TransKey。这次用上面的搜索框，输入 TransKey 试试。';
+
+  @override
+  String get setupNotYetKeyboardBody => '看起来刚才在手机的提醒里点了取消。那个提醒是正常的，这次点 OK 就好。';
+
+  @override
+  String get setupDoneTitle => '都设置好了';
+
+  @override
+  String get setupDoneButtonBody => 'TransKey 按钮已经在屏幕上了。复制一段文字，点一下按钮，再选你想做的事。';
+
+  @override
+  String get setupDoneKeyboardBody => '现在在任何应用里都能边打字边翻译了。';
+
+  @override
+  String get setupDoneAction => '完成';
+
+  @override
+  String get setupIosStep1 => '打开设置，再进入通用';
+
+  @override
+  String get setupIosStep2 => '点键盘，再点键盘';
+
+  @override
+  String get setupIosStep3 => '点添加新键盘，选择 TransKey';
+
+  @override
+  String get setupIosStep4 => '再点一次 TransKey，打开允许完全访问';
+
+  @override
+  String get setupIosFullAccessNote => '允许完全访问是让键盘能联网翻译。不打开的话，键盘照样可以正常打字。';
+
+  @override
+  String get setupBannerTitle => 'TransKey 还没设置好';
+
+  @override
+  String get setupBannerAction => '完成设置';
 }

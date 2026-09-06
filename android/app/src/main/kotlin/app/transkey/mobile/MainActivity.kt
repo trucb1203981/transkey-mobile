@@ -104,18 +104,41 @@ class MainActivity : FlutterActivity() {
                             result.success(true)
                         }
                     }
+                    // Returns TRUE only when the permission is ALREADY held, so
+                    // the caller can skip its guidance. Otherwise it launches the
+                    // system screen and returns false: re-reading canDrawOverlays
+                    // right after startActivity always said false anyway (the user
+                    // has not even seen the screen yet), which made every caller
+                    // believe the request had failed. The real answer arrives when
+                    // the app resumes and the caller re-checks.
                     "requestPermission" -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            if (!Settings.canDrawOverlays(this)) {
-                                val i = Intent(
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                            result.success(true)
+                        } else if (Settings.canDrawOverlays(this)) {
+                            result.success(true)
+                        } else {
+                            // No canDrawOverlays guard around startActivity: with one,
+                            // an already-granted permission opened nothing and the
+                            // caller sat waiting for a resume that never came.
+                            val opened = openSettings(
+                                Intent(
                                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:$packageName"),
+                                ),
+                            ) || openSettings(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+                            if (opened) {
+                                result.success(false)
+                            } else {
+                                // No ROM screen for it at all: hand the caller the
+                                // app-info page so the user still has somewhere to go.
+                                openSettings(
+                                    Intent(
+                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        Uri.parse("package:$packageName"),
+                                    ),
                                 )
-                                startActivity(i)
+                                result.error("no_settings_screen", "Overlay settings unavailable", null)
                             }
-                            result.success(Settings.canDrawOverlays(this))
-                        } else {
-                            result.success(true)
                         }
                     }
                     "startBubble" -> {
@@ -309,16 +332,31 @@ class MainActivity : FlutterActivity() {
                     "isEnabled" -> result.success(isImeEnabled())
                     "isSelected" -> result.success(isImeSelected())
                     "openImeSettings" -> {
-                        startActivity(
+                        val opened = openSettings(
                             Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
                                 .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
                         )
-                        result.success(null)
+                        if (opened) result.success(null)
+                        else result.error("no_settings_screen", "Keyboard settings unavailable", null)
                     }
+                    // Raises the system "choose input method" sheet OVER this
+                    // activity, so switching the active keyboard costs no trip
+                    // into Settings at all. Reports whether the sheet was even
+                    // reachable: the platform has narrowed this call to the
+                    // foreground app and the current IME, and a caller that
+                    // believes a silent no-op leaves the user staring at nothing.
                     "showImePicker" -> {
                         val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-                        imm?.showInputMethodPicker()
-                        result.success(null)
+                        if (imm == null) {
+                            result.success(false)
+                        } else {
+                            try {
+                                imm.showInputMethodPicker()
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.success(false)
+                            }
+                        }
                     }
                     else -> result.notImplemented()
                 }
@@ -328,9 +366,23 @@ class MainActivity : FlutterActivity() {
         handleIncomingIntent(intent)
     }
 
+    /**
+     * Launch a settings screen, reporting whether a ROM actually has one.
+     * Some OEM builds ship no activity for a given action, and an unguarded
+     * startActivity there throws ActivityNotFoundException straight out of the
+     * MethodChannel handler - crashing the app at the exact moment the user is
+     * trying to turn the feature on.
+     */
+    private fun openSettings(intent: Intent): Boolean = try {
+        startActivity(intent)
+        true
+    } catch (e: Exception) {
+        false
+    }
+
     private fun isImeEnabled(): Boolean {
         // MUST use InputMethodManager, NOT Settings.Secure
-        // .ENABLED_INPUT_METHODS — that key throws SecurityException for
+        // .ENABLED_INPUT_METHODS - that key throws SecurityException for
         // apps targeting SDK > 33 ("only readable to apps with
         // targetSdkVersion <= 33"). enabledInputMethodList is the public
         // API equivalent and needs no permission. InputMethodInfo.id is
@@ -351,7 +403,7 @@ class MainActivity : FlutterActivity() {
 
     private fun isImeSelected(): Boolean {
         // DEFAULT_INPUT_METHOD is still readable on current SDKs, but
-        // wrap defensively in case a future restriction lands — falling
+        // wrap defensively in case a future restriction lands - falling
         // back to "not selected" just means the tile invites the user to
         // pick TransKey, which is harmless.
         return try {
