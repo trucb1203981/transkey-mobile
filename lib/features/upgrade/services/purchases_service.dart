@@ -152,8 +152,11 @@ class PurchasesService {
   /// rethrows for any other error so the caller can show an error toast.
   static Future<CustomerInfo?> purchasePackage(Package pkg) async {
     try {
-      // purchases_flutter 8.x returns CustomerInfo directly (no wrapper).
-      return await Purchases.purchasePackage(pkg);
+      // purchases_flutter 10.x replaced purchasePackage() with
+      // purchase(PurchaseParams) and wraps the outcome in a PurchaseResult.
+      // Unwrap it here so callers keep receiving a plain CustomerInfo.
+      final result = await Purchases.purchase(PurchaseParams.package(pkg));
+      return result.customerInfo;
     } on PlatformException catch (e) {
       final code = PurchasesErrorHelper.getErrorCode(e);
       if (code == PurchasesErrorCode.purchaseCancelledError) {
