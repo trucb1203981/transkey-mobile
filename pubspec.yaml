@@ -1,7 +1,7 @@
 name: transkey_mobile
 description: Real-time translation app by TransKey.
 publish_to: 'none'
-version: 2.4.1+28
+version: 2.5.0+29
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
