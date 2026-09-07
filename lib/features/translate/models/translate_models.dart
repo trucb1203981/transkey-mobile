@@ -1,3 +1,14 @@
+/// Accept both API generations; an unresolved alias must not mask a real code.
+String? parseDetectedLanguage(Map<dynamic, dynamic> map) {
+  for (final key in ['detectedLang', 'detectedSourceLang']) {
+    final value = map[key];
+    if (value is! String) continue;
+    final code = value.trim().toLowerCase();
+    if (code.isNotEmpty && code != 'auto' && code != 'und') return code;
+  }
+  return null;
+}
+
 class SuggestionEntry {
   const SuggestionEntry({required this.source, required this.target});
 
@@ -74,7 +85,7 @@ class TranslateResult {
             map['refined'] as String? ??
             '',
         romanization: map['romanization'] as String?,
-        detectedLang: map['detectedLang'] as String?,
+        detectedLang: parseDetectedLanguage(map),
         model: map['model'] as String?,
         suggestions: (map['suggestions'] as List<dynamic>?)
                 ?.map((e) => SuggestionEntry.fromMap(e as Map<String, dynamic>))

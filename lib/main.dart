@@ -1034,7 +1034,7 @@ Future<void> _translateForBubble(
       return;
     }
     final romanization = data?['romanization'] as String?;
-    final detectedLang = data?['detectedLang'] as String?;
+    final detectedLang = data == null ? null : parseDetectedLanguage(data);
     // Suggestions arrive as [{source, target}, ...]. Pass as two parallel
     // string arrays so the platform channel can use plain primitives — the
     // popup renders both (bilingual, like desktop) and copies the SOURCE
