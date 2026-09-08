@@ -2474,6 +2474,18 @@ abstract class AppLocalizations {
   /// **'Translating again…'**
   String get cameraBlockRetrying;
 
+  /// No description provided for @cameraRetryUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'No new translation. Check the source language or use a clearer image.'**
+  String get cameraRetryUnchanged;
+
+  /// No description provided for @cameraRetryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t translate again. Your current result is unchanged.'**
+  String get cameraRetryFailed;
+
   /// Progress label shown during a multi-pick gallery batch. {current} is the 1-based index of the image currently being processed.
   ///
   /// In en, this message translates to:

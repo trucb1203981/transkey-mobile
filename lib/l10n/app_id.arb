@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Simpan ke buku frasa",
   "cameraSavingPhrasebook": "Menyimpan…",
   "cameraBlockRetrying": "Menerjemahkan lagi…",
+  "cameraRetryUnchanged": "Belum ada terjemahan baru. Periksa bahasa sumber atau gunakan gambar yang lebih jelas.",
+  "cameraRetryFailed": "Tidak dapat menerjemahkan ulang. Hasil saat ini tetap disimpan.",
   "cameraBatchProgress": "Menerjemahkan {current} dari {total}…",
   "cameraSaveNoteLabel": "Tambahkan catatan (opsional)",
   "cameraSaveNoteHint": "mis. dekat hotel, sangat pedas",

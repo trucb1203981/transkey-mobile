@@ -1246,6 +1246,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cameraBlockRetrying => '다시 번역 중…';
 
   @override
+  String get cameraRetryUnchanged =>
+      '새 번역이 없습니다. 원문 언어를 확인하거나 더 선명한 이미지를 사용해 주세요.';
+
+  @override
+  String get cameraRetryFailed => '다시 번역하지 못했습니다. 현재 결과는 그대로 유지됩니다.';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return '$total장 중 $current번째 번역 중…';
   }

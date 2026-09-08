@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Save to phrasebook",
   "cameraSavingPhrasebook": "Saving…",
   "cameraBlockRetrying": "Translating again…",
+  "cameraRetryUnchanged": "No new translation. Check the source language or use a clearer image.",
+  "cameraRetryFailed": "Couldn't translate again. Your current result is unchanged.",
   "cameraBatchProgress": "Translating {current} of {total}…",
   "@cameraBatchProgress": {
     "description": "Progress label shown during a multi-pick gallery batch. {current} is the 1-based index of the image currently being processed.",

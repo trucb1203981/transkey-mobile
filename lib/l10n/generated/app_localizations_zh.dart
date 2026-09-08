@@ -1234,6 +1234,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraBlockRetrying => '正在重新翻译…';
 
   @override
+  String get cameraRetryUnchanged => '没有新的翻译。请检查原文语言或使用更清晰的图片。';
+
+  @override
+  String get cameraRetryFailed => '无法重新翻译。当前结果已保留。';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return '正在翻译第 $current/$total 张…';
   }

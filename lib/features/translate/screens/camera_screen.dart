@@ -18,21 +18,25 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/auth/session_store.dart';
 import '../../../core/camera/camera_service.dart';
+import '../../../core/camera/ocr_image_preparation.dart';
+import '../../../core/camera/vision_dialogue_geometry.dart';
 import '../../../core/camera/text_tracker.dart';
 import '../../../core/tracking/tracking_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
-import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
 import '../../glossary/providers/glossary_provider.dart';
 import '../../translate/providers/camera_settings_provider.dart';
 import '../../translate/providers/features_provider.dart';
 import '../../translate/providers/language_settings_provider.dart';
 import '../services/translation_cache.dart';
+import '../services/camera_block_retry.dart';
 import '../widgets/block_action_sheet.dart';
 import '../widgets/camera_live_overlay.dart';
+import '../widgets/camera_reading_list.dart';
 import '../widgets/camera_result_overlay.dart';
 import '../widgets/camera_settings_sheet.dart';
 import '../widgets/camera_tips_sheet.dart';
+import '../widgets/camera_toolbar.dart';
 import '../widgets/language_picker_sheet.dart';
 
 import '../widgets/scene_picker_row.dart';
@@ -64,6 +68,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// in raw; smoothed, identity-stable boxes come out. See [TextTracker].
   final _liveTracker = TextTracker();
   List<String> _translations = [];
+  final Set<OcrBlock> _retryingBlocks = {};
 
   /// Tracks the InteractiveViewer's transform so we can flip pan on/off
   /// based on the current zoom level - pan stays disabled at scale=1
@@ -464,7 +469,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   /// Release camera resources after the app has been backgrounded long enough.
   void _stopCameraForBackground() {
-    if (_step != _CameraStep.preview) return;
+    if (_step != _CameraStep.preview || _isPickingGallery) return;
     unawaited(_cameraService.dispose());
     _cameraStoppedForBackground = true;
     _cameraDisposed = true;
@@ -557,7 +562,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.only(top: 56),
+          padding: EdgeInsets.only(
+            top: CameraToolbar.needsSecondRow(
+              width: MediaQuery.sizeOf(context).width -
+                  MediaQuery.paddingOf(context).horizontal - 16,
+              textScaler: MediaQuery.textScalerOf(context),
+              secondaryActionCount: 2,
+            ) ? 104 : 56,
+          ),
           child: Center(
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 180),
@@ -645,6 +657,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Widget _buildPreview() {
+    if (_isPickingGallery) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
     final controller = _cameraService.controller;
     if (controller == null || !controller.value.isInitialized) {
       return const Center(child: CircularProgressIndicator(color: Colors.white));
@@ -882,7 +897,40 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// snackbar on failure — no full-screen spinner because the rest of
   /// the result is still useful while one card refreshes.
   Future<void> _retryBlock(int index, OcrBlock block) async {
-    if (!mounted) return;
+    if (!mounted ||
+        index < 0 ||
+        index >= _translations.length ||
+        index >= _blocks.length ||
+        !identical(_blocks[index], block) ||
+        !_retryingBlocks.add(block)) {
+      return;
+    }
+    final path = _capturedPath;
+    final pageBlocks = _blocks;
+    final previous = _translations[index];
+    final langs = ref.read(languageSettingsProvider).valueOrNull;
+    final sourceLang = langs?.sourceLang ?? 'auto';
+    final targetLang = langs?.targetLang ?? 'en';
+    final scene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+        CameraScene.auto;
+    bool isCurrent() {
+      if (!mounted ||
+          _step != _CameraStep.result ||
+          _capturedPath != path ||
+          !identical(_blocks, pageBlocks) ||
+          index >= _blocks.length ||
+          index >= _translations.length ||
+          !identical(_blocks[index], block) ||
+          _translations[index] != previous) {
+        return false;
+      }
+      final currentLangs = ref.read(languageSettingsProvider).valueOrNull;
+      final currentScene = ref.read(cameraSettingsProvider).valueOrNull?.scene ??
+          CameraScene.auto;
+      return (currentLangs?.sourceLang ?? 'auto') == sourceLang &&
+          (currentLangs?.targetLang ?? 'en') == targetLang &&
+          currentScene == scene;
+    }
     final l = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
@@ -891,20 +939,35 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         duration: const Duration(seconds: 6),
       ),
     );
-    final fresh = await _translateBatch([block.text], forceRefresh: true);
+    late CameraRetryResult result;
+    try {
+      result = await retryCameraBlock(
+        dio: ref.read(apiClientProvider).dio,
+        text: block.text,
+        previousTranslation: previous,
+        sourceLang: sourceLang,
+        targetLang: targetLang,
+        scene: scene.id,
+        isCurrent: isCurrent,
+      );
+    } finally {
+      _retryingBlocks.remove(block);
+    }
     if (!mounted) return;
     messenger.hideCurrentSnackBar();
-    if (fresh.isEmpty) {
+    if (result.status == CameraRetryStatus.stale || !isCurrent()) return;
+    if (result.status != CameraRetryStatus.updated) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l.cameraNoText),
-          duration: const Duration(seconds: 2),
+          content: Text(result.status == CameraRetryStatus.unchanged
+              ? l.cameraRetryUnchanged
+              : l.cameraRetryFailed),
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
     }
-    final updated = fresh.first;
-    if (index < 0 || index >= _translations.length) return;
+    final updated = _normalizeTranslation(result.translation!);
     setState(() {
       _translations = [
         for (var i = 0; i < _translations.length; i++)
@@ -1437,11 +1500,18 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 // SUPER-dense menu without overlap (readable text needs more
                 // height than the cramped rows leave), so the list is the
                 // reliable way to read those.
-                _RoundIconButton(
-                  icon: Icons.format_list_bulleted,
-                  tooltip: AppLocalizations.of(context)!.cameraListView,
-                  onTap: _showResultList,
-                ),
+                if (ref.read(cameraSettingsProvider).valueOrNull?.scene == CameraScene.menu)
+                  _ActionChip(
+                    icon: Icons.format_list_bulleted,
+                    label: AppLocalizations.of(context)!.cameraListView,
+                    onTap: _showResultList,
+                  )
+                else
+                  _RoundIconButton(
+                    icon: Icons.format_list_bulleted,
+                    tooltip: AppLocalizations.of(context)!.cameraListView,
+                    onTap: _showResultList,
+                  ),
                 _RoundIconButton(
                   icon: Icons.help_outline,
                   tooltip: AppLocalizations.of(context)!.cameraTipsTitle,
@@ -1517,74 +1587,27 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              Row(
-                children: [
-                  // Source → Target language selector. Letting the user set
-                  // the SOURCE matters for accuracy: a concrete non-Latin
-                  // source (Thai / Arabic / Russian …) routes the capture
-                  // straight to the vision LLM, which reads scripts ML Kit
-                  // can't. "Auto" keeps the on-device-first behaviour.
-                  _LangPill(
-                    label: _sourceLabel(l),
-                    onTap: _changeSourceLang,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 1),
-                    child: Icon(Icons.arrow_right_alt,
-                        color: Colors.white70, size: 18),
-                  ),
-                  _LangPill(
-                    label: (ref
-                                .watch(languageSettingsProvider)
-                                .valueOrNull
-                                ?.targetLang ??
-                            'en')
-                        .toUpperCase(),
-                    onTap: _changeTargetLang,
-                  ),
-                  if (_step == _CameraStep.preview)
-                    IconButton(
-                      icon: Icon(
-                        _flashOn ? Icons.flash_on : Icons.flash_off,
-                        color: Colors.white,
-                      ),
-                      onPressed: _toggleFlash,
-                    ),
-                  // Help lives in the top bar only OUTSIDE the result
-                  // screen; on the result screen it moves into the action
-                  // bar's view-control cluster so it doesn't crowd the
-                  // settings button.
-                  if (_step != _CameraStep.result)
-                    IconButton(
-                      icon: const Icon(Icons.help_outline,
-                          color: Colors.white),
-                      tooltip: l.cameraTipsTitle,
-                      onPressed: () {
-                        ref.read(trackingServiceProvider).event(
-                              'camera_tips_open',
-                              properties: {'source': 'help_button'},
-                            );
-                        _withPreviewStreamPaused(
-                            () => CameraTipsSheet.show(context));
-                      },
-                    ),
-                  IconButton(
-                    icon: const Icon(Icons.tune, color: Colors.white),
-                    tooltip: l.cameraSettingsTitle,
-                    onPressed: () => _withPreviewStreamPaused(
-                        () => CameraSettingsSheet.show(context)),
-                  ),
-                ],
+            child: CameraToolbar(
+              sourceLabel: _sourceLabel(l),
+              targetLabel: (ref.watch(languageSettingsProvider).valueOrNull
+                      ?.targetLang ?? 'en').toUpperCase(),
+              onClose: () => Navigator.of(context).pop(),
+              onSource: _changeSourceLang,
+              onTarget: _changeTargetLang,
+              onFlash: _step == _CameraStep.preview ? _toggleFlash : null,
+              flashOn: _flashOn,
+              onHelp: _step != _CameraStep.result ? () {
+                ref.read(trackingServiceProvider).event(
+                  'camera_tips_open', properties: {'source': 'help_button'},
+                );
+                _withPreviewStreamPaused(() => CameraTipsSheet.show(context));
+              } : null,
+              helpTooltip: l.cameraTipsTitle,
+              settingsTooltip: l.cameraSettingsTitle,
+              onSettings: () => _withPreviewStreamPaused(
+                () => CameraSettingsSheet.show(context),
               ),
-            ],
-          ),
+            ),
           ),
         ),
       ),
@@ -1899,8 +1922,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// the result so the user can flip between pages without re-picking.
   Future<void> _pickFromGallery() async {
     if (_isPickingGallery) return;
-    _isPickingGallery = true;
+    setState(() => _isPickingGallery = true);
     try {
+    // Unmount CameraPreview before disposing its controller. Its internal
+    // listener can otherwise rebuild against a disposed controller during
+    // the handoff to the system picker.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
     // Stop the live camera feed BEFORE handing off to the OS picker —
     // the preview keeps the sensor + GPU pipeline hot otherwise, draining
     // battery + heating the device while the user is in another activity
@@ -1916,25 +1944,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     _liveTracker.reset();
     if (mounted) setState(() {});
 
-    // Manga/Comic needs MORE pixels than the menu/doc default: a vertical-CJK
-    // page (e.g. 1080x2400) downscaled to 1280 becomes 576x1280, leaving each
-    // vertical text COLUMN only ~48 px wide - too low-res for Apple Vision /
-    // ML Kit, which then emit Latin gibberish ("rudtrudt") for whole bubbles
-    // (verified on device, the "みーは" page). 2560 (matches the native Vision
-    // maxEdge) keeps columns ~2x larger and readable. Other scenes keep the
-    // faster 1280 cap.
+    // Preserve dense glyphs before OCR. Upload compression still applies its
+    // own scene limits, so local detail does not raise the vision token cap.
     final pickScene = ref.read(cameraSettingsProvider).valueOrNull?.scene;
-    final double pickMaxEdge =
-        pickScene == CameraScene.manga ? 2560 : 1280;
+    final pickMaxEdge = galleryMaxEdgeForScene(pickScene?.id ?? 'auto').toDouble();
     final List<XFile> rawPicked;
     try {
       rawPicked = await ImagePicker().pickMultiImage(
-        // Cap dimensions so a gallery pick is as fast as a live capture: a
-        // library photo is a full ~12 MP HEIC, and the picker has to decode +
-        // downscale + re-encode it before OCR even starts. 1280 matches the
-        // shutter's ResolutionPreset.high (1280x720); manga raises this to 2560
-        // (see [pickMaxEdge] above) because dense vertical-CJK columns need the
-        // extra resolution.
+        // Bound library photos at import while retaining scene-specific detail.
         maxWidth: pickMaxEdge,
         maxHeight: pickMaxEdge,
         imageQuality: 90,
@@ -2050,7 +2067,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       });
     }
     } finally {
-      _isPickingGallery = false;
+      if (mounted) setState(() => _isPickingGallery = false);
     }
   }
 
@@ -2323,6 +2340,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           final end = math.min(s + _batchChunkSize, probe.missTexts.length);
           final resp = await api.dio.post('/translate-batch', data: {
             'texts': probe.missTexts.sublist(s, end),
+            'sourceLang': sourceLang,
             'targetLang': targetLang,
             'appHint': 'camera',
             'scene': scene.id,
@@ -2474,7 +2492,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
         // Step 2: vision (escalation target / weak-OCR fallback).
         final visionSw = Stopwatch()..start();
-        final snap = await _runVisionPure(picked[i].path, scene: scene.id);
+        final snap = await _runVisionPure(picked[i].path, scene: scene.id, anchors: ocrSnap);
         // Offline / vision failed: keep the on-device read rather than an
         // error card - the user chose on-device as the offline fallback.
         // Only when we actually have an on-device snapshot with content.
@@ -2636,7 +2654,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     required String targetLang,
     required String sourceLang,
   }) async {
-    final probe = _probeTranslationCache(texts);
+    final probe = _probeTranslationCacheImpl(
+        texts, targetLang, sourceLang, scene, false);
     final translations = List<String>.generate(
       texts.length,
       (i) => probe.results[i] ?? texts[i],
@@ -2648,6 +2667,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         final end = math.min(s + _batchChunkSize, probe.missTexts.length);
         final resp = await api.dio.post('/translate-batch', data: {
           'texts': probe.missTexts.sublist(s, end),
+          'sourceLang': sourceLang,
           'targetLang': targetLang,
           'appHint': 'camera',
           'scene': scene.id,
@@ -2692,6 +2712,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   Future<_BatchSnapshot> _runVisionPure(
     String path, {
     required String scene,
+    _BatchSnapshot? anchors,
   }) async {
     try {
       final bytes = await File(path).readAsBytes();
@@ -2781,28 +2802,64 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           vt.add(trVi);
         }
         if (vb.isNotEmpty) {
-          // Vision boxes are an LLM GUESS (correct coordinate space, but
-          // imprecise per-block). Snap each onto the accurate on-device
-          // BubbleDetector shape. Pass the SAME compressed bytes sent to the
-          // server so the bubbles land in the same coordinate space (compSize).
-          final snapped = await _cameraService.snapVisionBoxesToBubbles(
-            compressed,
-            vb.map((b) => b.boundingBox).toList(),
+          final aligned = alignDialogueAnchors(
+            vb.map((b) => (text: b.text, box: b.boundingBox)).toList(),
+            anchors == null ? [] : anchors.blocks.map((b) {
+              final sx = compSize.width / anchors.imageSize.width;
+              final sy = compSize.height / anchors.imageSize.height;
+              final r = b.boundingBox;
+              return (text: b.text, box: Rect.fromLTRB(
+                  r.left * sx, r.top * sy, r.right * sx, r.bottom * sy));
+            }).toList(),
           );
-          final blocks = <OcrBlock>[
-            for (var i = 0; i < vb.length; i++)
-              OcrBlock(
-                text: vb[i].text,
-                boundingBox:
-                    i < snapped.length ? snapped[i] : vb[i].boundingBox,
-                confidence: vb[i].confidence,
-              ),
-          ];
+          final cjk = RegExp(r'[\u3040-\u30ff\u4e00-\u9fff]')
+              .hasMatch(vb.map((b) => b.text).join());
+          final groups = scene == 'manga'
+              ? await _cameraService.groupVisionDialogue(
+                  compressed, aligned, imageSize: compSize,
+                  joinVerticalFragments: cjk,
+                )
+              : [
+                  for (var i = 0; i < vb.length; i++)
+                    DialogueGeometryGroup([i], vb[i].boundingBox),
+                ];
+          final blocks = <OcrBlock>[];
+          final translations = <String>[];
+          final regrouped = <int>[];
+          for (final group in groups) {
+            final originals = group.indices.map((i) => vb[i].text).join('\n');
+            final source = CameraService.collapseCjkNewlines(originals);
+            if (group.indices.length > 1) regrouped.add(blocks.length);
+            blocks.add(OcrBlock(text: source, boundingBox: group.box,
+                confidence: mappedConfidence));
+            translations.add(group.indices.map((i) => vt[i]).join(' '));
+          }
+          // Only fragmented groups need another text translation. One bounded
+          // batch restores sentence context without uploading the photo again.
+          if (regrouped.isNotEmpty && scene == 'manga') {
+            final repaired = await _translateTexts(
+              regrouped.map((i) => blocks[i].text).toList(),
+              scene: CameraScene.manga, targetLang: targetLang,
+              sourceLang: captureSourceLang ?? sourceLang ?? 'auto',
+            );
+            for (var i = 0; i < regrouped.length; i++) {
+              final index = regrouped[i];
+              // A failed text request returns the source. Preserve the
+              // already translated fragments in that case.
+              if (repaired[i].trim().isNotEmpty && repaired[i] != blocks[index].text) {
+                translations[index] = repaired[i];
+              }
+            }
+          }
+          if (scene == 'manga') {
+            debugPrint('[MangaGeometry] ${vb.length} fragments -> '
+                '${blocks.length} groups; retranslated=${regrouped.length}');
+          }
           return _BatchSnapshot(
             path: path,
             imageSize: compSize,
             blocks: blocks,
-            translations: vt,
+            translations: translations,
             visionConfidence: confChip,
             sourceLang: captureSourceLang,
           );
@@ -2909,11 +2966,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       // bundled or returns nothing usable.
       final langSettings = ref.read(languageSettingsProvider).valueOrNull;
       final sourceHint = langSettings?.sourceLang;
-      // Manga is overwhelmingly Japanese; allow Chinese / Korean if the
-      // user has pinned the source explicitly.
+      // Auto mode uses page evidence; preserve an explicitly selected source.
       final scriptHint = (sourceHint != null && sourceHint != 'auto')
           ? sourceHint
-          : 'ja';
+          : null;
       final List<OcrBlock> ocrBlocks =
           await _cameraService.recognizePerRegion(file.path, scriptHint: scriptHint);
       _dbg('  ${file.path.split('/').last} DBNet=${ocrBlocks.length}b');
@@ -3004,6 +3060,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
               resp = await api.dio.post('/translate-batch',
                   data: {
                     'texts': probe.missTexts.sublist(s, end),
+                    'sourceLang': sourceLang,
                     'targetLang': targetLang,
                     'appHint': 'camera',
                     'scene': scene.id,
@@ -4274,6 +4331,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             final response = await api.dio
                 .post('/translate-batch', data: {
                   'texts': missTexts.sublist(start, end),
+                  'sourceLang': sourceLang,
                   'targetLang': targetLang,
                   'appHint': 'camera',
                   'scene': scene.id,
@@ -4334,6 +4392,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           final response = await api.dio
               .post('/translate-batch', data: {
                 'texts': missTexts.sublist(start, end),
+                'sourceLang': sourceLang,
                 'targetLang': targetLang,
                 'appHint': 'camera',
                 'scene': scene.id,
@@ -4513,21 +4572,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   void _copyAll() {
-    // Menu scene drops non-dish rows (server blanks them to ""), so the
-    // copied text matches the dish-only cards the user sees.
-    final isMenu =
-        ref.read(cameraSettingsProvider).valueOrNull?.scene == CameraScene.menu;
-    final all = <String>[];
-    for (var i = 0; i < _blocks.length; i++) {
-      final original = _blocks[i].text;
-      final translated = i < _translations.length ? _translations[i] : '';
-      if (isMenu && translated.trim().isEmpty) continue;
-      if (translated.isNotEmpty && translated != original) {
-        all.add('$original → $translated');
-      } else {
-        all.add(original);
-      }
-    }
+    final all = cameraReadingEntries(
+        _blocks.map((b) => b.text).toList(), _translations)
+        .map((entry) => entry.copyText);
     Clipboard.setData(ClipboardData(text: all.join('\n')));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -4541,158 +4588,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   /// sheet is the reliable way to read every line. Source rows stay in OCR
   /// order; pending/untranslated rows show the original only.
   void _showResultList() {
-    final isMenu =
-        ref.read(cameraSettingsProvider).valueOrNull?.scene == CameraScene.menu;
-    final items = <({String original, String translated})>[];
-    for (var i = 0; i < _blocks.length; i++) {
-      final original = _blocks[i].text.trim();
-      final translated =
-          (i < _translations.length ? _translations[i] : '').trim();
-      if (original.isEmpty && translated.isEmpty) continue;
-      // Menu scene: skip non-dish rows the server blanked to "".
-      if (isMenu && translated.isEmpty) continue;
-      items.add((original: original, translated: translated));
-    }
+    final items = cameraReadingEntries(
+        _blocks.map((b) => b.text).toList(), _translations);
     if (items.isEmpty) return;
-    final l = AppLocalizations.of(context)!;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.35,
-        maxChildSize: 0.92,
-        expand: false,
-        builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
-            // Near-opaque dark-violet glass (matches bottomSheetTheme) so the
-            // list stays legible over the camera feed while reading as part
-            // of the Liquid Glass world.
-            color: Color(0xF216131F),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          l.cameraListView,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _copyAll();
-                        },
-                        icon: const Icon(Icons.copy,
-                            size: 16, color: AppColors.primary),
-                        label: Text(
-                          l.cameraCopyAll,
-                          style: const TextStyle(color: AppColors.primary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: AppColors.border),
-                Expanded(
-                  child: ListView.separated(
-                    controller: scrollController,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 16, color: AppColors.border),
-                    itemBuilder: (context, i) {
-                      final it = items[i];
-                      final hasTranslation = it.translated.isNotEmpty &&
-                          it.translated != it.original;
-                      // "What is this?" explains the SOURCE text (the model
-                      // handles the original language better than its own
-                      // translation); fall back to the translation when the
-                      // source is empty.
-                      final explainText = it.original.isNotEmpty
-                          ? it.original
-                          : it.translated;
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SelectableText(
-                                  hasTranslation ? it.translated : it.original,
-                                  style: TextStyle(
-                                    color: hasTranslation
-                                        ? AppColors.textPrimary
-                                        : AppColors.textSecondary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.3,
-                                  ),
-                                ),
-                                if (hasTranslation &&
-                                    it.original.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    it.original,
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 13,
-                                      height: 1.25,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          if (explainText.isNotEmpty)
-                            IconButton(
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 36,
-                                minHeight: 36,
-                              ),
-                              tooltip: l.cameraWhatIsThis,
-                              icon: const Icon(
-                                Icons.help_outline,
-                                size: 20,
-                                color: AppColors.primary,
-                              ),
-                              onPressed: () =>
-                                  WhatIsThisSheet.show(context, explainText),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      builder: (_) => CameraReadingList(
+        items: items,
+        onCopyAll: _copyAll,
+        onExplain: (text) => WhatIsThisSheet.show(context, text),
       ),
     );
   }
@@ -5231,50 +5137,6 @@ class _ActionChip extends StatelessWidget {
                 label,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Compact pill in the camera top bar for a language slot (source or
-/// target). Shows the language label + a dropdown caret; tapping opens the
-/// relevant picker. [label] is already display-ready ("Auto", "VI", "JA"…).
-class _LangPill extends StatelessWidget {
-  const _LangPill({
-    required this.label,
-    required this.onTap,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.15),
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const Icon(Icons.arrow_drop_down,
-                  color: Colors.white70, size: 18),
             ],
           ),
         ),

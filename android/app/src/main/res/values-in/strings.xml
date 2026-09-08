@@ -134,4 +134,6 @@
     <string name="ime_guide_reply_desc">Ketik balasanmu, lalu ketuk untuk menerjemahkannya sebelum dikirim.</string>
     <string name="ime_guide_refine_desc">Perhalus teksmu agar terbaca lebih alami.</string>
     <string name="ime_guide_dismiss">Mengerti</string>
+    <string name="ime_service_label">Keyboard TransKey</string>
+    <string name="ime_subtype_default">TransKey (Inggris · Vietnam Telex)</string>
 </resources>

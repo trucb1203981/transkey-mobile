@@ -134,4 +134,6 @@
     <string name="ime_guide_reply_desc">اكتب ردك ثم اضغط لترجمته قبل الإرسال.</string>
     <string name="ime_guide_refine_desc">حسّن نصك ليصبح أكثر سلاسة وطبيعية.</string>
     <string name="ime_guide_dismiss">فهمت</string>
+    <string name="ime_service_label">لوحة مفاتيح TransKey</string>
+    <string name="ime_subtype_default">TransKey (الإنجليزية · الفيتنامية Telex)</string>
 </resources>

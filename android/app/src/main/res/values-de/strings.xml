@@ -128,4 +128,6 @@
     <string name="ime_guide_reply_desc">Tippe deine Antwort und tippe dann, um sie vor dem Senden zu übersetzen.</string>
     <string name="ime_guide_refine_desc">Verfeinere deinen Text, damit er natürlich klingt.</string>
     <string name="ime_guide_dismiss">Verstanden</string>
+    <string name="ime_service_label">TransKey-Tastatur</string>
+    <string name="ime_subtype_default">TransKey (Englisch · Vietnamesisch Telex)</string>
 </resources>

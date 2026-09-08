@@ -126,4 +126,6 @@
     <string name="ime_guide_reply_desc">Gõ câu trả lời của bạn rồi nhấn để dịch trước khi gửi.</string>
     <string name="ime_guide_refine_desc">Trau chuốt câu chữ cho mượt mà, tự nhiên hơn.</string>
     <string name="ime_guide_dismiss">Đã hiểu</string>
+    <string name="ime_service_label">Bàn phím TransKey</string>
+    <string name="ime_subtype_default">TransKey (tiếng Anh · Telex tiếng Việt)</string>
 </resources>

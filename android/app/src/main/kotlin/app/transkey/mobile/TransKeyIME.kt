@@ -310,6 +310,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             onNoticeTap = { openUpgradeFromKeyboard() }
         }
         pasteButton = root.findViewById<android.widget.ImageButton>(R.id.paste_button)?.apply {
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFF8B5CF6.toInt())
             setOnClickListener { button ->
                 if (hapticEnabled) {
                     button.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
@@ -1326,8 +1327,10 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     }
 
     private fun refreshZhCandidates() {
+        val seq = suggestSeq.incrementAndGet()
         if (pinyin.isEmpty()) {
             zhCandidates = emptyList()
+            zhCandidatesQuery = ""
             suggestionStrip?.setCandidates(emptyList(), -1, withNumbers = true)
             return
         }
@@ -1337,8 +1340,9 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         // sequence; run off-thread on the shared executor and drop the result
         // if a newer keystroke superseded it or the user left ZH meanwhile.
         val query = pinyin.toString()
-        val seq = suggestSeq.incrementAndGet()
         suggestExecutor.execute {
+            // Drop superseded work before SQLite, not only after it finishes.
+            if (seq != suggestSeq.get()) return@execute
             val cands = pinyinConv.convert(query)
             mainHandler.post {
                 if (seq != suggestSeq.get() || !isZh() || pinyin.toString() != query) return@post
@@ -1400,7 +1404,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             ic.setComposingText(hangul.composingText, 1)
             return
         }
-        if (mode == Mode.KO_CHUN) {
+        if (mode == Mode.KO_CHUN && layer == Layer.LETTERS) {
             // Korean Chunjiin: dot/ㅡ/ㅣ are vowel strokes; the rest are
             // consonant-group taps. ChunjiinComposer feeds HangulComposer.
             when (ch.code) {

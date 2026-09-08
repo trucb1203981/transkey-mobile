@@ -37,8 +37,7 @@
             android:contentDescription="@string/bubble_input_paste"
             android:visibility="gone"
             android:padding="13dp"
-            android:src="@drawable/ic_keyboard_paste"
-            android:tint="#8B5CF6" />
+            android:src="@drawable/ic_keyboard_paste" />
     </FrameLayout>
 
     <app.transkey.mobile.GboardKeyboardView

@@ -1,0 +1,113 @@
+Applications Graphics Acceleration Info:
+Uptime: 828772140 Realtime: 1002846046
+
+** Graphics info for pid 24776 [app.transkey.mobile] **
+
+Stats since: 828770993205668ns
+Total frames rendered: 3
+Janky frames: 1 (33.33%)
+Janky frames (legacy): 1 (33.33%)
+50th percentile: 9ms
+90th percentile: 109ms
+95th percentile: 109ms
+99th percentile: 109ms
+Number Missed Vsync: 0
+Number High input latency: 0
+Number Slow UI thread: 1
+Number Slow bitmap uploads: 0
+Number Slow issue draw commands: 1
+Number Frame deadline missed: 1
+Number Frame deadline missed (legacy): 1
+HISTOGRAM: 5ms=0 6ms=0 7ms=0 8ms=0 9ms=2 10ms=0 11ms=0 12ms=0 13ms=0 14ms=0 15ms=0 16ms=0 17ms=0 18ms=0 19ms=0 20ms=0 21ms=0 22ms=0 23ms=0 24ms=0 25ms=0 26ms=0 27ms=0 28ms=0 29ms=0 30ms=0 31ms=0 32ms=0 34ms=0 36ms=0 38ms=0 40ms=0 42ms=0 44ms=0 46ms=0 48ms=0 53ms=0 57ms=0 61ms=0 65ms=0 69ms=0 73ms=0 77ms=0 81ms=0 85ms=0 89ms=0 93ms=0 97ms=0 101ms=0 105ms=0 109ms=1 113ms=0 117ms=0 121ms=0 125ms=0 129ms=0 133ms=0 150ms=0 200ms=0 250ms=0 300ms=0 350ms=0 400ms=0 450ms=0 500ms=0 550ms=0 600ms=0 650ms=0 700ms=0 750ms=0 800ms=0 850ms=0 900ms=0 950ms=0 1000ms=0 1050ms=0 1100ms=0 1150ms=0 1200ms=0 1250ms=0 1300ms=0 1350ms=0 1400ms=0 1450ms=0 1500ms=0 1550ms=0 1600ms=0 1650ms=0 1700ms=0 1750ms=0 1800ms=0 1850ms=0 1900ms=0 1950ms=0 2000ms=0 2050ms=0 2100ms=0 2150ms=0 2200ms=0 2250ms=0 2300ms=0 2350ms=0 2400ms=0 2450ms=0 2500ms=0 2550ms=0 2600ms=0 2650ms=0 2700ms=0 2750ms=0 2800ms=0 2850ms=0 2900ms=0 2950ms=0 3000ms=0 3050ms=0 3100ms=0 3150ms=0 3200ms=0 3250ms=0 3300ms=0 3350ms=0 3400ms=0 3450ms=0 3500ms=0 3550ms=0 3600ms=0 3650ms=0 3700ms=0 3750ms=0 3800ms=0 3850ms=0 3900ms=0 3950ms=0 4000ms=0 4050ms=0 4100ms=0 4150ms=0 4200ms=0 4250ms=0 4300ms=0 4350ms=0 4400ms=0 4450ms=0 4500ms=0 4550ms=0 4600ms=0 4650ms=0 4700ms=0 4750ms=0 4800ms=0 4850ms=0 4900ms=0 4950ms=0
+50th gpu percentile: 3ms
+90th gpu percentile: 3ms
+95th gpu percentile: 3ms
+99th gpu percentile: 3ms
+GPU HISTOGRAM: 1ms=0 2ms=1 3ms=2 4ms=0 5ms=0 6ms=0 7ms=0 8ms=0 9ms=0 10ms=0 11ms=0 12ms=0 13ms=0 14ms=0 15ms=0 16ms=0 17ms=0 18ms=0 19ms=0 20ms=0 21ms=0 22ms=0 23ms=0 24ms=0 25ms=0 4950ms=0
+
+Pipeline=Skia (OpenGL)
+Memory policy:
+  Max surface area: 2592000
+  Max resource usage: 124.42MB (x48)
+  Background retention: 50% (altUiHidden = true)
+  GPU Context timeout: 10
+Contexts: 1 (stopped = 0)
+CPU Caches:
+  Glyph Cache: 1.17 MB (1 entry)
+  Glyph Count: 99
+Total CPU memory usage:
+  1229673 bytes, 1.17 MB (0.00 bytes is purgeable)
+GPU Caches:
+  Other:
+    Other: 18.16 KB (1 entry)
+    Buffer Object: 2.50 KB (4 entries)
+    StencilAttachment: 384.00 KB (2 entries)
+  Image:
+    Texture: 17.02 KB (1 entry)
+  Scratch:
+    RenderTarget: 64.00 KB (1 entry)
+    Buffer Object: 78.00 KB (2 entries)
+    Texture: 8.00 MB (2 entries)
+Total GPU memory usage:
+  8965812 bytes, 8.55 MB (211.52 KB is purgeable)
+
+GraphicBufferAllocator buffers:
+        Handle |        Size |     W (Stride) x H | Layers |   Format |      Usage | Requestor
+0xb4000071254b0540 | 2894.25 KiB | 1080 (1088) x  681 |      1 |        1 | 0x10000900 | VRI[InputMethod]#0(BLAST Consumer)0
+0xb4000071254e2010 | 2894.25 KiB | 1080 (1088) x  681 |      1 |        1 | 0x10000900 | VRI[InputMethod]#0(BLAST Consumer)0
+0xb40000712550ca60 | 2894.25 KiB | 1080 (1088) x  681 |      1 |        1 | 0x10000900 | VRI[InputMethod]#0(BLAST Consumer)0
+Total allocated by GraphicBufferAllocator (estimate): 8682.75 KB
+Imported gralloc buffers:
++ name:VRI[InputMethod]#0(BLAST Consumer)0, id:267132, size:2948.00KiB, w/h:1080x681, usage: 0x10000900, req fmt:1, fourcc/mod:875708993/0, dataspace: 0x8810000, compressed: true
+	planes: R/G/B/A:	 w/h:1080x681, stride:4352 bytes, size:3018752
++ name:VRI[InputMethod]#0(BLAST Consumer)0, id:267131, size:2948.00KiB, w/h:1080x681, usage: 0x10000900, req fmt:1, fourcc/mod:875708993/0, dataspace: 0x8810000, compressed: true
+	planes: R/G/B/A:	 w/h:1080x681, stride:4352 bytes, size:3018752
++ name:VRI[InputMethod]#0(BLAST Consumer)0, id:267130, size:2948.00KiB, w/h:1080x681, usage: 0x10000900, req fmt:1, fourcc/mod:875708993/0, dataspace: 0x8810000, compressed: true
+	planes: R/G/B/A:	 w/h:1080x681, stride:4352 bytes, size:3018752
+Total imported by gralloc: 8844.00KiB
+
+Profile data in ms:
+
+	InputMethod/android.view.ViewRootImpl@3acfddd (visibility=0)
+Window: InputMethod
+Stats since: 828770993204678ns
+Total frames rendered: 3
+Janky frames: 1 (33.33%)
+Janky frames (legacy): 1 (33.33%)
+50th percentile: 9ms
+90th percentile: 109ms
+95th percentile: 109ms
+99th percentile: 109ms
+Number Missed Vsync: 0
+Number High input latency: 0
+Number Slow UI thread: 1
+Number Slow bitmap uploads: 0
+Number Slow issue draw commands: 1
+Number Frame deadline missed: 1
+Number Frame deadline missed (legacy): 1
+HISTOGRAM: 5ms=0 6ms=0 7ms=0 8ms=0 9ms=2 10ms=0 11ms=0 12ms=0 13ms=0 14ms=0 15ms=0 16ms=0 17ms=0 18ms=0 19ms=0 20ms=0 21ms=0 22ms=0 23ms=0 24ms=0 25ms=0 26ms=0 27ms=0 28ms=0 29ms=0 30ms=0 31ms=0 32ms=0 34ms=0 36ms=0 38ms=0 40ms=0 42ms=0 44ms=0 46ms=0 48ms=0 53ms=0 57ms=0 61ms=0 65ms=0 69ms=0 73ms=0 77ms=0 81ms=0 85ms=0 89ms=0 93ms=0 97ms=0 101ms=0 105ms=0 109ms=1 113ms=0 117ms=0 121ms=0 125ms=0 129ms=0 133ms=0 150ms=0 200ms=0 250ms=0 300ms=0 350ms=0 400ms=0 450ms=0 500ms=0 550ms=0 600ms=0 650ms=0 700ms=0 750ms=0 800ms=0 850ms=0 900ms=0 950ms=0 1000ms=0 1050ms=0 1100ms=0 1150ms=0 1200ms=0 1250ms=0 1300ms=0 1350ms=0 1400ms=0 1450ms=0 1500ms=0 1550ms=0 1600ms=0 1650ms=0 1700ms=0 1750ms=0 1800ms=0 1850ms=0 1900ms=0 1950ms=0 2000ms=0 2050ms=0 2100ms=0 2150ms=0 2200ms=0 2250ms=0 2300ms=0 2350ms=0 2400ms=0 2450ms=0 2500ms=0 2550ms=0 2600ms=0 2650ms=0 2700ms=0 2750ms=0 2800ms=0 2850ms=0 2900ms=0 2950ms=0 3000ms=0 3050ms=0 3100ms=0 3150ms=0 3200ms=0 3250ms=0 3300ms=0 3350ms=0 3400ms=0 3450ms=0 3500ms=0 3550ms=0 3600ms=0 3650ms=0 3700ms=0 3750ms=0 3800ms=0 3850ms=0 3900ms=0 3950ms=0 4000ms=0 4050ms=0 4100ms=0 4150ms=0 4200ms=0 4250ms=0 4300ms=0 4350ms=0 4400ms=0 4450ms=0 4500ms=0 4550ms=0 4600ms=0 4650ms=0 4700ms=0 4750ms=0 4800ms=0 4850ms=0 4900ms=0 4950ms=0
+50th gpu percentile: 3ms
+90th gpu percentile: 3ms
+95th gpu percentile: 3ms
+99th gpu percentile: 3ms
+GPU HISTOGRAM: 1ms=0 2ms=1 3ms=2 4ms=0 5ms=0 6ms=0 7ms=0 8ms=0 9ms=0 10ms=0 11ms=0 12ms=0 13ms=0 14ms=0 15ms=0 16ms=0 17ms=0 18ms=0 19ms=0 20ms=0 21ms=0 22ms=0 23ms=0 24ms=0 25ms=0 4950ms=0
+
+
+RenderLite trim renderNode error: 0
+
+---PROFILEDATA---
+Flags,FrameTimelineVsyncId,IntendedVsync,Vsync,InputEventId,HandleInputStart,AnimationStart,PerformTraversalsStart,DrawStart,FrameDeadline,FrameInterval,FrameStartTime,SyncQueued,SyncStart,IssueDrawCommandsStart,SwapBuffers,FrameCompleted,DequeueBufferDuration,QueueBufferDuration,GpuCompleted,SwapBuffersCompleted,DisplayPresentTime,CommandSubmissionCompleted,
+0,562899962,828771030214317,828771030214317,-786370910,828771031462074,828771031464105,828771031482855,828771031735355,828771046880983,828771031398845,16466090,828771032991449,828771033204678,828771033403897,828771037606293,828771039696657,31198,593229,828771039696657,828771039545563,8313453907604884310,828771037606293,
+32,562900463,828771557019514,828771557019514,0,828771557772803,828771557774730,828771557805563,828771621290511,828771573686180,828771557723272,16462796,828771627704834,828771627810042,828771628090615,828771666213949,828771667223428,16458,383906,828771667223428,828771667077647,0,828771666213949,
+---PROFILEDATA---
+
+
+View hierarchy:
+
+  InputMethod/android.view.ViewRootImpl@3acfddd
+  62 views, 153,60 kB of render nodes
+
+
+Total ViewRootImpl   : 1
+Total attached Views : 62
+Total RenderNode     : 153,60 kB (used) / 366,30 kB (capacity)

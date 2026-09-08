@@ -1302,6 +1302,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cameraBlockRetrying => 'Повторный перевод…';
 
   @override
+  String get cameraRetryUnchanged =>
+      'Нового перевода нет. Проверьте язык оригинала или используйте более чёткое изображение.';
+
+  @override
+  String get cameraRetryFailed =>
+      'Не удалось перевести повторно. Текущий результат сохранён.';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return 'Перевод $current из $total…';
   }

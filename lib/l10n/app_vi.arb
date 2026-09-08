@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Lưu vào sổ tay",
   "cameraSavingPhrasebook": "Đang lưu…",
   "cameraBlockRetrying": "Đang dịch lại…",
+  "cameraRetryUnchanged": "Chưa có bản dịch mới. Hãy kiểm tra ngôn ngữ nguồn hoặc dùng ảnh rõ hơn.",
+  "cameraRetryFailed": "Không thể dịch lại. Kết quả hiện tại vẫn được giữ nguyên.",
   "cameraBatchProgress": "Đang dịch ảnh {current}/{total}…",
   "cameraSaveNoteLabel": "Thêm ghi chú (tuỳ chọn)",
   "cameraSaveNoteHint": "ví dụ: gần khách sạn, rất cay",

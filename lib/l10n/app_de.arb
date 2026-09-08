@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Im Sprachführer speichern",
   "cameraSavingPhrasebook": "Wird gespeichert…",
   "cameraBlockRetrying": "Wird erneut übersetzt…",
+  "cameraRetryUnchanged": "Keine neue Übersetzung. Prüfe die Ausgangssprache oder verwende ein schärferes Bild.",
+  "cameraRetryFailed": "Die erneute Übersetzung ist fehlgeschlagen. Das aktuelle Ergebnis bleibt erhalten.",
   "cameraBatchProgress": "Übersetze {current} von {total}…",
   "cameraSaveNoteLabel": "Notiz hinzufügen (optional)",
   "cameraSaveNoteHint": "z. B. nahe dem Hotel, sehr scharf",

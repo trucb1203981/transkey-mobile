@@ -555,6 +555,8 @@
   "cameraSaveBlock": "フレーズ集に保存",
   "cameraSavingPhrasebook": "保存中…",
   "cameraBlockRetrying": "再翻訳中…",
+  "cameraRetryUnchanged": "新しい翻訳はありません。原文の言語を確認するか、より鮮明な画像をお使いください。",
+  "cameraRetryFailed": "再翻訳できませんでした。現在の結果は保持されています。",
   "cameraBatchProgress": "{total}枚中 {current}枚目を翻訳中…",
   "cameraSaveNoteLabel": "メモを追加（任意）",
   "cameraSaveNoteHint": "例：ホテルの近く、辛い",

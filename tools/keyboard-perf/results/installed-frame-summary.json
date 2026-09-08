@@ -1,0 +1,142 @@
+[
+  {
+    "mode": "ar",
+    "frames": 51,
+    "janky": 1,
+    "p95_ms": 15,
+    "max_frame_ms": 18.853
+  },
+  {
+    "mode": "burst",
+    "frames": 253,
+    "janky": 1,
+    "p95_ms": 13,
+    "max_frame_ms": 18.845
+  },
+  {
+    "mode": "de",
+    "frames": 61,
+    "janky": 0,
+    "p95_ms": 9,
+    "max_frame_ms": 10.753
+  },
+  {
+    "mode": "emoji",
+    "frames": 3,
+    "janky": 1,
+    "p95_ms": 109,
+    "max_frame_ms": 110.204
+  },
+  {
+    "mode": "en",
+    "frames": 61,
+    "janky": 0,
+    "p95_ms": 13,
+    "max_frame_ms": 14.134
+  },
+  {
+    "mode": "es",
+    "frames": 51,
+    "janky": 2,
+    "p95_ms": 16,
+    "max_frame_ms": 22.439
+  },
+  {
+    "mode": "fr",
+    "frames": 61,
+    "janky": 0,
+    "p95_ms": 14,
+    "max_frame_ms": 17.706
+  },
+  {
+    "mode": "id",
+    "frames": 51,
+    "janky": 0,
+    "p95_ms": 13,
+    "max_frame_ms": 16.181
+  },
+  {
+    "mode": "it",
+    "frames": 51,
+    "janky": 1,
+    "p95_ms": 11,
+    "max_frame_ms": 18.812
+  },
+  {
+    "mode": "ja",
+    "frames": 91,
+    "janky": 0,
+    "p95_ms": 11,
+    "max_frame_ms": 14.985
+  },
+  {
+    "mode": "ja_flick",
+    "frames": 26,
+    "janky": 0,
+    "p95_ms": 10,
+    "max_frame_ms": 11.152
+  },
+  {
+    "mode": "ko",
+    "frames": 71,
+    "janky": 2,
+    "p95_ms": 14,
+    "max_frame_ms": 20.367
+  },
+  {
+    "mode": "ko_chun",
+    "frames": 41,
+    "janky": 0,
+    "p95_ms": 15,
+    "max_frame_ms": 19.664
+  },
+  {
+    "mode": "pt",
+    "frames": 41,
+    "janky": 1,
+    "p95_ms": 12,
+    "max_frame_ms": 21.678
+  },
+  {
+    "mode": "ru",
+    "frames": 71,
+    "janky": 2,
+    "p95_ms": 11,
+    "max_frame_ms": 19.929
+  },
+  {
+    "mode": "ru_phon",
+    "frames": 71,
+    "janky": 2,
+    "p95_ms": 11,
+    "max_frame_ms": 22.248
+  },
+  {
+    "mode": "th",
+    "frames": 71,
+    "janky": 1,
+    "p95_ms": 15,
+    "max_frame_ms": 23.371
+  },
+  {
+    "mode": "vi",
+    "frames": 61,
+    "janky": 0,
+    "p95_ms": 11,
+    "max_frame_ms": 12.92
+  },
+  {
+    "mode": "vi_vni",
+    "frames": 61,
+    "janky": 2,
+    "p95_ms": 13,
+    "max_frame_ms": 25.668
+  },
+  {
+    "mode": "zh",
+    "frames": 85,
+    "janky": 0,
+    "p95_ms": 10,
+    "max_frame_ms": 13.239
+  }
+]

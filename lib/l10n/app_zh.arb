@@ -555,6 +555,8 @@
   "cameraSaveBlock": "保存到短语集",
   "cameraSavingPhrasebook": "保存中…",
   "cameraBlockRetrying": "正在重新翻译…",
+  "cameraRetryUnchanged": "没有新的翻译。请检查原文语言或使用更清晰的图片。",
+  "cameraRetryFailed": "无法重新翻译。当前结果已保留。",
   "cameraBatchProgress": "正在翻译第 {current}/{total} 张…",
   "cameraSaveNoteLabel": "添加备注（可选）",
   "cameraSaveNoteHint": "例如：酒店附近、很辣",

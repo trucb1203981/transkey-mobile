@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Salva nel frasario",
   "cameraSavingPhrasebook": "Salvataggio…",
   "cameraBlockRetrying": "Traduzione in corso…",
+  "cameraRetryUnchanged": "Nessuna nuova traduzione. Controlla la lingua di origine o usa un'immagine più nitida.",
+  "cameraRetryFailed": "Impossibile tradurre di nuovo. Il risultato attuale viene mantenuto.",
   "cameraBatchProgress": "Traduzione {current} di {total}…",
   "cameraSaveNoteLabel": "Aggiungi una nota (facoltativo)",
   "cameraSaveNoteHint": "es. vicino all'hotel, molto piccante",

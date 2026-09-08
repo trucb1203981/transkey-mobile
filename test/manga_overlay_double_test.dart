@@ -16,10 +16,8 @@ import 'package:transkey_mobile/core/camera/camera_service.dart';
 /// Tintin page: VI card [10,102 111x49] over FR source card [11,116 114x86],
 /// IoU 0.34 -> NOT merged.
 ///
-/// The collapse must: merge a same-bubble pair whose overlap covers a majority
-/// of the SMALLER box, keep the SMALLEST bbox for position and the text with
-/// the most meaningful chars; and must NOT merge genuinely distinct sibling
-/// bubbles that only graze each other.
+/// Collapse matching OCR content only, preserving the selected read's text
+/// and geometry together. Unrelated overlapping bubbles remain independent.
 void main() {
   final service = CameraService();
 
@@ -27,17 +25,55 @@ void main() {
       OcrBlock(text: text, boundingBox: Rect.fromLTWH(l, t, w, h));
 
   group('overlay double collapse', () {
+    test('French paragraph cannot borrow a contained fragment position', () {
+      final paragraph =
+          blk('MES TRAVAUX SCIENTIFIQUES MONT FATIGUE', 525, 425, 510, 140);
+      final fragment = blk('VOUS AUSSI', 787, 490, 230, 50);
+      final out = service.dedupOverlappingForTest([paragraph, fragment]);
+      expect(out, [paragraph, fragment]);
+      for (final block in out) {
+        expect(
+            identical(block, paragraph) || identical(block, fragment), isTrue);
+      }
+    });
+
+    test('overlap chain cannot join distinct panels through a bridge', () {
+      final first = blk('First dialogue about the journey', 0, 0, 100, 50);
+      final bridge = blk('First dialogue about the journey and the next panel',
+          0, 0, 100, 170);
+      final last = blk('A separate answer in the next panel', 0, 120, 100, 50);
+      final out = service.dedupOverlappingForTest([first, bridge, last]);
+      expect(out, contains(same(last)));
+      expect(
+          out.every((b) =>
+              identical(b, first) ||
+              identical(b, bridge) ||
+              identical(b, last)),
+          isTrue);
+    });
+
+    test('different numbers and short dialogue remain distinct', () {
+      final values = [
+        blk('Ticket 15 please', 0, 0, 100, 50),
+        blk('Ticket 19 please', 0, 0, 100, 50),
+        blk('No', 0, 0, 100, 50),
+        blk('Go', 0, 0, 100, 50),
+      ];
+      expect(service.dedupOverlappingForTest(values), values);
+    });
+
     test('partial text-line box + full bubble box (low IoU) merge to one', () {
       // Mirrors the device repro: small top-line union vs full bubble.
-      final small = blk('Hi', 100, 100, 100, 50); // area 5000 (top line)
+      final small =
+          blk('Hi there my old', 100, 100, 100, 50); // area 5000 (top line)
       final full = blk('Hi there my old friend', 100, 110, 100, 120); // 12000
       // Intersection 100x40 = 4000. IoU = 4000/13000 = 0.31 (< 0.4, old miss).
       // inter/smaller = 4000/5000 = 0.80 (> 0.6, new rule catches).
       final out = service.dedupOverlappingForTest([small, full]);
       expect(out.length, 1);
-      // Keeper: smallest bbox for position, richest text.
+      // The complete read keeps its own source geometry.
       expect(out.first.text, 'Hi there my old friend');
-      expect(out.first.boundingBox, const Rect.fromLTWH(100, 100, 100, 50));
+      expect(out.first, same(full));
     });
 
     test('distinct side-by-side bubbles that only graze stay separate', () {
@@ -48,14 +84,11 @@ void main() {
       expect(out.length, 2);
     });
 
-    test('fully-contained box still merges (existing rectContains rule)', () {
+    test('unrelated contained text is not a duplicate', () {
       final big = blk('full sentence here', 0, 0, 200, 200);
       final inner = blk('frag', 50, 50, 40, 40);
       final out = service.dedupOverlappingForTest([big, inner]);
-      expect(out.length, 1);
-      // Smallest bbox kept, richest text kept.
-      expect(out.first.boundingBox, const Rect.fromLTWH(50, 50, 40, 40));
-      expect(out.first.text, 'full sentence here');
+      expect(out, [big, inner]);
     });
 
     test('high-IoU near-duplicate boxes still merge (existing rule)', () {
@@ -73,8 +106,9 @@ void main() {
     });
 
     test('cluster of dup pair + one distinct bubble -> two blocks', () {
-      final small = blk('Top', 100, 100, 100, 50);
-      final full = blk('Top line then the rest of the bubble', 100, 110, 100, 120);
+      final small = blk('Top line then the rest', 100, 100, 100, 50);
+      final full =
+          blk('Top line then the rest of the bubble', 100, 110, 100, 120);
       final other = blk('Elsewhere', 400, 400, 90, 60); // disjoint
       final out = service.dedupOverlappingForTest([small, full, other]);
       expect(out.length, 2);

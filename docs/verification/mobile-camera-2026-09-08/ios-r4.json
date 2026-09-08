@@ -1,0 +1,28 @@
+{
+  "artifact": "Normal iOS release r4",
+  "version": "2.5.0+29",
+  "source": "Camera task physical gallery verification",
+  "cafe": {
+    "coffeeAndConfirmationGrouped": true,
+    "singleSolutionCard": true,
+    "bottomFourRowsGrouped": true,
+    "mirrorSignAndEmbeddedGlyphCardsAbsent": true,
+    "shortPhrasePresent": "MAIS OU",
+    "shortPhraseMissingFinalI": true
+  },
+  "original": {
+    "leftCaptionRightOpenedSeparately": true
+  },
+  "japanese": {
+    "sameControlImageCompleted": true,
+    "rightBalloonSourceComplete": true,
+    "observedOverlays": 8,
+    "earlierRecordedOverlays": 7,
+    "extraSoundEffectVisible": true,
+    "exactCountParityClaimed": false
+  },
+  "limits": [
+    "Structural fix acceptance only, not perfect recognition or translation.",
+    "No CJK recognition path change in the final reconciliation fix."
+  ]
+}

@@ -1288,6 +1288,14 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cameraBlockRetrying => 'Đang dịch lại…';
 
   @override
+  String get cameraRetryUnchanged =>
+      'Chưa có bản dịch mới. Hãy kiểm tra ngôn ngữ nguồn hoặc dùng ảnh rõ hơn.';
+
+  @override
+  String get cameraRetryFailed =>
+      'Không thể dịch lại. Kết quả hiện tại vẫn được giữ nguyên.';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return 'Đang dịch ảnh $current/$total…';
   }

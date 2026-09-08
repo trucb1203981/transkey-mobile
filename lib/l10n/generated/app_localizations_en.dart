@@ -1296,6 +1296,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cameraBlockRetrying => 'Translating again…';
 
   @override
+  String get cameraRetryUnchanged =>
+      'No new translation. Check the source language or use a clearer image.';
+
+  @override
+  String get cameraRetryFailed =>
+      'Couldn\'t translate again. Your current result is unchanged.';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return 'Translating $current of $total…';
   }

@@ -11,8 +11,15 @@ import 'package:image/image.dart' as img;
 import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'adaptive_threshold.dart';
 import 'bubble_detector.dart';
 import 'dbnet_text_detector.dart';
+import 'ocr_image_preparation.dart';
+import 'ocr_region_matching.dart';
+import 'ocr_quantity_repair.dart';
+import 'page_ocr_quality.dart';
+import 'latin_dialogue_reconciliation.dart';
+import 'vision_dialogue_geometry.dart';
 
 /// Text quality based on OCR confidence.
 enum TextQuality {
@@ -831,6 +838,41 @@ class CameraService {
     if (Platform.isIOS) {
       return _recognizeTextVision(imagePath, scene: scene);
     }
+    final prepared = await prepareOcrImage(
+      imagePath,
+      maxEdge: androidOcrMaxEdgeForScene(scene),
+    );
+    try {
+      final blocks = await _recognizeAndroidWorkingImage(
+        prepared.path,
+        autoDetect: autoDetect,
+        scene: scene,
+        aggressivePasses: aggressivePasses,
+        perLine: perLine,
+      );
+      // All passes, including DBNet, share the working image coordinates.
+      // Restore each axis once, after merging, for the original-size overlay.
+      return blocks
+          .map((block) => OcrBlock(
+                text: block.text,
+                boundingBox: prepared.toSourceRect(block.boundingBox),
+                confidence: block.confidence,
+                bgColor: block.bgColor,
+                items: block.items,
+              ))
+          .toList(growable: false);
+    } finally {
+      await prepared.dispose();
+    }
+  }
+
+  Future<List<OcrBlock>> _recognizeAndroidWorkingImage(
+    String ocrReadyPath, {
+    required bool autoDetect,
+    required String scene,
+    required bool aggressivePasses,
+    required bool perLine,
+  }) async {
     // Up to three OCR passes run in parallel — union of all gives the best
     // recall for stylized / low-contrast signage and handwriting:
     //   1. ORIGINAL (auto-detect all scripts) — base quality, catches
@@ -844,11 +886,6 @@ class CameraService {
     // the user already chose a clear photo and running 3-pass on a 1600px
     // image adds 4-6 s of latency for little quality gain. Live capture
     // keeps all three passes because camera frames are often noisy.
-    // Downscale the capture before any OCR pass. Modern phone cameras produce
-    // 4000x3000+ JPEGs that ML Kit processes slowly for marginal quality gain
-    // vs a 1600px image. Reduces per-pass latency from ~12s to ~1-2s.
-    final ocrReadyPath = await _writeDownscaled(imagePath, maxEdge: 1600);
-
     final originalFuture = autoDetect
         ? _recognizeAuto(ocrReadyPath, perLine: perLine)
         : _recognizeWithScript(ocrReadyPath, TextRecognitionScript.latin,
@@ -905,7 +942,7 @@ class CameraService {
     // owns the truly-difficult fallback path — this tier catches
     // cheap-to-fix ML Kit misses without a network round-trip.
     sw.reset();
-    final dbnetExtras = await _dbnetFillIn(imagePath, merged);
+    final dbnetExtras = await _dbnetFillIn(ocrReadyPath, merged);
     debugPrint('[OCR] DBNet fill-in: ${sw.elapsedMilliseconds}ms (${dbnetExtras.length} extras)');
     merged.addAll(dbnetExtras);
 
@@ -933,7 +970,8 @@ class CameraService {
     // replaces the Dart decode/resize/re-encode isolate (hundreds of ms on
     // a 12 MP capture) AND the size-probe decode below — the channel reply
     // carries the EXIF-applied original dimensions.
-    final langs = _visionLangsForHint(liveSourceHint);
+    final sourceHint = liveSourceHint;
+    var langs = _visionLangsForHint(sourceHint);
     Map<dynamic, dynamic>? raw;
     try {
       final sw = Stopwatch()..start();
@@ -952,6 +990,39 @@ class CameraService {
     } catch (e) {
       debugPrint('[OCR] Vision failed: $e');
       return const <OcrBlock>[];
+    }
+    String transcript(Map<dynamic, dynamic>? response) =>
+        ((response?['lines'] as List?) ?? const [])
+            .map((line) => (line as Map)['text'] as String? ?? '')
+            .join('\n');
+    final originalText = transcript(raw);
+    if ((sourceHint == null || sourceHint == 'auto') &&
+        shouldCheckLatinVision(originalText) &&
+        originalText.split('\n').any(needsQuantityRepair)) {
+      final watch = Stopwatch()..start();
+      try {
+        final automatic = await _visionChannel.invokeMethod<Map<dynamic, dynamic>>(
+          'recognize',
+          {
+            'path': imagePath,
+            'languages': const <String>[],
+            'level': 'accurate',
+            'maxEdge': _ocrMaxEdgeForScene(scene),
+            'customWords': customOcrWords,
+          },
+        );
+        final accepted = automatic?['width'] == raw?['width'] &&
+            automatic?['height'] == raw?['height'] &&
+            acceptsLatinVisionAlternative(originalText, transcript(automatic));
+        if (accepted) {
+          raw = automatic;
+          langs = const [];
+        }
+        debugPrint('[OCR] Latin check accepted=$accepted '
+            '${watch.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[OCR] Latin check failed; keeping original reads: $e');
+      }
     }
     final lines = (raw?['lines'] as List?) ?? const [];
     if (lines.isEmpty) return const <OcrBlock>[];
@@ -981,7 +1052,10 @@ class CameraService {
         confidence: (m['confidence'] as num?)?.toDouble(),
       ));
     }
-    final deduped = _dedupeAndFilter(blocks);
+    final checked = scene == 'menu'
+        ? await _repairVisionQuantities(imagePath, blocks, imgW, imgH, langs)
+        : blocks;
+    final deduped = _dedupeAndFilter(checked);
     // Vision returns per-LINE boxes; ML Kit returns per-block. The menu merge's
     // row clustering is tuned for ML Kit's coarser blocks and over-merges Vision's
     // lines across grid columns (17 dish lines collapsed to 3 wide bands). For the
@@ -1014,6 +1088,98 @@ class CameraService {
       return items;
     }
     return _mergeForScene(deduped, scene);
+  }
+
+  Future<List<OcrBlock>> _repairVisionQuantities(
+    String path,
+    List<OcrBlock> blocks,
+    double width,
+    double height,
+    List<String>? langs,
+  ) async {
+    final plans = quantityRepairRegions(
+      blocks.map((b) => (text: b.text, box: b.boundingBox)).toList(),
+      Size(width, height),
+    );
+    if (plans.isEmpty) return blocks;
+    final views = plans.expand((p) => p.views).toList();
+    final watch = Stopwatch()..start();
+    try {
+      final raw = await _visionChannel.invokeMethod<Map<dynamic, dynamic>>(
+        'recognize',
+        {
+          'path': path,
+          'languages': langs,
+          'level': 'accurate',
+          'maxEdge': _ocrMaxEdgeForScene('menu'),
+          'customWords': customOcrWords,
+          'regions': views
+              .map(
+                (b) => [
+                  b.left / width,
+                  b.top / height,
+                  b.width / width,
+                  b.height / height,
+                ],
+              )
+              .toList(),
+        },
+      );
+      final reads = List.generate(views.length, (_) => <String>[]);
+      for (final entry in (raw?['lines'] as List?) ?? const []) {
+        final m = entry as Map;
+        final region = (m['region'] as num?)?.toInt() ?? -1;
+        if (region < 0 || region >= views.length) continue;
+        final source = blocks[plans[region ~/ 2].index].boundingBox;
+        final box = Rect.fromLTWH(
+          (m['left'] as num).toDouble() * width,
+          (m['top'] as num).toDouble() * height,
+          (m['width'] as num).toDouble() * width,
+          (m['height'] as num).toDouble() * height,
+        );
+        final overlap = source.intersect(box);
+        final smallerArea = math.min(
+          source.width * source.height,
+          box.width * box.height,
+        );
+        final ratio = box.width * box.height / (source.width * source.height);
+        final aligned =
+            box.isFinite &&
+            !box.isEmpty &&
+            !overlap.isEmpty &&
+            ratio >= 0.5 &&
+            ratio <= 2 &&
+            overlap.width * overlap.height >= smallerArea * 0.7;
+        // Retain an invalid marker so extra/foreign lines reject the repair.
+        reads[region].add(aligned ? (m['text'] as String? ?? '') : '');
+      }
+      final result = [...blocks];
+      var repaired = 0;
+      for (var i = 0; i < plans.length; i++) {
+        final index = plans[i].index;
+        final original = blocks[index];
+        final text = agreedQuantityRepair(
+          original.text,
+          reads[2 * i],
+          reads[2 * i + 1],
+        );
+        if (text == null) continue;
+        result[index] = OcrBlock(
+          text: text,
+          boundingBox: original.boundingBox,
+          confidence: original.confidence,
+        );
+        repaired++;
+      }
+      debugPrint(
+        '[OCR] quantity checks=${plans.length} repaired=$repaired '
+        '${watch.elapsedMilliseconds}ms',
+      );
+      return result;
+    } catch (e) {
+      debugPrint('[OCR] quantity check failed; keeping original reads: $e');
+      return blocks;
+    }
   }
 
   /// Map an app source-language hint to Vision recognition-language codes.
@@ -1074,6 +1240,7 @@ class CameraService {
     double pageH,
     String? scriptHint, {
     required bool tightenToLineUnion,
+    Map<int, List<OcrBlock>>? horizontalParagraphs,
   }) async {
     if (boxes.isEmpty || pageW <= 0 || pageH <= 0) return const {};
     final regions = boxes
@@ -1164,6 +1331,19 @@ class CameraService {
         conf = confs.reduce((a, b) => a + b) / confs.length;
       }
       out[index] = OcrBlock(text: text, boundingBox: bbox, confidence: conf);
+      if (horizontalParagraphs != null) {
+        horizontalParagraphs[index] = groupHorizontalDialogueLines(
+          regionLines.map((line) => line.boundingBox).toList(),
+        ).map((indices) {
+          final members = indices.map((i) => regionLines[i]).toList();
+          return OcrBlock(
+            text: members.map((line) => line.text).join('\n'),
+            boundingBox: members.map((line) => line.boundingBox)
+                .reduce((a, b) => a.expandToInclude(b)),
+            confidence: conf,
+          );
+        }).toList();
+      }
     });
     return out;
   }
@@ -1557,6 +1737,26 @@ class CameraService {
         if (boxes.isEmpty) return const [];
       }
 
+      // Resolve auto-script from the page before scoring small crops. A CJK
+      // recognizer can hallucinate a few high-scoring glyphs on Latin ink.
+      final requestedScript = _scriptForLang(scriptHint);
+      var pageIsLatin = requestedScript == TextRecognitionScript.latin;
+      var pageParagraphs = <OcrBlock>[];
+      if (requestedScript == null || pageIsLatin) {
+        final reads = await Future.wait([
+          _recognizeWithScript(imagePath, TextRecognitionScript.latin),
+          if (requestedScript == null)
+            _recognizeWithScript(imagePath, TextRecognitionScript.japanese),
+        ]);
+        pageParagraphs = reads.first;
+        if (requestedScript == null) {
+          pageIsLatin = prefersLatinPage(
+            reads.first.map((b) => b.text).join('\n'),
+            reads.last.map((b) => b.text).join('\n'),
+          );
+        }
+      }
+
       // iOS: race a single BATCHED Apple Vision pass over the same regions
       // against the ML Kit per-crop loop below. One channel call, one native
       // image decode, one Neural-Engine request per region (regionOfInterest)
@@ -1564,6 +1764,7 @@ class CameraService {
       // meaningful chars: Vision tends to win stylized / low-contrast
       // lettering, ML Kit (with the vertical reading-order rebuild) keeps
       // vertical CJK safe.
+      final visionParagraphs = <int, List<OcrBlock>>{};
       final visionFuture = Platform.isIOS
           ? _visionRecognizeRegions(
               imagePath,
@@ -1572,6 +1773,7 @@ class CameraService {
               decoded.height.toDouble(),
               scriptHint,
               tightenToLineUnion: dbnetBoxes.isEmpty,
+              horizontalParagraphs: pageIsLatin ? visionParagraphs : null,
             )
           : null;
 
@@ -1581,16 +1783,18 @@ class CameraService {
       // exist and Japanese recognizer on Latin text returns garbage
       // (1-2 chars per bubble), which fails the >= 2 char floor and
       // surfaces as untranslated bubbles on the rendered page.
-      final hintedScript = _scriptForLang(scriptHint);
+      final hintedScript = pageIsLatin ? TextRecognitionScript.latin
+          : requestedScript ?? TextRecognitionScript.japanese;
       final recognizers = <TextRecognitionScript, TextRecognizer>{
         TextRecognitionScript.latin:
             TextRecognizer(script: TextRecognitionScript.latin),
       };
-      if (hintedScript != null && hintedScript != TextRecognitionScript.latin) {
+      if (hintedScript != TextRecognitionScript.latin) {
         recognizers[hintedScript] = TextRecognizer(script: hintedScript);
       }
       final tempDir = await getTemporaryDirectory();
       final logLines = <String>[];
+      final paragraphReads = <Rect, List<OcrBlock>>{};
       try {
         // Parallel per-region pipeline: write crop → OCR (one call
         // per script in parallel) → pick best by meaningful char
@@ -1718,6 +1922,20 @@ class CameraService {
             final bestScore = picked.score;
             final bestScript = picked.script;
             final bestIdx = picked.idx;
+            if (bestScript == 'latin' && bestIdx >= 0) {
+              // A detector crop can span adjacent panels. Preserve ML Kit's
+              // paragraph boundaries and each paragraph's own glyph position
+              // instead of joining all crop text into one oversized dialogue.
+              paragraphReads[box] = mapOcrParagraphs(
+                ocrResults[bestIdx].blocks.map((paragraph) => OcrBlock(
+                  text: paragraph.text.trim(),
+                  boundingBox: paragraph.boundingBox,
+                )).toList(),
+                cropOrigin: Offset(l.toDouble(), t.toDouble()),
+                ocrScale: ocrScale,
+                imageSize: Size(decoded.width.toDouble(), decoded.height.toDouble()),
+              );
+            }
             if (kDebugMode) {
               logLines.add(
                   '[$bestScript] bbox=$l,$t+${w}x$h score=$bestScore'
@@ -1831,12 +2049,61 @@ class CameraService {
         // as RAW SOURCE TEXT next to the translated card - the user
         // perceives this as "overlay double".
         //
-        // Dedup rule: pairs whose normalized text matches AND bboxes
-        // overlap (or one contains the other) collapse to the larger
-        // bbox - the larger one is empirically the bubble-shape match
-        // and keeps the user's tap region intuitive.
-        final ocrBlocks = perBox.whereType<OcrBlock>().toList();
-        return _dedupSameTextOverlapping(ocrBlocks);
+        // Preserve the most complete matching read and its own geometry.
+        // Independent native paragraphs keep independent source positions.
+        final ocrBlocks = <OcrBlock>[];
+        for (var i = 0; i < perBox.length; i++) {
+          final selected = perBox[i];
+          if (selected == null) continue;
+          final paragraphs = identical(selected, results[i])
+              ? paragraphReads[boxes[i]]
+              : visionParagraphs[i];
+          if (paragraphs != null && paragraphs.isNotEmpty) {
+            ocrBlocks.addAll(paragraphs);
+          } else {
+            ocrBlocks.add(selected);
+          }
+        }
+        final deduped = _dedupSameTextOverlapping(ocrBlocks);
+        if (pageIsLatin) {
+          final recovered = uncoveredParagraphs(
+            existing: deduped.map((b) => b.boundingBox).toList(),
+            candidates: pageParagraphs.map((b) =>
+                (text: b.text, box: b.boundingBox, confidence: b.confidence)).toList(),
+            imageSize: Size(decoded.width.toDouble(), decoded.height.toDouble()),
+          );
+          deduped.addAll(recovered.map((i) => pageParagraphs[i]));
+          final reconciled = reconcileLatinDialogue(
+            deduped.map((b) => (
+              text: b.text,
+              box: b.boundingBox,
+              confidence: b.confidence,
+            )).toList(),
+            pageParagraphs.map((b) => (
+              text: b.text,
+              box: b.boundingBox,
+              confidence: b.confidence,
+            )).toList(),
+            firstEngine: paragraphReads.values.expand((v) => v).map((b) => (
+              text: b.text, box: b.boundingBox, confidence: b.confidence,
+            )).toList(),
+            secondEngine: visionParagraphs.values.expand((v) => v).map((b) => (
+              text: b.text, box: b.boundingBox, confidence: b.confidence,
+            )).toList(),
+            dialogueBoxes: bubbleBoxes,
+            imageSize: Size(decoded.width.toDouble(), decoded.height.toDouble()),
+          );
+          deduped
+            ..clear()
+            ..addAll(reconciled.map((b) => OcrBlock(
+              text: b.text,
+              boundingBox: b.box,
+              confidence: b.confidence,
+            )));
+          debugPrint('[PageOCR] Latin page; recovered=${recovered.length} '
+              'paragraphs; total=${deduped.length}');
+        }
+        return deduped;
       } finally {
         for (final r in recognizers.values) {
           r.close();
@@ -1848,25 +2115,17 @@ class CameraService {
     }
   }
 
-  /// Snap LLM-estimated vision boxes onto on-device BubbleDetector shapes.
-  ///
-  /// A vision model returns boxes in the image pixel space (verified: no
-  /// coordinate bug), but the coordinates are an LLM GUESS - usually close,
-  /// occasionally off, and small adjacent bubbles render as overlapping
-  /// cards. BubbleDetector finds accurate bubble contours, so we replace
-  /// each vision box with the best-matching bubble box: snap when the
-  /// vision box overlaps a bubble (IoU) or its centre sits inside one. A
-  /// grossly-misplaced box that overlaps NO bubble is left untouched (the
-  /// LLM put it in the wrong place and there's nothing to snap to).
-  ///
-  /// [imageBytes] MUST be the SAME image sent to the vision endpoint (the
-  /// compressed capture) so the bubble boxes land in the same coordinate
-  /// space as [boxes]. Returns a list the same length/order as [boxes].
-  Future<List<Rect>> snapVisionBoxesToBubbles(
+  /// Group fragmented vision dialogue using the same uploaded image pixels.
+  Future<List<DialogueGeometryGroup>> groupVisionDialogue(
     Uint8List imageBytes,
-    List<Rect> boxes,
-  ) async {
-    if (boxes.isEmpty) return boxes;
+    List<Rect> boxes, {
+    required Size imageSize,
+    bool joinVerticalFragments = false,
+  }) async {
+    List<DialogueGeometryGroup> ungrouped() => [
+      for (var i = 0; i < boxes.length; i++) DialogueGeometryGroup([i], boxes[i]),
+    ];
+    if (boxes.isEmpty) return const [];
     String? tmpPath;
     try {
       final dir = await getTemporaryDirectory();
@@ -1882,43 +2141,11 @@ class CameraService {
         if (passes[0].any((b1) => _iouRect(b1, b2) > 0.5)) continue;
         bubbles.add(b2);
       }
-      if (bubbles.isEmpty) return boxes;
-      final out = <Rect>[];
-      final used = <int>{};
-      var snapped = 0;
-      for (final v in boxes) {
-        final cx = (v.left + v.right) / 2;
-        final cy = (v.top + v.bottom) / 2;
-        var best = -1;
-        var bestScore = 0.0;
-        for (var j = 0; j < bubbles.length; j++) {
-          if (used.contains(j)) continue;
-          final bb = bubbles[j];
-          final inside =
-              cx >= bb.left && cx <= bb.right && cy >= bb.top && cy <= bb.bottom;
-          // Centre-inside is the strong signal (the LLM box sits within the
-          // bubble); IoU handles partial overlap. Combine so a clean
-          // centre-hit always wins over a marginal edge overlap.
-          final score = _iouRect(v, bb) + (inside ? 0.5 : 0.0);
-          if (score > bestScore) {
-            bestScore = score;
-            best = j;
-          }
-        }
-        if (best >= 0 && bestScore >= 0.25) {
-          out.add(bubbles[best]);
-          used.add(best);
-          snapped++;
-        } else {
-          out.add(v); // no bubble to snap to - keep the LLM box
-        }
-      }
-      debugPrint('[CameraService] snapVisionBoxesToBubbles: boxes=${boxes.length} '
-          'bubbles=${bubbles.length} snapped=$snapped');
-      return out;
+      return groupDialogueBoxes(boxes, bubbles, imageSize: imageSize,
+          joinVerticalFragments: joinVerticalFragments);
     } catch (e) {
-      debugPrint('[CameraService] snapVisionBoxesToBubbles failed: $e');
-      return boxes;
+      debugPrint('[CameraService] dialogue geometry failed: $e');
+      return ungrouped();
     } finally {
       if (tmpPath != null) {
         try {
@@ -2268,31 +2495,6 @@ class CameraService {
       debugPrint('[CameraService] preprocess failed: $e');
       return const [];
     }
-  }
-
-  /// Downscales [imagePath] so its longest edge is at most [maxEdge] pixels,
-  /// writes the result to a temp file, and returns that path. Uses area-
-  /// averaging interpolation which preserves text sharpness better than
-  /// bilinear. Returns the original [imagePath] unchanged if already small.
-  Future<String> _writeDownscaled(String imagePath, {int maxEdge = 1600}) async {
-    final bytes = await File(imagePath).readAsBytes();
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) return imagePath;
-    final longest = math.max(decoded.width, decoded.height);
-    if (longest <= maxEdge) return imagePath;
-    final scale = maxEdge / longest;
-    final resized = img.copyResize(
-      decoded,
-      width: (decoded.width * scale).round(),
-      height: (decoded.height * scale).round(),
-      interpolation: img.Interpolation.average,
-    );
-    final tmpDir = await Directory.systemTemp.createTemp('tk_ocr_');
-    final outPath = '${tmpDir.path}/downscaled.jpg';
-    await File(outPath).writeAsBytes(
-      img.encodeJpg(resized, quality: 90),
-    );
-    return outPath;
   }
 
   /// longest side) so the caller can map ML Kit boxes back to original
@@ -3730,6 +3932,26 @@ class CameraService {
   List<OcrBlock> dedupOverlappingForTest(List<OcrBlock> blocks) =>
       _dedupSameTextOverlapping(blocks);
 
+  /// Map independent native paragraphs from a crop into the upright photo.
+  @visibleForTesting
+  static List<OcrBlock> mapOcrParagraphs(List<OcrBlock> paragraphs, {
+    required Offset cropOrigin,
+    required double ocrScale,
+    required Size imageSize,
+  }) {
+    return paragraphs.where((p) => p.text.trim().isNotEmpty).map((p) {
+      final box = p.boundingBox;
+      final mapped = Rect.fromLTRB(
+        cropOrigin.dx + box.left / ocrScale,
+        cropOrigin.dy + box.top / ocrScale,
+        cropOrigin.dx + box.right / ocrScale,
+        cropOrigin.dy + box.bottom / ocrScale,
+      ).intersect(Offset.zero & imageSize);
+      return OcrBlock(text: p.text, boundingBox: mapped,
+          confidence: p.confidence, bgColor: p.bgColor, items: p.items);
+    }).where((p) => !p.boundingBox.isEmpty).toList();
+  }
+
   /// True when [outer] geometrically contains [inner] (with a 2-px
   /// tolerance so a slightly-larger outer box still passes when the
   /// inner detection bbox sits flush to its bounds).
@@ -3741,122 +3963,30 @@ class CameraService {
         outer.bottom + slack >= inner.bottom;
   }
 
-  /// Collapse OcrBlocks that are the same bubble detected twice.
-  ///
-  /// Picking the right keeper of an overlapping cluster needs TWO axes:
-  ///   - **Position (bbox)** — the SMALLEST bbox in the cluster. When a
-  ///     cluster mixes a tight glyph rectangle (TABD orphan / DBNet text
-  ///     union) with a much larger one (BubbleDetector shape, or a panel
-  ///     swept in by union-find chaining), the small bbox is the more
-  ///     reliable estimate of where the text pixels actually sit; the
-  ///     large one renders the card at the bubble/panel top-left.
-  ///   - **Text** — from the OCR pass with the BEST read of the bubble
-  ///     (most meaningful characters), regardless of which bbox produced
-  ///     it. Picking the small-bbox text can be a garbled fragment that
-  ///     the translate pipeline hands back unchanged, surfacing as RAW
-  ///     SOURCE next to a clean translation - the "overlay double".
-  ///
-  /// So each cluster collapses to: bbox = the smallest, text = the one
-  /// with the most meaningful chars.
-  ///
-  /// Overlap rule (any of):
-  ///   - rectContains either direction (SHAPE + contained TABD/DBNet box);
-  ///   - IoU > 0.4 (two SHAPE candidates from the multi-threshold passes);
-  ///   - intersection covers > 60 % of the SMALLER box (a partial text-line
-  ///     union vs the full-bubble / orphan-cluster box of the same bubble -
-  ///     low IoU from the area gap, but clearly the same bubble).
-  /// Sibling close-but-not-overlapping bubbles stay untouched.
+  /// Keep text, source geometry, confidence, and items from the same read.
+  /// Greedy direct comparisons avoid transitive overlap chains across panels.
   static List<OcrBlock> _dedupSameTextOverlapping(List<OcrBlock> blocks) {
-    if (blocks.length < 2) return blocks;
-    // Union-find clusters of overlapping blocks. O(n²) is fine — per
-    // page n is typically < 30.
-    final parent = List<int>.generate(blocks.length, (i) => i);
-    int find(int x) {
-      while (parent[x] != x) {
-        parent[x] = parent[parent[x]];
-        x = parent[x];
-      }
-      return x;
-    }
-
-    void union(int a, int b) {
-      final ra = find(a);
-      final rb = find(b);
-      if (ra != rb) parent[ra] = rb;
-    }
-
-    bool overlap(Rect a, Rect b) {
-      if (_rectContains(a, b) || _rectContains(b, a)) return true;
-      if (_iouRect(a, b) > 0.4) return true;
-      // Same bubble detected at two granularities - a tight text-line union
-      // box (DBNet) plus either the full-bubble shape box or the orphan-line
-      // cluster box that _groupDbnetByBubbles emitted for the leftover lines
-      // of the SAME bubble. Their IoU is low because the areas differ a lot,
-      // but the overlap covers most of the SMALLER box. That is the
-      // "overlay double" signature: one box translates cleanly while the
-      // other echoes raw source, so the user sees two stacked cards. Merge
-      // when the intersection covers a majority of the smaller box.
-      final inter = _intersectArea(a, b);
-      if (inter <= 0) return false;
-      final smaller = math.min(a.width * a.height, b.width * b.height);
-      return smaller > 0 && inter / smaller > 0.6;
-    }
-
-    for (var i = 0; i < blocks.length; i++) {
-      for (var j = i + 1; j < blocks.length; j++) {
-        if (overlap(blocks[i].boundingBox, blocks[j].boundingBox)) {
-          union(i, j);
-        }
-      }
-    }
-
-    final clusters = <int, List<int>>{};
-    for (var i = 0; i < blocks.length; i++) {
-      clusters.putIfAbsent(find(i), () => []).add(i);
-    }
-
-    final merged = <OcrBlock>[];
-    for (final members in clusters.values) {
-      if (members.length == 1) {
-        merged.add(blocks[members.first]);
+    final ranked = blocks.asMap().entries.toList()
+      ..sort((a, b) {
+        final score = _meaningfulCharCount(b.value.text)
+            .compareTo(_meaningfulCharCount(a.value.text));
+        if (score != 0) return score;
+        final areaA = a.value.boundingBox.width * a.value.boundingBox.height;
+        final areaB = b.value.boundingBox.width * b.value.boundingBox.height;
+        return areaA.compareTo(areaB);
+      });
+    final kept = <MapEntry<int, OcrBlock>>[];
+    for (final entry in ranked) {
+      final block = entry.value;
+      if (kept.any((other) => duplicateOcrRegions(
+          block.boundingBox, block.text,
+          other.value.boundingBox, other.value.text))) {
         continue;
       }
-      // Pick the SMALLEST bbox for the keeper position. When a cluster
-      // contains a tight glyph-rectangle bbox (TABD orphan / DBNet)
-      // AND a much larger bbox (BubbleDetector shape, or a panel-sized
-      // mis-detection that swept in via union-find chaining), the small
-      // bbox is the more reliable estimate of where the actual text
-      // pixels sit in the original art. Picking the large bbox makes
-      // the card render at the bubble/panel TOP-LEFT instead of the
-      // text position - user reports "block đặt không đúng vị trí bóng,
-      // không phải vị trí viền mà vị trí text của art".
-      int bestBboxIdx = members.first;
-      double bestArea = double.infinity;
-      for (final m in members) {
-        final r = blocks[m].boundingBox;
-        final a = r.width * r.height;
-        if (a < bestArea) {
-          bestArea = a;
-          bestBboxIdx = m;
-        }
-      }
-      // Pick the OCR text with the most meaningful characters.
-      int bestTextIdx = members.first;
-      int bestScore = -1;
-      for (final m in members) {
-        final s = _meaningfulCharCount(blocks[m].text);
-        if (s > bestScore) {
-          bestScore = s;
-          bestTextIdx = m;
-        }
-      }
-      merged.add(OcrBlock(
-        text: blocks[bestTextIdx].text,
-        boundingBox: blocks[bestBboxIdx].boundingBox,
-        confidence: blocks[bestBboxIdx].confidence,
-      ));
+      kept.add(entry);
     }
-    return merged;
+    kept.sort((a, b) => a.key.compareTo(b.key));
+    return kept.map((entry) => entry.value).toList();
   }
 
   /// Count "meaningful" characters in [s] — Latin letters (incl. diacritic
@@ -4366,7 +4496,7 @@ double _runPreprocessIsolate(_PreprocessArgs args) {
         // shadow keeps its text instead of crushing to black.
         img.normalize(working, min: 0, max: 255);
         img.adjustColor(working, contrast: 1.3, saturation: 0);
-        _bradleyThreshold(working);
+        adaptiveThreshold(working);
       case _PreprocessMode.upscale:
         // Already upscaled. Normalize + a light unsharp so the cubic
         // interpolation's softening doesn't cost edge definition.
@@ -4405,7 +4535,7 @@ double _runPreprocessIsolate(_PreprocessArgs args) {
         // binarize - it REPLACES the slower fillOutline pass.
         img.normalize(working, min: 0, max: 255);
         img.adjustColor(working, contrast: 1.4, saturation: 0);
-        _bradleyThreshold(working, bright: true, t: 0.08);
+        adaptiveThreshold(working, bright: true, t: 0.08);
     }
 
     final out = img.encodeJpg(working, quality: 92);
@@ -4462,69 +4592,6 @@ void _dilateDark(img.Image image, int radius) {
   for (var y = 0; y < h; y++) {
     for (var x = 0; x < w; x++) {
       final v = buf[y * w + x];
-      image.setPixelRgb(x, y, v, v, v);
-    }
-  }
-}
-
-/// Bradley-Roth adaptive threshold on a grayscale [img.Image] (in place).
-///
-/// Each pixel becomes black when its luminance is more than [t] percent
-/// below the mean of the surrounding [windowFraction]-of-width window,
-/// else white. The window mean is computed in O(1) per pixel via an
-/// integral (summed-area) image, so the whole pass is O(w·h) - cheap
-/// enough for an OCR preprocess even on a 2000 px image.
-///
-/// Adaptive thresholding beats a global cut on real captures because
-/// lighting is rarely uniform: a single threshold either crushes the
-/// shadowed side to solid black or blows the lit side to solid white,
-/// erasing text either way. The local window tracks the gradient.
-void _bradleyThreshold(
-  img.Image image, {
-  double windowFraction = 0.125,
-  double t = 0.15,
-  bool bright = false,
-}) {
-  final w = image.width;
-  final h = image.height;
-  if (w < 3 || h < 3) return;
-
-  // Integral image of luminance (use red channel - already grayscale).
-  // (w+1)*(h+1) with a zero border simplifies the area lookup.
-  final integral = List<int>.filled((w + 1) * (h + 1), 0);
-  for (var y = 0; y < h; y++) {
-    var rowSum = 0;
-    for (var x = 0; x < w; x++) {
-      rowSum += image.getPixel(x, y).r.toInt();
-      final above = integral[y * (w + 1) + (x + 1)];
-      integral[(y + 1) * (w + 1) + (x + 1)] = above + rowSum;
-    }
-  }
-
-  final half = math.max(1, (w * windowFraction / 2).round());
-  final factor = 1.0 - t;
-
-  for (var y = 0; y < h; y++) {
-    final y1 = math.max(0, y - half);
-    final y2 = math.min(h - 1, y + half);
-    for (var x = 0; x < w; x++) {
-      final x1 = math.max(0, x - half);
-      final x2 = math.min(w - 1, x + half);
-      final count = (x2 - x1 + 1) * (y2 - y1 + 1);
-      // Summed-area lookup: A - B - C + D on the +1-offset integral.
-      final sum = integral[(y2 + 1) * (w + 1) + (x2 + 1)] -
-          integral[(y1) * (w + 1) + (x2 + 1)] -
-          integral[(y2 + 1) * (w + 1) + (x1)] +
-          integral[(y1) * (w + 1) + (x1)];
-      final pixel = image.getPixel(x, y);
-      final lum = pixel.r.toInt();
-      // Dark text: pixel darker than local mean by t. Bright text (white
-      // on a light/dark bg): the mirror - pixel BRIGHTER than local mean.
-      // Same single integral pass, just the comparison flips.
-      final isText = bright
-          ? lum * count > sum * (1.0 + t)
-          : lum * count < sum * factor;
-      final v = isText ? 0 : 255;
       image.setPixelRgb(x, y, v, v, v);
     }
   }

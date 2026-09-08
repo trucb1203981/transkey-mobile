@@ -1298,6 +1298,14 @@ class AppLocalizationsId extends AppLocalizations {
   String get cameraBlockRetrying => 'Menerjemahkan lagi…';
 
   @override
+  String get cameraRetryUnchanged =>
+      'Belum ada terjemahan baru. Periksa bahasa sumber atau gunakan gambar yang lebih jelas.';
+
+  @override
+  String get cameraRetryFailed =>
+      'Tidak dapat menerjemahkan ulang. Hasil saat ini tetap disimpan.';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return 'Menerjemahkan $current dari $total…';
   }

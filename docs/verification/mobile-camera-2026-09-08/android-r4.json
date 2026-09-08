@@ -1,0 +1,29 @@
+{
+  "artifact": "Android normal release r4",
+  "version": "2.5.0+29",
+  "sha256": "f84c1a8c03baa795c4043c165d5282ce50e6b2e8599d157eebce1773e46d712d",
+  "device": "Xiaomi e552d9b",
+  "sourceLanguage": "auto",
+  "targetLanguage": "vi",
+  "scene": "manga",
+  "cafe": {
+    "cards": 15,
+    "nativeCharacters": 827,
+    "visionRequest": false,
+    "shortPhraseRecovered": "MAIS OUI..",
+    "duplicateSolutionRemoved": true,
+    "coffeeSource": "UN\nCAFÉ..",
+    "confirmationSource": "EST BIEN\nEXACT...",
+    "isolatedGlyphsRemoved": true
+  },
+  "original": {
+    "leftCaptionRightSeparate": true,
+    "characterRecognitionErrorsRemain": true,
+    "ambiguousRightCropDuplicateRemains": true
+  },
+  "limits": [
+    "Representative gallery acceptance only; not universal OCR or translation accuracy.",
+    "Conservative numeric protection can retain ambiguous duplicate reads.",
+    "This record predates the version bump and AAB packaging."
+  ]
+}

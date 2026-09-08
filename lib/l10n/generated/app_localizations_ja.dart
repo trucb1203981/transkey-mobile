@@ -1245,6 +1245,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cameraBlockRetrying => '再翻訳中…';
 
   @override
+  String get cameraRetryUnchanged => '新しい翻訳はありません。原文の言語を確認するか、より鮮明な画像をお使いください。';
+
+  @override
+  String get cameraRetryFailed => '再翻訳できませんでした。現在の結果は保持されています。';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return '$total枚中 $current枚目を翻訳中…';
   }

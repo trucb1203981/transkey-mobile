@@ -134,4 +134,6 @@
     <string name="ime_guide_reply_desc">Scrivi la tua risposta e tocca per tradurla prima di inviarla.</string>
     <string name="ime_guide_refine_desc">Rifinisci il testo perché scorra in modo naturale.</string>
     <string name="ime_guide_dismiss">Ho capito</string>
+    <string name="ime_service_label">Tastiera TransKey</string>
+    <string name="ime_subtype_default">TransKey (inglese · vietnamita Telex)</string>
 </resources>

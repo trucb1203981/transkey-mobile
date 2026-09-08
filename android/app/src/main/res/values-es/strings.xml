@@ -128,4 +128,6 @@
     <string name="ime_guide_reply_desc">Escribe tu respuesta y toca para traducirla antes de enviarla.</string>
     <string name="ime_guide_refine_desc">Pule tu texto para que se lea con naturalidad.</string>
     <string name="ime_guide_dismiss">Entendido</string>
+    <string name="ime_service_label">Teclado TransKey</string>
+    <string name="ime_subtype_default">TransKey (inglés · vietnamita Telex)</string>
 </resources>

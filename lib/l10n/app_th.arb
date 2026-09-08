@@ -555,6 +555,8 @@
   "cameraSaveBlock": "บันทึกในสมุดวลี",
   "cameraSavingPhrasebook": "กำลังบันทึก…",
   "cameraBlockRetrying": "กำลังแปลใหม่…",
+  "cameraRetryUnchanged": "ยังไม่มีคำแปลใหม่ โปรดตรวจสอบภาษาต้นฉบับหรือใช้ภาพที่ชัดขึ้น",
+  "cameraRetryFailed": "แปลอีกครั้งไม่สำเร็จ ยังคงเก็บผลลัพธ์ปัจจุบันไว้",
   "cameraBatchProgress": "กำลังแปลภาพที่ {current} จาก {total}…",
   "cameraSaveNoteLabel": "เพิ่มบันทึก (ไม่จำเป็น)",
   "cameraSaveNoteHint": "เช่น ใกล้โรงแรม, เผ็ดมาก",

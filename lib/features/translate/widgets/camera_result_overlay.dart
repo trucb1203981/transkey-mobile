@@ -5,14 +5,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/camera/bg_color_sampler.dart';
 import '../../../core/camera/camera_service.dart';
+import '../../../core/camera/ocr_region_matching.dart';
+import 'overlay_card_bounds.dart';
 
-/// Resolved render geometry for one card — position is LOCKED to the
-/// source OCR box (no anti-overlap shifting) and the font size is
-/// tuned per-card so the translation fits the original height when
-/// possible. Height can grow beyond the source box when even the
-/// minimum readable font can't fit the translation, so the user
-/// never sees a truncated ("…") translation - DeepL truncates with
-/// ellipsis in that case, we stay readable instead.
+/// Desired render geometry, subsequently bounded to a cell on the photo.
+/// Compact cards expose their complete translation through the action sheet.
 class _CardLayout {
   _CardLayout({
     required this.index,
@@ -920,18 +917,9 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               isTranslated ? FontWeight.w500 : FontWeight.normal,
               widget.fontScale,
             );
-            // Hard-lock the card to the source OCR box height. Earlier
-            // versions let it grow when content exceeded the box, but
-            // that caused cards to bleed into the row below on dense
-            // menus and (when the user pushed the font-scale slider)
-            // into the adjacent manga panel. FittedBox(scaleDown) below
-            // is the safety net for the rare case where text doesn't
-            // fit at the chosen floor - it shrinks visually rather than
-            // the card growing into a neighbour. The slider therefore
-            // only has visible effect on bubbles whose source box is
-            // already roomy enough; tight bubbles stay at the
-            // fit-to-box size, which is the right trade-off because the
-            // alternative (covering adjacent art) is worse.
+            // Start with the source height. The final layout pass restricts
+            // every card to its available cell; compact text exposes overflow
+            // through the existing full-text tap action.
             var cardHeight = boxH;
 
             // "Show original always" rides under the translation - it needs
@@ -982,13 +970,9 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               // would cut the translation off. The width already expanded, so
               // height growth stays minimal (mostly one readable line).
               tightH = tp.size.height + _kCardVPad * 2;
-              // The readable floor can still overflow the gap to the row
-              // below. Refit the font into the available height so the card
-              // stops short of the next block instead of painting over it.
-              // If even the minimum font can't fit (huge translation over a
-              // hairline gap) we keep the overflow - never truncate text.
-              // fontScale > 1.0 is the user explicitly asking for bigger
-              // text at the cost of overlap, so the slider bypasses this.
+              // Refit ordinary text before the final cell constraint. Larger
+              // user-selected fonts keep their size and show an ellipsis when
+              // the available cell cannot display the complete translation.
               if (tightH > availHeight && widget.fontScale <= 1.0) {
                 final fit2 = _fitFont(
                   text: displayText,
@@ -1042,20 +1026,8 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
           return a.index.compareTo(b.index); // stable tiebreak
         });
 
-        // Manga "overlay double" suppression - the last line of defence for
-        // "block chồng block". The OCR + vision-catch-up pipeline can emit two
-        // boxes for ONE speech bubble (a clean partial read that translates,
-        // plus the full garbled read that echoes raw source). Their SOURCE
-        // boxes don't overlap enough for the upstream dedup, but the rendered
-        // cards - each centred on the bubble and grown to fit its text - land
-        // on top of each other, so the user sees two stacked cards. When two
-        // rendered cards overlap by a MAJORITY of the smaller one, keep the
-        // higher-value card (a translated card beats a raw-source one; between
-        // equals the longer text wins) and drop the other. Verified on device
-        // 2026-06-15: duplicate pairs overlap ~0.7 of the smaller card while
-        // genuinely distinct neighbour bubbles overlap <0.15, so 0.5 separates
-        // them cleanly. Scoped to manga mode - menu / normal cards have their
-        // own grow-right / cap-bottom anti-overlap and must stay untouched.
+        // Suppress only duplicate source reads. Translation size is not
+        // evidence that two neighboring dialogue regions contain the same text.
         final suppressed = <int>{};
         if (widget.mangaMode && cards.length > 1) {
           String shownText(int idx) {
@@ -1078,19 +1050,12 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             if (suppressed.contains(cards[a].index)) continue;
             for (var b = a + 1; b < cards.length; b++) {
               if (suppressed.contains(cards[b].index)) continue;
-              final ra = Rect.fromLTWH(
-                  cards[a].left, cards[a].top, cards[a].width, cards[a].height);
-              final rb = Rect.fromLTWH(
-                  cards[b].left, cards[b].top, cards[b].width, cards[b].height);
-              final ix = math.max(0.0,
-                  math.min(ra.right, rb.right) - math.max(ra.left, rb.left));
-              final iy = math.max(0.0,
-                  math.min(ra.bottom, rb.bottom) - math.max(ra.top, rb.top));
-              final inter = ix * iy;
-              if (inter <= 0) continue;
-              final smaller =
-                  math.min(ra.width * ra.height, rb.width * rb.height);
-              if (smaller <= 0 || inter / smaller <= 0.5) continue;
+              final sourceA = widget.blocks[cards[a].index];
+              final sourceB = widget.blocks[cards[b].index];
+              if (!duplicateOcrRegions(sourceA.boundingBox, sourceA.text,
+                  sourceB.boundingBox, sourceB.text)) {
+                continue;
+              }
               final loser = cardScore(cards[a]) >= cardScore(cards[b])
                   ? cards[b]
                   : cards[a];
@@ -1098,6 +1063,20 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
             }
           }
         }
+
+        final visibleCards = cards.where((c) => !suppressed.contains(c.index)).toList();
+        final photoBounds = Rect.fromLTWH(fit.offsetX, fit.offsetY, fit.fitW, fit.fitH);
+        final boundedCards = visibleCards.map((card) {
+          final rect = boundOverlayCard(
+            desired: Rect.fromLTWH(card.left, card.top, card.width, card.height),
+            source: viewRects[card.index],
+            neighbors: visibleCards.where((c) => c.index != card.index)
+                .map((c) => viewRects[c.index]),
+            imageBounds: photoBounds,
+          );
+          return _CardLayout(index: card.index, left: rect.left, top: rect.top,
+              width: rect.width, height: rect.height, fontSize: card.fontSize);
+        }).toList();
 
         return Stack(
           children: [
@@ -1115,9 +1094,9 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
               ),
             ),
             if (_overlayVisible)
-              for (final card in cards)
-                if (!suppressed.contains(card.index))
+              for (final card in boundedCards)
                   _BlockCard(
+                  key: ValueKey('ocr-card-${card.index}'),
                   block: widget.blocks[card.index],
                   translation: card.index < widget.translations.length
                       ? widget.translations[card.index]
@@ -1393,6 +1372,7 @@ class _CameraResultOverlayState extends State<CameraResultOverlay>
 
 class _BlockCard extends StatelessWidget {
   const _BlockCard({
+    super.key,
     required this.block,
     required this.translation,
     required this.left,
@@ -1424,12 +1404,8 @@ class _BlockCard extends StatelessWidget {
   final double width;
   final double height;
   final double fontSize;
-  // User multiplier on rendered font. At 1.0 = current behavior
-  // (FittedBox shrinks to fit bbox). Above 1.0 the renderer multiplies
-  // the chosen fontSize by this, drops the FittedBox so the bigger text
-  // isn't scaled back, and lets the overflow paint past the card
-  // bounds (the card background stays anchored to the bbox so only
-  // glyphs spill out). Width still wraps at the card width.
+  // User font multiplier. Text stays inside the allocated card and the
+  // complete translation remains available through the tap action.
   final double fontScale;
   /// Capped system text-scale, identical to the one the parent used to size
   /// this card, so the rendered glyphs match the measured box (no word break).
@@ -1466,12 +1442,7 @@ class _BlockCard extends StatelessWidget {
       left: left,
       top: top,
       width: width,
-      // No fixed height: let the card grow to fit its (wrapped) text. A
-      // manually-computed height could be off by a rounding pixel - or, when
-      // the rendered width ends up narrower than the width the height was
-      // measured at, the text wraps to one more line - and the surplus line
-      // gets clipped ("xuống hàng rồi mất chữ"). Constraining only the width
-      // lets the column size itself, so nothing is ever cut.
+      height: height,
       child: Opacity(
         opacity: fadedForDelete ? 0.5 : 1.0,
         child: Material(
@@ -1512,8 +1483,8 @@ class _BlockCard extends StatelessWidget {
                 // rendered text (fontSize * fontScale) + small padding,
                 // so the text sits naturally inside without FittedBox
                 // shrink or OverflowBox spill.
-                child: Text(
-                  displayText,
+                child: _CompactOverlayText(
+                  text: displayText,
                   textAlign: TextAlign.center,
                   // Render at EXACTLY the font the parent measured/fitted.
                   // Use the SAME capped system text-scale the parent measured
@@ -1567,57 +1538,19 @@ class _BlockCard extends StatelessWidget {
     // baked into the card width/height by the parent.
     final renderedFont = fontSize * fontScale;
     final innerW = width - _kCardHPad * 2;
+    final style = TextStyle(color: textColor, fontSize: renderedFont,
+        fontWeight: isTranslated ? FontWeight.w500 : FontWeight.normal,
+        height: 1.25, letterSpacing: 0);
     final textColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-          Text(
-            displayText,
-            // Same capped system text-scale the parent measured with (see manga
-            // card note), so enlarged system text grows the card instead of
-            // overflowing it and breaking a word mid-glyph.
-            textScaler: textScaler,
-            style: TextStyle(
-              color: textColor,
-              fontSize: renderedFont,
-              fontWeight: isTranslated
-                  ? FontWeight.w500
-                  : FontWeight.normal,
-              height: 1.25,
-              // See manga card: ignore inherited letterSpacing so the render
-              // matches the TextPainter measurement that sized the card.
-              letterSpacing: 0,
-            ),
-          ),
-          if (showOriginalAlways && isTranslated)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Container(
-                padding: const EdgeInsets.only(top: 4),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: textColor.withValues(alpha: 0.3),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  block.text,
-                  textScaler: textScaler,
-                  style: TextStyle(
-                    color: textColor.withValues(alpha: 0.75),
-                    fontSize: 10,
-                    fontStyle: FontStyle.italic,
-                    height: 1.25,
-                    letterSpacing: 0,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-        ],
+        Expanded(child: _CompactOverlayText(text: displayText,
+            textScaler: textScaler, style: style)),
+        if (showOriginalAlways && isTranslated && height >= 64)
+          Text(block.text, textScaler: textScaler, maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style.copyWith(fontSize: 10, fontStyle: FontStyle.italic)),
+      ],
     );
 
     final cardBody = Container(
@@ -1627,7 +1560,7 @@ class _BlockCard extends StatelessWidget {
         color: fillColor,
         borderRadius: BorderRadius.circular(3),
       ),
-      child: SizedBox(width: innerW, child: textColumn),
+      child: SizedBox(width: math.max(0, innerW), child: textColumn),
     );
 
     return Positioned(
@@ -1653,7 +1586,7 @@ class _BlockCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               child: Stack(
                 children: [
-                  cardBody,
+                  Positioned.fill(child: cardBody),
                   // Marching-ants dashed border on cards still awaiting
                   // their translation from the server.
                   if (isPending && dashAnim != null)
@@ -1796,4 +1729,23 @@ class _MarchingAntsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MarchingAntsPainter old) =>
       progress != old.progress || color != old.color;
+}
+
+/// A compact preview, with the full text retained for semantics and tap-through.
+class _CompactOverlayText extends StatelessWidget {
+  const _CompactOverlayText({required this.text, required this.textScaler,
+      required this.style, this.textAlign = TextAlign.start});
+  final String text;
+  final TextScaler textScaler;
+  final TextStyle style;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, size) {
+    final lineHeight = textScaler.scale(style.fontSize ?? 12) * (style.height ?? 1);
+    final lines = math.max(1, (size.maxHeight / lineHeight).floor());
+    return ClipRect(child: Text(text, textScaler: textScaler, style: style,
+        textAlign: textAlign, maxLines: lines, overflow: TextOverflow.ellipsis,
+        semanticsLabel: text));
+  });
 }

@@ -134,4 +134,6 @@
     <string name="ime_guide_reply_desc">พิมพ์ข้อความตอบกลับ แล้วแตะเพื่อแปลก่อนส่ง</string>
     <string name="ime_guide_refine_desc">ปรับข้อความให้อ่านลื่นและเป็นธรรมชาติ</string>
     <string name="ime_guide_dismiss">เข้าใจแล้ว</string>
+    <string name="ime_service_label">แป้นพิมพ์ TransKey</string>
+    <string name="ime_subtype_default">TransKey (อังกฤษ · เวียดนาม Telex)</string>
 </resources>

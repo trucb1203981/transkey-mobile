@@ -188,13 +188,11 @@ class ShareActivity : Activity() {
     private fun resolveMode(): String {
         val component = intent.component ?: return "translate"
         return try {
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                PackageManager.ComponentInfoFlags.of(PackageManager.GET_META_DATA.toLong())
-            } else {
-                @Suppress("DEPRECATION") null
-            }
-            val info = if (flags != null) {
-                packageManager.getActivityInfo(component, flags)
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getActivityInfo(
+                    component,
+                    PackageManager.ComponentInfoFlags.of(PackageManager.GET_META_DATA.toLong())
+                )
             } else {
                 @Suppress("DEPRECATION")
                 packageManager.getActivityInfo(component, PackageManager.GET_META_DATA)

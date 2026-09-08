@@ -134,4 +134,6 @@
     <string name="ime_guide_reply_desc">Введите ответ и нажмите, чтобы перевести его перед отправкой.</string>
     <string name="ime_guide_refine_desc">Отшлифуйте текст, чтобы он читался естественно.</string>
     <string name="ime_guide_dismiss">Понятно</string>
+    <string name="ime_service_label">Клавиатура TransKey</string>
+    <string name="ime_subtype_default">TransKey (английский · вьетнамский Telex)</string>
 </resources>

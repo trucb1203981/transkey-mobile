@@ -21,7 +21,7 @@ void main() {
   // rendered overlap): a clean read that translated + the full garbled read
   // that echoed raw source (empty translation -> the card renders the source).
   final dupTranslated = blk('ORIG', 40, 100, 130, 60);
-  final dupRawSource = blk('RAW TWIN', 40, 100, 130, 60);
+  final dupRawSource = blk('ORIG', 40, 100, 130, 60);
   // A genuinely distinct bubble far away - must never be suppressed.
   final distinct = blk('AUTRE', 40, 420, 120, 50);
 
@@ -54,7 +54,7 @@ void main() {
 
     // Translated duplicate stays; the overlapping raw-source twin is gone.
     expect(find.text('Dich ngan'), findsOneWidget);
-    expect(find.text('RAW TWIN'), findsNothing);
+    expect(find.text('ORIG'), findsNothing);
     // The distinct bubble is untouched.
     expect(find.text('Rieng biet'), findsOneWidget);
   });

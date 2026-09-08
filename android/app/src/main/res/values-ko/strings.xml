@@ -128,4 +128,6 @@
     <string name="ime_guide_reply_desc">답장을 입력한 후 누르면 보내기 전에 번역돼요.</string>
     <string name="ime_guide_refine_desc">문장을 다듬어 더 자연스럽게 만들어요.</string>
     <string name="ime_guide_dismiss">확인</string>
+    <string name="ime_service_label">TransKey 키보드</string>
+    <string name="ime_subtype_default">TransKey (영어 · 베트남어 Telex)</string>
 </resources>

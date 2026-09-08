@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Enregistrer dans le carnet",
   "cameraSavingPhrasebook": "Enregistrement…",
   "cameraBlockRetrying": "Nouvelle traduction…",
+  "cameraRetryUnchanged": "Aucune nouvelle traduction. Vérifiez la langue source ou utilisez une image plus nette.",
+  "cameraRetryFailed": "La nouvelle traduction a échoué. Le résultat actuel est conservé.",
   "cameraBatchProgress": "Traduction {current} sur {total}…",
   "cameraSaveNoteLabel": "Ajouter une note (facultatif)",
   "cameraSaveNoteHint": "ex. : près de l'hôtel, très épicé",

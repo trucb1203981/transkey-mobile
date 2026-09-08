@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Salvar no caderno",
   "cameraSavingPhrasebook": "Salvando…",
   "cameraBlockRetrying": "Traduzindo novamente…",
+  "cameraRetryUnchanged": "Não há nova tradução. Verifique o idioma de origem ou use uma imagem mais nítida.",
+  "cameraRetryFailed": "Não foi possível traduzir novamente. O resultado atual foi mantido.",
   "cameraBatchProgress": "Traduzindo {current} de {total}…",
   "cameraSaveNoteLabel": "Adicionar nota (opcional)",
   "cameraSaveNoteHint": "ex.: perto do hotel, muito picante",

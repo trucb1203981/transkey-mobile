@@ -1,0 +1,42 @@
+{"mode":"en","passed":true,"text":"Hello hello hello hello hello "}
+{"mode":"en_symbols","passed":true,"text":"Hello hello hello hello hello 1@"}
+{"mode":"vi","passed":true,"text":"Chào chào chào chào chào "}
+{"mode":"vi_symbols","passed":true,"text":"Chào chào chào chào chào 1@"}
+{"mode":"vi_vni","passed":true,"text":"Chào chào chào chào chào "}
+{"mode":"vi_vni_symbols","passed":true,"text":"Chào chào chào chào chào 1@"}
+{"mode":"zh","passed":true,"text":"你好你好你好你好你好"}
+{"mode":"zh_symbols","passed":true,"text":"你好你好你好你好你好1@"}
+{"mode":"es","passed":true,"text":"Hola hola hola hola hola "}
+{"mode":"es_symbols","passed":true,"text":"Hola hola hola hola hola 1@"}
+{"mode":"fr","passed":true,"text":"Salut salut salut salut salut "}
+{"mode":"fr_symbols","passed":true,"text":"Salut salut salut salut salut 1@"}
+{"mode":"ar","passed":true,"text":"سلام سلام سلام سلام سلام "}
+{"mode":"ar_symbols","passed":true,"text":"سلام سلام سلام سلام سلام 1@"}
+{"mode":"pt","passed":true,"text":"Ola ola ola ola ola "}
+{"mode":"pt_symbols","passed":true,"text":"Ola ola ola ola ola 1@"}
+{"mode":"ru","passed":true,"text":"Привет привет привет привет привет "}
+{"mode":"ru_symbols","passed":true,"text":"Привет привет привет привет привет 1@"}
+{"mode":"ru_phon","passed":true,"text":"Привет привет привет привет привет "}
+{"mode":"ru_phon_symbols","passed":true,"text":"Привет привет привет привет привет 1@"}
+{"mode":"id","passed":true,"text":"Halo halo halo halo halo "}
+{"mode":"id_symbols","passed":true,"text":"Halo halo halo halo halo 1@"}
+{"mode":"de","passed":true,"text":"Hallo hallo hallo hallo hallo "}
+{"mode":"de_symbols","passed":true,"text":"Hallo hallo hallo hallo hallo 1@"}
+{"mode":"ja","passed":true,"text":"日本語日本語日本語日本語日本語"}
+{"mode":"ja_symbols","passed":true,"text":"日本語日本語日本語日本語日本語1@"}
+{"mode":"ja_flick","passed":true,"text":"く\nく\nく\nく\nく\n"}
+{"mode":"ja_flick_symbols","passed":true,"text":"く\nく\nく\nく\nく\n1@"}
+{"mode":"ko","passed":true,"text":"한글 한글 한글 한글 한글 "}
+{"mode":"ko_symbols","passed":true,"text":"한글 한글 한글 한글 한글 1@"}
+{"mode":"ko_chun","passed":true,"text":"가 가 가 가 가 "}
+{"mode":"ko_chun_symbols","passed":true,"text":"가 가 가 가 가 1@"}
+{"mode":"it","passed":true,"text":"Ciao ciao ciao ciao ciao "}
+{"mode":"it_symbols","passed":true,"text":"Ciao ciao ciao ciao ciao 1@"}
+{"mode":"th","passed":true,"text":"สวัสดี สวัสดี สวัสดี สวัสดี สวัสดี "}
+{"mode":"th_symbols","passed":true,"text":"สวัสดี สวัสดี สวัสดี สวัสดี สวัสดี 1@"}
+{"mode":"emoji","passed":true,"text":"😀"}
+{"mode":"emoji_delete","passed":true}
+{"mode":"emoji_categories","passed":true,"visible_cells":32,"text":"🐶🍏"}
+{"mode":"numeric","passed":true,"text":"12345"}
+{"mode":"burst_typing","passed":true,"length":160}
+{"mode":"hold_delete_stops","passed":true,"remaining":152}

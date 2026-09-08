@@ -555,6 +555,8 @@
   "cameraSaveBlock": "Сохранить в разговорник",
   "cameraSavingPhrasebook": "Сохранение…",
   "cameraBlockRetrying": "Повторный перевод…",
+  "cameraRetryUnchanged": "Нового перевода нет. Проверьте язык оригинала или используйте более чёткое изображение.",
+  "cameraRetryFailed": "Не удалось перевести повторно. Текущий результат сохранён.",
   "cameraBatchProgress": "Перевод {current} из {total}…",
   "cameraSaveNoteLabel": "Добавить заметку (необязательно)",
   "cameraSaveNoteHint": "напр., рядом с отелем, очень острое",

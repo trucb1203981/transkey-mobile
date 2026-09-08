@@ -1285,6 +1285,14 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cameraBlockRetrying => 'กำลังแปลใหม่…';
 
   @override
+  String get cameraRetryUnchanged =>
+      'ยังไม่มีคำแปลใหม่ โปรดตรวจสอบภาษาต้นฉบับหรือใช้ภาพที่ชัดขึ้น';
+
+  @override
+  String get cameraRetryFailed =>
+      'แปลอีกครั้งไม่สำเร็จ ยังคงเก็บผลลัพธ์ปัจจุบันไว้';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return 'กำลังแปลภาพที่ $current จาก $total…';
   }

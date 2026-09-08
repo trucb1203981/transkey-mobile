@@ -4,7 +4,8 @@ package app.transkey.mobile
  * Vietnamese Telex composer, raw-derived (Unikey/OpenKey-style).
  *
  * The buffer of record is the LITERAL keystroke sequence ([raw]); the displayed
- * Vietnamese ([composingText]) is recomputed from scratch on every key. This is
+ * Vietnamese ([composingText]) is derived from that sequence. Cached prefix
+ * states avoid replaying the whole word on every key or backspace. This is
  * far more robust than mutating the display in place: fast typing, backspace and
  * mid-word edits can never leave a corrupt half-applied state.
  *
@@ -22,6 +23,11 @@ class TelexProcessor {
     private val raw = StringBuilder()
     private var composed = ""
     private var literal = false
+    private data class Prefix(val length: Int, val text: String, val literal: Boolean, val bareW: Int)
+    private var prefix = Prefix(0, "", false, -1)
+    private val checkpoints = ArrayList<Prefix>()
+    private var cachedAutoRime = true
+    private var cachedModernToneStyle = true
 
     /**
      * Strict-Telex switch for the ONLY rule that adds a diacritic without an
@@ -54,6 +60,8 @@ class TelexProcessor {
 
     fun reset() {
         raw.setLength(0); composed = ""; literal = false
+        prefix = Prefix(0, "", false, -1)
+        checkpoints.clear()
     }
 
     fun input(ch: Char): Boolean {
@@ -76,12 +84,32 @@ class TelexProcessor {
     }
 
     private fun recompute() {
-        val out = StringBuilder()
-        var lit = false
+        // Changing a typing option invalidates every derived prefix, but never
+        // the literal keystrokes. Backspace resumes from the nearest checkpoint.
+        if (cachedAutoRime != autoRime || cachedModernToneStyle != modernToneStyle) {
+            checkpoints.clear()
+            prefix = Prefix(0, "", false, -1)
+            cachedAutoRime = autoRime
+            cachedModernToneStyle = modernToneStyle
+        }
+        while (checkpoints.isNotEmpty() && checkpoints.last().length > raw.length) {
+            checkpoints.removeAt(checkpoints.lastIndex)
+        }
+        val start = if (prefix.length <= raw.length) prefix
+            else checkpoints.lastOrNull() ?: Prefix(0, "", false, -1)
+        val out = StringBuilder(start.text)
+        var lit = start.literal
         // Index of a bare 'ư' this pass inserted for a lone 'w', so a second
         // 'w' can undo it back to a literal "w" (the "ww" escape).
-        var bareW = -1
-        for (c in raw) {
+        var bareW = start.bareW
+        fun checkpoint(length: Int) {
+            if (length % 32 != 0) return
+            checkpoints.add(Prefix(length, out.toString(), lit, bareW))
+            // Bound retained strings even for unusually long unbroken input.
+            if (checkpoints.size > 64) checkpoints.removeAt(0)
+        }
+        for (index in start.length until raw.length) {
+            val c = raw[index]
             val lc = c.lowercaseChar()
             var handled = false
 
@@ -91,6 +119,7 @@ class TelexProcessor {
             // ("currsor" -> "cursor") instead of fighting diacritics mid-word.
             if (lit) {
                 out.append(c)
+                checkpoint(index + 1)
                 continue
             }
 
@@ -166,9 +195,11 @@ class TelexProcessor {
             if (!handled) out.append(c)
             if (autoRime) normalizeIeYeUe(out)
             relocateTone(out)
+            checkpoint(index + 1)
         }
         composed = out.toString()
         literal = lit
+        prefix = Prefix(raw.length, composed, literal, bareW)
     }
 
     /**

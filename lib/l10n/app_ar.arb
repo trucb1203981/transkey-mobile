@@ -555,6 +555,8 @@
   "cameraSaveBlock": "حفظ في الدليل",
   "cameraSavingPhrasebook": "جارٍ الحفظ…",
   "cameraBlockRetrying": "جارٍ الترجمة مرة أخرى…",
+  "cameraRetryUnchanged": "لا توجد ترجمة جديدة. تحقق من لغة النص الأصلي أو استخدم صورة أوضح.",
+  "cameraRetryFailed": "تعذرت إعادة الترجمة. تم الاحتفاظ بالنتيجة الحالية.",
   "cameraBatchProgress": "ترجمة {current} من {total}…",
   "cameraSaveNoteLabel": "أضف ملاحظة (اختياري)",
   "cameraSaveNoteHint": "مثلاً: قرب الفندق، حار جداً",

@@ -1,0 +1,102 @@
+{
+  "ko": {
+    "frames": 71,
+    "janky": 6,
+    "p95ms": 20
+  },
+  "vi": {
+    "frames": 61,
+    "janky": 1,
+    "p95ms": 11
+  },
+  "it": {
+    "frames": 51,
+    "janky": 0,
+    "p95ms": 13
+  },
+  "burst": {
+    "frames": 240,
+    "janky": 2,
+    "p95ms": 14
+  },
+  "ar": {
+    "frames": 51,
+    "janky": 0,
+    "p95ms": 9
+  },
+  "fr": {
+    "frames": 61,
+    "janky": 0,
+    "p95ms": 10
+  },
+  "pt": {
+    "frames": 41,
+    "janky": 1,
+    "p95ms": 11
+  },
+  "ko_chun": {
+    "frames": 41,
+    "janky": 0,
+    "p95ms": 11
+  },
+  "zh": {
+    "frames": 84,
+    "janky": 1,
+    "p95ms": 10
+  },
+  "ja_flick": {
+    "frames": 26,
+    "janky": 0,
+    "p95ms": 9
+  },
+  "ja": {
+    "frames": 91,
+    "janky": 3,
+    "p95ms": 16
+  },
+  "de": {
+    "frames": 61,
+    "janky": 0,
+    "p95ms": 12
+  },
+  "emoji": {
+    "frames": 3,
+    "janky": 1,
+    "p95ms": 117
+  },
+  "vi_vni": {
+    "frames": 61,
+    "janky": 0,
+    "p95ms": 10
+  },
+  "th": {
+    "frames": 71,
+    "janky": 0,
+    "p95ms": 14
+  },
+  "id": {
+    "frames": 51,
+    "janky": 1,
+    "p95ms": 13
+  },
+  "es": {
+    "frames": 51,
+    "janky": 0,
+    "p95ms": 10
+  },
+  "ru_phon": {
+    "frames": 71,
+    "janky": 0,
+    "p95ms": 10
+  },
+  "ru": {
+    "frames": 71,
+    "janky": 0,
+    "p95ms": 11
+  },
+  "en": {
+    "frames": 61,
+    "janky": 0,
+    "p95ms": 10
+  }
+}

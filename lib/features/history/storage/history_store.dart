@@ -56,7 +56,7 @@ class HistoryStore {
 
   Future<void> save(List<HistoryEntry> entries) async {
     final prefs = await SharedPreferences.getInstance();
-    final trimmed = _trimKeepLocked(entries);
+    final trimmed = _trimKeepSaved(entries);
     final encoded = jsonEncode(trimmed.map((e) => e.toMap()).toList());
     await prefs.setString(_historyKey, encoded);
   }
@@ -107,15 +107,15 @@ class HistoryStore {
         await save(kept);
       });
 
-  /// Trim to _maxEntries keeping the newest, but always preserve locked
-  /// entries even if they fall outside the window.
-  List<HistoryEntry> _trimKeepLocked(List<HistoryEntry> entries) {
+  /// Automatic trimming must preserve everything the user chose to save.
+  /// Explicit delete and clear actions keep their existing behavior.
+  List<HistoryEntry> _trimKeepSaved(List<HistoryEntry> entries) {
     if (entries.length <= _maxEntries) return entries;
     final head = entries.take(_maxEntries).toList();
     final headIds = head.map((e) => e.id).toSet();
-    final extraLocked = entries
+    final extraSaved = entries
         .skip(_maxEntries)
-        .where((e) => e.isLocked && !headIds.contains(e.id));
-    return [...head, ...extraLocked];
+        .where((e) => (e.isLocked || e.isFavorite) && !headIds.contains(e.id));
+    return [...head, ...extraSaved];
   }
 }

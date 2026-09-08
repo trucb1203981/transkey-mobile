@@ -56,11 +56,12 @@ class VietWordCorrector internal constructor(
         if (!isCorrectionCandidate(typed) || max <= 0) return emptyList()
         val w = typed.lowercase()
         if (rank.containsKey(w) || english.contains(w)) return emptyList()
+        val rows = DistanceRows()
         val scored = ArrayList<Pair<String, Double>>()
         for (len in (w.length - 1)..(w.length + 1)) {
             val pool = byLen[len] ?: continue
             for (cand in pool) {
-                val cost = distance(w, cand, MAX_COST)
+                val cost = distance(w, cand, MAX_COST, rows)
                 if (cost <= MAX_COST) {
                     scored.add(cand to cost + (rank[cand] ?: 0) * RANK_WEIGHT)
                 }
@@ -89,6 +90,8 @@ class VietWordCorrector internal constructor(
         if (rank.containsKey(w) || english.contains(w)) return null
         val n = w.length
         if (n > MAX_TOKEN) return null
+        val rows = DistanceRows()
+        val nearest = HashMap<String, Pair<String?, Double>>()
         val dp = DoubleArray(n + 1) { Double.MAX_VALUE }
         val back = arrayOfNulls<Pair<Int, String>>(n + 1)
         dp[0] = 0.0
@@ -103,7 +106,7 @@ class VietWordCorrector internal constructor(
                     word = seg
                     c = 0.0
                 } else {
-                    val (bw, bc) = bestSingle(seg, SEG_MAX_COST)
+                    val (bw, bc) = nearest.getOrPut(seg) { bestSingle(seg, SEG_MAX_COST, rows) }
                     if (bw == null) continue
                     word = bw
                     c = bc
@@ -130,14 +133,14 @@ class VietWordCorrector internal constructor(
     }
 
     /** Nearest valid syllable to [w] within [cap]; (null, MAX) if none. */
-    private fun bestSingle(w: String, cap: Double): Pair<String?, Double> {
+    private fun bestSingle(w: String, cap: Double, rows: DistanceRows): Pair<String?, Double> {
         if (w.length < 2) return null to Double.MAX_VALUE
         var best: String? = null
         var bestCost = cap + 0.001
         for (len in (w.length - 1)..(w.length + 1)) {
             val pool = byLen[len] ?: continue
             for (cand in pool) {
-                val cost = distance(w, cand, cap)
+                val cost = distance(w, cand, cap, rows)
                 if (cost < bestCost ||
                     (cost == bestCost && best != null && (rank[cand] ?: 0) < (rank[best] ?: 0))
                 ) {
@@ -160,17 +163,32 @@ class VietWordCorrector internal constructor(
         word.length in 2..MAX_TOKEN && word.all { it.isLetter() && !it.isUpperCase() }
 
     /** Keyboard-proximity-weighted edit distance, with early exit above [cap]. */
-    private fun distance(a: String, b: String, cap: Double): Double {
+    // Scratch rows belong to one request: suggestion and commit can run on
+    // different threads without sharing mutable edit-distance state.
+    private class DistanceRows {
+        val first = DoubleArray(MAX_TOKEN + 2)
+        val second = DoubleArray(MAX_TOKEN + 2)
+    }
+
+    private fun distance(a: String, b: String, cap: Double, rows: DistanceRows): Double {
         val n = a.length
         val m = b.length
         if (abs(n - m) > 1) return cap + 1
-        var prev = DoubleArray(m + 1) { it * INDEL }
-        var cur = DoubleArray(m + 1)
+        var prev = rows.first
+        var cur = rows.second
+        for (j in 0..m) prev[j] = j * INDEL
+        val band = (cap / INDEL).toInt()
         for (i in 1..n) {
             cur[0] = i * INDEL
             var rowMin = cur[0]
             val ca = a[i - 1]
-            for (j in 1..m) {
+            // Outside this diagonal band, insertions/deletions alone exceed
+            // the cap. Reset its edges because the scratch rows are reused.
+            val first = maxOf(1, i - band)
+            val last = minOf(m, i + band)
+            if (first > 1) cur[first - 1] = cap + INDEL
+            if (last < m) cur[last + 1] = cap + INDEL
+            for (j in first..last) {
                 val sub = prev[j - 1] + subCost(ca, b[j - 1])
                 val del = prev[j] + INDEL
                 val ins = cur[j - 1] + INDEL
@@ -188,6 +206,9 @@ class VietWordCorrector internal constructor(
 
     private fun subCost(a: Char, b: Char): Double {
         if (a == b) return 0.0
+        val ai = CHAR_IDS[a.code]
+        val bi = CHAR_IDS[b.code]
+        if (ai >= 0 && bi >= 0) return SUBSTITUTIONS[ai][bi]
         val ba = base(a)
         val bb = base(b)
         if (ba == bb) return SAME_BASE
@@ -240,6 +261,25 @@ class VietWordCorrector internal constructor(
         private fun base(ch: Char): Char {
             val c = ch.lowercaseChar()
             return BASE_MAP[c] ?: c
+        }
+
+        // Resolve diacritics and keyboard proximity once, outside the hot DP
+        // loop. Keep the existing calculation for letters outside this alphabet.
+        private val ALPHABET = ('a'..'z').toList() + BASE_MAP.keys
+        private val CHAR_IDS = IntArray(Char.MAX_VALUE.code + 1) { -1 }.apply {
+            ALPHABET.forEachIndexed { index, ch -> this[ch.code] = index }
+        }
+        private val SUBSTITUTIONS = Array(ALPHABET.size) { i ->
+            DoubleArray(ALPHABET.size) { j ->
+                val a = ALPHABET[i]
+                val b = ALPHABET[j]
+                when {
+                    a == b -> 0.0
+                    base(a) == base(b) -> SAME_BASE
+                    adjacent(base(a), base(b)) -> ADJ
+                    else -> FAR
+                }
+            }
         }
     }
 }

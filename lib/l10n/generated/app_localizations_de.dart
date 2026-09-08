@@ -1306,6 +1306,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cameraBlockRetrying => 'Wird erneut übersetzt…';
 
   @override
+  String get cameraRetryUnchanged =>
+      'Keine neue Übersetzung. Prüfe die Ausgangssprache oder verwende ein schärferes Bild.';
+
+  @override
+  String get cameraRetryFailed =>
+      'Die erneute Übersetzung ist fehlgeschlagen. Das aktuelle Ergebnis bleibt erhalten.';
+
+  @override
   String cameraBatchProgress(int current, int total) {
     return 'Übersetze $current von $total…';
   }

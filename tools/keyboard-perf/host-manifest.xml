@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="app.transkey.keyboardperf" android:versionCode="1" android:versionName="1">
+    <uses-sdk android:minSdkVersion="30" android:targetSdkVersion="34" />
+    <queries><package android:name="app.transkey.mobile" /></queries>
+    <application android:label="Keyboard test" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false">
+        <activity android:name=".KeyboardHost" android:exported="true" android:launchMode="singleTop" android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+    </application>
+    <instrumentation android:name=".KeyboardUi" android:targetPackage="app.transkey.keyboardperf" />
+</manifest>

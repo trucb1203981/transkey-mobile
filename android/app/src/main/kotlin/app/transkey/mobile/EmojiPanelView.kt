@@ -5,10 +5,11 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.GridLayout
+import android.widget.AbsListView
+import android.widget.BaseAdapter
+import android.widget.GridView
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 
 /**
@@ -35,22 +36,23 @@ class EmojiPanelView(context: Context) : LinearLayout(context) {
     private val iconColor = 0xFFC4C7CE.toInt()
 
     private val cols = 8
-    private val scroll = ScrollView(context)
-    // y-position (px) of each category's header inside the grid, for quick-jump.
-    private val sectionTops = ArrayList<Int>()
-    private val grid = GridLayout(context)
+    // Adapter positions preserve category jumps without creating every cell.
+    private val sectionStarts = ArrayList<Int>()
+    private val emojis = ArrayList<String?>()
+    private val grid = GridView(context)
 
     init {
         orientation = VERTICAL
         setBackgroundColor(panelBg)
 
-        grid.columnCount = cols
-        grid.useDefaultMargins = false
+        grid.numColumns = cols
+        grid.stretchMode = GridView.STRETCH_COLUMN_WIDTH
+        grid.setSelector(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
         buildGrid()
-
-        scroll.isFillViewport = true
-        scroll.addView(grid)
-        addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
+        grid.setOnItemClickListener { _, _, position, _ ->
+            emojis[position]?.let { onEmoji?.invoke(it) }
+        }
+        addView(grid, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
         addView(buildBottomBar())
     }
@@ -63,35 +65,27 @@ class EmojiPanelView(context: Context) : LinearLayout(context) {
     }
 
     private fun buildGrid() {
-        val cellW = resources.displayMetrics.widthPixels / cols
         val cellH = dp(48)
-        var row = 0
-        for ((_, emojis) in CATEGORIES) {
-            // Each category fills the rest of its last row, then starts fresh.
-            for ((i, e) in emojis.withIndex()) {
-                val tv = TextView(context).apply {
-                    text = e
+        for ((_, category) in CATEGORIES) {
+            sectionStarts.add(emojis.size)
+            emojis.addAll(category)
+            // Keep each category aligned to a row, with untappable padding.
+            repeat((cols - category.size % cols) % cols) { emojis.add(null) }
+        }
+        grid.adapter = object : BaseAdapter() {
+            override fun getCount() = emojis.size
+            override fun getItem(position: Int) = emojis[position]
+            override fun getItemId(position: Int) = position.toLong()
+            override fun areAllItemsEnabled() = false
+            override fun isEnabled(position: Int) = emojis[position] != null
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                (convertView as? TextView ?: TextView(context).apply {
                     textSize = 22f
                     gravity = Gravity.CENTER
                     setTextColor(keyText)
-                    setOnClickListener { onEmoji?.invoke(e) }
-                    isClickable = true
                     setBackgroundColor(Color.TRANSPARENT)
-                }
-                val lp = GridLayout.LayoutParams().apply {
-                    width = cellW; height = cellH
-                }
-                grid.addView(tv, lp)
-                if (i == 0) sectionTops.add(row * cellH)
-            }
-            // round up to a full row boundary for the next category
-            val used = emojis.size
-            val pad = (cols - used % cols) % cols
-            repeat(pad) {
-                val spacer = View(context)
-                grid.addView(spacer, GridLayout.LayoutParams().apply { width = cellW; height = cellH })
-            }
-            row += (used + pad) / cols
+                    layoutParams = AbsListView.LayoutParams(LayoutParams.MATCH_PARENT, cellH)
+                }).apply { text = emojis[position].orEmpty() }
         }
     }
 
@@ -117,7 +111,9 @@ class EmojiPanelView(context: Context) : LinearLayout(context) {
     }
 
     private fun jumpTo(index: Int) {
-        scroll.smoothScrollTo(0, sectionTops.getOrElse(index) { 0 })
+        // Category tabs switch directly to the target row. GridView's inherited
+        // position scroller can stop before a row following disabled padding.
+        grid.setSelection(sectionStarts.getOrElse(index) { 0 })
     }
 
     private fun textButton(label: String, onClick: () -> Unit): TextView =

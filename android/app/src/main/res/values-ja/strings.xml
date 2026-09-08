@@ -128,4 +128,6 @@
     <string name="ime_guide_reply_desc">返信を入力して、タップすると送信前に翻訳できます。</string>
     <string name="ime_guide_refine_desc">文章を整えて、より自然な表現にします。</string>
     <string name="ime_guide_dismiss">わかりました</string>
+    <string name="ime_service_label">TransKey キーボード</string>
+    <string name="ime_subtype_default">TransKey（英語・ベトナム語 Telex）</string>
 </resources>
