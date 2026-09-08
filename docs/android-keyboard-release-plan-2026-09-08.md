@@ -1,0 +1,7 @@
+# Android keyboard release preparation
+
+1. Complete: fix five Android lint errors with API-compatible metadata lookup, native image tinting, translated keyboard labels, and optional camera hardware declarations. Debug lint passes with zero errors and 139 warnings; 100 native tests pass.
+2. Complete: debug, explicit release, and profile lint pass with zero errors and 139 warnings each; 100 native tests pass. Combined Android r4 passes targeted camera gallery acceptance and all 42 keyboard UI cases. Camera owner completed normal iPhone r4 gallery acceptance and source freeze. Full Flutter analysis is clean; 190 tests pass with one existing skip. Recognition/translation limits remain documented.
+3. Complete: 12 keyboard, build, compatibility, and camera patterns recorded through the permitted memory update mechanism after comparing existing entries. Canonical memory stores were not directly edited.
+4. Complete: after camera acceptance, bumped 2.5.0+29 to 2.5.1+30 and built the normal lib/main.dart release AAB (88,308,691 bytes). Bundle validation, signature, and embedded version checks pass. English release notes are in docs/releases/2.5.1+30.md.
+5. Complete: the AAB-derived APK installs with the same signer and passes six keyboard checks plus camera gallery smoke acceptance. Source fixes are committed as 1cd71c86e1d67cfdf6291bb94adc79cc332a1d71. The version commit includes pubspec, release notes, artifact evidence, and this plan. Device data and original settings are preserved; task media copies are cleaned. No push or store upload.

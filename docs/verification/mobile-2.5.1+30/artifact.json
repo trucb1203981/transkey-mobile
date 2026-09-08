@@ -1,0 +1,30 @@
+{
+  "package": "app.transkey.mobile",
+  "versionName": "2.5.1",
+  "versionCode": 30,
+  "bundleValidated": true,
+  "bundleSignatureVerified": true,
+  "bundle": {
+    "path": "/Users/trucnguyen/Management/projects/translate/transkey-mobile/build/app/outputs/bundle/release/app-release.aab",
+    "bytes": 88308691,
+    "sha256": "1cac699f730283f4abe773b762d4601e756c49b4322032c922aeb8057670a27f"
+  },
+  "apk": {
+    "path": "/Users/trucnguyen/Management/projects/translate/transkey-mobile/build/release-2.5.1+30/universal.apk",
+    "bytes": 96029450,
+    "sha256": "4e748791d1962d8fc2c5815a07ee1144fbc82e40f68d41a421d6e3310f639497"
+  },
+  "apkSignatureVerified": true,
+  "sameSignerAsAcceptedR4": true,
+  "certificateSha256": "b94640c70218ad74b2fbe16fbd9d5d3b929f58c153fda5e3a5d88295674b3efe",
+  "installedVersionVerified": true,
+  "cameraGallerySmoke": {
+    "normalEntrypoint": true,
+    "cafeStructurePreserved": true,
+    "coffeeSource": "UN\nCAFÉ.."
+  },
+  "keyboardExtras": {
+    "passed": 6,
+    "failed": 0
+  }
+}

@@ -1,0 +1,6 @@
+{"mode":"emoji","passed":true,"text":"😀"}
+{"mode":"emoji_delete","passed":true}
+{"mode":"emoji_categories","passed":true,"visible_cells":32,"text":"🐶🍏"}
+{"mode":"numeric","passed":true,"text":"12345"}
+{"mode":"burst_typing","passed":true,"length":160}
+{"mode":"hold_delete_stops","passed":true,"remaining":152}
