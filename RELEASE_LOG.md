@@ -24,8 +24,8 @@ same as being live.
 ## 2.6.0+31 - 2026-09-12
 
 - **Play:** not submitted. AAB `2.6.0(31)` built 2026-09-12 21:28 (93.1MB), verified `versionName 2.6.0` inside the bundle manifest.
-- **App Store:** not submitted. Nothing uploaded to App Store Connect for this version; the local IPA build outcome is recorded by the follow-up docs commit.
-- **Commits:** `d53dcd8..HEAD` (natural-voice read aloud + bump land in ONE commit; its sha is recorded by the follow-up docs commit)
+- **App Store:** not submitted. IPA `2.6.0(31)` built 2026-09-12 21:39 (71.7MB), verified arm64-only and `2.6.0(31)` in Runner plus both extensions. Nothing uploaded to App Store Connect.
+- **Commits:** `d53dcd8..5b60e8d` (5b60e8d: natural-voice read aloud + bump, one commit)
 
 Shipped in this version:
 - Read aloud now uses natural online voices, with the device voice kept as the offline mode
