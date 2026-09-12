@@ -1729,4 +1729,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get setupBannerAction => '完成设置';
+
+  @override
+  String get ttsNatural => '自然语音（在线）';
+
+  @override
+  String get ttsDevice => '设备语音（离线）';
+
+  @override
+  String get ttsUnsupported => '所选模式暂不支持此语言的语音。';
+
+  @override
+  String get ttsFailed => '无法朗读，请检查网络连接后重试。';
 }

@@ -1823,4 +1823,17 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get setupBannerAction => 'Bật nốt';
+
+  @override
+  String get ttsNatural => 'Giọng tự nhiên (cần mạng)';
+
+  @override
+  String get ttsDevice => 'Giọng trên thiết bị (ngoại tuyến)';
+
+  @override
+  String get ttsUnsupported =>
+      'Ngôn ngữ này chưa có giọng trong chế độ đã chọn.';
+
+  @override
+  String get ttsFailed => 'Không thể đọc. Hãy kiểm tra kết nối rồi thử lại.';
 }

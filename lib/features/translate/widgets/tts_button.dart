@@ -7,6 +7,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/toast.dart';
 import '../services/tts_service.dart';
+import '../services/edge_voices.dart';
 
 class TtsButton extends ConsumerStatefulWidget {
   const TtsButton({
@@ -33,12 +34,18 @@ class TtsButton extends ConsumerStatefulWidget {
 }
 
 class _TtsButtonState extends ConsumerState<TtsButton> {
+  late final String _owner = 'button:${identityHashCode(this)}';
+  TtsMode? _checkedMode;
   Future<bool>? _availabilityCheck;
   String? _checkedLang;
 
   Future<bool> _checkAvailability() {
     // Memoize per-language — re-run only when widget.lang changes.
-    if (_availabilityCheck == null || _checkedLang != widget.lang) {
+    final mode = ref.read(ttsProvider).mode;
+    if (_availabilityCheck == null ||
+        _checkedLang != widget.lang ||
+        _checkedMode != mode) {
+      _checkedMode = mode;
       _checkedLang = widget.lang;
       _availabilityCheck =
           ref.read(ttsProvider.notifier).isLanguageAvailable(widget.lang);
@@ -52,18 +59,20 @@ class _TtsButtonState extends ConsumerState<TtsButton> {
     if (!available) {
       showAppToast(
         context,
-        'TTS not available for ${widget.lang}',
+        AppLocalizations.of(context)!.ttsUnsupported,
         duration: const Duration(seconds: 2),
       );
       return;
     }
-    await ref.read(ttsProvider.notifier).speak(widget.text, lang: widget.lang);
+    await ref
+        .read(ttsProvider.notifier)
+        .speak(widget.text, lang: widget.lang, owner: _owner);
   }
 
   @override
   Widget build(BuildContext context) {
     final tts = ref.watch(ttsProvider);
-    final isActive = tts.isPlaying && tts.currentText == widget.text;
+    final isActive = tts.matches(widget.text, widget.lang, _owner);
 
     return FutureBuilder<bool>(
       future: _checkAvailability(),
@@ -75,19 +84,28 @@ class _TtsButtonState extends ConsumerState<TtsButton> {
             ? widget.color
             : (widget.color ?? AppColors.primary).withValues(alpha: 0.35);
 
-        final speakBtn = GestureDetector(
+        final speakBtn = Semantics(
+          button: true,
+          label: AppLocalizations.of(context)!.sectionSpeech,
+          toggled: isActive,
+          enabled: true,
           onTap: () => _onTap(context),
-          onLongPress: isAvailable ? () => _showOptionsSheet(context) : null,
-          child: isActive
-              ? _WaveAnimation(size: widget.size, color: widget.color)
-              : Icon(
-                  Icons.volume_up_outlined,
-                  size: widget.size,
-                  color: color,
-                ),
+          onLongPress: () => _showOptionsSheet(context),
+          child: GestureDetector(
+            excludeFromSemantics: true,
+            onTap: () => _onTap(context),
+            onLongPress: () => _showOptionsSheet(context),
+            child: isActive
+                ? _WaveAnimation(size: widget.size, color: widget.color)
+                : Icon(
+                    Icons.volume_up_outlined,
+                    size: widget.size,
+                    color: color,
+                  ),
+          ),
         );
 
-        if (!widget.showOptions || !isAvailable) return speakBtn;
+        if (!widget.showOptions) return speakBtn;
 
         // Compact companion button for speed/voice picker — much more
         // discoverable than long-press. Tap opens the same options sheet.
@@ -120,6 +138,11 @@ class _TtsButtonState extends ConsumerState<TtsButton> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      ),
       builder: (ctx) => _TtsOptionsSheet(lang: widget.lang),
     );
   }
@@ -144,6 +167,7 @@ class _TtsOptionsSheet extends ConsumerStatefulWidget {
 
 class _TtsOptionsSheetState extends ConsumerState<_TtsOptionsSheet> {
   late Future<List<TtsVoice>> _voicesFuture;
+  TtsMode? _voiceMode;
 
   @override
   void initState() {
@@ -155,8 +179,12 @@ class _TtsOptionsSheetState extends ConsumerState<_TtsOptionsSheet> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final tts = ref.watch(ttsProvider);
+    if (_voiceMode != tts.mode) {
+      _voiceMode = tts.mode;
+      _voicesFuture = ref.read(ttsProvider.notifier).voicesFor(widget.lang);
+    }
     final currentRate = tts.rate;
-    final currentVoice = tts.voiceByLang[widget.lang];
+    final currentVoice = tts.voiceByLang[normalizeSpeechLocale(widget.lang)];
     // Match desktop's rate options exactly: 0.25, 0.5, 0.75, 1, 1.25, 1.5
     const speeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
 
@@ -166,6 +194,31 @@ class _TtsOptionsSheetState extends ConsumerState<_TtsOptionsSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: IconButton(
+                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            ListTile(
+              title: Text(l.ttsNatural),
+              leading: Icon(tts.mode == TtsMode.natural
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked),
+              onTap: () =>
+                  ref.read(ttsProvider.notifier).setMode(TtsMode.natural),
+            ),
+            ListTile(
+              title: Text(l.ttsDevice),
+              leading: Icon(tts.mode == TtsMode.device
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked),
+              onTap: () =>
+                  ref.read(ttsProvider.notifier).setMode(TtsMode.device),
+            ),
+            const Divider(height: 1),
             // Speed picker
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -224,7 +277,7 @@ class _TtsOptionsSheetState extends ConsumerState<_TtsOptionsSheet> {
                     ListTile(
                       dense: true,
                       title: Text(l.voiceDefault),
-                      trailing: currentVoice == null
+                      trailing: currentVoice == null || currentVoice.isEmpty
                           ? const Icon(Icons.check, color: AppColors.primary)
                           : null,
                       onTap: () {
@@ -235,7 +288,7 @@ class _TtsOptionsSheetState extends ConsumerState<_TtsOptionsSheet> {
                     ),
                     ...voices.map((v) => ListTile(
                           dense: true,
-                          title: Text(v.name),
+                          title: Text(v.label ?? v.name),
                           subtitle: Text(v.locale,
                               style: const TextStyle(fontSize: 11)),
                           trailing: v.name == currentVoice

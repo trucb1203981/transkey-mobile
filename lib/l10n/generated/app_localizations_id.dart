@@ -1837,4 +1837,18 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setupBannerAction => 'Selesaikan penyiapan';
+
+  @override
+  String get ttsNatural => 'Suara alami (online)';
+
+  @override
+  String get ttsDevice => 'Suara perangkat (offline)';
+
+  @override
+  String get ttsUnsupported =>
+      'Bahasa ini tidak memiliki suara dalam mode yang dipilih.';
+
+  @override
+  String get ttsFailed =>
+      'Tidak dapat membacakan. Periksa koneksi lalu coba lagi.';
 }

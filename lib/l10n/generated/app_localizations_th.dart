@@ -1814,4 +1814,17 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get setupBannerAction => 'ตั้งค่าให้เสร็จ';
+
+  @override
+  String get ttsNatural => 'เสียงธรรมชาติ (ออนไลน์)';
+
+  @override
+  String get ttsDevice => 'เสียงในอุปกรณ์ (ออฟไลน์)';
+
+  @override
+  String get ttsUnsupported => 'ภาษานี้ไม่มีเสียงในโหมดที่เลือก';
+
+  @override
+  String get ttsFailed =>
+      'ไม่สามารถอ่านได้ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง';
 }

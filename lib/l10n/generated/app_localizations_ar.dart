@@ -1825,4 +1825,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get setupBannerAction => 'أكمل الإعداد';
+
+  @override
+  String get ttsNatural => 'صوت طبيعي (عبر الإنترنت)';
+
+  @override
+  String get ttsDevice => 'صوت الجهاز (دون اتصال)';
+
+  @override
+  String get ttsUnsupported => 'لا يوجد صوت لهذه اللغة في الوضع المحدد.';
+
+  @override
+  String get ttsFailed => 'تعذرت القراءة. تحقق من الاتصال وحاول مرة أخرى.';
 }

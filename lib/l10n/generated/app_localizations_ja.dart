@@ -1752,4 +1752,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupBannerAction => '設定を終わらせる';
+
+  @override
+  String get ttsNatural => '自然な音声（オンライン）';
+
+  @override
+  String get ttsDevice => '端末の音声（オフライン）';
+
+  @override
+  String get ttsUnsupported => '選択したモードではこの言語の音声を利用できません。';
+
+  @override
+  String get ttsFailed => '読み上げできません。接続を確認して再試行してください。';
 }

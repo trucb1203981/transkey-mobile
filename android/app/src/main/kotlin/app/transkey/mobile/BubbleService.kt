@@ -17,7 +17,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
-import android.speech.tts.TextToSpeech
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -475,8 +474,7 @@ class BubbleService : Service() {
     internal var currentVoiceLang: String = "en"
 
     // Text-to-Speech
-    private var tts: TextToSpeech? = null
-    private var ttsReady = false
+    private var speechRequestId = 0
 
     // Bubble drag state
     internal var initialX = 0
@@ -556,7 +554,6 @@ class BubbleService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, buildBubbleNotification())
         }
-        tts = TextToSpeech(this) { status -> ttsReady = (status == TextToSpeech.SUCCESS) }
 
         // Pre-warm the Latin ML Kit recognizer so the first Lens scan doesn't
         // pay the ~100-200 ms TFLite model-load cold start. A 4×4 dummy bitmap
@@ -739,7 +736,7 @@ class BubbleService : Service() {
         hideRegionSelectionView()
         releaseScreenCapture()
         hideCloseZone()
-        tts?.stop(); tts?.shutdown(); tts = null
+        stopSpeech()
         removeBubble()
         removeResultPanel()
         super.onDestroy()
@@ -1116,55 +1113,48 @@ class BubbleService : Service() {
     // moved to ResultPanelExtensions.kt
 
     internal fun speakOutput() {
-        val engine = tts ?: return
-        // Tap-to-stop toggle: if the engine is already mid-utterance, the
-        // user pressed the button to interrupt — kill playback instead of
-        // restarting it. Without this, the only way to stop was to wait
-        // out the full read (or close the panel) because QUEUE_FLUSH just
-        // restarts the same audio from the top.
-        if (engine.isSpeaking) {
-            engine.stop()
-            return
-        }
-        val text = currentOutput?.takeIf { it.isNotEmpty() } ?: return
-        if (!ttsReady) { Toast.makeText(this, localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show(); return }
-        val locale = langToLocale(currentTargetLang)
-        engine.language = locale
-        // Match the speed the user picked inside the app's Settings →
-        // Read aloud. Flutter writes it via shared_preferences as
-        // flutter.tk_tts_rate (double). Default to normal speed when unset.
-        val rate = readTtsRate().toFloat()
-        engine.setSpeechRate(rate)
-        @Suppress("DEPRECATION")
-        engine.speak(text, TextToSpeech.QUEUE_FLUSH, null)
+        val text = currentOutput?.takeIf { it.isNotBlank() } ?: return
+        speakNeural(text, currentTargetLang, "target")
     }
 
-    /**
-     * Speak the ORIGINAL text (speakOutput reads the translation) so the
-     * user picks which language to hear. Needs a concrete source lang:
-     * server detection wins, else the pinned non-auto source pick - the
-     * panel hides the button when neither is available, this guard is
-     * just belt-and-suspenders.
-     */
     internal fun speakSource() {
-        val engine = tts ?: return
-        // Same tap-to-stop toggle as speakOutput - both buttons share the
-        // one engine, so tapping either while ANY speech plays stops it.
-        if (engine.isSpeaking) {
-            engine.stop()
+        val text = currentSourceText?.takeIf { it.isNotBlank() } ?: return
+        val lang = currentDetectedLang?.takeIf { it != "auto" && it != "und" }
+            ?: currentSourceLang.takeIf { it != "auto" && it != "und" }
+            ?: return
+        speakNeural(text, lang, "source")
+    }
+
+    private fun speakNeural(text: String, lang: String, side: String) {
+        val engine = TransKeyApp.engine
+        if (engine == null) {
+            Toast.makeText(this, localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show()
             return
         }
-        val text = currentSourceText?.takeIf { it.isNotEmpty() } ?: return
-        // Server detection returns the literal "auto" for Latin-script
-        // langs - filter it like a null on both sides.
-        val lang = currentDetectedLang?.takeIf { it != "auto" }
-            ?: currentSourceLang.takeIf { it != "auto" }
-            ?: return
-        if (!ttsReady) { Toast.makeText(this, localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show(); return }
-        engine.language = langToLocale(lang)
-        engine.setSpeechRate(readTtsRate().toFloat())
-        @Suppress("DEPRECATION")
-        engine.speak(text, TextToSpeech.QUEUE_FLUSH, null)
+        val requestId = ++speechRequestId
+        io.flutter.plugin.common.MethodChannel(engine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
+            .invokeMethod("speakText", mapOf("text" to text, "lang" to lang,
+                "side" to side, "rate" to readTtsRate()),
+                object : io.flutter.plugin.common.MethodChannel.Result {
+                    override fun success(result: Any?) {}
+                    override fun error(code: String, message: String?, details: Any?) {
+                        if (requestId != speechRequestId) return
+                        Toast.makeText(this@BubbleService,
+                            message ?: localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show()
+                    }
+                    override fun notImplemented() {
+                        if (requestId != speechRequestId) return
+                        Toast.makeText(this@BubbleService,
+                            localized(R.string.bubble_panel_tts_not_ready), Toast.LENGTH_SHORT).show()
+                    }
+                })
+    }
+
+    internal fun stopSpeech() {
+        speechRequestId++
+        val engine = TransKeyApp.engine ?: return
+        io.flutter.plugin.common.MethodChannel(engine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
+            .invokeMethod("stopSpeech", null)
     }
 
     internal fun readTtsRate(): Double {
@@ -1172,10 +1162,7 @@ class BubbleService : Service() {
         // plugin versions — sometimes Float, sometimes a String-encoded
         // Double, sometimes prefixed via the legacy codec. Read through
         // prefs.all and accept any numeric / string representation.
-        // 1.0 = normal speed. The OS TextToSpeech engine treats 1.0 as normal,
-        // and the in-app flutter_tts path persists the same user-facing
-        // multiplier, so the bubble feeds this value to the engine as-is (no
-        // ×0.5 conversion, unlike the flutter_tts path) and both sound the same.
+        // Both the app and bubble pass the same user-facing speed multiplier.
         return when (val v = prefs.all["flutter.tk_tts_rate"]) {
             is Number -> v.toDouble()
             is String -> v.toDoubleOrNull() ?: 1.0
@@ -1183,26 +1170,6 @@ class BubbleService : Service() {
         }
     }
 
-    private fun langToLocale(lang: String): Locale = when (lang) {
-        "en" -> Locale.ENGLISH
-        "vi" -> Locale("vi")
-        "ja" -> Locale.JAPANESE
-        "zh" -> Locale.CHINESE
-        "ko" -> Locale.KOREAN
-        "fr" -> Locale.FRENCH
-        "de" -> Locale.GERMAN
-        "es" -> Locale("es")
-        "pt" -> Locale("pt")
-        "ru" -> Locale("ru")
-        "th" -> Locale("th")
-        "id" -> Locale("in")
-        // Let the OS engine resolve any other code itself instead of
-        // falling back to English - an English voice reading e.g. Arabic
-        // is worse than the engine's own best-effort (or silence).
-        else -> Locale.forLanguageTag(lang)
-    }
-
-    // ── Prefs helpers ──
 
     private fun saveBubbleActive(active: Boolean) {
         prefs.edit()

@@ -758,7 +758,7 @@ class _PhrasebookSpeakButton extends ConsumerWidget {
     final enabled = lang != null && lang.isNotEmpty;
     final tts = ref.watch(ttsProvider);
     final isPlayingMine =
-        tts.isPlaying && tts.currentText == dish.recognizedText.trim();
+        tts.matches(dish.recognizedText, lang ?? '', 'phrasebook');
 
     final color = enabled
         ? (isPlayingMine
@@ -782,6 +782,7 @@ class _PhrasebookSpeakButton extends ConsumerWidget {
                 ref.read(ttsProvider.notifier).speak(
                       dish.recognizedText,
                       lang: lang,
+                      owner: 'phrasebook',
                     );
                 ref.read(trackingServiceProvider).event('phrasebook_tts',
                     properties: {'lang': lang, 'category': dish.category});

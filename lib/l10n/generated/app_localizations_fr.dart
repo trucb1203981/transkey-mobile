@@ -1848,4 +1848,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupBannerAction => 'Terminer la configuration';
+
+  @override
+  String get ttsNatural => 'Voix naturelle (en ligne)';
+
+  @override
+  String get ttsDevice => 'Voix de l’appareil (hors ligne)';
+
+  @override
+  String get ttsUnsupported =>
+      'Aucune voix pour cette langue dans le mode choisi.';
+
+  @override
+  String get ttsFailed =>
+      'Lecture impossible. Vérifiez votre connexion et réessayez.';
 }

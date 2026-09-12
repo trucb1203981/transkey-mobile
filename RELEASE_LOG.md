@@ -21,6 +21,46 @@ same as being live.
 
 ---
 
+## 2.6.0+31 - 2026-09-12
+
+- **Play:** not submitted. AAB `2.6.0(31)` built 2026-09-12 21:28 (93.1MB), verified `versionName 2.6.0` inside the bundle manifest.
+- **App Store:** not submitted. Nothing uploaded to App Store Connect for this version; the local IPA build outcome is recorded by the follow-up docs commit.
+- **Commits:** `d53dcd8..HEAD` (natural-voice read aloud + bump land in ONE commit; its sha is recorded by the follow-up docs commit)
+
+Shipped in this version:
+- Read aloud now uses natural online voices, with the device voice kept as the offline mode
+- Voice and reading-speed picker per language, remembered per language
+- The Android floating button reads aloud through the same voice engine as the app
+- Clear localized messages when a language has no voice or playback fails
+
+⚠ **Notes coverage differs per store this time.**
+- **Play notes cover 2.6.0 ONLY.** They assume 2.5.1 reached users. 2.5.1's Play status is still
+  `unknown` - if it never went live, the 2.5.0/2.5.1 items (guided setup, VNI, paste to translate)
+  are still unannounced on Play and must be folded into the NEXT Play release.
+- **App Store notes deliberately cover 2.5.0 + 2.5.1 + 2.6.0**, because neither 2.5.0 nor 2.5.1 was
+  ever submitted to Apple. **Do NOT repeat guided setup, VNI or paste to translate in the next
+  App Store release.**
+
+en-US notes as published - Play (the other 8 locales mirror these bullets):
+```
+• Translations can now be read aloud in a natural-sounding voice
+• Choose a natural online voice or an offline device voice, and set the speed
+• The floating TransKey button reads text aloud in the same natural voice
+• Point your camera at a menu to see dishes in your language
+• Smoother performance and bug fixes
+```
+
+en-US notes as published - App Store (the other 13 locales mirror these bullets):
+```
+• Translations can now be read aloud in a natural-sounding voice
+• A guided setup shows you exactly how to turn TransKey on
+• A new way to type Vietnamese, with smarter word correction
+• Paste text and translate it in one tap
+• Faster keyboard, more accurate typing, and bug fixes
+```
+
+---
+
 ## 2.5.1+30 - 2026-09-08
 
 - **Play:** unknown. AAB `2.5.1(30)` built 2026-09-08 10:27 (84MB), upload not confirmed in-session.

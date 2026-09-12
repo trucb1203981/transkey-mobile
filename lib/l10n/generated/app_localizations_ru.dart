@@ -1841,4 +1841,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setupBannerAction => 'Завершить настройку';
+
+  @override
+  String get ttsNatural => 'Естественный голос (онлайн)';
+
+  @override
+  String get ttsDevice => 'Голос устройства (офлайн)';
+
+  @override
+  String get ttsUnsupported => 'Для этого языка нет голоса в выбранном режиме.';
+
+  @override
+  String get ttsFailed =>
+      'Не удалось прочитать. Проверьте подключение и повторите попытку.';
 }

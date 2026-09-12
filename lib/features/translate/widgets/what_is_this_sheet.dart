@@ -121,8 +121,8 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
     // Closing the sheet should also silence the speaker — otherwise pressing
     // play then swiping the sheet away leaves audio playing with no way to
     // stop it from this UI. ref.read in dispose is safe (no subscription).
-    if (ref.read(ttsProvider).isPlaying) {
-      ref.read(ttsProvider.notifier).stop();
+    if (ref.read(ttsProvider).isBusy) {
+      ref.read(ttsProvider.notifier).stop(ownerPrefix: 'camera');
     }
     super.dispose();
   }
@@ -508,8 +508,7 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
     final lang = _ttsLang;
     final enabled = !_loading && _error == null && lang != null;
     final tts = ref.watch(ttsProvider);
-    final isPlayingMine =
-        tts.isPlaying && tts.currentText == _textToSpeak.trim();
+    final isPlayingMine = tts.matches(_textToSpeak, lang ?? '', 'camera');
     return IconButton(
       iconSize: 22,
       visualDensity: VisualDensity.compact,
@@ -536,6 +535,7 @@ class _WhatIsThisSheetState extends ConsumerState<WhatIsThisSheet> {
                 ref.read(ttsProvider.notifier).speak(
                       _textToSpeak,
                       lang: lang,
+                      owner: 'camera',
                     );
                 ref.read(trackingServiceProvider).event(
                       'explain_tts',

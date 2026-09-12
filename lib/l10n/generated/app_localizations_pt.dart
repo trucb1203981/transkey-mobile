@@ -1847,4 +1847,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupBannerAction => 'Terminar a configuração';
+
+  @override
+  String get ttsNatural => 'Voz natural (online)';
+
+  @override
+  String get ttsDevice => 'Voz do dispositivo (offline)';
+
+  @override
+  String get ttsUnsupported => 'Este idioma não tem voz no modo selecionado.';
+
+  @override
+  String get ttsFailed =>
+      'Não foi possível ler. Verifique a conexão e tente novamente.';
 }

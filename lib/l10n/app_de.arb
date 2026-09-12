@@ -716,5 +716,9 @@
   "setupIosStep4": "Tippen Sie noch einmal auf TransKey und schalten Sie Vollen Zugriff erlauben ein",
   "setupIosFullAccessNote": "Mit Vollen Zugriff erlauben kommt die Tastatur ins Internet und kann übersetzen. Ohne das schreibt die Tastatur ganz normal weiter.",
   "setupBannerTitle": "TransKey ist noch nicht eingerichtet",
-  "setupBannerAction": "Einrichtung abschließen"
+  "setupBannerAction": "Einrichtung abschließen",
+  "ttsNatural": "Natürliche Stimme (online)",
+  "ttsDevice": "Gerätestimme (offline)",
+  "ttsUnsupported": "Für diese Sprache ist im gewählten Modus keine Stimme verfügbar.",
+  "ttsFailed": "Vorlesen fehlgeschlagen. Verbindung prüfen und erneut versuchen."
 }

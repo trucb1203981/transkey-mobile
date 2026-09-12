@@ -1758,4 +1758,16 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get setupBannerAction => '설정 마치기';
+
+  @override
+  String get ttsNatural => '자연스러운 음성 (온라인)';
+
+  @override
+  String get ttsDevice => '기기 음성 (오프라인)';
+
+  @override
+  String get ttsUnsupported => '선택한 모드에서 이 언어의 음성을 사용할 수 없습니다.';
+
+  @override
+  String get ttsFailed => '읽을 수 없습니다. 연결을 확인하고 다시 시도해 주세요.';
 }

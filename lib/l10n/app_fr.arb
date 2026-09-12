@@ -716,5 +716,9 @@
   "setupIosStep4": "Appuyez encore une fois sur TransKey, puis activez Autoriser l'accès complet",
   "setupIosFullAccessNote": "Autoriser l'accès complet permet au clavier de se connecter à Internet pour traduire. Sans cela, le clavier écrit quand même normalement.",
   "setupBannerTitle": "TransKey n'est pas encore configuré",
-  "setupBannerAction": "Terminer la configuration"
+  "setupBannerAction": "Terminer la configuration",
+  "ttsNatural": "Voix naturelle (en ligne)",
+  "ttsDevice": "Voix de l’appareil (hors ligne)",
+  "ttsUnsupported": "Aucune voix pour cette langue dans le mode choisi.",
+  "ttsFailed": "Lecture impossible. Vérifiez votre connexion et réessayez."
 }

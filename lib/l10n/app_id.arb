@@ -716,5 +716,9 @@
   "setupIosStep4": "Ketuk TransKey sekali lagi, lalu nyalakan Izinkan Akses Penuh",
   "setupIosFullAccessNote": "Izinkan Akses Penuh membuat keyboard bisa terhubung ke internet untuk menerjemahkan. Tanpa itu, keyboard tetap bisa dipakai mengetik seperti biasa.",
   "setupBannerTitle": "TransKey belum selesai disiapkan",
-  "setupBannerAction": "Selesaikan penyiapan"
+  "setupBannerAction": "Selesaikan penyiapan",
+  "ttsNatural": "Suara alami (online)",
+  "ttsDevice": "Suara perangkat (offline)",
+  "ttsUnsupported": "Bahasa ini tidak memiliki suara dalam mode yang dipilih.",
+  "ttsFailed": "Tidak dapat membacakan. Periksa koneksi lalu coba lagi."
 }

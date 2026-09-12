@@ -1,268 +1,327 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-class TtsVoice {
-  const TtsVoice({required this.name, required this.locale});
-
-  final String name;
-  final String locale;
-
-  factory TtsVoice.fromMap(Map<dynamic, dynamic> map) => TtsVoice(
-        name: map['name']?.toString() ?? '',
-        locale: map['locale']?.toString() ?? '',
-      );
-
-  Map<String, String> toPluginMap() => {'name': name, 'locale': locale};
-}
+import 'device_speech_locales.dart';
+import 'edge_speech_client.dart';
+import 'edge_voices.dart';
+import 'neural_speech_output.dart';
+import 'speech_text.dart';
+import 'speech_voice.dart';
+import 'speech_diagnostics.dart';
+export 'speech_voice.dart' show TtsVoice, TtsMode, TtsFailure;
 
 class TtsState {
-  const TtsState({
-    this.isPlaying = false,
-    this.currentText,
-    this.rate = 1.0,
-    this.voiceByLang = const {},
-  });
-
+  const TtsState(
+      {this.isPlaying = false,
+      this.isLoading = false,
+      this.currentText,
+      this.currentLang,
+      this.owner,
+      this.rate = 1.0,
+      this.mode = TtsMode.natural,
+      this.voiceByLang = const {},
+      this.error,
+      this.errorSequence = 0});
   final bool isPlaying;
+  final bool isLoading;
   final String? currentText;
+  final String? currentLang;
+  final String? owner;
   final double rate;
+  final TtsMode mode;
   final Map<String, String> voiceByLang;
-
-  TtsState copyWith({
-    bool? isPlaying,
-    String? currentText,
-    double? rate,
-    Map<String, String>? voiceByLang,
-    bool clearText = false,
-  }) =>
+  final TtsFailure? error;
+  final int errorSequence;
+  bool get isBusy => isPlaying || isLoading;
+  bool matches(String text, String lang, [String? scope]) =>
+      isBusy &&
+      currentText == text.trim() &&
+      currentLang == normalizeSpeechLocale(lang) &&
+      (scope == null || owner == scope);
+  TtsState copyWith(
+          {bool? isPlaying,
+          bool? isLoading,
+          String? currentText,
+          String? currentLang,
+          String? owner,
+          double? rate,
+          TtsMode? mode,
+          Map<String, String>? voiceByLang,
+          TtsFailure? error,
+          int? errorSequence,
+          bool clearText = false,
+          bool clearError = false}) =>
       TtsState(
         isPlaying: isPlaying ?? this.isPlaying,
-        currentText: clearText ? null : (currentText ?? this.currentText),
+        isLoading: isLoading ?? this.isLoading,
+        currentText: clearText ? null : currentText ?? this.currentText,
+        currentLang: clearText ? null : currentLang ?? this.currentLang,
+        owner: clearText ? null : owner ?? this.owner,
         rate: rate ?? this.rate,
+        mode: mode ?? this.mode,
         voiceByLang: voiceByLang ?? this.voiceByLang,
+        error: clearError ? null : error ?? this.error,
+        errorSequence: errorSequence ?? this.errorSequence,
       );
 }
+
+final neuralSpeechOutputProvider =
+    Provider<NeuralSpeechOutput>((ref) => StreamingSpeechOutput());
+final edgeSpeechClientProvider =
+    Provider<EdgeSpeechClient>((ref) => EdgeSpeechClient());
 
 class TtsNotifier extends Notifier<TtsState> {
   late final FlutterTts _tts;
-
-  static const _kRateKey = 'tk_tts_rate';
-  static const _kVoicePrefix = 'tk_tts_voice_';
-
-  // [state.rate] is a user-facing multiplier where 1.0 = normal speed (this is
-  // what the UI labels "1.0× (Normal)" and what we persist). flutter_tts uses a
-  // different scale: on iOS the value is passed straight to AVSpeechUtterance,
-  // whose normal (AVSpeechUtteranceDefaultSpeechRate) is 0.5; on Android the
-  // plugin doubles the value before handing it to the OS engine (whose normal
-  // is 1.0). Both land on "normal" when we feed the engine multiplier × 0.5, so
-  // a single factor converts our multiplier to the plugin scale for both
-  // platforms. The native bubble path talks to the OS engine directly (no
-  // doubling) so it consumes the raw multiplier instead — see BubbleService.
-  static const _engineRateFactor = 0.5;
-
-  // ISO 639-1 code → BCP-47 locale used by Android TextToSpeech / iOS
-  // AVSpeechSynthesizer. Falls back to the raw code (which both engines
-  // accept as a 2-letter shortcut) for any language not listed here, so
-  // OS-level voice resolution still works for the long tail of catalog
-  // languages. Old fallback was hard-coded 'en-US' — meant Thai/Hindi/etc.
-  // were read with an English voice, which sounded wrong.
-  static const _langToLocale = <String, String>{
-    // Tier 1 — popular, widely-installed TTS voices
-    'en':  'en-US', 'vi':  'vi-VN', 'zh':  'zh-CN', 'zh-TW': 'zh-TW',
-    'ja':  'ja-JP', 'ko':  'ko-KR', 'fr':  'fr-FR', 'de':  'de-DE',
-    'es':  'es-ES', 'pt':  'pt-BR', 'it':  'it-IT', 'ru':  'ru-RU',
-    // European
-    'nl':  'nl-NL', 'pl':  'pl-PL', 'uk':  'uk-UA', 'cs':  'cs-CZ',
-    'sk':  'sk-SK', 'hu':  'hu-HU', 'ro':  'ro-RO', 'el':  'el-GR',
-    'sv':  'sv-SE', 'no':  'nb-NO', 'fi':  'fi-FI', 'da':  'da-DK',
-    'is':  'is-IS', 'bg':  'bg-BG', 'hr':  'hr-HR', 'sr':  'sr-RS',
-    'bs':  'bs-BA', 'sl':  'sl-SI', 'mk':  'mk-MK', 'sq':  'sq-AL',
-    'ca':  'ca-ES', 'eu':  'eu-ES', 'gl':  'gl-ES', 'et':  'et-EE',
-    'lv':  'lv-LV', 'lt':  'lt-LT', 'be':  'be-BY', 'mt':  'mt-MT',
-    'ga':  'ga-IE', 'cy':  'cy-GB', 'lb':  'lb-LU', 'fy':  'fy-NL',
-    // Middle East
-    'ar':  'ar-SA', 'he':  'he-IL', 'fa':  'fa-IR', 'tr':  'tr-TR',
-    'az':  'az-AZ', 'hy':  'hy-AM', 'ka':  'ka-GE',
-    // South Asia
-    'hi':  'hi-IN', 'bn':  'bn-IN', 'ur':  'ur-PK', 'pa':  'pa-IN',
-    'ta':  'ta-IN', 'te':  'te-IN', 'mr':  'mr-IN', 'gu':  'gu-IN',
-    'kn':  'kn-IN', 'ml':  'ml-IN', 'or':  'or-IN', 'si':  'si-LK',
-    'ne':  'ne-NP',
-    // Southeast Asia
-    'th':  'th-TH', 'id':  'id-ID', 'ms':  'ms-MY', 'fil': 'fil-PH',
-    'my':  'my-MM', 'km':  'km-KH', 'lo':  'lo-LA', 'jv':  'jv-ID',
-    'su':  'su-ID',
-    // Central + East Asia
-    'mn':  'mn-MN', 'kk':  'kk-KZ', 'uz':  'uz-UZ', 'ky':  'ky-KG',
-    // Africa
-    'sw':  'sw-KE', 'am':  'am-ET', 'ha':  'ha-NG', 'yo':  'yo-NG',
-    'ig':  'ig-NG', 'zu':  'zu-ZA', 'xh':  'xh-ZA', 'af':  'af-ZA',
-    'so':  'so-SO', 'mg':  'mg-MG',
-    // Americas + Other
-    'ht':  'ht-HT', 'eo':  'eo',    'la':  'la',    'haw': 'haw-US',
-    'mi':  'mi-NZ', 'sm':  'sm-WS', 'yi':  'yi',
-  };
-
-  /// Resolve a language code to a BCP-47 locale TTS engines can understand.
-  /// For languages not in the explicit map, return the raw code — most TTS
-  /// engines (Android + iOS) accept 2-letter ISO codes as a fallback and
-  /// will try their best to find a matching voice.
-  static String localeFor(String lang) => _langToLocale[lang] ?? lang;
+  late Future<void> _preferences;
+  SpeechCancellation? _cancellation;
+  Future<void>? _active;
+  int _request = 0;
+  bool _disposed = false;
+  static const _rateKey = 'tk_tts_rate';
+  static const _modeKey = 'tk_tts_mode';
+  static const _voicePrefix = 'tk_tts_voice_';
+  static const _naturalVoicePrefix = 'tk_tts_neural_voice_';
+  static String localeFor(String lang) {
+    final normalized = normalizeSpeechLocale(lang);
+    for (final entry in deviceSpeechLocales.entries) {
+      if (entry.key.toLowerCase() == normalized) return entry.value;
+    }
+    return normalized == 'nb' ? 'nb-NO' : normalized;
+  }
 
   @override
   TtsState build() {
     _tts = FlutterTts();
-
-    _tts.setCompletionHandler(() {
-      state = state.copyWith(isPlaying: false, clearText: true);
-    });
-    _tts.setPauseHandler(() => state = state.copyWith(isPlaying: false));
-    _tts.setContinueHandler(() => state = state.copyWith(isPlaying: true));
-    _tts.setErrorHandler((msg) {
-      debugPrint('[TTS] Error: $msg');
-      state = state.copyWith(isPlaying: false, clearText: true);
-    });
-
+    _preferences = Future.microtask(_loadPreferences);
     ref.onDispose(() {
-      _tts.stop();
+      _disposed = true;
+      _request++;
+      _cancellation?.cancel();
+      unawaited(_tts.stop());
     });
-
-    // Load persisted prefs without blocking build().
-    Future.microtask(_loadPersistedPrefs);
-
     return const TtsState();
   }
 
-  Future<void> _loadPersistedPrefs() async {
+  Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    final rate = prefs.getDouble(_kRateKey) ?? 1.0;
-    final keys = prefs.getKeys().where((k) => k.startsWith(_kVoicePrefix));
+    if (_disposed) return;
+    final mode = prefs.getString(_modeKey) == 'device'
+        ? TtsMode.device
+        : TtsMode.natural;
+    final prefix = mode == TtsMode.natural ? _naturalVoicePrefix : _voicePrefix;
     final voices = <String, String>{
-      for (final k in keys)
-        k.substring(_kVoicePrefix.length): prefs.getString(k) ?? ''
-    }..removeWhere((_, v) => v.isEmpty);
-    state = state.copyWith(rate: rate, voiceByLang: voices);
+      for (final key in prefs.getKeys().where((key) => key.startsWith(prefix)))
+        normalizeSpeechLocale(key.substring(prefix.length)):
+            prefs.getString(key) ?? ''
+    };
+    final rate = prefs.getDouble(_rateKey) ?? 1.0;
+    state = state.copyWith(
+        rate: rate.isFinite ? rate.clamp(0.25, 1.75) : 1,
+        mode: mode,
+        voiceByLang: voices);
   }
 
   Future<List<TtsVoice>> voicesFor(String lang) async {
+    await _preferences;
+    if (state.mode == TtsMode.natural) return edgeVoicesFor(lang);
     try {
       final raw = await _tts.getVoices;
       if (raw is! List) return const [];
-      final locale = localeFor(lang).toLowerCase();
-      final langCode = lang.toLowerCase();
-      final voices = raw
-          .whereType<Map>()
-          .map(TtsVoice.fromMap)
-          .where((v) {
-            final l = v.locale.toLowerCase();
-            return l == locale ||
-                l.startsWith('$langCode-') ||
-                l.startsWith('${langCode}_');
-          })
-          .toList();
-      return voices;
-    } catch (e) {
-      debugPrint('[TTS] getVoices failed: $e');
+      final target = normalizeSpeechLocale(localeFor(lang));
+      final base = target.split('-').first;
+      return raw.whereType<Map>().map(TtsVoice.fromMap).where((voice) {
+        final locale = normalizeSpeechLocale(voice.locale);
+        return locale == target ||
+            (!target.contains('-') && locale.startsWith('$base-'));
+      }).toList();
+    } catch (_) {
       return const [];
     }
   }
 
-  Future<void> speak(String text, {String lang = 'en', double? rate}) async {
-    if (text.trim().isEmpty) return;
-
-    // Tap-to-stop toggle: if THIS exact text is currently playing, kill
-    // playback. Use stop() (not pause()) because Android's TTS engine
-    // ignores pause for a current in-flight utterance — it would keep
-    // talking until the sentence ended, leaving the user mashing the
-    // button. stop() also drops the queued audio, so the next tap starts
-    // from the beginning instead of resuming mid-word.
-    final sameText = state.currentText == text.trim() && state.isPlaying;
-    if (sameText) {
+  Future<TtsFailure?> speak(String text,
+      {String lang = 'en', double? rate, String? owner}) async {
+    if (text.trim().isEmpty) return null;
+    if (state.matches(text, lang, owner)) {
       await stop();
-      return;
+      return null;
     }
-
+    final id = ++_request;
+    recordSpeechEvent(
+        'request', {'id': id, 'lang': lang, 'mode': state.mode.name});
+    final previous = _active;
+    _cancellation?.cancel();
+    state = state.copyWith(
+        isPlaying: false,
+        isLoading: true,
+        currentText: text.trim(),
+        currentLang: normalizeSpeechLocale(lang),
+        owner: owner ?? 'app',
+        clearError: true);
     await _tts.stop();
+    await previous;
+    await _preferences;
+    if (_disposed || id != _request) return null;
+    final cancellation = SpeechCancellation();
+    _cancellation = cancellation;
+    state = state.copyWith(
+        isPlaying: false,
+        isLoading: true,
+        currentText: text.trim(),
+        currentLang: normalizeSpeechLocale(lang),
+        owner: owner ?? 'app',
+        clearError: true);
+    TtsFailure? failure;
+    final task = _perform(text, lang, rate ?? state.rate, cancellation, id)
+        .catchError((Object error, StackTrace stack) {
+      recordSpeechEvent('failure', {
+        'id': id,
+        'type': error.runtimeType.toString(),
+        'detail': error.toString().replaceAll(RegExp(r'https?://\S+'), '[url]'),
+        'stack': stack.toString().split('\n').take(5).join('\n'),
+      });
+      if (_disposed ||
+          id != _request ||
+          cancellation.isCancelled ||
+          error is SpeechCancelled) {
+        return;
+      }
+      failure = error is TtsFailure ? error : TtsFailure.network;
+      state = state.copyWith(
+          error: failure, errorSequence: state.errorSequence + 1);
+    }).whenComplete(() {
+      recordSpeechEvent('finished', {
+        'id': id,
+        'cancelled': cancellation.isCancelled,
+        'failed': failure != null,
+      });
+      if (!_disposed && id == _request) {
+        state = state.copyWith(isPlaying: false, isLoading: false);
+        _cancellation = null;
+      }
+    });
+    _active = task;
+    await task;
+    if (identical(_active, task)) _active = null;
+    return failure;
+  }
 
-    final locale = localeFor(lang);
-    // setLanguage returns 1 on success, 0 if the OS has no voice for that
-    // locale. Don't silently fall back to the OS default (often en-US) —
-    // that would read e.g. Vietnamese text with an English voice. Bail out
-    // instead so the caller can surface "TTS not available for this lang".
-    final ok = await _tts.setLanguage(locale);
-    if (ok != 1) {
-      debugPrint('[TTS] setLanguage($locale) returned $ok — no voice installed');
-      state = state.copyWith(isPlaying: false, clearText: true);
-      return;
-    }
-    // Optional per-call rate override — used by travel surfaces (camera
-    // "What is this?" + saved phrasebook) that want a slower pace so a
-    // local listener can catch each syllable. Doesn't persist; the global
-    // rate in [state.rate] is untouched.
-    await _tts.setSpeechRate((rate ?? state.rate) * _engineRateFactor);
-
-    final voiceName = state.voiceByLang[lang];
-    if (voiceName != null && voiceName.isNotEmpty) {
-      try {
-        await _tts.setVoice({'name': voiceName, 'locale': locale});
-      } catch (e) {
-        debugPrint('[TTS] setVoice failed for $voiceName: $e');
+  Future<void> _perform(String text, String lang, double rate,
+      SpeechCancellation cancellation, int id) async {
+    if (!rate.isFinite || rate < 0.25 || rate > 1.75) throw TtsFailure.playback;
+    void started() {
+      recordSpeechEvent('playing', {'id': id});
+      if (!_disposed && id == _request && !cancellation.isCancelled) {
+        state = state.copyWith(isPlaying: true, isLoading: false);
       }
     }
 
-    await _tts.speak(text.trim());
-    state = state.copyWith(isPlaying: true, currentText: text.trim());
+    final selected = state.voiceByLang[normalizeSpeechLocale(lang)];
+    if (state.mode == TtsMode.natural) {
+      final voice = resolveEdgeVoice(lang, selected);
+      recordSpeechEvent('voice', {'id': id, 'name': voice.name, 'rate': rate});
+      final chunks = speechChunks(cleanSpeechText(text));
+      if (chunks.isEmpty) return;
+      final client = ref.read(edgeSpeechClientProvider);
+      Stream<List<int>> audio() async* {
+        for (final chunk in chunks) {
+          cancellation.check();
+          yield* client.speak(chunk, voice, rate, cancellation);
+        }
+      }
+
+      await ref
+          .read(neuralSpeechOutputProvider)
+          .play(audio(), cancellation, started);
+    } else {
+      if (await _tts.setLanguage(localeFor(lang)) != 1) {
+        throw TtsFailure.unsupported;
+      }
+      cancellation.check();
+      await _tts.setSpeechRate(rate * 0.5);
+      cancellation.check();
+      if (selected != null && selected.isNotEmpty) {
+        final voices = await voicesFor(lang);
+        final chosen =
+            voices.where((voice) => voice.name == selected).firstOrNull;
+        cancellation.check();
+        if (chosen != null) await _tts.setVoice(chosen.toPluginMap());
+      }
+      await _tts.awaitSpeakCompletion(true);
+      cancellation.check();
+      final cancelled = Completer<void>();
+      void stopDevice() {
+        unawaited(_tts.stop());
+        if (!cancelled.isCompleted) cancelled.complete();
+      }
+
+      cancellation.add(stopDevice);
+      try {
+        started();
+        await Future.any([_tts.speak(cleanSpeechText(text)), cancelled.future])
+            .timeout(const Duration(minutes: 10));
+      } finally {
+        cancellation.remove(stopDevice);
+      }
+    }
   }
 
-  /// Check if the OS has a TTS voice installed for a language. Callers can
-  /// use this to hide/disable the speak button for unsupported languages.
   Future<bool> isLanguageAvailable(String lang) async {
+    await _preferences;
+    if (state.mode == TtsMode.natural) return edgeVoicesFor(lang).isNotEmpty;
     try {
-      final locale = localeFor(lang);
-      final result = await _tts.isLanguageAvailable(locale);
-      return result == true;
+      return await _tts.isLanguageAvailable(localeFor(lang)) == true;
     } catch (_) {
       return false;
     }
   }
 
-  Future<void> pause() async {
-    await _tts.pause();
-    state = state.copyWith(isPlaying: false);
-  }
-
-  Future<void> stop() async {
+  Future<void> pause() => stop();
+  Future<void> stop({String? ownerPrefix}) async {
+    if (ownerPrefix != null &&
+        !(state.owner?.startsWith(ownerPrefix) ?? false)) {
+      return;
+    }
+    _request++;
+    _cancellation?.cancel();
+    state = state.copyWith(
+        isPlaying: false, isLoading: false, clearText: true, clearError: true);
     await _tts.stop();
-    state = state.copyWith(isPlaying: false, clearText: true);
+    await _active;
   }
 
   Future<void> setRate(double rate) async {
-    await _tts.setSpeechRate(rate * _engineRateFactor);
+    if (!rate.isFinite || rate < 0.25 || rate > 1.75) return;
+    await _preferences;
     state = state.copyWith(rate: rate);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_kRateKey, rate);
+    await prefs.setDouble(_rateKey, rate);
   }
 
-  /// Re-read TTS rate from SharedPreferences. The floating bubble's settings
-  /// sheet writes `tk_tts_rate` directly via native Android code — without
-  /// this reload the in-app TTS would keep using the rate that was cached at
-  /// cold start, ignoring any change the user made from the popup.
+  Future<void> setMode(TtsMode mode) async {
+    await _preferences;
+    await stop();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_modeKey, mode.name);
+    await _loadPreferences();
+  }
+
   Future<void> reload() async {
+    await _preferences;
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final rate = prefs.getDouble(_kRateKey) ?? 1.0;
-    if (rate != state.rate) {
-      state = state.copyWith(rate: rate);
-    }
+    await _loadPreferences();
   }
 
   Future<void> setVoice(String lang, String voiceName) async {
-    final updated = {...state.voiceByLang, lang: voiceName};
-    state = state.copyWith(voiceByLang: updated);
+    await _preferences;
+    final key = normalizeSpeechLocale(lang);
+    state = state.copyWith(voiceByLang: {...state.voiceByLang, key: voiceName});
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_kVoicePrefix$lang', voiceName);
+    final prefix =
+        state.mode == TtsMode.natural ? _naturalVoicePrefix : _voicePrefix;
+    await prefs.setString('$prefix$key', voiceName);
   }
 }
 

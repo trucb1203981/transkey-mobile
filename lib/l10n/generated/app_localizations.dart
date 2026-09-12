@@ -3445,6 +3445,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Finish setup'**
   String get setupBannerAction;
+
+  /// No description provided for @ttsNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Natural voice (online)'**
+  String get ttsNatural;
+
+  /// No description provided for @ttsDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Device voice (offline)'**
+  String get ttsDevice;
+
+  /// No description provided for @ttsUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This language has no voice in the selected mode.'**
+  String get ttsUnsupported;
+
+  /// No description provided for @ttsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not play speech. Check your connection and try again.'**
+  String get ttsFailed;
 }
 
 class _AppLocalizationsDelegate

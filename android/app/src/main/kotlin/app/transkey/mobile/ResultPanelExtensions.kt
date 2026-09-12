@@ -172,6 +172,7 @@ internal fun BubbleService.refreshPanelSourceToggle() {
  * higher-level lifecycle.
  */
 internal fun BubbleService.removeResultPanel() {
+    stopSpeech()
     panel.view?.let {
         try { windowManager?.removeView(it) } catch (_: Exception) {}
     }

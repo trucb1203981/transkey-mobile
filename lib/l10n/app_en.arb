@@ -735,5 +735,9 @@
   "setupIosStep4": "Tap TransKey once more and turn on Allow Full Access",
   "setupIosFullAccessNote": "Allow Full Access is what lets the keyboard reach the internet to translate. Without it the keyboard still types normally.",
   "setupBannerTitle": "TransKey is not set up yet",
-  "setupBannerAction": "Finish setup"
+  "setupBannerAction": "Finish setup",
+  "ttsNatural": "Natural voice (online)",
+  "ttsDevice": "Device voice (offline)",
+  "ttsUnsupported": "This language has no voice in the selected mode.",
+  "ttsFailed": "Could not play speech. Check your connection and try again."
 }

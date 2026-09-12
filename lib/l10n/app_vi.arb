@@ -716,5 +716,9 @@
   "setupIosStep4": "Bấm vào TransKey một lần nữa rồi bật Cho phép truy cập đầy đủ",
   "setupIosFullAccessNote": "Mục Cho phép truy cập đầy đủ là để bàn phím kết nối mạng mà dịch. Không bật thì bàn phím vẫn gõ chữ bình thường.",
   "setupBannerTitle": "TransKey chưa cài đặt xong",
-  "setupBannerAction": "Bật nốt"
+  "setupBannerAction": "Bật nốt",
+  "ttsNatural": "Giọng tự nhiên (cần mạng)",
+  "ttsDevice": "Giọng trên thiết bị (ngoại tuyến)",
+  "ttsUnsupported": "Ngôn ngữ này chưa có giọng trong chế độ đã chọn.",
+  "ttsFailed": "Không thể đọc. Hãy kiểm tra kết nối rồi thử lại."
 }

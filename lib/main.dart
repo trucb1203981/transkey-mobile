@@ -24,6 +24,7 @@ import 'features/translate/providers/features_provider.dart';
 import 'features/history/providers/history_provider.dart';
 import 'features/history/storage/history_store.dart';
 import 'features/translate/services/bubble_translate_cache.dart';
+import 'features/translate/services/tts_service.dart';
 import 'features/translate/providers/language_settings_provider.dart';
 import 'features/translate/models/translate_models.dart';
 import 'features/upgrade/services/purchases_service.dart';
@@ -81,6 +82,21 @@ void main() async {
       await dotenv.load(fileName: '.env');
 
       _rootContainer = ProviderContainer();
+      _rootContainer.listen<TtsState>(ttsProvider, (previous, next) {
+        if (next.error == null ||
+            previous?.errorSequence == next.errorSequence ||
+            (next.owner?.startsWith('bubble:') ?? false)) {
+          return;
+        }
+        final context = scaffoldMessengerKey.currentContext;
+        if (context == null) return;
+        final l = AppLocalizations.of(context);
+        if (l == null) return;
+        scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
+            content: Text(
+          next.error == TtsFailure.unsupported ? l.ttsUnsupported : l.ttsFailed,
+        )));
+      });
       _wireBubbleChannel();
 
       // Tracking bootstrap (session id, platform/device, first app_open) +
@@ -231,7 +247,36 @@ Future<void> _requestTrackingThenInitAds() async {
 // ── Bubble channel: Android (BubbleService) ↔ Flutter ↔ Android (deliverResult) ──
 
 void _wireBubbleChannel() {
+  var speechRequest = 0;
   _bubbleChannel.setMethodCallHandler((call) async {
+    if (call.method == 'speakText') {
+      final request = ++speechRequest;
+      final args = Map<String, dynamic>.from(call.arguments as Map);
+      final tts = _rootContainer.read(ttsProvider.notifier);
+      await tts.reload();
+      if (request != speechRequest) return null;
+      final failure = await tts.speak(args['text'] as String,
+          lang: args['lang'] as String,
+          rate: (args['rate'] as num?)?.toDouble(),
+          owner: 'bubble:${args['side'] == 'source' ? 'source' : 'target'}');
+      if (failure != null) {
+        final locale = await _rootContainer.read(localeProvider.future);
+        final l = await AppLocalizations.delegate.load(locale);
+        throw PlatformException(
+            code: 'tts_failed',
+            message: failure == TtsFailure.unsupported
+                ? l.ttsUnsupported
+                : l.ttsFailed);
+      }
+      return null;
+    }
+    if (call.method == 'stopSpeech') {
+      speechRequest++;
+      await _rootContainer
+          .read(ttsProvider.notifier)
+          .stop(ownerPrefix: 'bubble:');
+      return null;
+    }
     if (call.method == 'bubbleStateChanged') {
       // Native BubbleService just flipped its active state — sync the
       // Riverpod state so the Settings toggle and any other UI watching

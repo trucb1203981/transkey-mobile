@@ -716,5 +716,9 @@
   "setupIosStep4": "Toque em TransKey mais uma vez e ative Permitir acesso total",
   "setupIosFullAccessNote": "Permitir acesso total é o que deixa o teclado se conectar à internet para traduzir. Sem isso, o teclado continua escrevendo normalmente.",
   "setupBannerTitle": "O TransKey ainda não está configurado",
-  "setupBannerAction": "Terminar a configuração"
+  "setupBannerAction": "Terminar a configuração",
+  "ttsNatural": "Voz natural (online)",
+  "ttsDevice": "Voz do dispositivo (offline)",
+  "ttsUnsupported": "Este idioma não tem voz no modo selecionado.",
+  "ttsFailed": "Não foi possível ler. Verifique a conexão e tente novamente."
 }
