@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 import 'speech_text.dart';
 import 'speech_voice.dart';
+import 'speech_diagnostics.dart';
 
 const _token = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
 const _version = '143.0.3650.96';
@@ -56,13 +57,80 @@ Stream<List<int>> bufferSpeechTransport(Stream<List<int>> source) {
   return output.stream;
 }
 
+class SpeechStreamIncomplete implements Exception {
+  const SpeechStreamIncomplete(this.bytes, this.ended, this.closeCode);
+  final int bytes;
+  final bool ended;
+  final int? closeCode;
+
+  @override
+  String toString() =>
+      'TTS_INCOMPLETE_AUDIO bytes=$bytes ended=$ended code=$closeCode';
+}
+
+bool _retryableSpeechFailure(Object error) =>
+    error is SocketException ||
+    error is HttpException ||
+    error is TimeoutException ||
+    (error is SpeechStreamIncomplete &&
+        error.bytes == 0 &&
+        !error.ended &&
+        const {null, 1001, 1002, 1006, 1011, 1012, 1013}
+            .contains(error.closeCode));
+
+/// Retry a dropped connection only before this chunk has emitted audio.
+/// Restarting a partly delivered MP3 would repeat speech or corrupt playback.
+Stream<List<int>> retrySpeechTransport(
+  Stream<List<int>> Function() connect,
+  SpeechCancellation cancellation, {
+  Duration retryDelay = const Duration(milliseconds: 300),
+}) async* {
+  for (var attempt = 1; attempt <= 3; attempt++) {
+    cancellation.check();
+    var receivedAudio = false;
+    try {
+      await for (final audio in connect()) {
+        cancellation.check();
+        if (audio.isNotEmpty) receivedAudio = true;
+        yield audio;
+      }
+      return;
+    } catch (error) {
+      cancellation.check();
+      if (receivedAudio || attempt == 3 || !_retryableSpeechFailure(error)) {
+        rethrow;
+      }
+      recordSpeechEvent('transport-retry', {
+        'attempt': attempt,
+        'type': error.runtimeType.toString(),
+        if (error is SpeechStreamIncomplete) 'closeCode': error.closeCode,
+      });
+      final waiting = Completer<void>();
+      void stopWaiting() {
+        if (!waiting.isCompleted) waiting.complete();
+      }
+
+      final timer = Timer(retryDelay * attempt, stopWaiting);
+      cancellation.add(stopWaiting);
+      try {
+        await waiting.future;
+        cancellation.check();
+      } finally {
+        timer.cancel();
+        cancellation.remove(stopWaiting);
+      }
+    }
+  }
+}
+
 /// Each subscription owns its TLS socket; cancellation cannot stop another request.
 class EdgeSpeechClient {
   Stream<List<int>> speak(String text, TtsVoice voice, double rate,
           SpeechCancellation cancellation) =>
       // _speak caps each request at 8 MB of compressed audio. The player
       // separately bounds its decoded PCM queue, so neither buffer is unbounded.
-      bufferSpeechTransport(_speak(text, voice, rate, cancellation));
+      bufferSpeechTransport(retrySpeechTransport(
+          () => _speak(text, voice, rate, cancellation), cancellation));
 
   Stream<List<int>> _speak(String text, TtsVoice voice, double rate,
       SpeechCancellation cancellation) async* {
@@ -145,8 +213,7 @@ class EdgeSpeechClient {
       }
       cancellation.check();
       if (!ended || bytes == 0) {
-        throw FormatException(
-            'TTS_INCOMPLETE_AUDIO bytes=$bytes ended=$ended code=${socket.closeCode}');
+        throw SpeechStreamIncomplete(bytes, ended, socket.closeCode);
       }
     } finally {
       totalTimer.cancel();
