@@ -21,10 +21,44 @@ same as being live.
 
 ---
 
+## 2.7.0+32 - 2026-10-24
+
+- **Play:** not submitted. AAB built 2026-10-24 from the bump commit (see Artifacts below).
+- **App Store:** not submitted. IPA built 2026-10-24 from the bump commit (see Artifacts below).
+- **Commits:** `5b60e8d..` this bump (12fa550 speech retry; 374a393, bd497ce, 9095f6a, 45c66a2 iOS number pad; b9641e7 docs only)
+- **Built WITHOUT** the uncommitted traditional-Chinese dictionary work left in the tree since 2026-09-13 (stashed during the build, restored after): it was never reviewed or tested.
+
+Shipped in this version:
+- iOS: digit-only fields (number pad, decimal pad) open a number pad matching the iOS 27 system pad, with no suggestion bar; numbers-and-punctuation fields open the numbers layer
+- iOS: a field switch re-matches the keyboard layer to the field type
+- Both: read aloud retries a dropped connection before audio starts instead of failing
+
+Notes coverage: 2.6.0 was confirmed LIVE on both stores (measured 2026-10-24), so these notes cover only what is new since 2.6.0. The number pad is iOS-only, so the Play notes do not mention it.
+
+en-US notes as published - App Store (the other 13 locales mirror these bullets):
+```
+• Number fields now open a number pad automatically
+• The number pad looks and works just like the iPhone's
+• Read aloud keeps working when your connection briefly drops
+• Point your camera at a menu to see dishes in your language
+• Smoother performance and bug fixes
+```
+
+en-US notes as published - Play (the other 8 locales mirror these bullets):
+```
+• Read aloud keeps working when your connection briefly drops
+• Translate copied text right on your keyboard
+• Clearer, easier-to-read comic and manga translations
+• Point your camera at a menu to see dishes in your language
+• Smoother performance and bug fixes
+```
+
+---
+
 ## 2.6.0+31 - 2026-09-12
 
-- **Play:** not submitted. AAB `2.6.0(31)` built 2026-09-12 21:28 (93.1MB), verified `versionName 2.6.0` inside the bundle manifest.
-- **App Store:** not submitted. IPA `2.6.0(31)` built 2026-09-12 21:39 (71.7MB), verified arm64-only and `2.6.0(31)` in Runner plus both extensions. Nothing uploaded to App Store Connect.
+- **Play:** live. Confirmed 2026-10-24: the public Play listing shows version 2.6.0. AAB `2.6.0(31)` built 2026-09-12 21:28 (93.1MB), verified `versionName 2.6.0` inside the bundle manifest.
+- **App Store:** live. Confirmed 2026-10-24: the iTunes lookup API reports 2.6.0, released 2026-09-13. IPA `2.6.0(31)` built 2026-09-12 21:39 (71.7MB), verified arm64-only and `2.6.0(31)` in Runner plus both extensions.
 - **Commits:** `d53dcd8..5b60e8d` (5b60e8d: natural-voice read aloud + bump, one commit)
 
 Shipped in this version:
