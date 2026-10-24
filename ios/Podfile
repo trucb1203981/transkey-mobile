@@ -52,6 +52,11 @@ post_install do |installer|
         'PERMISSION_SPEECH_RECOGNIZER=1',
         'PERMISSION_PHOTOS=1',
       ]
+      # Xcode 27 refuses targets below iOS 15.0 ("Target Integrity" error), and
+      # several pods still declare 9.0-13.0. Lift them to the app's own floor.
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.5
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+      end
     end
   end
 end
