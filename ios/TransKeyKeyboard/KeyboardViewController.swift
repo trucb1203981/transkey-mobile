@@ -318,6 +318,10 @@ class KeyboardViewController: UIInputViewController {
     private var actionReplaceInProgress = false
     // One request at a time, mirroring Android's actionInFlight guard.
     private var actionInFlight = false
+    // Non-zero while a caret walk or a replace/undo burst is still reaching
+    // the host: those changes are ours, so textDidChange must not treat them
+    // as an external edit. A counter because a burst can overlap a walk.
+    private var ownProxyChanges = 0
     /// Input-session identity for the field actions. Bumped on any external
     /// text change, field switch or keyboard dismissal, and captured when a
     /// request goes out: without it, a result could land in a DIFFERENT field
@@ -614,7 +618,8 @@ class KeyboardViewController: UIInputViewController {
         super.textDidChange(textInput)
         // Our own proxy edits also land here; only an external change (caret
         // move, app rewrote the field) may reset the composing word.
-        if Date().timeIntervalSince(lastInternalEdit) > 0.15 {
+        if ownProxyChanges == 0, Date().timeIntervalSince(lastInternalEdit) > 0.15,
+           !caretStillAtOwnReplacement() {
             telex.reset()
             vni.reset()
             hangul.reset()
@@ -629,6 +634,20 @@ class KeyboardViewController: UIInputViewController {
             maybeAutoShift()
             updateSuggestionBar()
         }
+    }
+
+    /// True while the undo chip is armed and the caret still sits right after
+    /// the text the action inserted. The host keeps delivering the replace
+    /// burst's textDidChange callbacks for seconds after the field already
+    /// shows the result; none of them is the user moving away, so they must
+    /// not drop the undo. A real caret move or app edit breaks this check.
+    private func caretStillAtOwnReplacement() -> Bool {
+        guard undoSnapshot != nil, let inserted = undoReplacement else { return false }
+        let marker = inserted.trimmingCharacters(in: .whitespacesAndNewlines).suffix(8)
+        guard !marker.isEmpty else { return false }
+        let before = (textDocumentProxy.documentContextBeforeInput ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return before.hasSuffix(marker)
     }
 
     private func noteInternalEdit() {
@@ -2795,32 +2814,21 @@ class KeyboardViewController: UIInputViewController {
     @objc private func translateTapped() {
         guard !actionInFlight else { return }
         commitComposing()
-        // The proxy exposes a WINDOW around the caret, not necessarily the
-        // whole document. Capture both halves separately: the replace/undo
-        // math only ever touches exactly this captured window, so text the
-        // proxy never showed us can't be destroyed (long notes stay intact).
-        let before = textDocumentProxy.documentContextBeforeInput ?? ""
-        let after = textDocumentProxy.documentContextAfterInput ?? ""
-        let trimmed = (before + after).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            showResultError("No text in input field.")
-            return
-        }
-
         actionInFlight = true
-        let token = actionSeq
         showBarProcessing()
 
         Task { @MainActor in
+            guard let field = await captureFieldForAction() else { return }
+            let token = actionSeq
             do {
                 let store = AppGroupStore.shared
                 let json = try await api.translate(
-                    text: trimmed,
+                    text: field.trimmed,
                     targetLang: store.targetLang,
                     sourceLang: store.sourceLang
                 )
                 actionInFlight = false
-                applyActionResult(before: before, after: after, replacement: extractTranslation(json), token: token)
+                applyActionResult(field: field, replacement: extractTranslation(json), token: token)
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2890,20 +2898,12 @@ class KeyboardViewController: UIInputViewController {
     @objc private func replyTapped() {
         guard !actionInFlight else { return }
         commitComposing()
-        // Window capture, same as translateTapped (see comment there).
-        let before = textDocumentProxy.documentContextBeforeInput ?? ""
-        let after = textDocumentProxy.documentContextAfterInput ?? ""
-        let trimmed = (before + after).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            showResultError("No text in input field.")
-            return
-        }
-
         actionInFlight = true
-        let token = actionSeq
         showBarProcessing()
 
         Task { @MainActor in
+            guard let field = await captureFieldForAction() else { return }
+            let token = actionSeq
             do {
                 // Reply composes in the OTHER party's language: the keyboard-
                 // local reply pair (picker's Trả lời scope), NOT the shared
@@ -2912,13 +2912,13 @@ class KeyboardViewController: UIInputViewController {
                 // APIClient treats "auto" the same as nil (omits sourceLang).
                 let store = AppGroupStore.shared
                 let json = try await api.translate(
-                    text: trimmed,
+                    text: field.trimmed,
                     targetLang: store.replyTargetLang,
                     sourceLang: store.replySourceLang,
                     isReply: true
                 )
                 actionInFlight = false
-                applyActionResult(before: before, after: after, replacement: extractTranslation(json), token: token)
+                applyActionResult(field: field, replacement: extractTranslation(json), token: token)
             } catch {
                 actionInFlight = false
                 showActionBar()
@@ -2927,18 +2927,217 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
+    // MARK: - Field capture (translate / reply / refine input)
+
+    /// The text an in-field action sends and later replaces. `before`/`after`
+    /// are the proxy windows at the caret, kept for the apply-time guard;
+    /// `text` is the whole field when the walk succeeded (else just the two
+    /// windows) and `tailUTF16` is the caret-to-end distance of that text.
+    private struct FieldCapture {
+        let before: String
+        let after: String
+        let text: String
+        let tailUTF16: Int
+        var trimmed: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
+    private static let walkMaxSteps = 400
+    private static let walkMaxUTF16 = 20_000
+    private static let walkSettleTimeout: TimeInterval = 0.2
+
+    /// Shared capture step for the in-field actions, run after the bar went
+    /// into its processing state. nil = nothing to send; the bar is already
+    /// restored and any error shown.
+    private func captureFieldForAction() async -> FieldCapture? {
+        let token = actionSeq
+        let field = await captureField()
+        guard token == actionSeq else {
+            actionInFlight = false
+            showActionBar()
+            return nil
+        }
+        guard !field.trimmed.isEmpty else {
+            actionInFlight = false
+            showActionBar()
+            showResultError("No text in input field.")
+            return nil
+        }
+        return field
+    }
+
+    /// Read the WHOLE field. The proxy only exposes a window around the caret
+    /// (on-device: bounded by the current line or even sentence), so a
+    /// multi-line message used to be sent one line at a time. Walk the caret
+    /// window by window to the end, back to the start, then return it to
+    /// where the user left it. Read-only and bounded: every move waits for
+    /// the proxy to report the new context (it updates asynchronously), any
+    /// timeout or cap falls back to the plain caret window, and the keys are
+    /// disabled so a tap cannot type into the field mid-walk.
+    private func captureField() async -> FieldCapture {
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        let window = FieldCapture(before: before, after: after, text: before + after, tailUTF16: after.utf16.count)
+
+        cancelAllGestures()
+        keyArea.isUserInteractionEnabled = false
+        ownProxyChanges += 1
+        defer {
+            ownProxyChanges -= 1
+            keyArea.isUserInteractionEnabled = true
+            lastInternalEdit = Date()
+        }
+        guard let walked = await walkField(before: before, after: after) else { return window }
+        return FieldCapture(before: before, after: after, text: walked.head + walked.tail, tailUTF16: walked.tail.utf16.count)
+    }
+
+    private func walkField(before: String, after: String) async -> (head: String, tail: String)? {
+        let origin = (b: before, a: after)
+        var offset = 0   // confirmed UTF-16 distance from the original caret
+        var steps = 0
+        var cur = origin
+
+        // Forward: the caret-to-end half.
+        var tail = ""
+        while true {
+            steps += 1
+            guard steps <= Self.walkMaxSteps, tail.utf16.count <= Self.walkMaxUTF16 else {
+                return await abortWalk(offset: offset, origin: origin)
+            }
+            if !cur.a.isEmpty {
+                let n = cur.a.utf16.count
+                let prev = cur
+                walkMove(n)
+                guard let next = await readContext(until: { $0 != prev.b || $1 != prev.a }) else {
+                    return await abortWalk(offset: offset + n, origin: origin)
+                }
+                tail += prev.a
+                offset += n
+                cur = next
+            } else {
+                // The window stops here: the field end, or a line/sentence
+                // boundary the proxy will not look past. Step one unit and
+                // check the new window against the text read so far.
+                let prev = cur
+                walkMove(1)
+                guard let next = await readContext(until: { $0 != prev.b || $1 != prev.a }) else { break }
+                let known = origin.b + tail
+                let stepped = next.b.dropLast()
+                if !next.b.isEmpty, known.hasSuffix(stepped) || stepped.hasSuffix(known) {
+                    // A real step: the stepped-over unit closes the new window.
+                    tail += String(next.b.last!)
+                    offset += 1
+                    cur = next
+                } else if !next.a.isEmpty, tail.hasSuffix(next.a),
+                          known.dropLast(next.a.count).hasSuffix(next.b) {
+                    // Past the end Messages does not ignore the move: it bounces
+                    // the caret back to the start of the last line. That IS the
+                    // end, and the caret now sits next.a before it.
+                    offset -= next.a.utf16.count
+                    break
+                } else if next.b.isEmpty {
+                    // A window that excludes the unit: it was the line break.
+                    tail += "\n"
+                    offset += 1
+                    cur = next
+                } else {
+                    return await abortWalk(offset: offset + 1, origin: origin)
+                }
+            }
+        }
+
+        // Back to the original caret, then backward: the start-to-caret half.
+        walkMove(-offset)
+        guard await readContext(until: { $0 == origin.b && $1 == origin.a }) != nil else { return nil }
+        offset = 0
+        cur = origin
+        var head = ""
+        while true {
+            steps += 1
+            guard steps <= Self.walkMaxSteps, head.utf16.count + tail.utf16.count <= Self.walkMaxUTF16 else {
+                return await abortWalk(offset: offset, origin: origin)
+            }
+            if !cur.b.isEmpty {
+                let n = cur.b.utf16.count
+                let prev = cur
+                walkMove(-n)
+                guard let next = await readContext(until: { $0 != prev.b || $1 != prev.a }) else {
+                    return await abortWalk(offset: offset - n, origin: origin)
+                }
+                head = prev.b + head
+                offset -= n
+                cur = next
+            } else {
+                // Mirror of the forward probe, including the bounce at the start.
+                let prev = cur
+                walkMove(-1)
+                guard let next = await readContext(until: { $0 != prev.b || $1 != prev.a }) else { break }
+                let known = head + tail
+                let stepped = next.a.dropFirst()
+                if !next.a.isEmpty, known.hasPrefix(stepped) || stepped.hasPrefix(known) {
+                    head = String(next.a.first!) + head
+                    offset -= 1
+                    cur = next
+                } else if !next.b.isEmpty, head.hasPrefix(next.b),
+                          known.dropFirst(next.b.count).hasPrefix(next.a) {
+                    offset += next.b.utf16.count
+                    break
+                } else if next.a.isEmpty {
+                    head = "\n" + head
+                    offset -= 1
+                    cur = next
+                } else {
+                    return await abortWalk(offset: offset - 1, origin: origin)
+                }
+            }
+        }
+
+        walkMove(-offset)
+        guard await readContext(until: { $0 == origin.b && $1 == origin.a }) != nil else { return nil }
+        return (head, tail)
+    }
+
+    /// Return the caret to the original spot after a failed walk. Best effort:
+    /// the caller falls back to the caret window, and the apply-time guard
+    /// drops the result if the caret did not land back where it was.
+    private func abortWalk(offset: Int, origin: (b: String, a: String)) async -> (head: String, tail: String)? {
+        if offset != 0 {
+            walkMove(-offset)
+            _ = await readContext(until: { $0 == origin.b && $1 == origin.a })
+        }
+        return nil
+    }
+
+    private func walkMove(_ offset: Int) {
+        lastInternalEdit = Date()
+        textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
+    }
+
+    /// Poll the proxy context until `done` holds or the settle timeout runs
+    /// out (nil). Sleeping yields the main run loop, which is what lets the
+    /// host's asynchronous context update arrive at all.
+    private func readContext(
+        timeout: TimeInterval? = nil,
+        until done: (String, String) -> Bool
+    ) async -> (b: String, a: String)? {
+        let deadline = Date().addingTimeInterval(timeout ?? Self.walkSettleTimeout)
+        while true {
+            let b = textDocumentProxy.documentContextBeforeInput ?? ""
+            let a = textDocumentProxy.documentContextAfterInput ?? ""
+            if done(b, a) { return (b, a) }
+            if Date() >= deadline { return nil }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
     /// Success path shared by translate/reply/refine: swap the CAPTURED
-    /// window for the result and arm the undo chip. The chip stays until the
+    /// text for the result and arm the undo chip. The chip stays until the
     /// user edits the field or switches fields (Android parity, no timer).
     ///
-    /// Deliberately never walks the whole document: the proxy exposes only a
-    /// window, so a walk-and-wipe would destroy text the request never saw
-    /// (and its unbounded read-back loops could spin forever on a proxy that
-    /// reports context asynchronously). Every operation below is bounded by
-    /// the captured strings. adjustTextPosition counts UTF-16 code units
-    /// while deleteBackward removes grapheme clusters - hence the different
-    /// units for the forward move vs the delete count (emoji-safe).
-    private func applyActionResult(before: String, after: String, replacement: String, token: Int) {
+    /// Deletes exactly the captured text and nothing more: whatever the walk
+    /// could not read stays intact. adjustTextPosition counts UTF-16 code
+    /// units while deleteBackward removes grapheme clusters - hence the
+    /// different units for the forward move vs the delete count (emoji-safe).
+    private func applyActionResult(field: FieldCapture, replacement: String, token: Int) {
         guard !replacement.isEmpty else {
             showActionBar()
             return
@@ -2951,19 +3150,18 @@ class KeyboardViewController: UIInputViewController {
         // would delete the wrong number of characters and destroy what they
         // wrote after tapping.
         guard token == actionSeq,
-              (textDocumentProxy.documentContextBeforeInput ?? "") == before,
-              (textDocumentProxy.documentContextAfterInput ?? "") == after
+              (textDocumentProxy.documentContextBeforeInput ?? "") == field.before,
+              (textDocumentProxy.documentContextAfterInput ?? "") == field.after
         else {
             showActionBar()
             return
         }
         actionReplaceInProgress = true
         noteInternalEdit()
-        let forward = after.utf16.count
-        if forward > 0 {
-            textDocumentProxy.adjustTextPosition(byCharacterOffset: forward)
+        if field.tailUTF16 > 0 {
+            textDocumentProxy.adjustTextPosition(byCharacterOffset: field.tailUTF16)
         }
-        for _ in 0..<(before.count + after.count) {
+        for _ in 0..<field.text.count {
             textDocumentProxy.deleteBackward()
         }
         textDocumentProxy.insertText(replacement)
@@ -2972,9 +3170,39 @@ class KeyboardViewController: UIInputViewController {
         // the undo snapshot we are about to arm.
         lastInternalEdit = Date()
         actionReplaceInProgress = false
-        undoSnapshot = before + after
+        settleOwnBurst(endingWith: replacement)
+        undoSnapshot = field.text
         undoReplacement = replacement
         showActionBar()
+    }
+
+    /// A whole-field replace is hundreds of deletes, and the host reports them
+    /// one textDidChange at a time, well past the 0.15 s internal-edit window -
+    /// which wiped the undo chip right after it was armed. Keep treating the
+    /// burst as ours until the proxy shows its final insert and then holds
+    /// still for a moment (the old and new text can share an ending, e.g. a
+    /// trailing link, so the ending alone proves nothing). 3 s cap.
+    private func settleOwnBurst(endingWith inserted: String) {
+        let marker = String(inserted.trimmingCharacters(in: .whitespacesAndNewlines).suffix(8))
+        ownProxyChanges += 1
+        Task { @MainActor in
+            let deadline = Date().addingTimeInterval(3.0)
+            var last = ""
+            var stableSince = Date()
+            while Date() < deadline {
+                let b = textDocumentProxy.documentContextBeforeInput ?? ""
+                if b != last {
+                    last = b
+                    stableSince = Date()
+                } else if Date().timeIntervalSince(stableSince) >= 0.3,
+                          b.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(marker) {
+                    break
+                }
+                try? await Task.sleep(nanoseconds: 20_000_000)
+            }
+            lastInternalEdit = Date()
+            ownProxyChanges -= 1
+        }
     }
 
     /// Restore the field to its pre-action text, then drop the chip. The
@@ -2994,6 +3222,7 @@ class KeyboardViewController: UIInputViewController {
         textDocumentProxy.insertText(snapshot)
         lastInternalEdit = Date()
         actionReplaceInProgress = false
+        settleOwnBurst(endingWith: snapshot)
         showActionBar()
     }
 
@@ -3001,24 +3230,16 @@ class KeyboardViewController: UIInputViewController {
         guard AppGroupStore.shared.featureRefine else { return }
         guard !actionInFlight else { return }
         commitComposing()
-        // Window capture, same as translateTapped (see comment there).
-        let before = textDocumentProxy.documentContextBeforeInput ?? ""
-        let after = textDocumentProxy.documentContextAfterInput ?? ""
-        let trimmed = (before + after).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            showResultError("No text in input field.")
-            return
-        }
-
         actionInFlight = true
-        let token = actionSeq
         showBarProcessing()
 
         Task { @MainActor in
+            guard let field = await captureFieldForAction() else { return }
+            let token = actionSeq
             do {
-                let json = try await api.refine(text: trimmed)
+                let json = try await api.refine(text: field.trimmed)
                 actionInFlight = false
-                applyActionResult(before: before, after: after, replacement: extractTranslation(json), token: token)
+                applyActionResult(field: field, replacement: extractTranslation(json), token: token)
             } catch {
                 actionInFlight = false
                 showActionBar()
