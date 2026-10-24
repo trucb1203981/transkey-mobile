@@ -24,7 +24,7 @@ same as being live.
 ## 2.7.0+32 - 2026-10-24
 
 - **Play:** not submitted. AAB `2.7.0(32)` built 2026-10-24 17:01 from e28ea70 (93.2MB, sha256 6f8f0ae28c098a94...), `versionName 2.7.0` verified inside the bundle manifest.
-- **App Store:** not submitted. IPA `2.7.0(32)` built 2026-10-24 16:55 from e28ea70 (71.3MB, sha256 a21f77504e6c672d...), verified arm64-only, `2.7.0(32)` in Runner plus both extensions, number pad present in the keyboard binary, no traditional-Chinese dictionary bundled.
+- **App Store:** in review. Submitted 2026-10-24 17:23 (App Store Connect shows "Waiting for Review", build 32 attached, What's New filled in all 13 localized locales; Arabic is not localized on the listing). IPA `2.7.0(32)` built 2026-10-24 16:55 from e28ea70 (71.3MB, sha256 a21f77504e6c672d...), verified arm64-only, `2.7.0(32)` in Runner plus both extensions, number pad present in the keyboard binary, no traditional-Chinese dictionary bundled.
 - **Commits:** `5b60e8d..e28ea70` (12fa550 speech retry; 374a393, bd497ce, 9095f6a, 45c66a2 iOS number pad; b9641e7 docs only; e28ea70 bump)
 - **Built WITHOUT** the uncommitted traditional-Chinese dictionary work left in the tree since 2026-09-13 (stashed during the build, restored after): it was never reviewed or tested.
 
