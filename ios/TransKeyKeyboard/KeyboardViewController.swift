@@ -411,13 +411,18 @@ class KeyboardViewController: UIInputViewController {
         keyHeight = landscape ? 33 : 42
         rowVGap = landscape ? 7 : 12
         rowTopInset = landscape ? 4 : 6
+        var bottomInset: CGFloat = 6
         if layer == .numpad {
-            // System number pad: four taller rows with tight gaps.
-            keyHeight = landscape ? 36 : 46
-            rowVGap = landscape ? 5 : 7
+            // Measured on the iOS 27 system number pad (portrait): 50pt keys,
+            // 6pt gaps, 7pt top inset; its last row ends 4pt above the
+            // system strip that holds the globe, so ours does too.
+            keyHeight = landscape ? 38 : 50
+            rowVGap = landscape ? 5 : 6
+            rowTopInset = landscape ? 4 : 7
+            bottomInset = 4
         }
         let numRows = CGFloat(activeCharRows().count + 1)
-        keyAreaHeight = rowTopInset + keyHeight * numRows + rowVGap * (numRows - 1) + 6
+        keyAreaHeight = rowTopInset + keyHeight * numRows + rowVGap * (numRows - 1) + bottomInset
         if keyAreaHeightConstraint.constant != keyAreaHeight {
             keyAreaHeightConstraint.constant = keyAreaHeight
             updateHeight()
@@ -442,6 +447,18 @@ class KeyboardViewController: UIInputViewController {
             : UIColor(red: 0.67, green: 0.70, blue: 0.74, alpha: 1.0)
     }
     private let primaryColor = UIColor(red: 0.42, green: 0.39, blue: 1.0, alpha: 1.0)
+    // Number pad colors sampled from the iOS 27 system pad in dark mode
+    // (keys rgb 86,87,86 on rgb 55,55,55); light mode keeps the white keys.
+    private let numpadBackground = UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.216, green: 0.216, blue: 0.216, alpha: 1.0)
+            : UIColor(red: 0.82, green: 0.84, blue: 0.86, alpha: 1.0)
+    }
+    private let numpadKeyFill = UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.337, green: 0.341, blue: 0.337, alpha: 1.0)
+            : UIColor.white
+    }
 
     // MARK: - Lifecycle
 
@@ -584,7 +601,7 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private var totalHeight: CGFloat {
-        barHeight + (resultPanelVisible ? resultPanelHeight : 0) + keyAreaHeight
+        (layer == .numpad ? 0 : barHeight) + (resultPanelVisible ? resultPanelHeight : 0) + keyAreaHeight
     }
 
     private func updateHeight() {
@@ -1447,6 +1464,13 @@ class KeyboardViewController: UIInputViewController {
     private func rebuildKeys() {
         keyButtons.forEach { $0.removeFromSuperview() }
         keyButtons = []
+        // The system number pad has no suggestion bar and its own colors.
+        let numpad = layer == .numpad
+        if topBar.isHidden != numpad {
+            topBar.isHidden = numpad
+            updateHeight()
+        }
+        view.backgroundColor = numpad ? numpadBackground : kbBackground
 
         // Japanese flick: a self-contained grid replaces the QWERTY keys. A
         // numeric field still gets the numbers layer; its ABC key returns here.
@@ -1614,23 +1638,28 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
-    /// System number pad look: white digit keys with the letter hint under
-    /// the digit; the decimal, globe and delete keys sit flat on the
-    /// keyboard background with no key shape.
+    /// System number pad look: flat rounded digit keys with the letter hint
+    /// under the digit; the decimal, globe and delete keys sit flat on the
+    /// keyboard background with no key shape. Sizes were measured on the
+    /// iOS 27 pad: digit cap height 15.5pt (22pt font), hint ~9.5pt.
     private func styleNumpadKeys() {
+        let para = NSMutableParagraphStyle()
+        para.alignment = .center
+        para.lineSpacing = 0.5 // digit-to-hint spacing measured on the system pad
         for btn in keyButtons {
             btn.setImage(nil, for: .normal)
             btn.setTitle(nil, for: .normal)
             btn.setAttributedTitle(nil, for: .normal)
             btn.tintColor = .label
+            btn.layer.shadowOpacity = 0
+            btn.layer.cornerRadius = 8.5
             guard case .char(let ch) = btn.keyType, ch.first?.isNumber == true else {
                 btn.backgroundColor = .clear
-                btn.layer.shadowOpacity = 0
                 switch btn.keyType {
                 case .char(let sep):
                     btn.setTitle(sep, for: .normal)
                     btn.setTitleColor(.label, for: .normal)
-                    btn.titleLabel?.font = .systemFont(ofSize: 28)
+                    btn.titleLabel?.font = .systemFont(ofSize: 24)
                 case .globe:
                     btn.setImage(UIImage(systemName: "globe"), for: .normal)
                 default:
@@ -1638,22 +1667,30 @@ class KeyboardViewController: UIInputViewController {
                 }
                 continue
             }
-            btn.backgroundColor = btn === numpadPressedKey ? specialKeyFill : keyFill
-            btn.layer.shadowOpacity = 0.30
+            btn.backgroundColor = btn === numpadPressedKey ? specialKeyFill : numpadKeyFill
             let title = NSMutableAttributedString(
                 string: ch,
-                attributes: [.font: UIFont.systemFont(ofSize: 28), .foregroundColor: UIColor.label]
+                attributes: [
+                    .font: UIFont.systemFont(ofSize: 22),
+                    .foregroundColor: UIColor.label,
+                    .paragraphStyle: para,
+                    .baselineOffset: -1, // system pad sits 1pt lower
+                ]
             )
-            if let hint = Self.numpadHints[ch] {
-                title.append(NSAttributedString(
-                    string: "\n" + hint,
-                    attributes: [
-                        .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
-                        .foregroundColor: UIColor.label,
-                        .kern: 2,
-                    ]
-                ))
-            }
+            // 1 and 0 have no hint but keep the line, so every digit sits at
+            // the same height like on the system pad.
+            title.append(NSAttributedString(
+                string: "\n" + (Self.numpadHints[ch] ?? " "),
+                attributes: [
+                    .font: UIFont.systemFont(ofSize: 9.5, weight: .semibold),
+                    .foregroundColor: UIColor.label,
+                    .kern: 1.6,
+                    .paragraphStyle: para,
+                    // Same offset on both lines: a mismatch makes the label
+                    // mis-measure and clip the hint line entirely.
+                    .baselineOffset: -1,
+                ]
+            ))
             btn.titleLabel?.numberOfLines = 2
             btn.titleLabel?.textAlignment = .center
             btn.setAttributedTitle(title, for: .normal)
@@ -1778,9 +1815,10 @@ class KeyboardViewController: UIInputViewController {
     /// decimal keys when both exist and left empty when neither does.
     private func layoutNumpad(width w: CGFloat) {
         let gap: CGFloat = 6
-        let colW = (w - sideMargin * 2 - gap * 2) / 3
+        let margin: CGFloat = 4.5 // system pad: 4.5pt sides, 6pt between keys
+        let colW = (w - margin * 2 - gap * 2) / 3
         func cell(_ r: Int, _ c: Int) -> CGRect {
-            CGRect(x: sideMargin + CGFloat(c) * (colW + gap),
+            CGRect(x: margin + CGFloat(c) * (colW + gap),
                    y: rowTopInset + CGFloat(r) * (keyHeight + rowVGap),
                    width: colW, height: keyHeight)
         }
