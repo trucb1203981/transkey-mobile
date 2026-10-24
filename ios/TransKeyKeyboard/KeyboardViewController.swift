@@ -22,6 +22,7 @@ class KeyboardViewController: UIInputViewController {
 
     fileprivate enum Layer {
         case letters, numbers, symbols
+        case numpad // iPhone number pad: 3x4 digit grid for digit-only fields
     }
 
     private enum ShiftState {
@@ -156,6 +157,7 @@ class KeyboardViewController: UIInputViewController {
         switch layer {
         case .numbers: return numberRows
         case .symbols: return symbolRows
+        case .numpad: return Self.numpadRows
         case .letters:
             let lay = currentLayout
             if shiftState != .off, let sr = lay.shiftRows { return sr }
@@ -173,6 +175,14 @@ class KeyboardViewController: UIInputViewController {
         ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"],
         [".", ",", "?", "!", "'"],
     ]
+    /// Digit rows of the number pad; the bottom row (decimal / 0 / delete) is
+    /// built separately because its keys depend on the field type.
+    private static let numpadRows = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
+    /// Letter hints under the digits, exactly as on the system number pad.
+    private static let numpadHints: [String: String] = [
+        "2": "ABC", "3": "DEF", "4": "GHI", "5": "JKL",
+        "6": "MNO", "7": "PQRS", "8": "TUV", "9": "WXYZ",
+    ]
 
     /// Space-bar label, like the system keyboard naming its language.
     private static let autonyms: [String: String] = [
@@ -189,6 +199,8 @@ class KeyboardViewController: UIInputViewController {
     /// Keyboard type of the field the layer was last matched to; a change
     /// means the user moved to another kind of field (see syncLayerToField).
     private var fieldKeyboardType: UIKeyboardType?
+    /// Number pad key currently held down (drawn gray, like the system pad).
+    private weak var numpadPressedKey: KeyButton?
     private var shiftState: ShiftState = .off
     private var lastShiftTap = Date.distantPast
     private var lastSpaceTap = Date.distantPast
@@ -399,6 +411,11 @@ class KeyboardViewController: UIInputViewController {
         keyHeight = landscape ? 33 : 42
         rowVGap = landscape ? 7 : 12
         rowTopInset = landscape ? 4 : 6
+        if layer == .numpad {
+            // System number pad: four taller rows with tight gaps.
+            keyHeight = landscape ? 36 : 46
+            rowVGap = landscape ? 5 : 7
+        }
         let numRows = CGFloat(activeCharRows().count + 1)
         keyAreaHeight = rowTopInset + keyHeight * numRows + rowVGap * (numRows - 1) + 6
         if keyAreaHeightConstraint.constant != keyAreaHeight {
@@ -464,24 +481,27 @@ class KeyboardViewController: UIInputViewController {
         if !Self.typingLangs.contains(inputLang) {
             inputLang = "vi"
         }
-        // Numeric fields open on the digits layer, everything else on letters.
+        // Numeric fields open on a digits layer, everything else on letters.
         fieldKeyboardType = textDocumentProxy.keyboardType ?? .default
-        layer = Self.isNumericKeyboardType(fieldKeyboardType) ? .numbers : .letters
+        layer = Self.numericLayer(for: fieldKeyboardType) ?? .letters
         shiftState = .off
         rebuildKeys()
         maybeAutoShift()
         updateSuggestionBar()
     }
 
-    /// Field types that expect digits. The system keyboard opens these on its
-    /// number pad, so ours opens on the numbers layer (Android parity:
-    /// TransKeyIME.isNumericClass shows the numpad for the same fields).
-    private static func isNumericKeyboardType(_ type: UIKeyboardType?) -> Bool {
+    /// The layer the system keyboard shows for a digit field, nil for any
+    /// other field. Digit-only types get the 3x4 number pad; numbers-and-
+    /// punctuation gets the numbers layer of the full keyboard, as on iPhone
+    /// (Android parity: TransKeyIME.isNumericClass shows its numpad).
+    private static func numericLayer(for type: UIKeyboardType?) -> Layer? {
         switch type ?? .default {
-        case .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad, .numbersAndPunctuation:
-            return true
+        case .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad:
+            return .numpad
+        case .numbersAndPunctuation:
+            return .numbers
         default:
-            return false
+            return nil
         }
     }
 
@@ -492,17 +512,19 @@ class KeyboardViewController: UIInputViewController {
     private func syncLayerToField() {
         let type = textDocumentProxy.keyboardType ?? .default
         guard type != fieldKeyboardType else { return }
-        let wasNumeric = Self.isNumericKeyboardType(fieldKeyboardType)
+        let wasNumeric = Self.numericLayer(for: fieldKeyboardType) != nil
         fieldKeyboardType = type
         let target: Layer
-        if Self.isNumericKeyboardType(type) {
-            target = .numbers
-        } else if wasNumeric && layer == .numbers {
+        if let numeric = Self.numericLayer(for: type) {
+            target = numeric
+        } else if wasNumeric && (layer == .numbers || layer == .numpad) {
             target = .letters // leaving a numeric field drops back to letters
         } else {
             return
         }
-        guard target != layer else { return }
+        // The number pad is rebuilt even when already shown: its decimal key
+        // depends on the field type (numberPad -> decimalPad keeps the layer).
+        guard target != layer || target == .numpad else { return }
         commitComposing()
         layer = target
         shiftState = .off
@@ -671,6 +693,12 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func showKeyPreview(for btn: KeyButton) {
+        // The system number pad shows no balloon; the pressed key turns gray.
+        if layer == .numpad {
+            numpadPressedKey = btn
+            styleNumpadKeys()
+            return
+        }
         guard case .char = btn.keyType, let text = btn.title(for: .normal) else { return }
         let f = view.convert(btn.frame, from: keyArea)
         let w = max(f.width * 1.55, 46)
@@ -686,6 +714,10 @@ class KeyboardViewController: UIInputViewController {
 
     private func hideKeyPreview() {
         keyPreview.isHidden = true
+        if numpadPressedKey != nil {
+            numpadPressedKey = nil
+            if layer == .numpad { styleNumpadKeys() }
+        }
     }
 
     // MARK: - Top bar (QuickType-style suggestions + TransKey actions)
@@ -1426,6 +1458,14 @@ class KeyboardViewController: UIInputViewController {
         }
         hideFlickKeyboard()
 
+        if layer == .numpad {
+            buildNumpadKeys()
+            styleAllKeys()
+            keyArea.setNeedsLayout()
+            view.setNeedsLayout()
+            return
+        }
+
         for chars in activeCharRows() {
             for ch in chars {
                 addKey(.char(ch))
@@ -1442,6 +1482,8 @@ class KeyboardViewController: UIInputViewController {
             addKey(.toSymbols)
         case .symbols:
             addKey(.toNumbers)
+        case .numpad:
+            break // built by buildNumpadKeys
         }
         addKey(.backspace)
 
@@ -1456,6 +1498,21 @@ class KeyboardViewController: UIInputViewController {
         styleAllKeys()
         keyArea.setNeedsLayout()
         view.setNeedsLayout()
+    }
+
+    /// Number pad keys in layout order: digits 1-9, then the bottom-left cell
+    /// (globe when the system asks for one, the decimal separator on a
+    /// decimalPad field), then 0 and delete. layoutNumpad relies on it.
+    private func buildNumpadKeys() {
+        for chars in Self.numpadRows {
+            for ch in chars { addKey(.char(ch)) }
+        }
+        if needsInputModeSwitchKey { addKey(.globe) }
+        if textDocumentProxy.keyboardType == .decimalPad {
+            addKey(.char(Locale.current.decimalSeparator ?? "."))
+        }
+        addKey(.char("0"))
+        addKey(.backspace)
     }
 
     private func addKey(_ type: KeyType) {
@@ -1481,6 +1538,10 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func styleAllKeys() {
+        if layer == .numpad {
+            styleNumpadKeys()
+            return
+        }
         for btn in keyButtons {
             switch btn.keyType {
             case .char(let ch):
@@ -1553,6 +1614,52 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
+    /// System number pad look: white digit keys with the letter hint under
+    /// the digit; the decimal, globe and delete keys sit flat on the
+    /// keyboard background with no key shape.
+    private func styleNumpadKeys() {
+        for btn in keyButtons {
+            btn.setImage(nil, for: .normal)
+            btn.setTitle(nil, for: .normal)
+            btn.setAttributedTitle(nil, for: .normal)
+            btn.tintColor = .label
+            guard case .char(let ch) = btn.keyType, ch.first?.isNumber == true else {
+                btn.backgroundColor = .clear
+                btn.layer.shadowOpacity = 0
+                switch btn.keyType {
+                case .char(let sep):
+                    btn.setTitle(sep, for: .normal)
+                    btn.setTitleColor(.label, for: .normal)
+                    btn.titleLabel?.font = .systemFont(ofSize: 28)
+                case .globe:
+                    btn.setImage(UIImage(systemName: "globe"), for: .normal)
+                default:
+                    btn.setImage(UIImage(systemName: "delete.left"), for: .normal)
+                }
+                continue
+            }
+            btn.backgroundColor = btn === numpadPressedKey ? specialKeyFill : keyFill
+            btn.layer.shadowOpacity = 0.30
+            let title = NSMutableAttributedString(
+                string: ch,
+                attributes: [.font: UIFont.systemFont(ofSize: 28), .foregroundColor: UIColor.label]
+            )
+            if let hint = Self.numpadHints[ch] {
+                title.append(NSAttributedString(
+                    string: "\n" + hint,
+                    attributes: [
+                        .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
+                        .foregroundColor: UIColor.label,
+                        .kern: 2,
+                    ]
+                ))
+            }
+            btn.titleLabel?.numberOfLines = 2
+            btn.titleLabel?.textAlignment = .center
+            btn.setAttributedTitle(title, for: .normal)
+        }
+    }
+
     private func styleLabelKey(_ btn: KeyButton, _ title: String) {
         btn.backgroundColor = specialKeyFill
         btn.setImage(nil, for: .normal)
@@ -1590,9 +1697,13 @@ class KeyboardViewController: UIInputViewController {
 
     private func layoutKeys() {
         // The flick grid lays itself out (FlickInputView.layoutSubviews).
-        if inputLang == "ja_flick" { return }
+        if inputLang == "ja_flick" && layer == .letters { return }
         let w = keyArea.bounds.width
         guard w > 0, !keyButtons.isEmpty else { return }
+        if layer == .numpad {
+            layoutNumpad(width: w)
+            return
+        }
 
         let rows = activeCharRows()
         let maxCols = CGFloat(rows.map(\.count).max() ?? 10)
@@ -1661,6 +1772,32 @@ class KeyboardViewController: UIInputViewController {
         bx += spaceW + keyHGap
         i += 1
         keyButtons[i].frame = CGRect(x: bx, y: by, width: returnW, height: keyHeight) // return
+    }
+
+    /// Three equal columns; the bottom-left cell is shared by the globe and
+    /// decimal keys when both exist and left empty when neither does.
+    private func layoutNumpad(width w: CGFloat) {
+        let gap: CGFloat = 6
+        let colW = (w - sideMargin * 2 - gap * 2) / 3
+        func cell(_ r: Int, _ c: Int) -> CGRect {
+            CGRect(x: sideMargin + CGFloat(c) * (colW + gap),
+                   y: rowTopInset + CGFloat(r) * (keyHeight + rowVGap),
+                   width: colW, height: keyHeight)
+        }
+        for i in 0..<9 {
+            keyButtons[i].frame = cell(i / 3, i % 3)
+        }
+        let leftKeys = keyButtons.count - 11 // globe and/or decimal
+        let left = cell(3, 0)
+        let partW = leftKeys > 0 ? (left.width - gap * CGFloat(leftKeys - 1)) / CGFloat(leftKeys) : 0
+        for j in 0..<leftKeys {
+            keyButtons[9 + j].frame = CGRect(
+                x: left.minX + CGFloat(j) * (partW + gap), y: left.minY,
+                width: partW, height: left.height
+            )
+        }
+        keyButtons[9 + leftKeys].frame = cell(3, 1)  // 0
+        keyButtons[10 + leftKeys].frame = cell(3, 2) // delete
     }
 
     // MARK: - Key handling (central touch routing from KeyAreaView)
@@ -1904,7 +2041,7 @@ class KeyboardViewController: UIInputViewController {
     }
 
     private func scheduleVariantTimer(_ touch: UITouch, _ key: KeyButton) {
-        guard case .char(let ch) = key.keyType, Self.variantMap[ch] != nil else { return }
+        guard layer != .numpad, case .char(let ch) = key.keyType, Self.variantMap[ch] != nil else { return }
         let timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
             guard let self, let st = self.touchStates[touch], st.mode == .normal else { return }
             st.mode = .variants
