@@ -21,6 +21,42 @@ same as being live.
 
 ---
 
+## 2.7.1+33 - 2026-10-25
+
+- **Play:** not submitted. AAB `2.7.1(33)` built 2026-10-25 01:21 (93.2MB, sha256 49dc6b4533ff25e4...), `versionName 2.7.1` / `versionCode 33` verified inside the bundle manifest.
+- **App Store:** not submitted. IPA `2.7.1(33)` built 2026-10-25 01:24 (69.3MB, sha256 81395b4fa0e84bfc...), verified arm64-only and `2.7.1(33)` in Runner plus both extensions, no traditional-Chinese dictionary bundled. 2.7.0 was still "Waiting for Review" when this was built.
+- **Commits:** `e28ea70..` the `chore: bump version to 2.7.1+33` commit (e38675a whole-field keyboard actions; e4a4206, d4f1211 docs only)
+- **Built WITHOUT** the uncommitted work in the tree (traditional-Chinese dictionary, plus two untested follow-ups to e38675a: undo bound to the field's `documentIdentifier` and a 10 s expiry): stashed during the build, restored after.
+
+Shipped in this version:
+- iOS: Reply, Translate and Refine on the keyboard send and replace the WHOLE field, not just the caret's line or sentence (prod logs showed 54 of 794 characters sent); Undo restores the whole original
+- Android: no change (it already read the whole field)
+
+⚠ **Notes coverage folds in 2.7.0 on BOTH stores.**
+- **Play:** 2.7.0 was never submitted to Play, so the Play notes are the 2.7.0 Play set unchanged (read aloud retry). The keyboard fix is iOS-only and is not mentioned.
+- **App Store:** 2.7.0 was only "Waiting for Review", so the notes repeat its number pad and read aloud items next to the new keyboard fix. If 2.7.0 goes live first, that overlap is harmless.
+- **The next release must NOT repeat:** whole-message Reply/Refine, the number pad, or read aloud retry, on either store, once this version is live.
+
+en-US notes - App Store (the other 13 locales mirror these bullets):
+```
+• Reply and Refine on the keyboard now work on your whole message, not just one line
+• Number fields now open a number pad automatically
+• The number pad looks and works just like the iPhone's
+• Read aloud keeps working when your connection briefly drops
+• Smoother performance and bug fixes
+```
+
+en-US notes - Play (the other 8 locales mirror these bullets):
+```
+• Read aloud keeps working when your connection briefly drops
+• Translate copied text right on your keyboard
+• Clearer, easier-to-read comic and manga translations
+• Point your camera at a menu to see dishes in your language
+• Smoother performance and bug fixes
+```
+
+---
+
 ## 2.7.0+32 - 2026-10-24
 
 - **Play:** not submitted. AAB `2.7.0(32)` built 2026-10-24 17:01 from e28ea70 (93.2MB, sha256 6f8f0ae28c098a94...), `versionName 2.7.0` verified inside the bundle manifest.
