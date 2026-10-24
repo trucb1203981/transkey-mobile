@@ -186,6 +186,9 @@ class KeyboardViewController: UIInputViewController {
     // MARK: - State
 
     private var layer: Layer = .letters
+    /// Keyboard type of the field the layer was last matched to; a change
+    /// means the user moved to another kind of field (see syncLayerToField).
+    private var fieldKeyboardType: UIKeyboardType?
     private var shiftState: ShiftState = .off
     private var lastShiftTap = Date.distantPast
     private var lastSpaceTap = Date.distantPast
@@ -461,11 +464,49 @@ class KeyboardViewController: UIInputViewController {
         if !Self.typingLangs.contains(inputLang) {
             inputLang = "vi"
         }
-        layer = .letters
+        // Numeric fields open on the digits layer, everything else on letters.
+        fieldKeyboardType = textDocumentProxy.keyboardType ?? .default
+        layer = Self.isNumericKeyboardType(fieldKeyboardType) ? .numbers : .letters
         shiftState = .off
         rebuildKeys()
         maybeAutoShift()
         updateSuggestionBar()
+    }
+
+    /// Field types that expect digits. The system keyboard opens these on its
+    /// number pad, so ours opens on the numbers layer (Android parity:
+    /// TransKeyIME.isNumericClass shows the numpad for the same fields).
+    private static func isNumericKeyboardType(_ type: UIKeyboardType?) -> Bool {
+        switch type ?? .default {
+        case .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad, .numbersAndPunctuation:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// The keyboard stays on screen when focus moves to another field, so
+    /// viewWillAppear does not run again; re-match the layer here when the
+    /// field's keyboard type changed. Only a type CHANGE switches the layer,
+    /// so a caret move never undoes the user's own ?123 / ABC choice.
+    private func syncLayerToField() {
+        let type = textDocumentProxy.keyboardType ?? .default
+        guard type != fieldKeyboardType else { return }
+        let wasNumeric = Self.isNumericKeyboardType(fieldKeyboardType)
+        fieldKeyboardType = type
+        let target: Layer
+        if Self.isNumericKeyboardType(type) {
+            target = .numbers
+        } else if wasNumeric && layer == .numbers {
+            target = .letters // leaving a numeric field drops back to letters
+        } else {
+            return
+        }
+        guard target != layer else { return }
+        commitComposing()
+        layer = target
+        shiftState = .off
+        rebuildKeys()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -545,6 +586,7 @@ class KeyboardViewController: UIInputViewController {
             undoSnapshot = nil   // field switch / external edit drops the undo
             undoReplacement = nil
             actionSeq &+= 1      // and invalidates any in-flight action result
+            syncLayerToField()   // a field switch may need the numbers layer
             maybeAutoShift()
             updateSuggestionBar()
         }
@@ -1374,8 +1416,9 @@ class KeyboardViewController: UIInputViewController {
         keyButtons.forEach { $0.removeFromSuperview() }
         keyButtons = []
 
-        // Japanese flick: a self-contained grid replaces the QWERTY keys.
-        if inputLang == "ja_flick" {
+        // Japanese flick: a self-contained grid replaces the QWERTY keys. A
+        // numeric field still gets the numbers layer; its ABC key returns here.
+        if inputLang == "ja_flick" && layer == .letters {
             showFlickKeyboard()
             keyArea.setNeedsLayout()
             view.setNeedsLayout()
