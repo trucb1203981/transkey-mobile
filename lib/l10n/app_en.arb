@@ -736,6 +736,8 @@
   "setupIosFullAccessNote": "Allow Full Access is what lets the keyboard reach the internet to translate. Without it the keyboard still types normally.",
   "setupBannerTitle": "TransKey is not set up yet",
   "setupBannerAction": "Finish setup",
+  "updateBannerTitle": "A new version of TransKey is available",
+  "updateBannerAction": "Update",
   "ttsNatural": "Natural voice (online)",
   "ttsDevice": "Device voice (offline)",
   "ttsUnsupported": "This language has no voice in the selected mode.",

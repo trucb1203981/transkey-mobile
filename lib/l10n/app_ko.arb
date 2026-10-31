@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "전체 접근 허용을 켜야 키보드가 인터넷에 연결되어 번역할 수 있습니다. 켜지 않아도 글자 입력은 그대로 됩니다.",
   "setupBannerTitle": "TransKey 설정이 아직 끝나지 않았습니다",
   "setupBannerAction": "설정 마치기",
+  "updateBannerTitle": "TransKey 새 버전이 나왔습니다",
+  "updateBannerAction": "업데이트",
   "ttsNatural": "자연스러운 음성 (온라인)",
   "ttsDevice": "기기 음성 (오프라인)",
   "ttsUnsupported": "선택한 모드에서 이 언어의 음성을 사용할 수 없습니다.",

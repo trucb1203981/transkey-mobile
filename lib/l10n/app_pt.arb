@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "Permitir acesso total é o que deixa o teclado se conectar à internet para traduzir. Sem isso, o teclado continua escrevendo normalmente.",
   "setupBannerTitle": "O TransKey ainda não está configurado",
   "setupBannerAction": "Terminar a configuração",
+  "updateBannerTitle": "Há uma nova versão do TransKey",
+  "updateBannerAction": "Atualizar",
   "ttsNatural": "Voz natural (online)",
   "ttsDevice": "Voz do dispositivo (offline)",
   "ttsUnsupported": "Este idioma não tem voz no modo selecionado.",

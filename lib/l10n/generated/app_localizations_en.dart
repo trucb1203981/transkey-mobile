@@ -1833,6 +1833,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setupBannerAction => 'Finish setup';
 
   @override
+  String get updateBannerTitle => 'A new version of TransKey is available';
+
+  @override
+  String get updateBannerAction => 'Update';
+
+  @override
   String get ttsNatural => 'Natural voice (online)';
 
   @override

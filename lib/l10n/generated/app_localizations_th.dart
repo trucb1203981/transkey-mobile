@@ -1816,6 +1816,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get setupBannerAction => 'ตั้งค่าให้เสร็จ';
 
   @override
+  String get updateBannerTitle => 'มี TransKey เวอร์ชันใหม่แล้ว';
+
+  @override
+  String get updateBannerAction => 'อัปเดต';
+
+  @override
   String get ttsNatural => 'เสียงธรรมชาติ (ออนไลน์)';
 
   @override

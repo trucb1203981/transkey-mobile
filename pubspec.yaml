@@ -110,6 +110,7 @@ dependencies:
   sign_in_with_apple: ^8.1.0
   flutter_soloud: 3.4.10
   audio_session: ^0.1.25
+  in_app_update: ^5.0.0
 
 dev_dependencies:
   flutter_test:

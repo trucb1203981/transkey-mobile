@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "允许完全访问是让键盘能联网翻译。不打开的话，键盘照样可以正常打字。",
   "setupBannerTitle": "TransKey 还没设置好",
   "setupBannerAction": "完成设置",
+  "updateBannerTitle": "TransKey 有新版本了",
+  "updateBannerAction": "更新",
   "ttsNatural": "自然语音（在线）",
   "ttsDevice": "设备语音（离线）",
   "ttsUnsupported": "所选模式暂不支持此语言的语音。",

@@ -1827,6 +1827,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get setupBannerAction => 'أكمل الإعداد';
 
   @override
+  String get updateBannerTitle => 'يتوفر إصدار جديد من TransKey';
+
+  @override
+  String get updateBannerAction => 'تحديث';
+
+  @override
   String get ttsNatural => 'صوت طبيعي (عبر الإنترنت)';
 
   @override

@@ -1843,6 +1843,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get setupBannerAction => 'Завершить настройку';
 
   @override
+  String get updateBannerTitle => 'Доступна новая версия TransKey';
+
+  @override
+  String get updateBannerAction => 'Обновить';
+
+  @override
   String get ttsNatural => 'Естественный голос (онлайн)';
 
   @override

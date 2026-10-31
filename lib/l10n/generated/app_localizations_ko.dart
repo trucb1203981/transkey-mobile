@@ -1760,6 +1760,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get setupBannerAction => '설정 마치기';
 
   @override
+  String get updateBannerTitle => 'TransKey 새 버전이 나왔습니다';
+
+  @override
+  String get updateBannerAction => '업데이트';
+
+  @override
   String get ttsNatural => '자연스러운 음성 (온라인)';
 
   @override

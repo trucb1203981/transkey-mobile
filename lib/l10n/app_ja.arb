@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "フルアクセスを許可すると、キーボードがインターネットにつながって翻訳できます。オンにしなくても、文字入力は普通に使えます。",
   "setupBannerTitle": "TransKey の設定がまだ終わっていません",
   "setupBannerAction": "設定を終わらせる",
+  "updateBannerTitle": "TransKey の新しいバージョンがあります",
+  "updateBannerAction": "アップデート",
   "ttsNatural": "自然な音声（オンライン）",
   "ttsDevice": "端末の音声（オフライン）",
   "ttsUnsupported": "選択したモードではこの言語の音声を利用できません。",

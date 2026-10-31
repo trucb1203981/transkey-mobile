@@ -3446,6 +3446,18 @@ abstract class AppLocalizations {
   /// **'Finish setup'**
   String get setupBannerAction;
 
+  /// No description provided for @updateBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version of TransKey is available'**
+  String get updateBannerTitle;
+
+  /// No description provided for @updateBannerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get updateBannerAction;
+
   /// No description provided for @ttsNatural.
   ///
   /// In en, this message translates to:

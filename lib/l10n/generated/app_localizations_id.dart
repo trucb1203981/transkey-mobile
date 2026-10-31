@@ -1839,6 +1839,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get setupBannerAction => 'Selesaikan penyiapan';
 
   @override
+  String get updateBannerTitle => 'Versi baru TransKey sudah tersedia';
+
+  @override
+  String get updateBannerAction => 'Perbarui';
+
+  @override
   String get ttsNatural => 'Suara alami (online)';
 
   @override

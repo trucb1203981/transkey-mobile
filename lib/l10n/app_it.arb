@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "Consenti accesso completo serve alla tastiera per collegarsi a internet e tradurre. Senza, la tastiera scrive comunque normalmente.",
   "setupBannerTitle": "TransKey non è ancora configurato",
   "setupBannerAction": "Completi la configurazione",
+  "updateBannerTitle": "È disponibile una nuova versione di TransKey",
+  "updateBannerAction": "Aggiorna",
   "ttsNatural": "Voce naturale (online)",
   "ttsDevice": "Voce del dispositivo (offline)",
   "ttsUnsupported": "Nessuna voce per questa lingua nella modalità scelta.",

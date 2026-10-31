@@ -1754,6 +1754,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupBannerAction => '設定を終わらせる';
 
   @override
+  String get updateBannerTitle => 'TransKey の新しいバージョンがあります';
+
+  @override
+  String get updateBannerAction => 'アップデート';
+
+  @override
   String get ttsNatural => '自然な音声（オンライン）';
 
   @override

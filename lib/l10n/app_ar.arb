@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "السماح بالوصول الكامل هو ما يتيح للوحة المفاتيح الاتصال بالإنترنت لتترجم. وبدونه تبقى لوحة المفاتيح تكتب كالمعتاد.",
   "setupBannerTitle": "لم يكتمل إعداد TransKey بعد",
   "setupBannerAction": "أكمل الإعداد",
+  "updateBannerTitle": "يتوفر إصدار جديد من TransKey",
+  "updateBannerAction": "تحديث",
   "ttsNatural": "صوت طبيعي (عبر الإنترنت)",
   "ttsDevice": "صوت الجهاز (دون اتصال)",
   "ttsUnsupported": "لا يوجد صوت لهذه اللغة في الوضع المحدد.",

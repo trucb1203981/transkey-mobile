@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "Полный доступ нужен, чтобы клавиатура выходила в интернет и переводила. Без него клавиатура всё равно печатает как обычно.",
   "setupBannerTitle": "TransKey ещё не настроен",
   "setupBannerAction": "Завершить настройку",
+  "updateBannerTitle": "Доступна новая версия TransKey",
+  "updateBannerAction": "Обновить",
   "ttsNatural": "Естественный голос (онлайн)",
   "ttsDevice": "Голос устройства (офлайн)",
   "ttsUnsupported": "Для этого языка нет голоса в выбранном режиме.",

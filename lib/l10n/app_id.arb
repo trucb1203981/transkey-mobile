@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "Izinkan Akses Penuh membuat keyboard bisa terhubung ke internet untuk menerjemahkan. Tanpa itu, keyboard tetap bisa dipakai mengetik seperti biasa.",
   "setupBannerTitle": "TransKey belum selesai disiapkan",
   "setupBannerAction": "Selesaikan penyiapan",
+  "updateBannerTitle": "Versi baru TransKey sudah tersedia",
+  "updateBannerAction": "Perbarui",
   "ttsNatural": "Suara alami (online)",
   "ttsDevice": "Suara perangkat (offline)",
   "ttsUnsupported": "Bahasa ini tidak memiliki suara dalam mode yang dipilih.",

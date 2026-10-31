@@ -717,6 +717,8 @@
   "setupIosFullAccessNote": "อนุญาตให้เข้าถึงเต็มรูปแบบ คือสิ่งที่ทำให้แป้นพิมพ์ต่ออินเทอร์เน็ตเพื่อแปลได้ ถ้าไม่เปิด แป้นพิมพ์ก็ยังพิมพ์ได้ตามปกติ",
   "setupBannerTitle": "ยังตั้งค่า TransKey ไม่เสร็จ",
   "setupBannerAction": "ตั้งค่าให้เสร็จ",
+  "updateBannerTitle": "มี TransKey เวอร์ชันใหม่แล้ว",
+  "updateBannerAction": "อัปเดต",
   "ttsNatural": "เสียงธรรมชาติ (ออนไลน์)",
   "ttsDevice": "เสียงในอุปกรณ์ (ออฟไลน์)",
   "ttsUnsupported": "ภาษานี้ไม่มีเสียงในโหมดที่เลือก",

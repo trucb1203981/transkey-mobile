@@ -1849,6 +1849,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get setupBannerAction => 'Terminar a configuração';
 
   @override
+  String get updateBannerTitle => 'Há uma nova versão do TransKey';
+
+  @override
+  String get updateBannerAction => 'Atualizar';
+
+  @override
   String get ttsNatural => 'Voz natural (online)';
 
   @override

@@ -1731,6 +1731,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get setupBannerAction => '完成设置';
 
   @override
+  String get updateBannerTitle => 'TransKey 有新版本了';
+
+  @override
+  String get updateBannerAction => '更新';
+
+  @override
   String get ttsNatural => '自然语音（在线）';
 
   @override

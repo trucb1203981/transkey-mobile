@@ -1825,6 +1825,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get setupBannerAction => 'Bật nốt';
 
   @override
+  String get updateBannerTitle => 'Đã có phiên bản TransKey mới';
+
+  @override
+  String get updateBannerAction => 'Cập nhật';
+
+  @override
   String get ttsNatural => 'Giọng tự nhiên (cần mạng)';
 
   @override

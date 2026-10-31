@@ -25,6 +25,7 @@ import '../../onboarding/providers/setup_status_provider.dart';
 import '../../onboarding/screens/setup_hub_screen.dart';
 import '../../onboarding/widgets/setup_reminder_banner.dart';
 import '../../../core/bubble/bubble_manager.dart';
+import '../../../core/update/update_available_banner.dart';
 import '../../settings/providers/app_settings_provider.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../../core/api/dio_client.dart';
@@ -668,6 +669,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // returns SizedBox.shrink() with no margin when nothing is to
           // be shown, so no awkward spacing on the common case.
           const PlanStatusBanner(),
+          const UpdateAvailableBanner(),
           // Persistent, non-modal door back into setup. The automatic prompt
           // stops after a few launches; this stays for as long as something is
           // genuinely still off, and removes itself the moment both are on.
