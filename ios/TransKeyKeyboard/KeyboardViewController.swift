@@ -2944,6 +2944,7 @@ class KeyboardViewController: UIInputViewController {
     private static let walkMaxSteps = 400
     private static let walkMaxUTF16 = 20_000
     private static let walkSettleTimeout: TimeInterval = 0.2
+    private static let walkQuietPeriod: TimeInterval = 0.06
 
     /// Shared capture step for the in-field actions, run after the bar went
     /// into its processing state. nil = nothing to send; the bar is already
@@ -3117,20 +3118,40 @@ class KeyboardViewController: UIInputViewController {
         textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
     }
 
-    /// Poll the proxy context until `done` holds or the settle timeout runs
-    /// out (nil). Sleeping yields the main run loop, which is what lets the
-    /// host's asynchronous context update arrive at all.
+    /// Poll the proxy context until it SETTLES on a value where `done` holds,
+    /// or the timeout runs out with the settled value still failing (nil).
+    /// Sleeping yields the main run loop, which is what lets the host's
+    /// asynchronous context update arrive at all.
+    ///
+    /// The first change is not the answer: the proxy shifts its cached window
+    /// locally the moment the caret moves, and web views (WKWebView) then
+    /// report the PREVIOUS context (~20 ms) before the real one (~35 ms). The
+    /// local guess shows an empty side whenever the move crosses the cached
+    /// window, which the walk read as a field edge; it then replaced text in
+    /// the wrong place. Only a value that held still for `walkQuietPeriod`
+    /// counts.
     private func readContext(
         timeout: TimeInterval? = nil,
         until done: (String, String) -> Bool
     ) async -> (b: String, a: String)? {
         let deadline = Date().addingTimeInterval(timeout ?? Self.walkSettleTimeout)
+        let hardStop = deadline.addingTimeInterval(Self.walkSettleTimeout)
+        var last = (b: textDocumentProxy.documentContextBeforeInput ?? "",
+                    a: textDocumentProxy.documentContextAfterInput ?? "")
+        var lastChange = Date()
         while true {
-            let b = textDocumentProxy.documentContextBeforeInput ?? ""
-            let a = textDocumentProxy.documentContextAfterInput ?? ""
-            if done(b, a) { return (b, a) }
-            if Date() >= deadline { return nil }
             try? await Task.sleep(nanoseconds: 10_000_000)
+            let now = Date()
+            let cur = (b: textDocumentProxy.documentContextBeforeInput ?? "",
+                       a: textDocumentProxy.documentContextAfterInput ?? "")
+            if cur != last {
+                last = cur
+                lastChange = now
+            }
+            let settled = now.timeIntervalSince(lastChange) >= Self.walkQuietPeriod
+            if settled, done(last.b, last.a) { return last }
+            // A host that never stops flickering gives no usable answer.
+            if (settled && now >= deadline) || now >= hardStop { return nil }
         }
     }
 
