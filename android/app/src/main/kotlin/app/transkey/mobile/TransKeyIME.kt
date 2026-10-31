@@ -1631,28 +1631,35 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         }
         val composed = vietnameseComposingText()
         val raw = rawWord.toString()
-        val c = corrector
-        if (c == null || vietnameseLiteralIntent() || !allowsWordSuggestions()) {
+        if (!allowsWordSuggestions()) {
             suggestSeq.incrementAndGet()
             suggestionStrip?.setSuggestions(emptyList())
             return
         }
+        // iOS QuickType layout: the word exactly as typed comes first (free, so
+        // painted right away), corrections join it when the off-thread scan
+        // returns. Mirrors KeyboardViewController.updateSuggestionBar.
+        val seq = suggestSeq.incrementAndGet()
+        suggestionStrip?.setSuggestions(listOf(composed), verbatim = true)
+        val c = corrector
+        if (c == null || vietnameseLiteralIntent()) return
         val englishLiteral = raw.takeIf {
             it.length >= 2 && it != composed && c.isEnglish(it)
         }
-        val seq = suggestSeq.incrementAndGet()
-        suggestionStrip?.setSuggestions(listOfNotNull(englishLiteral))
         suggestExecutor.execute {
             if (seq != suggestSeq.get()) return@execute
-            val vietnamese = runCatching { c.suggest(composed, 3) }.getOrDefault(emptyList())
-            val candidates = (listOfNotNull(englishLiteral) + vietnamese)
+            val vietnamese = runCatching {
+                c.suggest(composed, 2, includeKnown = true)
+            }.getOrDefault(emptyList())
+            val candidates = (listOf(composed) + listOfNotNull(englishLiteral) + vietnamese)
                 .distinctBy { it.lowercase() }.take(3)
+            if (candidates.size < 2) return@execute
             mainHandler.post {
                 if (seq != suggestSeq.get() || !isVietnameseMode() ||
                     !allowsWordSuggestions() || rawWord.toString() != raw ||
                     vietnameseComposingText() != composed
                 ) return@post
-                suggestionStrip?.setSuggestions(candidates)
+                suggestionStrip?.setSuggestions(candidates, verbatim = true)
             }
         }
     }

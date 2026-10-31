@@ -106,13 +106,20 @@ class SuggestionStripView : View {
     // 1-based index (Chinese) and shows a ▼ chevron to open the full grid.
     private var numbered = false
     private var expandable = false
+    // iOS QuickType layout: index 0 is the word exactly as typed, drawn in
+    // quotes and plain weight; the corrections after it take the best style.
+    // Taps still hand back the bare word.
+    private var verbatimFirst = false
 
-    fun setSuggestions(list: List<String>, selected: Int = -1) {
-        if (list != suggestions || selected != selectedSuggestion || expandable) {
+    fun setSuggestions(list: List<String>, selected: Int = -1, verbatim: Boolean = false) {
+        if (list != suggestions || selected != selectedSuggestion || expandable ||
+            verbatim != verbatimFirst
+        ) {
             suggestions = list
             selectedSuggestion = selected
             expandable = false
             numbered = false
+            verbatimFirst = verbatim
             invalidate()
         }
     }
@@ -127,6 +134,7 @@ class SuggestionStripView : View {
             selectedSuggestion = selected
             numbered = withNumbers
             expandable = true
+            verbatimFirst = false
             invalidate()
         }
     }
@@ -322,12 +330,15 @@ class SuggestionStripView : View {
         }
         for (i in 0 until visible) {
             val cx = l + slot * i + slot / 2f
+            val verbatim = verbatimFirst && i == 0
             val p = when {
                 i == selectedSuggestion -> textAction
-                i == 0 -> textBest
+                verbatim -> textAlt
+                i == 0 || (verbatimFirst && i == 1) -> textBest
                 else -> textAlt
             }
-            c.drawText(suggestions[i], cx, base, p)
+            val label = if (verbatim) "\"${suggestions[i]}\"" else suggestions[i]
+            c.drawText(fitLabel(label, slot - dp(8f), p), cx, base, p)
             // 1-based index hint (Chinese): pick this candidate by long-pressing
             // the matching top-row key (q=1..o=9, p=10).
             if (numbered && i < 9 && i != selectedSuggestion) {
@@ -339,6 +350,14 @@ class SuggestionStripView : View {
             }
         }
         if (hasExpandZone) drawExpandChevron(c, (areaRight + r) / 2f, cy)
+    }
+
+    /** [text] cut with a trailing ellipsis so it never spills into a neighbour slot. */
+    private fun fitLabel(text: String, maxWidth: Float, p: Paint): String {
+        if (maxWidth <= 0f || p.measureText(text) <= maxWidth) return text
+        var end = text.length
+        while (end > 1 && p.measureText(text, 0, end) + p.measureText("\u2026") > maxWidth) end--
+        return text.substring(0, end) + "\u2026"
     }
 
     /** ▼ down-chevron = "show all candidates" (opens the grid). */

@@ -45,4 +45,20 @@ class VietWordCorrectorTest {
 
     @Test fun maxSuggestionCountIsRespected() =
         assertTrue(corrector.suggest("ban", max = 1).size <= 1)
+
+    // ---- includeKnown: the live strip (iOS QuickType parity) ----
+
+    @Test fun knownWordGetsNeighboursForTheStrip() {
+        val out = corrector.suggest("bạn", includeKnown = true)
+        assertTrue(out.contains("bàn"))
+        assertTrue(!out.contains("bạn"))
+    }
+
+    @Test fun capitalisedWordGetsCapitalisedNeighbours() =
+        assertTrue(corrector.suggest("Bạn", includeKnown = true).contains("Bàn"))
+
+    @Test fun includeKnownStillRejectsUrlsAndDigits() {
+        assertTrue(corrector.suggest("example.com", includeKnown = true).isEmpty())
+        assertTrue(corrector.suggest("ban2", includeKnown = true).isEmpty())
+    }
 }

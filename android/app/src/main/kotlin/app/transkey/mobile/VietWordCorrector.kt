@@ -51,11 +51,22 @@ class VietWordCorrector internal constructor(
     /** A known common English word - typed as-is, never Vietnamese-corrected. */
     fun isEnglish(word: String): Boolean = word.length >= 2 && english.contains(word.lowercase())
 
-    /** Best-first suggestions for a (possibly mistyped) syllable. */
-    fun suggest(typed: String, max: Int = 3): List<String> {
-        if (!isCorrectionCandidate(typed) || max <= 0) return emptyList()
+    /**
+     * Best-first suggestions for a (possibly mistyped) syllable. By default a
+     * valid syllable or English word gets none (nothing to correct). With
+     * [includeKnown] (the live suggestion strip, iOS QuickType parity) a known
+     * word still gets its nearest neighbours ("tiên" -> "tiền", "tiến") and a
+     * capitalised word is matched case-insensitively.
+     */
+    fun suggest(typed: String, max: Int = 3, includeKnown: Boolean = false): List<String> {
+        if (max <= 0) return emptyList()
+        if (includeKnown) {
+            if (typed.length !in 2..MAX_TOKEN || !typed.all { it.isLetter() }) return emptyList()
+        } else if (!isCorrectionCandidate(typed)) {
+            return emptyList()
+        }
         val w = typed.lowercase()
-        if (rank.containsKey(w) || english.contains(w)) return emptyList()
+        if (!includeKnown && (rank.containsKey(w) || english.contains(w))) return emptyList()
         val rows = DistanceRows()
         val scored = ArrayList<Pair<String, Double>>()
         for (len in (w.length - 1)..(w.length + 1)) {
