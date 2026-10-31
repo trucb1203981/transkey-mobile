@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -498,46 +499,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       extendBody: true,
       body: AuroraBackground(
         isDark: isDark,
+        // No bottom inset: tab content scrolls on behind the floating glass
+        // capsule (each tab pads its scroll view by 100 to clear it), so the
+        // bottom padding is removed rather than left to SafeArea.
         child: SafeArea(
-          child: IndexedStack(
-            index: _currentTab,
-            children: [
-              // The translate tab is always built — it's the cold-start surface.
-              _buildTranslateTabWithQuota(),
-              // History / Glossary / Settings are lazily built on first visit so
-              // cold-start doesn't pay for SharedPreferences reads + provider
-              // builds + ListView layout of pages the user may never open.
-              _LazyTab(
-                isVisited: _visitedTabs.contains(1),
-                builder: () => const HistoryScreen(),
-              ),
-              _LazyTab(
-                isVisited: _visitedTabs.contains(2),
-                builder: () => const GlossaryScreen(),
-              ),
-              _LazyTab(
-                isVisited: _visitedTabs.contains(3),
-                builder: () => const SettingsScreen(),
-              ),
-            ],
+          bottom: false,
+          // [context] is above the SafeArea, so its top inset is removed too
+          // or the tab app bars would add the status bar height a second time.
+          child: MediaQuery.removePadding(
+            context: context,
+            removeTop: true,
+            removeBottom: true,
+            child: IndexedStack(
+              index: _currentTab,
+              children: [
+                // The translate tab is always built — it's the cold-start surface.
+                _buildTranslateTabWithQuota(),
+                // History / Glossary / Settings are lazily built on first visit so
+                // cold-start doesn't pay for SharedPreferences reads + provider
+                // builds + ListView layout of pages the user may never open.
+                _LazyTab(
+                  isVisited: _visitedTabs.contains(1),
+                  builder: () => const HistoryScreen(),
+                ),
+                _LazyTab(
+                  isVisited: _visitedTabs.contains(2),
+                  builder: () => const GlossaryScreen(),
+                ),
+                _LazyTab(
+                  isVisited: _visitedTabs.contains(3),
+                  builder: () => const SettingsScreen(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-      // Floating camera button + 4 standard tabs around it.
-      //
-      // Design (Instagram / TikTok / Snapchat pattern):
-      //   ┌───────────────────────────────────────┐
-      //   │                  ●                    │ ← floating camera
-      //   │  Translate │ History │ Glossary │ Set │ ← 4 standard tabs
-      //   └───────────────────────────────────────┘
-      //
-      // The Material 3 NavigationBar can't host a "raised" tab so we
-      // overlay a circular Material widget via a Stack that overflows
-      // the bottomNavigationBar slot. The FAB-style button sits above
-      // the divider between History and Glossary — visually it lands
-      // in the center 1/4-1/4 boundary, which thumb-reach studies
-      // (Steven Hoober, 2014) put at the natural arc midpoint for a
-      // right-hand single-thumb grip.
+      // Floating glass tab capsule + Camera disc (see _BottomBarWithCamera).
       bottomNavigationBar: _BottomBarWithCamera(
         currentTab: _currentTab,
         onTabChanged: (i) => setState(() {
@@ -1063,16 +1061,12 @@ class _LazyTab extends StatelessWidget {
   }
 }
 
-/// Modern bottom navigation — custom layout instead of Material 3's
-/// stock NavigationBar so we can get:
-///   • Rounded top corners + soft elevated shadow (lifts the bar
-///     visually, signals "this is a surface, not a stripe")
-///   • Pill-shaped indicator behind the selected tab (primary tint)
-///   • Floating gradient Camera button raised above the bar's center
-///     (Instagram / TikTok primary-action pattern)
-///   • Smooth 200ms cross-fade between selected / idle tab states
-///   • Theme-aware: tints adapt to dark/light mode without hardcoded
-///     colors
+/// Floating Liquid Glass navigation, the iOS 26 tab bar shape (as in Slack):
+///   • a frosted capsule inset from the screen edges, so content scrolls
+///     visibly behind and around it
+///   • the selected tab sits in its own lighter glass pill inside the capsule
+///   • the Camera primary action is a separate gradient disc beside the
+///     capsule, the slot iOS gives a tab bar's accessory button
 class _BottomBarWithCamera extends StatelessWidget {
   const _BottomBarWithCamera({
     required this.currentTab,
@@ -1084,130 +1078,90 @@ class _BottomBarWithCamera extends StatelessWidget {
   final ValueChanged<int> onTabChanged;
   final VoidCallback onCameraTap;
 
-  /// Lift = how far the camera button sits above the bar top edge.
-  /// Equal to half the FAB size so the bar's top edge passes exactly
-  /// through the FAB's vertical midpoint — half the circle floats above
-  /// the bar, half sits inside it. Cleaner visual ratio than the earlier
-  /// 28 (which left a faint asymmetry).
-  static const double _kCameraSize = 60;
-  static const double _kCameraLift = _kCameraSize / 2;
   static const double _kBarHeight = 64;
-  static const double _kTopRadius = 22;
+  static const double _kSideInset = 16;
+  static const double _kCameraGap = 10;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final p = GlassPalette.forDark(isDark);
-    // Liquid Glass tab bar: a frosted, translucent surface that lets the
-    // aurora glow softly through and blurs the content scrolling behind it.
-    // The lift shadow lives on the OUTER box (outside the clip) so it can cast
-    // above the bar; the blur + glass fill live INSIDE the rounded clip. The
-    // lift region above the bar stays transparent so the camera FAB reads as
-    // half-floating, not stuck on a taller bar.
-    const topCorners = BorderRadius.only(
-      topLeft: Radius.circular(_kTopRadius),
-      topRight: Radius.circular(_kTopRadius),
-    );
-    return SafeArea(
-      top: false,
+    final p = GlassPalette.of(context);
+    // Float into the home-indicator zone like the system bar does, but keep
+    // a gap above the screen edge on devices without one.
+    final bottom =
+        math.max(MediaQuery.viewPaddingOf(context).bottom - 12, 12.0);
+    final tabs = [
+      (l.translate, Icons.translate_outlined, Icons.translate),
+      (l.history, Icons.history_outlined, Icons.history),
+      (l.glossary, Icons.menu_book_outlined, Icons.menu_book),
+      (l.settings, Icons.settings_outlined, Icons.settings),
+    ];
+    return Padding(
+      padding: EdgeInsets.fromLTRB(_kSideInset, 0, _kSideInset, bottom),
       child: SizedBox(
-        height: _kBarHeight + _kCameraLift,
-        child: Stack(
-          clipBehavior: Clip.none,
+        height: _kBarHeight,
+        child: Row(
           children: [
-            // Bar surface + tabs — only the bottom _kBarHeight is painted.
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: _kBarHeight,
+            Expanded(
+              // The shadow lives outside the clip so it can lift the capsule;
+              // the blur and glass fill live inside the rounded clip. This is
+              // the app's one real BackdropFilter (weak-device budget).
               child: DecoratedBox(
-                // Shadow layer only (kept outside the clip so it lifts the bar).
                 decoration: BoxDecoration(
-                  borderRadius: topCorners,
+                  borderRadius: BorderRadius.circular(AppGlass.rPill),
                   boxShadow: [
                     BoxShadow(
                       color: p.shadow,
                       blurRadius: 24,
-                      offset: const Offset(0, -4),
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
                 child: ClipRRect(
-                  borderRadius: topCorners,
+                  borderRadius: BorderRadius.circular(AppGlass.rPill),
                   child: BackdropFilter(
                     filter: AppGlass.frost(),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: p.fillStrong,
-                        border: Border(
-                          top: BorderSide(color: p.border, width: 0.5),
+                        // Top-lit: a brighter upper edge reads as curved glass.
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color.alphaBlend(p.fillFaint, p.fillStrong),
+                            p.fill,
+                          ],
                         ),
+                        borderRadius: BorderRadius.circular(AppGlass.rPill),
+                        border: Border.all(color: p.border, width: 0.8),
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _TabButton(
-                              label: l.translate,
-                              icon: Icons.translate_outlined,
-                              selectedIcon: Icons.translate,
-                              isSelected: currentTab == 0,
-                              onTap: () => onTabChanged(0),
-                            ),
-                          ),
-                          Expanded(
-                            child: _TabButton(
-                              label: l.history,
-                              icon: Icons.history_outlined,
-                              selectedIcon: Icons.history,
-                              isSelected: currentTab == 1,
-                              onTap: () => onTabChanged(1),
-                            ),
-                          ),
-                          // Gap reserved for the floating camera button.
-                          // Slightly wider than the FAB so tab pills don't
-                          // sit too close to the circle.
-                          const SizedBox(width: 72),
-                          Expanded(
-                            child: _TabButton(
-                              label: l.glossary,
-                              icon: Icons.menu_book_outlined,
-                              selectedIcon: Icons.menu_book,
-                              isSelected: currentTab == 2,
-                              onTap: () => onTabChanged(2),
-                            ),
-                          ),
-                          Expanded(
-                            child: _TabButton(
-                              label: l.settings,
-                              icon: Icons.settings_outlined,
-                              selectedIcon: Icons.settings,
-                              isSelected: currentTab == 3,
-                              onTap: () => onTabChanged(3),
-                            ),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(5),
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < tabs.length; i++)
+                              Expanded(
+                                child: _TabButton(
+                                  label: tabs[i].$1,
+                                  icon: tabs[i].$2,
+                                  selectedIcon: tabs[i].$3,
+                                  isSelected: currentTab == i,
+                                  onTap: () => onTabChanged(i),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-            // Floating Camera button — centered horizontally, raised
-            // by [_kCameraLift] above the bar's top edge.
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: _CameraFab(
-                  onTap: onCameraTap,
-                  tooltip: l.cameraTitle,
-                  size: _kCameraSize,
-                ),
-              ),
+            const SizedBox(width: _kCameraGap),
+            _CameraFab(
+              onTap: onCameraTap,
+              tooltip: l.cameraTitle,
+              size: _kBarHeight,
             ),
           ],
         ),
@@ -1216,10 +1170,10 @@ class _BottomBarWithCamera extends StatelessWidget {
   }
 }
 
-/// One tab in the modern bottom bar — animated pill background appears
-/// when selected (primary tint @ 12%), icon swaps to filled variant,
-/// label gains primary color + slight weight bump. AnimatedContainer
-/// gives the 200 ms cross-fade.
+/// One tab in the glass capsule: the selected tab gets its own lighter glass
+/// pill (200 ms cross-fade), a filled icon and the accent tint. Text on glass
+/// uses the palette's accentStrong / textSecondary, never the raw brand
+/// indigo, which is unreadable on violet glass.
 class _TabButton extends StatelessWidget {
   const _TabButton({
     required this.label,
@@ -1237,44 +1191,47 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.62);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      splashColor: primary.withValues(alpha: 0.12),
-      highlightColor: Colors.transparent,
-      child: Center(
+    final p = GlassPalette.of(context);
+    final color = isSelected ? p.accentStrong : p.textSecondary;
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        splashColor: p.fill,
+        highlightColor: Colors.transparent,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? primary.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
+          decoration: ShapeDecoration(
+            color: isSelected ? p.fillStrong : Colors.transparent,
+            shape: StadiumBorder(
+              side: BorderSide(
+                color: isSelected ? p.border : Colors.transparent,
+                width: 0.6,
+              ),
+            ),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                isSelected ? selectedIcon : icon,
-                size: 22,
-                color: isSelected ? primary : mutedColor,
-              ),
+              Icon(isSelected ? selectedIcon : icon, size: 22, color: color),
               const SizedBox(height: 2),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
                 style: TextStyle(
                   fontSize: 10.5,
                   height: 1.2,
-                  color: isSelected ? primary : mutedColor,
+                  color: color,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   letterSpacing: 0.1,
                 ),
-                child: Text(label, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -1284,9 +1241,9 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-/// Floating camera shortcut. Gradient circle (primary → tertiary) with
-/// tinted soft shadow + white camera glyph. Larger than the stock M3
-/// FAB (60 vs 56) so it reads as the primary action on the bar.
+/// Camera shortcut beside the tab capsule. Gradient circle (primary →
+/// tertiary) with a glass rim, tinted soft shadow and a white camera glyph,
+/// as tall as the capsule so the two read as one bar.
 class _CameraFab extends StatelessWidget {
   const _CameraFab({
     required this.onTap,
@@ -1318,6 +1275,10 @@ class _CameraFab extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [primary, gradientEnd],
+          ),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.28),
+            width: 0.8,
           ),
           boxShadow: [
             // Big soft tinted shadow — the "glow" that lifts the FAB
