@@ -113,4 +113,13 @@ class VniProcessorTest {
         assertEquals("duong", processor.rawLetters)
         assertEquals("đương", processor.composingText)
     }
+
+    @Test fun shapeSwapsBetweenCircumflexBreveAndHorn() {
+        assertEquals("ă", type("a68"))
+        assertEquals("â", type("a86"))
+        assertEquals("ơ", type("o67"))
+        assertEquals("ô", type("o76"))
+        assertEquals("ắ", type("a618"))
+        assertEquals("thương", type("thuo6ng7"))
+    }
 }

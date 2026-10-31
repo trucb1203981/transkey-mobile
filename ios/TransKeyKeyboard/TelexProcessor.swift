@@ -108,9 +108,12 @@ final class TelexProcessor {
                 }
                 if !handled { out.append(c); handled = true }
             } else if "aeo".contains(lc), let last = out.last,
-                      Self.lower(Self.stripTone(last)) == lc,
+                      Self.lower(Self.stripTone(last)) == lc ||
+                          (Self.hornRev[Self.lower(Self.stripTone(last))] == lc),
                       !Self.circumflex.values.contains(Self.stripTone(last)) {
-                // circumflex: aa ee oo (preserve any tone already on the vowel)
+                // circumflex: aa ee oo (preserve any tone already on the vowel).
+                // Also swaps a breve/horn the same letter carries: ă+a -> â,
+                // ơ+o -> ô, as Unikey does.
                 let t = Self.toneOf(last)
                 let nb = Self.circumflex[lc]!
                 let ch = t >= 0 ? Self.applyTone(nb, tone: t)! : nb
@@ -243,7 +246,8 @@ final class TelexProcessor {
     private func horn(_ out: inout [Character], _ i: Int) {
         let p = out[i]
         let t = Self.toneOf(p)
-        guard let nb = Self.hornMap[Self.lower(Self.stripTone(p))] else { return }
+        // From the plain base, so a circumflex swaps over: â+w -> ă, ô+w -> ơ.
+        guard let nb = Self.hornMap[hornBase(p)] else { return }
         let ch = t >= 0 ? Self.applyTone(nb, tone: t)! : nb
         out[i] = p.isUppercase ? Self.upper(ch) : ch
     }

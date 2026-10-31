@@ -144,10 +144,13 @@ class TelexProcessor {
                 }
                 if (!handled) { out.append(c); handled = true }
             } else if (lc in "aeo" && out.isNotEmpty() &&
-                stripTone(out.last()).lowercaseChar() == lc &&
+                (stripTone(out.last()).lowercaseChar() == lc ||
+                    HORN_REV[stripTone(out.last()).lowercaseChar()] == lc) &&
                 stripTone(out.last()) !in CIRCUMFLEX.values
             ) {
-                // circumflex: aa ee oo (preserve any tone already on the vowel)
+                // circumflex: aa ee oo (preserve any tone already on the vowel).
+                // Also swaps a breve/horn the same letter carries: ă+a -> â,
+                // ơ+o -> ô, as Unikey does.
                 val prev = out.last()
                 val t = toneOf(prev)
                 val nb = CIRCUMFLEX.getValue(lc)
@@ -288,7 +291,8 @@ class TelexProcessor {
 
     private fun horn(out: StringBuilder, i: Int) {
         val p = out[i]; val t = toneOf(p)
-        val nb = HORN[stripTone(p).lowercaseChar()] ?: return
+        // From the plain base, so a circumflex swaps over: â+w -> ă, ô+w -> ơ.
+        val nb = HORN[hornBase(p)] ?: return
         val ch = if (t >= 0) applyTone(nb, t)!! else nb
         out.setCharAt(i, if (p.isUpperCase()) ch.uppercaseChar() else ch)
     }

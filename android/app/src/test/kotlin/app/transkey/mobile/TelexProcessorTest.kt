@@ -136,4 +136,16 @@ class TelexProcessorTest {
     @Test fun mua_singleTarget() = assertEquals("mùa", type("muaf"))
     /** Repeating the tone key still escapes to literal text. */
     @Test fun repeatTone_stillEscapes() = assertEquals("as", type("ass"))
+    // ---- swapping a vowel's shape: circumflex <-> breve/horn (Unikey parity) ----
+
+    @Test fun circumflexThenW_becomesBreve() = assertEquals("ă", type("aaw"))
+    @Test fun breveThenA_becomesCircumflex() = assertEquals("â", type("awa"))
+    @Test fun circumflexThenW_becomesHorn() = assertEquals("ơ", type("oow"))
+    @Test fun hornThenO_becomesCircumflex() = assertEquals("ô", type("owo"))
+    @Test fun swapInsideWord() = assertEquals("năm", type("naawm"))
+    @Test fun swapBackInsideWord() = assertEquals("nâm", type("nawam"))
+    @Test fun swapKeepsTone() = assertEquals("ắ", type("aasw"))
+    @Test fun swapBackKeepsTone() = assertEquals("tố", type("towso"))
+    @Test fun uoPairWithCircumflex_hornsBoth() = assertEquals("thương", type("thuoongw"))
+    @Test fun swapKeepsUppercase() = assertEquals("Ă", type("AAW"))
 }
