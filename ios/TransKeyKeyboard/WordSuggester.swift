@@ -93,10 +93,14 @@ final class WordSuggester {
         String(before.reversed().prefix { $0.isLetter }.reversed())
     }
 
-    /// Lowercase with accents stripped ("École" -> "ecole"); ß and other base
-    /// letters stay.
+    /// Lowercase with accents stripped and ligatures spelled out, the way
+    /// people type without them: "École" -> "ecole", "weiß" -> "weiss",
+    /// "cœur" -> "coeur".
     static func fold(_ s: String) -> String {
         s.lowercased().folding(options: .diacriticInsensitive, locale: nil)
+            .replacingOccurrences(of: "ß", with: "ss")
+            .replacingOccurrences(of: "œ", with: "oe")
+            .replacingOccurrences(of: "æ", with: "ae")
     }
 
     /// The suggestion in the case the user is typing: ALL CAPS stays all caps,

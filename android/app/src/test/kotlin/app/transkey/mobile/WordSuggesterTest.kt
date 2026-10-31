@@ -73,6 +73,18 @@ class WordSuggesterTest {
         assertEquals("Straße", german.suggest("stras").first())
     }
 
+    @Test fun eszettTypedAsDoubleSRestoresIt() {
+        assertEquals("Straße", german.suggest("strasse").first())
+        assertEquals("STRASSE", german.suggest("STRASS").first())
+        assertTrue(german.suggest("Straße").isEmpty())
+    }
+
+    @Test fun ligatureTypedAsTwoLettersRestoresIt() {
+        val fr = WordSuggester(listOf("cœur", "cœurs", "sœur"))
+        assertEquals(listOf("cœur", "cœurs"), fr.suggest("coeur"))
+        assertEquals("sœur", fr.suggest("soeur").first())
+    }
+
     @Test fun trailingWordReadsLettersBeforeTheCaret() {
         assertEquals("hel", WordSuggester.trailingWord("say hel"))
         assertEquals("", WordSuggester.trailingWord("say hello "))

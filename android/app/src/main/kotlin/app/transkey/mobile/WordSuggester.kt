@@ -96,9 +96,15 @@ class WordSuggester internal constructor(words: Iterable<String>) {
             return before.subSequence(i, before.length).toString()
         }
 
-        /** Lowercase with accents stripped ("École" -> "ecole"); ß and other base letters stay. */
+        /**
+         * Lowercase with accents stripped and ligatures spelled out, the way
+         * people type without them: "École" -> "ecole", "weiß" -> "weiss",
+         * "cœur" -> "coeur".
+         */
         internal fun fold(s: String): String =
-            Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD).filter { Character.getType(it) != Character.NON_SPACING_MARK.toInt() }
+            Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD)
+                .filter { Character.getType(it) != Character.NON_SPACING_MARK.toInt() }
+                .replace("ß", "ss").replace("œ", "oe").replace("æ", "ae")
 
         /**
          * The suggestion in the case the user is typing: ALL CAPS stays all
