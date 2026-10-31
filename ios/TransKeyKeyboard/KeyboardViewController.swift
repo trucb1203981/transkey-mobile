@@ -3022,18 +3022,21 @@ class KeyboardViewController: UIInputViewController {
                 guard let next = await readContext(until: { $0 != prev.b || $1 != prev.a }) else { break }
                 let known = origin.b + tail
                 let stepped = next.b.dropLast()
-                if !next.b.isEmpty, known.hasSuffix(stepped) || stepped.hasSuffix(known) {
-                    // A real step: the stepped-over unit closes the new window.
-                    tail += String(next.b.last!)
-                    offset += 1
-                    cur = next
-                } else if !next.a.isEmpty, tail.hasSuffix(next.a),
-                          known.dropLast(next.a.count).hasSuffix(next.b) {
+                // The bounce test goes first: a one-unit window leaves `stepped`
+                // empty, an empty string passes the real-step test, and reading
+                // a bounce as a step loops until the step cap aborts the walk.
+                if !next.a.isEmpty, tail.hasSuffix(next.a),
+                   known.dropLast(next.a.count).hasSuffix(next.b) {
                     // Past the end Messages does not ignore the move: it bounces
                     // the caret back to the start of the last line. That IS the
                     // end, and the caret now sits next.a before it.
                     offset -= next.a.utf16.count
                     break
+                } else if !next.b.isEmpty, known.hasSuffix(stepped) || stepped.hasSuffix(known) {
+                    // A real step: the stepped-over unit closes the new window.
+                    tail += String(next.b.last!)
+                    offset += 1
+                    cur = next
                 } else if next.b.isEmpty {
                     // A window that excludes the unit: it was the line break.
                     tail += "\n"
@@ -3073,14 +3076,16 @@ class KeyboardViewController: UIInputViewController {
                 guard let next = await readContext(until: { $0 != prev.b || $1 != prev.a }) else { break }
                 let known = head + tail
                 let stepped = next.a.dropFirst()
-                if !next.a.isEmpty, known.hasPrefix(stepped) || stepped.hasPrefix(known) {
+                if !next.b.isEmpty, head.hasPrefix(next.b),
+                   known.dropFirst(next.b.count).hasPrefix(next.a) {
+                    // X bounces a move past the start to the END of the first
+                    // sentence: the window then shows text already read.
+                    offset += next.b.utf16.count
+                    break
+                } else if !next.a.isEmpty, known.hasPrefix(stepped) || stepped.hasPrefix(known) {
                     head = String(next.a.first!) + head
                     offset -= 1
                     cur = next
-                } else if !next.b.isEmpty, head.hasPrefix(next.b),
-                          known.dropFirst(next.b.count).hasPrefix(next.a) {
-                    offset += next.b.utf16.count
-                    break
                 } else if next.a.isEmpty {
                     head = "\n" + head
                     offset -= 1
