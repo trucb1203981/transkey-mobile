@@ -129,12 +129,14 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
     // typing. Null means "still loading"; every call site degrades gracefully.
     @Volatile private var corrector: VietWordCorrector? = null
     private val correctorLoading = java.util.concurrent.atomic.AtomicBoolean(false)
-    // EN-mode word suggestions, loaded the same way as [corrector].
-    @Volatile private var englishSuggester: EnglishWordSuggester? = null
-    private val englishLoading = java.util.concurrent.atomic.AtomicBoolean(false)
-    // The trailing word the strip's English suggestions belong to (null = none
-    // shown), and whether the user is typing in EN mode right now. Selection
-    // updates only refresh EN suggestions while typing, so a Reply/Refine
+    // Word suggestions for the Latin modes with a list (EN/DE/FR/ES/IT/PT),
+    // loaded the same way as [corrector]; one language is kept at a time.
+    @Volatile private var wordSuggester: WordSuggester? = null
+    @Volatile private var wordSuggesterLang: String? = null
+    private val wordListLoading = java.util.concurrent.atomic.AtomicBoolean(false)
+    // The trailing word the strip's word suggestions belong to (null = none
+    // shown), and whether the user is typing in a word-list mode right now.
+    // Selection updates only refresh them while typing, so a Reply/Refine
     // rewrite of the field never pops suggestions over its result.
     private var enShownWord: String? = null
     private var enLiveTyping = false
@@ -308,7 +310,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
                 when {
                     jaConverting -> commitTappedCandidate(word)
                     isZh() && pinyin.isNotEmpty() -> commitTappedZh(word)
-                    enShownWord != null -> applyEnglishSuggestion(word)
+                    enShownWord != null -> applyWordSuggestion(word)
                     else -> applySuggestion(word)
                 }
             }
@@ -528,7 +530,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         applyShiftState()
         prewarmJa()
         prewarmVi()
-        prewarmEn()
+        prewarmWords()
         enLiveTyping = false
     }
 
@@ -858,7 +860,7 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         updateLanguageKeyStyle()
         prewarmJa() // load the kana->kanji dict in the background for JA fields
         prewarmVi() // and the Vietnamese syllable tables, for the same reason
-        prewarmEn()
+        prewarmWords()
         enLiveTyping = false
         // Fresh field: clear any leftover shift, then auto-capitalize if the
         // field/caret position calls for it (start of a text field).
@@ -913,8 +915,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd,
         )
-        if (mode == Mode.EN) {
-            if (enLiveTyping) refreshEnglishSuggestions()
+        if (wordListLang() != null) {
+            if (enLiveTyping) refreshWordSuggestions()
             return
         }
         if (!vietnameseHasComposingText()) return
@@ -1459,9 +1461,9 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
             // any in-progress Vietnamese word first, then the char itself.
             commitComposed(ic)
             ic.commitText(ch.toString(), 1)
-            if (mode == Mode.EN) {
+            if (wordListLang() != null) {
                 enLiveTyping = true
-                refreshEnglishSuggestions()
+                refreshWordSuggestions()
             }
             return
         }
@@ -1543,8 +1545,8 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
         maybeAutoCap() // deleting back to a sentence start re-arms caps
         // The key event lands in the editor asynchronously; the selection
-        // update that follows it refreshes the EN strip with the real text.
-        if (mode == Mode.EN) enLiveTyping = true
+        // update that follows it refreshes the word strip with the real text.
+        if (wordListLang() != null) enLiveTyping = true
     }
 
     private fun handleEnter(ic: android.view.inputmethod.InputConnection) {
@@ -1689,30 +1691,38 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         }
     }
 
-    private fun prewarmEn() {
-        if (mode != Mode.EN || englishSuggester != null) return
-        if (!englishLoading.compareAndSet(false, true)) return
+    /** The bundled word list for the current mode ("en", "de", ...), or null when it has none. */
+    private fun wordListLang(): String? = modeId(mode).takeIf { it in WordSuggester.LANGS }
+
+    private fun prewarmWords() {
+        val lang = wordListLang() ?: return
+        if (wordSuggesterLang == lang) return
+        if (!wordListLoading.compareAndSet(false, true)) return
         suggestExecutor.execute {
-            runCatching { EnglishWordSuggester(this) }.getOrNull()?.let { englishSuggester = it }
-            englishLoading.set(false)
+            runCatching { WordSuggester.load(this, lang) }.getOrNull()?.let {
+                wordSuggester = it
+                wordSuggesterLang = lang
+            }
+            wordListLoading.set(false)
         }
     }
 
     /**
-     * EN mode, iOS QuickType layout: the word left of the caret exactly as
-     * typed, then up to two completions/corrections. English letters are
-     * committed straight to the field (no composing region), so the word is
-     * read back from the editor. Mirrors KeyboardViewController.updateEnglishBar.
+     * Word-list modes (EN/DE/FR/ES/IT/PT), iOS QuickType layout: the word left
+     * of the caret exactly as typed, then up to two suggestions. These letters
+     * are committed straight to the field (no composing region), so the word
+     * is read back from the editor. Mirrors KeyboardViewController.updateWordBar.
      */
-    private fun refreshEnglishSuggestions() {
+    private fun refreshWordSuggestions() {
         val ic = currentInputConnection
-        val word = if (ic == null || mode != Mode.EN || !allowsWordSuggestions() ||
+        val lang = wordListLang()
+        val word = if (ic == null || lang == null || !allowsWordSuggestions() ||
             !ic.getSelectedText(0).isNullOrEmpty() ||
             ic.getTextAfterCursor(1, 0)?.firstOrNull()?.isLetter() == true // mid-word
-        ) "" else EnglishWordSuggester.trailingWord(
-            ic.getTextBeforeCursor(EnglishWordSuggester.MAX_TOKEN + 1, 0) ?: "",
+        ) "" else WordSuggester.trailingWord(
+            ic.getTextBeforeCursor(WordSuggester.MAX_TOKEN + 1, 0) ?: "",
         )
-        if (!EnglishWordSuggester.isWordToken(word)) {
+        if (!WordSuggester.isWordToken(word)) {
             if (enShownWord != null) clearSuggestions()
             return
         }
@@ -1720,29 +1730,32 @@ class TransKeyIME : InputMethodService(), KeyboardView.OnKeyboardActionListener 
         val seq = suggestSeq.incrementAndGet()
         enShownWord = word
         suggestionStrip?.setSuggestions(listOf(word), verbatim = true)
-        val s = englishSuggester ?: return
+        val s = wordSuggester?.takeIf { wordSuggesterLang == lang } ?: run {
+            prewarmWords() // switched language while the previous list was loading
+            return
+        }
         suggestExecutor.execute {
             if (seq != suggestSeq.get()) return@execute
             val more = runCatching { s.suggest(word, 2) }.getOrDefault(emptyList())
             if (more.isEmpty()) return@execute
             mainHandler.post {
-                if (seq != suggestSeq.get() || mode != Mode.EN || enShownWord != word) return@post
+                if (seq != suggestSeq.get() || wordListLang() != lang || enShownWord != word) return@post
                 suggestionStrip?.setSuggestions(listOf(word) + more, verbatim = true)
             }
         }
     }
 
-    /** Replace the typed EN word with [word] + a space (the verbatim chip keeps it). */
-    private fun applyEnglishSuggestion(word: String) {
+    /** Replace the typed word with [word] + a space (the verbatim chip keeps it). */
+    private fun applyWordSuggestion(word: String) {
         val ic = currentInputConnection ?: return
         val typed = enShownWord ?: return
         // The field may have moved on since the strip was painted; only
         // replace when the caret still sits right after the shown word.
         if (ic.getTextBeforeCursor(typed.length + 1, 0)?.let {
-                it.endsWith(typed) && EnglishWordSuggester.trailingWord(it) == typed
+                it.endsWith(typed) && WordSuggester.trailingWord(it) == typed
             } != true
         ) {
-            refreshEnglishSuggestions()
+            refreshWordSuggestions()
             return
         }
         ic.beginBatchEdit()

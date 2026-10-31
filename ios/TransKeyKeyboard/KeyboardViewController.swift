@@ -211,9 +211,12 @@ class KeyboardViewController: UIInputViewController {
     /// Built asynchronously in viewDidLoad (word-list parsing off-main); nil
     /// while still loading - suggestion/autocorrect paths skip gracefully.
     private var corrector: VietWordCorrector?
-    /// EN-mode word suggestions, built next to `corrector`; nil while loading.
-    private var englishSuggester: EnglishWordSuggester?
-    /// The trailing word the bar's English suggestions belong to (nil = none).
+    /// Word suggestions for the Latin languages with a list (en/de/fr/es/it/pt),
+    /// built off-main for the current language; one language is kept at a time.
+    private var wordSuggester: WordSuggester?
+    private var wordSuggesterLang: String?
+    private var wordListLoading: String?
+    /// The trailing word the bar's word suggestions belong to (nil = none).
     private var enBarWord: String?
 
     // Japanese romaji->kana composer + kana->kanji converter, and the Chinese
@@ -478,10 +481,8 @@ class KeyboardViewController: UIInputViewController {
         // keystroke, janking it. Suggestions simply stay off until it lands.
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let built = VietWordCorrector()
-            let english = EnglishWordSuggester()
             DispatchQueue.main.async {
                 self?.corrector = built
-                self?.englishSuggester = english
                 self?.updateSuggestionBar()
             }
         }
@@ -1423,8 +1424,8 @@ class KeyboardViewController: UIInputViewController {
                 return
             }
         }
-        if inputLang == "en" {
-            updateEnglishBar(seq: seq)
+        if WordSuggester.langs.contains(inputLang) {
+            updateWordBar(seq: seq)
             return
         }
         let word = viet.composingText
@@ -1450,11 +1451,31 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
-    /// EN mode, QuickType layout: the word left of the caret exactly as typed,
-    /// then up to two completions/corrections. English letters go straight
-    /// into the field (no composing word), so the word is read back from the
-    /// proxy. Mirrors Android TransKeyIME.refreshEnglishSuggestions.
-    private func updateEnglishBar(seq: Int) {
+    /// The word list for `lang`, or nil while it loads (the bar is refreshed
+    /// once it lands).
+    private func wordSuggester(for lang: String) -> WordSuggester? {
+        if wordSuggesterLang == lang { return wordSuggester }
+        if wordListLoading != lang {
+            wordListLoading = lang
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let built = WordSuggester(lang: lang)
+                DispatchQueue.main.async {
+                    guard let self, self.wordListLoading == lang else { return }
+                    self.wordListLoading = nil
+                    self.wordSuggester = built
+                    self.wordSuggesterLang = lang
+                    self.updateSuggestionBar()
+                }
+            }
+        }
+        return nil
+    }
+
+    /// Word-list languages (en/de/fr/es/it/pt), QuickType layout: the word
+    /// left of the caret exactly as typed, then up to two suggestions. These
+    /// letters go straight into the field (no composing word), so the word is
+    /// read back from the proxy. Mirrors Android TransKeyIME.refreshWordSuggestions.
+    private func updateWordBar(seq: Int) {
         let proxy = textDocumentProxy
         // Never over a Reply/Refine result (its undo chip lives on the action
         // bar) or in fields that opt out of spelling help.
@@ -1463,8 +1484,8 @@ class KeyboardViewController: UIInputViewController {
             && ![.URL, .emailAddress, .webSearch].contains(proxy.keyboardType ?? .default)
             && proxy.selectedText?.isEmpty != false
             && proxy.documentContextAfterInput?.first?.isLetter != true // mid-word
-        let word = allowed ? EnglishWordSuggester.trailingWord(proxy.documentContextBeforeInput ?? "") : ""
-        guard EnglishWordSuggester.isWordToken(word) else {
+        let word = allowed ? WordSuggester.trailingWord(proxy.documentContextBeforeInput ?? "") : ""
+        guard WordSuggester.isWordToken(word) else {
             enBarWord = nil
             showActionBar()
             return
@@ -1472,24 +1493,26 @@ class KeyboardViewController: UIInputViewController {
         enBarWord = word
         renderBarItems(["\"\(word)\""], action: .suggestion,
                        verbatimFirst: true, distribution: .fillEqually)
-        guard let suggester = englishSuggester else { return }
+        let lang = inputLang
+        guard let suggester = wordSuggester(for: lang) else { return }
         scheduleLookup { [weak self] in
             let more = suggester.suggest(word, max: 2)
             guard !more.isEmpty else { return }
             DispatchQueue.main.async {
-                guard let self, seq == self.lookupSeq, self.enBarWord == word else { return }
+                guard let self, seq == self.lookupSeq, self.inputLang == lang,
+                      self.enBarWord == word else { return }
                 self.renderBarItems(["\"\(word)\""] + more, action: .suggestion,
                                     verbatimFirst: true, distribution: .fillEqually)
             }
         }
     }
 
-    /// Replace the typed EN word with the tapped one + a space (the verbatim
-    /// chip keeps it as typed).
-    private func applyEnglishSuggestion(_ title: String, typed: String) {
+    /// Replace the typed word with the tapped one + a space (the verbatim chip
+    /// keeps it as typed).
+    private func applyWordSuggestion(_ title: String, typed: String) {
         // The field may have moved on since the bar was painted; only replace
         // when the caret still sits right after the shown word.
-        guard EnglishWordSuggester.trailingWord(textDocumentProxy.documentContextBeforeInput ?? "") == typed else {
+        guard WordSuggester.trailingWord(textDocumentProxy.documentContextBeforeInput ?? "") == typed else {
             updateSuggestionBar()
             return
         }
@@ -1507,7 +1530,7 @@ class KeyboardViewController: UIInputViewController {
 
     @objc private func suggestionTapped(_ sender: UIButton) {
         if !viet.hasComposingText, let typed = enBarWord {
-            applyEnglishSuggestion(sender.title(for: .normal) ?? "", typed: typed)
+            applyWordSuggestion(sender.title(for: .normal) ?? "", typed: typed)
             return
         }
         guard viet.hasComposingText else { return }

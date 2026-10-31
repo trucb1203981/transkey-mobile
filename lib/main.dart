@@ -63,7 +63,14 @@ void _registerDictionaryLicenses() {
       'Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0). '
       'See https://www.mdbg.net/chinese/dictionary?page=cc-cedict\n\n'
       'Chinese word frequencies are derived from "jieba" (MIT License), '
-      'Copyright (c) Sun Junyi. See https://github.com/fxsjy/jieba',
+      'Copyright (c) Sun Junyi. See https://github.com/fxsjy/jieba\n\n'
+      'German, French, Spanish, Italian and Portuguese word suggestions use '
+      'word lists derived from wordfreq by Robyn Speer, whose data is licensed '
+      'under Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0). '
+      'See https://github.com/rspeer/wordfreq\n\n'
+      'German capitalisation is derived from the Leipzig Corpora Collection '
+      '(news 2023), licensed under Creative Commons Attribution 4.0 (CC BY 4.0). '
+      'See https://wortschatz.uni-leipzig.de/en/download',
     );
   });
 }
