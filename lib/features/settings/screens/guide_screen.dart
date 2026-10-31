@@ -5,6 +5,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../onboarding/widgets/setup_reminder_banner.dart';
 import '../../translate/providers/features_provider.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 class GuideScreen extends ConsumerWidget {
   const GuideScreen({super.key});
@@ -142,7 +143,7 @@ class GuideScreen extends ConsumerWidget {
     final lockedFeatures = allFeatures.where((f) => !f.available).toList();
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.guideTitle)),
+      appBar: GlassAppBar(title: Text(t.guideTitle)),
       body: ListView(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,

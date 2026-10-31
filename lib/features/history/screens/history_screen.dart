@@ -9,6 +9,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/empty_states.dart';
 import '../providers/history_provider.dart';
 import '../widgets/history_card.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -56,7 +57,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     // backdrop with mismatched glow positions (visible seam above the tab bar).
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: Text(l.historyTitle),
         actions: [
           if (historyState.entries.isNotEmpty)

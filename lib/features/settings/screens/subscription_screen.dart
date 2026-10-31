@@ -9,6 +9,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../upgrade/services/purchases_service.dart';
 import '../providers/subscription_provider.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 class SubscriptionScreen extends ConsumerWidget {
   const SubscriptionScreen({super.key});
@@ -22,7 +23,7 @@ class SubscriptionScreen extends ConsumerWidget {
         ref.watch(authStateProvider).valueOrNull?.session?.plan ?? 'free';
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.subscriptionTitle)),
+      appBar: GlassAppBar(title: Text(l.subscriptionTitle)),
       body: subAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) {

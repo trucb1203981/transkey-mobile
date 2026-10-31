@@ -9,6 +9,7 @@ import '../../../shared/widgets/empty_states.dart';
 import '../models/glossary_entry.dart';
 import '../providers/glossary_provider.dart';
 import '../widgets/add_glossary_sheet.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 class GlossaryScreen extends ConsumerStatefulWidget {
   const GlossaryScreen({super.key});
@@ -58,7 +59,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
     // paints the aurora (own aurora here = double backdrop + seam at tab bar).
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: Text(l.glossaryTitle(glossary.count, 50)),
         actions: [
           IconButton(
@@ -77,11 +78,16 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen>
         ],
       ),
       body: _buildBody(context, ref, glossary),
+      // Lifted above Home's floating glass tab bar, which this tab's body
+      // runs behind.
       floatingActionButton: glossary.isFull
           ? null
-          : FloatingActionButton(
-              onPressed: () => _addEntry(context, ref),
-              child: const Icon(Icons.add),
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 80),
+              child: FloatingActionButton(
+                onPressed: () => _addEntry(context, ref),
+                child: const Icon(Icons.add),
+              ),
             ),
     );
   }

@@ -8,6 +8,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../providers/setup_status_provider.dart';
 import '../widgets/setup_pieces.dart';
 import 'setup_task_screen.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 /// The setup home: one row per thing that still has to be turned on, each
 /// showing its REAL state and leading to its own short flow.
@@ -66,7 +67,7 @@ class _SetupHubScreenState extends ConsumerState<SetupHubScreen>
     final status = ref.watch(setupStatusProvider).value ?? const SetupStatus();
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.setupHubTitle)),
+      appBar: GlassAppBar(title: Text(t.setupHubTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),

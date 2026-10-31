@@ -15,6 +15,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/theme/app_glass.dart';
 import '../../../shared/widgets/glass/aurora_background.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 import '../../../shared/widgets/plan_status_banner.dart';
 import '../../../shared/widgets/quota_bar.dart';
 import '../../../shared/widgets/upgrade_nudge_sheet.dart';
@@ -973,30 +974,34 @@ class _HomeHeaderState extends ConsumerState<_HomeHeader>
           ),
           // Quick toggles (Android only): set TransKey as the active keyboard,
           // and turn the floating bubble on/off - both gradient when active.
-          if (Platform.isAndroid) ...[
-            _GradientIconButton(
-              icon: Icons.keyboard_rounded,
-              active: _imeSelected,
-              tooltip: l.imeKeyboardTitle,
-              onTap: _onKeyboardTap,
+          // Grouped in one glass capsule like the app bar actions.
+          if (Platform.isAndroid)
+            GlassCapsule(
+              children: [
+                _GradientIconButton(
+                  icon: Icons.keyboard_rounded,
+                  active: _imeSelected,
+                  tooltip: l.imeKeyboardTitle,
+                  onTap: _onKeyboardTap,
+                ),
+                const SizedBox(width: 2),
+                _GradientIconButton(
+                  icon: Icons.bubble_chart_rounded,
+                  active: bubbleRunning,
+                  tooltip: bubbleRunning ? l.bubbleActive : l.bubbleInactive,
+                  onTap: () => _onBubbleTap(bubbleRunning),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            _GradientIconButton(
-              icon: Icons.bubble_chart_rounded,
-              active: bubbleRunning,
-              tooltip: bubbleRunning ? l.bubbleActive : l.bubbleInactive,
-              onTap: () => _onBubbleTap(bubbleRunning),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
-/// Square icon button that fills with the brand gradient when [active] and
-/// sits as a muted translucent chip when off. Used for the home-header quick
-/// toggles (keyboard / bubble).
+/// Round icon button inside the home-header glass capsule: lit with the brand
+/// gradient when [active], bare on the capsule glass when off. Used for the
+/// quick toggles (keyboard / bubble).
 class _GradientIconButton extends StatelessWidget {
   const _GradientIconButton({
     required this.icon,
@@ -1020,17 +1025,13 @@ class _GradientIconButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          customBorder: const CircleBorder(),
           child: Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
               gradient: active ? AppGlass.brand : null,
-              // Off = a frosted glass chip; on = the lit brand gradient.
-              color: active ? null : p.fill,
-              border: active ? null : Border.all(color: p.border),
-              boxShadow: active ? AppGlass.brandGlow() : null,
             ),
             child: Icon(
               icon,

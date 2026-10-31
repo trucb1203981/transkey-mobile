@@ -11,6 +11,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../providers/setup_status_provider.dart';
 import '../widgets/setup_pieces.dart';
 import '../widgets/system_screen_mock.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 /// The two things a user has to switch on outside the app.
 enum SetupTask { button, keyboard }
@@ -132,7 +133,7 @@ class _SetupTaskScreenState extends ConsumerState<SetupTaskScreen>
     final isButton = widget.task == SetupTask.button;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: Text(isButton ? t.setupTaskButtonTitle : t.setupTaskKeyboardTitle),
       ),
       body: SafeArea(

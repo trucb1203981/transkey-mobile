@@ -13,6 +13,7 @@ import '../checkout_flow.dart';
 import '../providers/plans_provider.dart';
 import '../providers/usage_provider.dart';
 import '../services/purchases_service.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 class UpgradeScreen extends ConsumerStatefulWidget {
   const UpgradeScreen({super.key});
@@ -95,7 +96,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     }
 
     return AuroraScaffold(
-      appBar: AppBar(title: Text(l.upgradeScreenTitle)),
+      appBar: GlassAppBar(title: Text(l.upgradeScreenTitle)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(

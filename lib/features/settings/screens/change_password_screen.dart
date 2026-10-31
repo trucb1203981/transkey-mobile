@@ -7,6 +7,7 @@ import '../../../core/api/dio_client.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -40,7 +41,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     final hasPassword =
         ref.watch(authStateProvider).valueOrNull?.session?.hasPassword ?? true;
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassAppBar(
           title: Text(hasPassword ? l.changePassword : l.setPassword)),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),

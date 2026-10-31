@@ -7,6 +7,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../translate/services/tts_service.dart';
 import '../models/phrasebook_entry.dart';
 import '../providers/phrasebook_provider.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 /// Personal phrasebook list. Reached from the home screen via the
 /// "Saved dishes" entry; entries are added from the camera "What is
@@ -57,7 +58,7 @@ class _PhrasebookScreenState extends ConsumerState<PhrasebookScreen> {
     final async = ref.watch(phrasebookProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: Text(l.phrasebookTitle),
         actions: [
           IconButton(

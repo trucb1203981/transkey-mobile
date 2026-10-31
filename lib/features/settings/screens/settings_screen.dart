@@ -22,6 +22,7 @@ import '../../translate/widgets/language_picker_sheet.dart';
 import '../providers/app_settings_provider.dart';
 import '../widgets/account_section.dart';
 import '../widgets/feedback_sheet.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 // Picker-visible app UI languages. ARB files exist for 14 locales (en, vi,
 // zh, ja, ko, fr, de, es + pt, it, ru, th, id, ar) but we surface only the
@@ -151,7 +152,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     // paints the aurora (own aurora here = double backdrop + seam at tab bar).
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text(t.settingsTitle)),
+      appBar: GlassAppBar(title: Text(t.settingsTitle)),
       body: settings == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(

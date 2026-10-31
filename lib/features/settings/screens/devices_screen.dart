@@ -5,6 +5,7 @@ import '../../../core/api/dio_client.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../providers/devices_provider.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 class DevicesScreen extends ConsumerStatefulWidget {
   const DevicesScreen({super.key});
@@ -33,7 +34,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
     final devicesAsync = ref.watch(devicesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.manageDevices)),
+      appBar: GlassAppBar(title: Text(l.manageDevices)),
       body: devicesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) {

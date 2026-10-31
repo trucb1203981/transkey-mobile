@@ -10,6 +10,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/option_picker_sheet.dart';
 import '../providers/app_settings_provider.dart';
+import '../../../shared/widgets/glass/glass_app_bar.dart';
 
 // Phase 1+2 MVP for the TransKey system IME. The Android side has a
 // service registered in AndroidManifest + xml/transkey_ime.xml; this
@@ -114,7 +115,7 @@ class _KeyboardSettingsScreenState
         ref.watch(appSettingsProvider).valueOrNull ?? const AppSettings();
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: Text(t.keyboardSettingsTitle),
       ),
       body: ListView(
