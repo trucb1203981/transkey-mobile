@@ -16,6 +16,7 @@ class KeyboardViewController: UIInputViewController {
         case toSymbols          // "#+="
         case toLetters          // "ABC"
         case globe
+        case emoji              // opens the emoji picker
         case space
         case ret
     }
@@ -1627,12 +1628,21 @@ class KeyboardViewController: UIInputViewController {
         if needsInputModeSwitchKey {
             addKey(.globe)
         }
+        if showsEmojiKey {
+            addKey(.emoji)
+        }
         addKey(.space)
         addKey(.ret)
 
         styleAllKeys()
         keyArea.setNeedsLayout()
         view.setNeedsLayout()
+    }
+
+    /// The system keyboard's emoji key, left of space. Left out of
+    /// ASCII-only fields, which cannot take an emoji.
+    private var showsEmojiKey: Bool {
+        textDocumentProxy.keyboardType != .asciiCapable
     }
 
     /// Number pad keys in layout order: digits 1-9, then the bottom-left cell
@@ -1720,6 +1730,11 @@ class KeyboardViewController: UIInputViewController {
                 btn.backgroundColor = specialKeyFill
                 btn.setTitle(nil, for: .normal)
                 btn.setImage(UIImage(systemName: "globe"), for: .normal)
+                btn.tintColor = .label
+            case .emoji:
+                btn.backgroundColor = specialKeyFill
+                btn.setTitle(nil, for: .normal)
+                btn.setImage(UIImage(systemName: "face.smiling"), for: .normal)
                 btn.tintColor = .label
             case .space:
                 btn.backgroundColor = keyFill
@@ -1915,6 +1930,11 @@ class KeyboardViewController: UIInputViewController {
             bx += ctrlW + keyHGap
             i += 1
         }
+        if showsEmojiKey {
+            keyButtons[i].frame = CGRect(x: bx, y: by, width: ctrlW, height: keyHeight) // emoji
+            bx += ctrlW + keyHGap
+            i += 1
+        }
         let spaceW = w - bx - sideMargin - returnW - keyHGap
         keyButtons[i].frame = CGRect(x: bx, y: by, width: spaceW, height: keyHeight) // space
         bx += spaceW + keyHGap
@@ -2023,7 +2043,7 @@ class KeyboardViewController: UIInputViewController {
             case .space:
                 st.spacePanX = p.x
                 scheduleSpaceCursorTimer(touch)
-            case .globe, .ret:
+            case .globe, .ret, .emoji:
                 break
             }
         }
@@ -2107,6 +2127,8 @@ class KeyboardViewController: UIInputViewController {
                 handleReturn()
             case .globe:
                 advanceToNextInputMode()
+            case .emoji:
+                toggleEmojiPanel(backTitle: "ABC")
             default:
                 break
             }
@@ -2619,7 +2641,7 @@ class KeyboardViewController: UIInputViewController {
             fv.onReturn = { [weak self] in self?.handleReturn() }
             fv.onDakuten = { [weak self] in self?.flickDakuten() }
             fv.onSwitchToRomaji = { [weak self] in self?.flickSwitchToRomaji() }
-            fv.onEmoji = { [weak self] in self?.flickToggleEmoji() }
+            fv.onEmoji = { [weak self] in self?.toggleEmojiPanel(backTitle: "あ") }
             fv.onTapSound = { [weak self] in self?.playClick() }
             keyArea.addSubview(fv)
             NSLayoutConstraint.activate([
@@ -2643,13 +2665,16 @@ class KeyboardViewController: UIInputViewController {
         dismissEmojiPanel()
     }
 
-    /// Toggle the emoji picker over the flick grid (the ☺ key).
-    private func flickToggleEmoji() {
+    /// Toggle the emoji picker over the keys (the QWERTY emoji key, the flick
+    /// ☺ key). [backTitle] labels the picker's key back to the letters.
+    private func toggleEmojiPanel(backTitle: String) {
         if emojiPanel != nil { dismissEmojiPanel(); return }
+        commitComposing()
         let panel = EmojiPanelView()
+        panel.backTitle = backTitle
         panel.translatesAutoresizingMaskIntoConstraints = false
         panel.onTapSound = { [weak self] in self?.playClick() }
-        panel.onPick = { [weak self] in self?.flickInsertEmoji($0) }
+        panel.onPick = { [weak self] in self?.insertEmoji($0) }
         panel.onBackspace = { [weak self] in self?.handleBackspace() }
         panel.onBack = { [weak self] in self?.dismissEmojiPanel() }
         view.addSubview(panel)
@@ -2667,8 +2692,8 @@ class KeyboardViewController: UIInputViewController {
         emojiPanel = nil
     }
 
-    /// Insert an emoji: finalize any kana run, type it, remember it as recent.
-    private func flickInsertEmoji(_ e: String) {
+    /// Insert an emoji: finalize any composing run, type it, remember it as recent.
+    private func insertEmoji(_ e: String) {
         commitComposing()
         noteInternalEdit()
         textDocumentProxy.insertText(e)
@@ -3900,12 +3925,13 @@ final class FlickPreviewPopup: UIView {
     }
 }
 
-// MARK: - Emoji picker (flick keyboard)
+// MARK: - Emoji picker
 
-/// A self-contained emoji grid shown over the flick keyboard (the ☺ key).
-/// iOS does not let a third-party keyboard open the system emoji keyboard, so
-/// this is our own picker: a scrollable grid plus a bottom bar with the
-/// category selector, an あ key (back to kana) and a backspace. "Recently used"
+/// A self-contained emoji grid shown over the keys (the QWERTY emoji key, the
+/// flick ☺ key). iOS does not let a third-party keyboard open the system emoji
+/// keyboard, so this is our own picker: a scrollable grid plus a bottom bar
+/// with the category selector, a key back to the letters (ABC, or あ on the
+/// flick keyboard) and a backspace. "Recently used"
 /// is the first category, persisted in the App Group. Curated emoji sets keep
 /// every glyph valid (no tofu) on the shipped iOS range.
 final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
@@ -3914,6 +3940,8 @@ final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionView
     var onBack: (() -> Void)?
     var onBackspace: (() -> Void)?
     var onTapSound: (() -> Void)?
+    /// Label of the key back to the letters.
+    var backTitle = "あ" { didSet { backButton.setTitle(backTitle, for: .normal) } }
 
     private let collection: UICollectionView
     private let bottomBar = UIView()
@@ -3966,7 +3994,7 @@ final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionView
         bottomBar.translatesAutoresizingMaskIntoConstraints = false
         addSubview(bottomBar)
 
-        backButton.setTitle("あ", for: .normal)
+        backButton.setTitle(backTitle, for: .normal)
         backButton.setTitleColor(.label, for: .normal)
         backButton.titleLabel?.font = .systemFont(ofSize: 17)
         backButton.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
