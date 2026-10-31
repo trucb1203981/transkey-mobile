@@ -43,16 +43,25 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- transkey:// links are routed by app_links in app_router.dart;
+                 Flutter's own deep linking would also hand them to go_router
+                 and show "no routes for location" for a link with a path. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Deep link: transkey://auth?token=... -->
+            <!-- Deep links: transkey://auth?token=... and transkey://setup
+                 (routed in lib/core/router/app_router.dart). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="transkey" android:host="auth"/>
+                <data android:scheme="transkey" android:host="setup"/>
             </intent-filter>
         </activity>
 

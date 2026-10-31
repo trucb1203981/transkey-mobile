@@ -185,18 +185,29 @@ void _initDeepLinkListener(Ref ref, GoRouter router) {
     // CTA when a free user hits the daily quota. Route to the upgrade screen
     // (same destination as the bubble/keyboard upsell on Android); auth links
     // (transkey://auth/...) still go through the auth handler.
-    bool handleUpgradeLink(Uri uri) {
-      if (uri.host != 'upgrade') return false;
-      ref.read(trackingServiceProvider).event('keyboard_quota_upsell');
-      router.push('/upgrade');
-      return true;
+    // transkey://setup opens the setup hub; transkey://setup/keyboard and
+    // transkey://setup/button open one task directly (any other path falls
+    // back to the hub).
+    bool handleScreenLink(Uri uri) {
+      switch (uri.host) {
+        case 'upgrade':
+          ref.read(trackingServiceProvider).event('keyboard_quota_upsell');
+          router.push('/upgrade');
+          return true;
+        case 'setup':
+          const tasks = {'/keyboard', '/button'};
+          final task = tasks.contains(uri.path) ? uri.path : '';
+          router.push('/setup$task');
+          return true;
+      }
+      return false;
     }
 
     final appLinks = AppLinks();
     _deepLinkSub = appLinks.uriLinkStream.listen(
       (Uri uri) {
         debugPrint('[DeepLink] Received: $uri');
-        if (handleUpgradeLink(uri)) return;
+        if (handleScreenLink(uri)) return;
         ref.read(authStateProvider.notifier).handleDeepLink(uri);
       },
       onError: (err) => debugPrint('[DeepLink] Error: $err'),
@@ -205,7 +216,7 @@ void _initDeepLinkListener(Ref ref, GoRouter router) {
     appLinks.getInitialLink().then((Uri? uri) {
       if (uri != null) {
         debugPrint('[DeepLink] Initial: $uri');
-        if (handleUpgradeLink(uri)) return;
+        if (handleScreenLink(uri)) return;
         ref.read(authStateProvider.notifier).handleDeepLink(uri);
       }
     }).catchError((_) {});
