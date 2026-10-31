@@ -1193,6 +1193,11 @@ class _TabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = GlassPalette.of(context);
     final color = isSelected ? p.accentStrong : p.textSecondary;
+    // Dark: a lighter glass pill. Light: the capsule is already near-white,
+    // so a white pill vanishes; tint it with the accent instead.
+    final pillFill = p == GlassPalette.light
+        ? p.accent.withValues(alpha: 0.14)
+        : p.fillStrong;
     return Semantics(
       selected: isSelected,
       button: true,
@@ -1205,7 +1210,7 @@ class _TabButton extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
           decoration: ShapeDecoration(
-            color: isSelected ? p.fillStrong : Colors.transparent,
+            color: isSelected ? pillFill : Colors.transparent,
             shape: StadiumBorder(
               side: BorderSide(
                 color: isSelected ? p.border : Colors.transparent,
